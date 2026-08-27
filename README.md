@@ -9,7 +9,7 @@ embedded firmware, and orbital telemetry.
 Lyrahcle follows an **Open Core** model — an open, auditable core (AGPLv3) combined with
 paid enterprise modules — aiming for transparency, community, and sustainability.
 
-![Lyrahcle](./assets/logo.jpeg)
+<img src="./assets/logo-mark.svg" alt="Lyrahcle" width="140" />
 
 Maintained by [mlko01](https://github.com/mlko01) — contact: manu.ciberseguridad@gmail.com
 

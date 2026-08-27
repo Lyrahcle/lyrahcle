@@ -1,5 +1,6 @@
 import Clock from './Clock.jsx'
 import StatusPill from './StatusPill.jsx'
+import LogoMark from './LogoMark.jsx'
 
 export default function Header({ backendStatus }) {
   const tone = backendStatus === 'online' ? 'good' : backendStatus === 'offline' ? 'bad' : 'idle'
@@ -10,7 +11,7 @@ export default function Header({ backendStatus }) {
         <div className="flex items-center gap-3">
           <div className="relative">
             <div className="absolute inset-0 rounded-full bg-lyra-gold/20 blur-md" />
-            <img src="/logo.jpeg" alt="Lyrahcle" className="relative h-9 w-9 rounded-full object-cover" />
+            <LogoMark className="relative h-9 w-9" />
           </div>
           <div>
             <h1 className="font-display text-lg font-semibold leading-none text-lyra-goldBright">

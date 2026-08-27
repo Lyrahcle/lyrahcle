@@ -21,3 +21,4 @@ Format based on [Keep a Changelog](https://keepachangelog.com/), using
 - Dashboard RF spectrum panel (RfPanel)
 - `sdr-agent` compose service under the `sdr` profile (`docker compose --profile sdr up`)
 - Dashboard redesign: mission-console look (deep purple/gold palette, Space Grotesk/Inter/JetBrains Mono type system, starfield background, live UTC clock, signal-strength meters, kind badges)
+- Custom vector logo (LogoMark, SVG constellation glyph) replacing the raster placeholder
