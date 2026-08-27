@@ -20,11 +20,16 @@ func getEnv(key, fallback string) string {
 func main() {
 	backendURL := getEnv("BACKEND_URL", "http://backend:8080")
 	agentID := getEnv("AGENT_ID", "sdr-agent-dev")
+	authToken := getEnv("AGENT_TOKEN", "")
 	freqHz, _ := strconv.ParseInt(getEnv("FREQUENCY_HZ", "437500000"), 10, 64)
 	intervalSec, _ := strconv.Atoi(getEnv("CAPTURE_INTERVAL_SECONDS", "10"))
 
+	if authToken == "" {
+		log.Println("WARNING: AGENT_TOKEN is not set; the backend will reject RF ingestion until an operator/admin token is provided")
+	}
+
 	var source capture.Source = capture.MockSource{}
-	client := uplink.New(backendURL, agentID)
+	client := uplink.New(backendURL, agentID, authToken)
 
 	log.Printf("lyrahcle sdr-agent %q starting, target=%s, freq=%d Hz, interval=%ds", agentID, backendURL, freqHz, intervalSec)
 

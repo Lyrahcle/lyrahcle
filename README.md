@@ -104,6 +104,37 @@ To also run the SDR edge agent (mock capture, no hardware required):
 docker compose --profile sdr up --build
 ```
 
+### Authentication
+
+Write endpoints (`POST /rf/ingest`, `POST /satellites/`) require a bearer token.
+Read endpoints stay public for now (dashboard doesn't require login yet).
+
+```bash
+# First registration becomes admin automatically; later ones default to viewer.
+curl -X POST localhost:8080/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email": "you@example.com", "password": "a-strong-password"}'
+
+curl -X POST localhost:8080/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "you@example.com", "password": "a-strong-password"}'
+# -> {"token": "...", "role": "admin"}
+
+curl -X POST localhost:8080/api/v1/satellites/ \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"norad_id": 25544, "name": "ISS (ZARYA)", "tle_line1": "...", "tle_line2": "..."}'
+```
+
+Roles: `viewer` < `operator` < `admin`. Promoting a user beyond the bootstrap admin
+currently requires updating `role` directly in the `users` table (a proper admin
+endpoint is planned — see [SECURITY_ROADMAP.md](./SECURITY_ROADMAP.md)).
+
+For the `sdr-agent` to publish RF readings, give it a token with at least the
+`operator` role via the `AGENT_TOKEN` environment variable (`docker-compose.yml`).
+Token-per-agent authentication (API keys, no shared user token) is tracked in the
+security roadmap.
+
 ### Environment variables (backend)
 
 | Variable | Default | Description |
@@ -112,19 +143,28 @@ docker compose --profile sdr up --build
 | `REDIS_URL` | `localhost:6379` | Redis connection string |
 | `PORT` | `8080` | HTTP listen port |
 | `CELESTRAK_GROUPS` | `stations` | Comma-separated [Celestrak groups](https://celestrak.org/NORAD/elements/) to sync TLEs from |
+| `JWT_SECRET` | *(insecure dev default, logs a warning)* | Secret used to sign auth tokens — set a strong value in any non-local deployment |
 
 ### API endpoints
 
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/healthz` | Liveness check |
-| `GET` | `/api/v1/ping` | Backend reachability check |
-| `GET` | `/api/v1/assets` | List tracked assets |
-| `POST` | `/api/v1/rf/ingest` | Ingest an RF reading (used by `sdr-agent`) |
-| `GET` | `/api/v1/rf/readings` | List recent RF readings |
-| `GET` | `/api/v1/satellites/` | List tracked satellites with live computed position |
-| `POST` | `/api/v1/satellites/` | Register a satellite by NORAD ID + TLE |
-| `POST` | `/api/v1/tmtc/decode/ax25` | Decode a hex-encoded AX.25 UI frame (destination/source callsign+SSID, control, PID, payload) |
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| `GET` | `/healthz` | — | Liveness check |
+| `GET` | `/api/v1/ping` | — | Backend reachability check |
+| `GET` | `/api/v1/assets` | — | List tracked assets |
+| `POST` | `/api/v1/auth/register` | — | Create a user (first user becomes admin) |
+| `POST` | `/api/v1/auth/login` | — | Exchange email + password for a bearer token |
+| `POST` | `/api/v1/rf/ingest` | operator+ | Ingest an RF reading (used by `sdr-agent`) |
+| `GET` | `/api/v1/rf/readings` | — | List recent RF readings |
+| `GET` | `/api/v1/satellites/` | — | List tracked satellites with live computed position |
+| `POST` | `/api/v1/satellites/` | operator+ | Register a satellite by NORAD ID + TLE |
+| `POST` | `/api/v1/tmtc/decode/ax25` | — | Decode a hex-encoded AX.25 UI frame (destination/source callsign+SSID, control, PID, payload) |
+
+## Security
+
+See [SECURITY_ROADMAP.md](./SECURITY_ROADMAP.md) for the short-term hardening plan
+(TLS, input validation, test coverage, rate limiting, agent-specific auth, audit
+logging, and more) being worked through incrementally before v1.0.0.
 
 ## Licensing
 

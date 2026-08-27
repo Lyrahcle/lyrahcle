@@ -12,6 +12,7 @@ services:
       - DATABASE_URL=postgres://lyrahcle:lyrahcle@postgres:5432/lyrahcle?sslmode=disable
       - REDIS_URL=redis:6379
       - CELESTRAK_GROUPS=stations
+      - JWT_SECRET=${JWT_SECRET:-insecure-dev-secret-change-me}
 
   frontend:
     build:
@@ -56,6 +57,7 @@ services:
       - AGENT_ID=sdr-agent-dev
       - FREQUENCY_HZ=437500000
       - CAPTURE_INTERVAL_SECONDS=10
+      - AGENT_TOKEN=${AGENT_TOKEN:-}
     profiles:
       - sdr
 

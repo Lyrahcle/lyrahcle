@@ -6,10 +6,12 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
+	"github.com/mlko01/lyrahcle/apps/backend/internal/auth"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/celestrak"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/config"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/db"
@@ -37,6 +39,7 @@ func main() {
 	assets := store.NewAssetStore(pool)
 	rf := store.NewRFStore(pool)
 	satellites := store.NewSatelliteStore(pool)
+	users := store.NewUserStore(pool)
 
 	sched := scheduler.New()
 	_ = sched.Every("0 */6 * * *", "recon-sweep", func() {
@@ -74,8 +77,81 @@ func main() {
 			json.NewEncoder(w).Encode(list)
 		})
 
+		r.Route("/auth", func(r chi.Router) {
+			r.Post("/register", func(w http.ResponseWriter, r *http.Request) {
+				var body struct {
+					Email    string `json:"email"`
+					Password string `json:"password"`
+				}
+				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+				if body.Email == "" || len(body.Password) < 8 {
+					http.Error(w, "email required, password must be at least 8 characters", http.StatusBadRequest)
+					return
+				}
+
+				count, err := users.Count(r.Context())
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+				role := string(auth.RoleViewer)
+				if count == 0 {
+					role = string(auth.RoleAdmin)
+				}
+
+				hash, err := auth.HashPassword(body.Password)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+
+				user, err := users.Create(r.Context(), body.Email, hash, role)
+				if err != nil {
+					if err == store.ErrEmailTaken {
+						http.Error(w, "email already registered", http.StatusConflict)
+						return
+					}
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusCreated)
+				json.NewEncoder(w).Encode(map[string]string{"id": user.ID.String(), "email": user.Email, "role": user.Role})
+			})
+
+			r.Post("/login", func(w http.ResponseWriter, r *http.Request) {
+				var body struct {
+					Email    string `json:"email"`
+					Password string `json:"password"`
+				}
+				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+
+				user, err := users.GetByEmail(r.Context(), body.Email)
+				if err != nil || !auth.CheckPassword(user.PasswordHash, body.Password) {
+					http.Error(w, "invalid email or password", http.StatusUnauthorized)
+					return
+				}
+
+				token, err := auth.IssueToken(cfg.JWTSecret, user.ID, auth.Role(user.Role), 24*time.Hour)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(map[string]string{"token": token, "role": user.Role})
+			})
+		})
+
 		r.Route("/rf", func(r chi.Router) {
-			r.Post("/ingest", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleOperator)).Post("/ingest", func(w http.ResponseWriter, r *http.Request) {
 				var reading store.RFReading
 				if err := json.NewDecoder(r.Body).Decode(&reading); err != nil {
 					http.Error(w, err.Error(), http.StatusBadRequest)
@@ -125,7 +201,7 @@ func main() {
 				json.NewEncoder(w).Encode(out)
 			})
 
-			r.Post("/", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleOperator)).Post("/", func(w http.ResponseWriter, r *http.Request) {
 				var body struct {
 					NoradID int    `json:"norad_id"`
 					Name    string `json:"name"`

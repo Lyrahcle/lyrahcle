@@ -37,3 +37,5 @@ Format based on [Keep a Changelog](https://keepachangelog.com/), using
 - Fixed clock placement: moved from the hero status row to a sticky header (always visible, no longer misaligned with status pills)
 - Phase 7 started: AX.25 frame decoder (`internal/tmtc`) and `POST /api/v1/tmtc/decode/ax25` endpoint — decodes destination/source callsign+SSID, control, PID, and payload from a hex-encoded frame
 - README screenshot upgraded to a browser-window mockup at 2x resolution
+- Authentication & authorization: `users` table, JWT (HS256) via `golang-jwt`, bcrypt password hashing, `admin`/`operator`/`viewer` role hierarchy, `POST /auth/register` + `POST /auth/login`; `POST /rf/ingest` and `POST /satellites/` now require an operator-or-higher bearer token; `sdr-agent` sends its token via `AGENT_TOKEN`
+- Added `SECURITY_ROADMAP.md` tracking the short-term hardening plan (TLS, input validation, tests, rate limiting, agent API keys, audit logging, releases) incrementally before v1.0.0

@@ -13,13 +13,15 @@ import (
 type Client struct {
 	BackendURL string
 	AgentID    string
+	AuthToken  string
 	http       *http.Client
 }
 
-func New(backendURL, agentID string) *Client {
+func New(backendURL, agentID, authToken string) *Client {
 	return &Client{
 		BackendURL: backendURL,
 		AgentID:    agentID,
+		AuthToken:  authToken,
 		http:       &http.Client{Timeout: 5 * time.Second},
 	}
 }
@@ -36,7 +38,16 @@ func (c *Client) Send(r capture.Reading) error {
 		return err
 	}
 
-	resp, err := c.http.Post(c.BackendURL+"/api/v1/rf/ingest", "application/json", bytes.NewReader(body))
+	req, err := http.NewRequest(http.MethodPost, c.BackendURL+"/api/v1/rf/ingest", bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	if c.AuthToken != "" {
+		req.Header.Set("Authorization", "Bearer "+c.AuthToken)
+	}
+
+	resp, err := c.http.Do(req)
 	if err != nil {
 		return err
 	}
