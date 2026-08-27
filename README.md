@@ -29,8 +29,8 @@
 
 ## Status
 
-🚧 Early development — Phase 6 of 9 (orbital tracking). See [PLAN.md](./PLAN.md) for the
-full roadmap.
+🚧 Early development — Phase 7 of 9 (TM/TC protocol decoding). See [PLAN.md](./PLAN.md) for
+the full roadmap.
 
 - [x] Phase 1 — Branding & repo bootstrap
 - [x] Phase 2 — Backend (Go) and frontend (React) base
@@ -38,7 +38,7 @@ full roadmap.
 - [x] Phase 4 — Branded dashboard
 - [x] Phase 5 — SDR edge agent, RF ingest
 - [x] Phase 6 — Orbital tracking (SGP4, live Celestrak TLE sync, interactive world map)
-- [ ] Phase 7 — TM/TC protocol decoding, ground station & firmware modules
+- [ ] Phase 7 — TM/TC protocol decoding, ground station & firmware modules (started: AX.25 decoder)
 - [ ] Phase 8 — Test coverage, hardening, v1.0.0 release
 - [ ] Phase 9 — Enterprise modules (advanced RF, proprietary decoders, SIEM integrations)
 
@@ -124,6 +124,7 @@ docker compose --profile sdr up --build
 | `GET` | `/api/v1/rf/readings` | List recent RF readings |
 | `GET` | `/api/v1/satellites/` | List tracked satellites with live computed position |
 | `POST` | `/api/v1/satellites/` | Register a satellite by NORAD ID + TLE |
+| `POST` | `/api/v1/tmtc/decode/ax25` | Decode a hex-encoded AX.25 UI frame (destination/source callsign+SSID, control, PID, payload) |
 
 ## Licensing
 

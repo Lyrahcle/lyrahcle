@@ -16,6 +16,7 @@ import (
 	"github.com/mlko01/lyrahcle/apps/backend/internal/orbit"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/scheduler"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/store"
+	"github.com/mlko01/lyrahcle/apps/backend/internal/tmtc"
 )
 
 func main() {
@@ -140,6 +141,25 @@ func main() {
 					return
 				}
 				w.WriteHeader(http.StatusCreated)
+			})
+		})
+
+		r.Route("/tmtc", func(r chi.Router) {
+			r.Post("/decode/ax25", func(w http.ResponseWriter, r *http.Request) {
+				var body struct {
+					FrameHex string `json:"frame_hex"`
+				}
+				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+				decoded, err := tmtc.DecodeAX25Hex(body.FrameHex)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(decoded)
 			})
 		})
 	})

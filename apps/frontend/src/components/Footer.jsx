@@ -81,7 +81,7 @@ export default function Footer() {
             © {year} Lyrahcle. Core licensed under AGPLv3.
           </p>
           <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-lyra-mutedDim">
-            Phase 6 · Orbital Tracking
+            Phase 7 · TM/TC Decoding
           </p>
         </div>
       </div>

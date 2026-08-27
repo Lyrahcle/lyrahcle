@@ -1,5 +1,4 @@
 import LogoMark from './LogoMark.jsx'
-import Clock from './Clock.jsx'
 import StatusPill from './StatusPill.jsx'
 import OrbitRings from './OrbitRings.jsx'
 
@@ -27,7 +26,6 @@ export default function Hero({ backendStatus, dbStatus, sdrStatus }) {
           <StatusPill label={`Backend · ${backendStatus}`} tone={toneFor(backendStatus)} />
           <StatusPill label={`Database · ${dbStatus}`} tone={toneFor(dbStatus)} />
           <StatusPill label={`SDR agent · ${sdrStatus}`} tone={toneFor(sdrStatus)} />
-          <Clock />
         </div>
       </div>
     </div>

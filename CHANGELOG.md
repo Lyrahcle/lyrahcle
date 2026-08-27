@@ -34,3 +34,5 @@ Format based on [Keep a Changelog](https://keepachangelog.com/), using
 - Scaled up UI: larger hero, logo, tabs, table text and padding across the dashboard
 - Full footer: brand blurb, project/contact links, license and roadmap-phase line
 - Open Graph/Twitter meta tags, apple-touch-icon, and a keyboard-accessible skip-to-content link
+- Fixed clock placement: moved from the hero status row to a sticky header (always visible, no longer misaligned with status pills)
+- Phase 7 started: AX.25 frame decoder (`internal/tmtc`) and `POST /api/v1/tmtc/decode/ax25` endpoint — decodes destination/source callsign+SSID, control, PID, and payload from a hex-encoded frame
