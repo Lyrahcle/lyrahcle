@@ -43,7 +43,19 @@ Tracked incrementally, one item at a time, before the v1.0.0 release.
       was already covered by the README's API table and per-feature curl examples.)
 - [ ] **Real SDR hardware integration** (RTL-SDR, HackRF, etc.) to validate capture
       beyond the mock source
-- [ ] **Security logging & audit trail** in backend and agents
+- [x] **Security logging & audit trail** in backend and agents (`audit_log`
+      table + `GET /audit-log` (admin-only); records login success/failure,
+      registration, password changes, agent-key create/revoke, agent-key auth
+      failures, and satellite upserts, each with actor, IP, and details;
+      end-to-end tested against a real backend + Postgres)
+- [x] **App-wide login gate**: the dashboard now requires authentication —
+      previously all reads were public. A default `admin`/`admin` account is
+      seeded on first boot (overridable via `SEED_ADMIN_EMAIL`/
+      `SEED_ADMIN_PASSWORD`, logs a loud warning to change it), and
+      `POST /auth/change-password` lets an authenticated user rotate their
+      own password. Verified end-to-end: no token → 401, valid login → 200,
+      wrong password → 401 (and audited), password change invalidates the
+      old password immediately.
 - [ ] **Versioned releases & published packages** (Docker Hub, npm, etc.)
 
 ## Status notes
@@ -103,4 +115,18 @@ Tracked incrementally, one item at a time, before the v1.0.0 release.
   factual claim against the actual code (e.g. confirmed `REDIS_URL` is loaded but
   unused by any code path, and that `deploy/k8s`/`deploy/helm` are placeholder
   directories) rather than assuming.
-  Next: audit logging (item 9), then versioned releases (item 10).
+- 2026-08-27: shipped audit logging + app-wide login gate. `audit_log` table and
+  `GET /audit-log` (admin-only) cover login success/failure, registration,
+  password changes, agent-key lifecycle, agent-key auth failures, and satellite
+  upserts. The dashboard and every read endpoint (`GET /assets`,
+  `/rf/readings`, `/satellites/`) now require a valid session — previously
+  public. A seeded `admin`/`admin` account (overridable, loudly warned about)
+  makes first login possible without a chicken-and-egg registration step, and
+  `POST /auth/change-password` lets it be rotated immediately. Verified the
+  entire flow against a real backend and Postgres: unauthenticated reads
+  rejected, login/logout, audit entries actually recorded, and the old
+  password rejected the instant the new one is set. Also fixed CI (Node 20 →
+  22 for the frontend job — jsdom 30's bundled undici needs Node 22+; the
+  Docker build image stays on Node 20 since it never loads jsdom).
+  Next: versioned releases (item 10, last one on this list) — item 8 (real SDR
+  hardware) needs physical hardware not available in this environment.

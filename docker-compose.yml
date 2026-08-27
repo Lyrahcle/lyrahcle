@@ -13,6 +13,11 @@ services:
       - REDIS_URL=redis:6379
       - CELESTRAK_GROUPS=stations
       - JWT_SECRET=${JWT_SECRET:-insecure-dev-secret-change-me}
+      # Seed admin account, created only if no users exist yet. Change the
+      # password via POST /auth/change-password right after first login —
+      # admin/admin is a well-known default.
+      - SEED_ADMIN_EMAIL=${SEED_ADMIN_EMAIL:-admin}
+      - SEED_ADMIN_PASSWORD=${SEED_ADMIN_PASSWORD:-admin}
       # To enable HTTPS: run scripts/generate-dev-certs.sh, then uncomment below
       # and change the port mapping to "8443:8443" with PORT=8443.
       # - TLS_CERT_FILE=/certs/dev.crt

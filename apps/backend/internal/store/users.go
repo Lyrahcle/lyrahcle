@@ -64,6 +64,31 @@ func (s *UserStore) GetByEmail(ctx context.Context, email string) (User, error) 
 	return u, nil
 }
 
+func (s *UserStore) GetByID(ctx context.Context, id uuid.UUID) (User, error) {
+	var u User
+	err := s.pool.QueryRow(ctx, `
+		SELECT id, email, password_hash, role FROM users WHERE id = $1
+	`, id).Scan(&u.ID, &u.Email, &u.PasswordHash, &u.Role)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return User{}, ErrUserNotFound
+		}
+		return User{}, err
+	}
+	return u, nil
+}
+
+func (s *UserStore) UpdatePassword(ctx context.Context, id uuid.UUID, newHash string) error {
+	tag, err := s.pool.Exec(ctx, `UPDATE users SET password_hash = $1 WHERE id = $2`, newHash, id)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrUserNotFound
+	}
+	return nil
+}
+
 func isUniqueViolation(err error) bool {
 	var pgErr *pgconn.PgError
 	return errors.As(err, &pgErr) && pgErr.Code == "23505"

@@ -14,6 +14,8 @@ type Config struct {
 	JWTSecret       []byte
 	TLSCertFile     string
 	TLSKeyFile      string
+	SeedAdminEmail  string
+	SeedAdminPass   string
 }
 
 func Load() Config {
@@ -32,6 +34,8 @@ func Load() Config {
 		JWTSecret:       []byte(secret),
 		TLSCertFile:     getEnv("TLS_CERT_FILE", ""),
 		TLSKeyFile:      getEnv("TLS_KEY_FILE", ""),
+		SeedAdminEmail:  getEnv("SEED_ADMIN_EMAIL", "admin"),
+		SeedAdminPass:   getEnv("SEED_ADMIN_PASSWORD", "admin"),
 	}
 
 	if insecureDefault {

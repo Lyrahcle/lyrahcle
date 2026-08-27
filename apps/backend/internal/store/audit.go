@@ -1,0 +1,61 @@
+package store
+
+import (
+	"context"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+type AuditEntry struct {
+	ID         uuid.UUID              `json:"id"`
+	OccurredAt time.Time              `json:"occurred_at"`
+	ActorType  string                 `json:"actor_type"`
+	ActorID    string                 `json:"actor_id"`
+	Action     string                 `json:"action"`
+	IP         string                 `json:"ip"`
+	Details    map[string]interface{} `json:"details"`
+}
+
+type AuditStore struct {
+	pool *pgxpool.Pool
+}
+
+func NewAuditStore(pool *pgxpool.Pool) *AuditStore {
+	return &AuditStore{pool: pool}
+}
+
+func (s *AuditStore) Insert(ctx context.Context, actorType, actorID, action, ip string, details map[string]interface{}) error {
+	if details == nil {
+		details = map[string]interface{}{}
+	}
+	_, err := s.pool.Exec(ctx, `
+		INSERT INTO audit_log (actor_type, actor_id, action, ip, details)
+		VALUES ($1, $2, $3, $4, $5)
+	`, actorType, actorID, action, ip, details)
+	return err
+}
+
+func (s *AuditStore) List(ctx context.Context, limit int) ([]AuditEntry, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT id, occurred_at, actor_type, actor_id, action, ip, details
+		FROM audit_log
+		ORDER BY occurred_at DESC
+		LIMIT $1
+	`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []AuditEntry
+	for rows.Next() {
+		var e AuditEntry
+		if err := rows.Scan(&e.ID, &e.OccurredAt, &e.ActorType, &e.ActorID, &e.Action, &e.IP, &e.Details); err != nil {
+			return nil, err
+		}
+		out = append(out, e)
+	}
+	return out, rows.Err()
+}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -12,6 +13,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/httprate"
 
+	"github.com/mlko01/lyrahcle/apps/backend/internal/audit"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/auth"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/celestrak"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/config"
@@ -43,6 +45,11 @@ func main() {
 	satellites := store.NewSatelliteStore(pool)
 	users := store.NewUserStore(pool)
 	agentKeys := store.NewAgentKeyStore(pool)
+	auditLog := store.NewAuditStore(pool)
+
+	if err := seedAdmin(ctx, users, cfg); err != nil {
+		log.Printf("seed admin: %v", err)
+	}
 
 	sched := scheduler.New()
 	_ = sched.Every("0 */6 * * *", "recon-sweep", func() {
@@ -72,7 +79,7 @@ func main() {
 			w.Write([]byte(`{"message":"pong from lyrahcle"}`))
 		})
 
-		r.Get("/assets", func(w http.ResponseWriter, r *http.Request) {
+		r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer)).Get("/assets", func(w http.ResponseWriter, r *http.Request) {
 			list, err := assets.List(r.Context())
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -130,6 +137,8 @@ func main() {
 					return
 				}
 
+				logAudit(r.Context(), auditLog, audit.ActorUser, user.ID.String(), audit.ActionRegister, clientIP(r), map[string]interface{}{"email": user.Email, "role": user.Role})
+
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusCreated)
 				json.NewEncoder(w).Encode(map[string]string{"id": user.ID.String(), "email": user.Email, "role": user.Role})
@@ -152,6 +161,7 @@ func main() {
 
 				user, err := users.GetByEmail(r.Context(), body.Email)
 				if err != nil || !auth.CheckPassword(user.PasswordHash, body.Password) {
+					logAudit(r.Context(), auditLog, audit.ActorAnonymous, body.Email, audit.ActionLoginFailed, clientIP(r), nil)
 					http.Error(w, "invalid email or password", http.StatusUnauthorized)
 					return
 				}
@@ -162,8 +172,55 @@ func main() {
 					return
 				}
 
+				logAudit(r.Context(), auditLog, audit.ActorUser, user.ID.String(), audit.ActionLogin, clientIP(r), map[string]interface{}{"email": user.Email})
+
 				w.Header().Set("Content-Type", "application/json")
 				json.NewEncoder(w).Encode(map[string]string{"token": token, "role": user.Role})
+			})
+
+			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer)).Post("/change-password", func(w http.ResponseWriter, r *http.Request) {
+				var body struct {
+					CurrentPassword string `json:"current_password"`
+					NewPassword     string `json:"new_password"`
+				}
+				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+					http.Error(w, "invalid JSON body", http.StatusBadRequest)
+					return
+				}
+
+				claims, ok := auth.FromContext(r.Context())
+				if !ok {
+					http.Error(w, "unauthorized", http.StatusUnauthorized)
+					return
+				}
+
+				user, err := users.GetByID(r.Context(), claims.UserID)
+				if err != nil {
+					http.Error(w, "unauthorized", http.StatusUnauthorized)
+					return
+				}
+				if !auth.CheckPassword(user.PasswordHash, body.CurrentPassword) {
+					http.Error(w, "current password is incorrect", http.StatusUnauthorized)
+					return
+				}
+				if err := validate.Password(body.NewPassword); err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+
+				newHash, err := auth.HashPassword(body.NewPassword)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+				if err := users.UpdatePassword(r.Context(), user.ID, newHash); err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+
+				logAudit(r.Context(), auditLog, audit.ActorUser, user.ID.String(), audit.ActionPasswordChanged, clientIP(r), map[string]interface{}{"email": user.Email})
+
+				w.WriteHeader(http.StatusNoContent)
 			})
 		})
 
@@ -199,6 +256,10 @@ func main() {
 					return
 				}
 
+				if claims, ok := auth.FromContext(r.Context()); ok {
+					logAudit(r.Context(), auditLog, audit.ActorUser, claims.UserID.String(), audit.ActionAgentKeyCreated, clientIP(r), map[string]interface{}{"agent_id": body.AgentID})
+				}
+
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusCreated)
 				json.NewEncoder(w).Encode(map[string]string{
@@ -217,12 +278,24 @@ func main() {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
 				}
+
+				if claims, ok := auth.FromContext(r.Context()); ok {
+					logAudit(r.Context(), auditLog, audit.ActorUser, claims.UserID.String(), audit.ActionAgentKeyRevoked, clientIP(r), map[string]interface{}{"agent_id": agentID})
+				}
+
 				w.WriteHeader(http.StatusNoContent)
 			})
 		})
 
 		r.Route("/rf", func(r chi.Router) {
-			agentAuth := auth.RequireAgentKeyOrRole(cfg.JWTSecret, auth.RoleOperator, agentKeys.AgentIDForHash)
+			auditedLookup := func(ctx context.Context, keyHash string) (string, error) {
+				agentID, err := agentKeys.AgentIDForHash(ctx, keyHash)
+				if err != nil {
+					logAudit(ctx, auditLog, audit.ActorAnonymous, "unknown", audit.ActionAgentKeyAuthFailed, "", nil)
+				}
+				return agentID, err
+			}
+			agentAuth := auth.RequireAgentKeyOrRole(cfg.JWTSecret, auth.RoleOperator, auditedLookup)
 			r.With(agentAuth).Post("/ingest", func(w http.ResponseWriter, r *http.Request) {
 				var reading store.RFReading
 				if err := json.NewDecoder(r.Body).Decode(&reading); err != nil {
@@ -262,7 +335,7 @@ func main() {
 				w.WriteHeader(http.StatusCreated)
 			})
 
-			r.Get("/readings", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer)).Get("/readings", func(w http.ResponseWriter, r *http.Request) {
 				list, err := rf.Recent(r.Context(), 100)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -274,7 +347,7 @@ func main() {
 		})
 
 		r.Route("/satellites", func(r chi.Router) {
-			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer)).Get("/", func(w http.ResponseWriter, r *http.Request) {
 				list, err := satellites.List(r.Context())
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -333,6 +406,10 @@ func main() {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
 				}
+
+				if claims, ok := auth.FromContext(r.Context()); ok {
+					logAudit(r.Context(), auditLog, audit.ActorUser, claims.UserID.String(), audit.ActionSatelliteUpserted, clientIP(r), map[string]interface{}{"norad_id": body.NoradID, "name": body.Name})
+				}
 				w.WriteHeader(http.StatusCreated)
 			})
 		})
@@ -358,6 +435,16 @@ func main() {
 				w.Header().Set("Content-Type", "application/json")
 				json.NewEncoder(w).Encode(decoded)
 			})
+		})
+
+		r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleAdmin)).Get("/audit-log", func(w http.ResponseWriter, r *http.Request) {
+			entries, err := auditLog.List(r.Context(), 200)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(entries)
 		})
 	})
 
@@ -405,4 +492,47 @@ func syncTLEs(ctx context.Context, groups []string, satellites *store.SatelliteS
 
 		log.Printf("tle-sync: synced %d satellites from group %q", len(entries), group)
 	}
+}
+
+func logAudit(ctx context.Context, auditLog *store.AuditStore, actorType, actorID, action, ip string, details map[string]interface{}) {
+	if err := auditLog.Insert(ctx, actorType, actorID, action, ip, details); err != nil {
+		log.Printf("audit: failed to record %s by %s %s: %v", action, actorType, actorID, err)
+	}
+}
+
+func clientIP(r *http.Request) string {
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return host
+}
+
+func seedAdmin(ctx context.Context, users *store.UserStore, cfg config.Config) error {
+	count, err := users.Count(ctx)
+	if err != nil {
+		return err
+	}
+	if count > 0 {
+		return nil
+	}
+
+	hash, err := auth.HashPassword(cfg.SeedAdminPass)
+	if err != nil {
+		return err
+	}
+
+	if _, err := users.Create(ctx, cfg.SeedAdminEmail, hash, string(auth.RoleAdmin)); err != nil {
+		return err
+	}
+
+	log.Println("============================================================")
+	log.Printf("Created default admin account: %q / (seed password)", cfg.SeedAdminEmail)
+	log.Println("This is a well-known default and MUST be changed immediately:")
+	log.Println("  POST /api/v1/auth/change-password (after logging in)")
+	log.Println("Override the seed via SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD")
+	log.Println("before first boot in any non-local environment.")
+	log.Println("============================================================")
+
+	return nil
 }

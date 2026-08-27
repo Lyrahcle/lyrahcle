@@ -15,6 +15,8 @@ page is the complete cross-service reference.
 | `JWT_SECRET` | insecure dev default (logs a warning) | **yes** | Secret used to sign auth tokens (HS256). Use a long random value, e.g. `openssl rand -hex 32` |
 | `TLS_CERT_FILE` | unset (plain HTTP, logs a warning) | recommended | Path to a TLS certificate; see [deployment guide](./deployment.md#tls) |
 | `TLS_KEY_FILE` | unset | recommended | Path to the matching TLS private key |
+| `SEED_ADMIN_EMAIL` | `admin` | **yes, before first boot** | Bootstrap admin account email/username, only used if no users exist yet |
+| `SEED_ADMIN_PASSWORD` | `admin` | **yes, before first boot** | Bootstrap admin account password — `admin`/`admin` is a well-known default; rotate it via `POST /auth/change-password` immediately after first login if you didn't override this |
 
 ## frontend (`apps/frontend`, served by nginx in the container)
 

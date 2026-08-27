@@ -1,0 +1,16 @@
+package audit
+
+const (
+	ActionLogin              = "auth.login"
+	ActionLoginFailed        = "auth.login_failed"
+	ActionRegister           = "auth.register"
+	ActionPasswordChanged    = "auth.password_changed"
+	ActionAgentKeyCreated    = "agent_key.created"
+	ActionAgentKeyRevoked    = "agent_key.revoked"
+	ActionAgentKeyAuthFailed = "agent_key.auth_failed"
+	ActionSatelliteUpserted  = "satellite.upserted"
+
+	ActorUser      = "user"
+	ActorAgent     = "agent"
+	ActorAnonymous = "anonymous"
+)

@@ -15,6 +15,11 @@ Before exposing Lyrahcle to anything other than `localhost`:
       Plain HTTP logs a warning on every startup while it's active.
 - [ ] Change the Postgres password from the `docker-compose.yml` default
       (`lyrahcle`/`lyrahcle`) and don't expose port `5432` publicly.
+- [ ] Set `SEED_ADMIN_EMAIL`/`SEED_ADMIN_PASSWORD` to something other than the
+      `admin`/`admin` default **before the first boot** — that default is
+      created automatically if no users exist yet, and it's well-known. If you
+      already booted with the default, log in and call
+      `POST /auth/change-password` immediately.
 - [ ] Register your first user via `POST /auth/register` immediately after
       first boot — it becomes admin automatically, and only the first one does.
 - [ ] Issue a dedicated `AGENT_API_KEY` per `sdr-agent` (see

@@ -120,19 +120,38 @@ docker compose --profile sdr up --build
 
 ### Authentication
 
-Write endpoints (`POST /rf/ingest`, `POST /satellites/`) require a bearer token.
-Read endpoints stay public for now (dashboard doesn't require login yet).
+The entire app requires a login — both the dashboard (frontend) and every read
+or write API endpoint except `/healthz`, `/ping`, `/auth/register`, and
+`/auth/login`. A default admin account is seeded automatically on first boot
+if no users exist yet:
+
+```
+email:    admin   (override via SEED_ADMIN_EMAIL)
+password: admin   (override via SEED_ADMIN_PASSWORD)
+```
+
+**This is a well-known default and must be changed immediately** — the
+backend prints a loud warning banner in its logs on the boot that creates it.
+Change it right after your first login:
 
 ```bash
-# First registration becomes admin automatically; later ones default to viewer.
+curl -X POST localhost:8080/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "admin", "password": "admin"}'
+# -> {"token": "...", "role": "admin"}
+
+curl -X POST localhost:8080/api/v1/auth/change-password \
+  -H "Authorization: Bearer <token>" -H "Content-Type: application/json" \
+  -d '{"current_password": "admin", "new_password": "a-much-stronger-password"}'
+```
+
+Additional accounts:
+
+```bash
+# First registration ever becomes admin automatically; later ones default to viewer.
 curl -X POST localhost:8080/api/v1/auth/register \
   -H "Content-Type: application/json" \
   -d '{"email": "you@example.com", "password": "a-strong-password"}'
-
-curl -X POST localhost:8080/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email": "you@example.com", "password": "a-strong-password"}'
-# -> {"token": "...", "role": "admin"}
 
 curl -X POST localhost:8080/api/v1/satellites/ \
   -H "Authorization: Bearer <token>" \
@@ -211,6 +230,7 @@ by setting `TLS_CERT_FILE`/`TLS_KEY_FILE` directly on the backend.
 | `CELESTRAK_GROUPS` | `stations` | Comma-separated [Celestrak groups](https://celestrak.org/NORAD/elements/) to sync TLEs from |
 | `JWT_SECRET` | *(insecure dev default, logs a warning)* | Secret used to sign auth tokens — set a strong value in any non-local deployment |
 | `TLS_CERT_FILE` / `TLS_KEY_FILE` | *(unset, plain HTTP, logs a warning)* | Paths to a TLS certificate/key to serve HTTPS directly from the backend |
+| `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` | `admin` / `admin` | Bootstrap admin account, created only if no users exist yet. Change immediately after first login |
 
 ### API endpoints
 
@@ -218,14 +238,16 @@ by setting `TLS_CERT_FILE`/`TLS_KEY_FILE` directly on the backend.
 |---|---|---|---|
 | `GET` | `/healthz` | — | Liveness check |
 | `GET` | `/api/v1/ping` | — | Backend reachability check |
-| `GET` | `/api/v1/assets` | — | List tracked assets |
-| `POST` | `/api/v1/auth/register` | — | Create a user (first user becomes admin) |
+| `GET` | `/api/v1/assets` | viewer+ | List tracked assets |
+| `POST` | `/api/v1/auth/register` | — | Create a user (first user ever becomes admin) |
 | `POST` | `/api/v1/auth/login` | — | Exchange email + password for a bearer token |
+| `POST` | `/api/v1/auth/change-password` | viewer+ | Change your own password |
+| `GET` | `/api/v1/audit-log` | admin | List the 200 most recent security-relevant events |
 | `POST` | `/api/v1/agent-keys` | admin | Create an API key scoped to one `agent_id` |
 | `DELETE` | `/api/v1/agent-keys/{agentID}` | admin | Revoke that agent's key |
 | `POST` | `/api/v1/rf/ingest` | agent key or operator+ | Ingest an RF reading (used by `sdr-agent`) |
-| `GET` | `/api/v1/rf/readings` | — | List recent RF readings |
-| `GET` | `/api/v1/satellites/` | — | List tracked satellites with live computed position |
+| `GET` | `/api/v1/rf/readings` | viewer+ | List recent RF readings |
+| `GET` | `/api/v1/satellites/` | viewer+ | List tracked satellites with live computed position |
 | `POST` | `/api/v1/satellites/` | operator+ | Register a satellite by NORAD ID + TLE |
 | `POST` | `/api/v1/tmtc/decode/ax25` | — | Decode a hex-encoded AX.25 UI frame (destination/source callsign+SSID, control, PID, payload) |
 
