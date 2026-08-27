@@ -114,15 +114,25 @@ func TLELine(line string, expectedPrefix string) error {
 const maxAX25FrameHexLen = 8192
 
 func AX25FrameHex(frameHex string) error {
-	frameHex = strings.TrimSpace(frameHex)
-	if frameHex == "" {
-		return fmt.Errorf("frame_hex is required")
+	return HexFrame(frameHex, maxAX25FrameHexLen)
+}
+
+const maxCCSDSPacketHexLen = 8192
+
+func CCSDSPacketHex(packetHex string) error {
+	return HexFrame(packetHex, maxCCSDSPacketHexLen)
+}
+
+func HexFrame(value string, maxLen int) error {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return fmt.Errorf("hex frame is required")
 	}
-	if len(frameHex) > maxAX25FrameHexLen {
-		return fmt.Errorf("frame_hex is too long (max %d hex characters)", maxAX25FrameHexLen)
+	if len(value) > maxLen {
+		return fmt.Errorf("hex frame is too long (max %d hex characters)", maxLen)
 	}
-	if len(frameHex)%2 != 0 {
-		return fmt.Errorf("frame_hex must have an even number of characters")
+	if len(value)%2 != 0 {
+		return fmt.Errorf("hex frame must have an even number of characters")
 	}
 	return nil
 }

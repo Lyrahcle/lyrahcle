@@ -51,3 +51,41 @@ func hexSeed() string {
 	}
 	return string(out)
 }
+
+func FuzzDecodeCCSDSHex(f *testing.F) {
+	seeds := []string{
+		"",
+		"00",
+		"gg",
+		"0864c02a000b54454c454d455452592d4f4b",
+		"ffffffffffffffffffffffffffffffff",
+	}
+	for _, s := range seeds {
+		f.Add(s)
+	}
+
+	f.Fuzz(func(t *testing.T, packetHex string) {
+		defer func() {
+			if r := recover(); r != nil {
+				t.Fatalf("DecodeCCSDSHex panicked on input %q: %v", packetHex, r)
+			}
+		}()
+		_, _ = DecodeCCSDSHex(packetHex)
+	})
+}
+
+func FuzzDecodeCCSDS(f *testing.F) {
+	f.Add([]byte{})
+	f.Add([]byte{0x08, 0x64, 0xc0, 0x2a, 0x00, 0x0b})
+	f.Add(make([]byte, 6))
+	f.Add(make([]byte, 1000))
+
+	f.Fuzz(func(t *testing.T, data []byte) {
+		defer func() {
+			if r := recover(); r != nil {
+				t.Fatalf("DecodeCCSDS panicked on %d-byte input: %v", len(data), r)
+			}
+		}()
+		_, _ = DecodeCCSDS(data)
+	})
+}

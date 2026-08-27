@@ -435,6 +435,27 @@ func main() {
 				w.Header().Set("Content-Type", "application/json")
 				json.NewEncoder(w).Encode(decoded)
 			})
+
+			r.Post("/decode/ccsds", func(w http.ResponseWriter, r *http.Request) {
+				var body struct {
+					PacketHex string `json:"packet_hex"`
+				}
+				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+					http.Error(w, "invalid JSON body", http.StatusBadRequest)
+					return
+				}
+				if err := validate.CCSDSPacketHex(body.PacketHex); err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+				decoded, err := tmtc.DecodeCCSDSHex(body.PacketHex)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(decoded)
+			})
 		})
 
 		r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleAdmin)).Get("/audit-log", func(w http.ResponseWriter, r *http.Request) {

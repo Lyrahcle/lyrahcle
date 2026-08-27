@@ -52,7 +52,7 @@ the full roadmap.
 - [x] Phase 4 — Branded dashboard
 - [x] Phase 5 — SDR edge agent, RF ingest
 - [x] Phase 6 — Orbital tracking (SGP4, live Celestrak TLE sync, interactive world map)
-- [ ] Phase 7 — TM/TC protocol decoding, ground station & firmware modules (started: AX.25 decoder)
+- [ ] Phase 7 — TM/TC protocol decoding, ground station & firmware modules (AX.25 and CCSDS Space Packet decoders shipped; PUS, CubeSat Space Protocol, threat-intel integration, and anomaly detection still pending)
 - [ ] Phase 8 — Test coverage, hardening, v1.0.0 release
 - [ ] Phase 9 — Enterprise modules (advanced RF, proprietary decoders, SIEM integrations)
 
@@ -250,6 +250,7 @@ by setting `TLS_CERT_FILE`/`TLS_KEY_FILE` directly on the backend.
 | `GET` | `/api/v1/satellites/` | viewer+ | List tracked satellites with live computed position |
 | `POST` | `/api/v1/satellites/` | operator+ | Register a satellite by NORAD ID + TLE |
 | `POST` | `/api/v1/tmtc/decode/ax25` | — | Decode a hex-encoded AX.25 UI frame (destination/source callsign+SSID, control, PID, payload) |
+| `POST` | `/api/v1/tmtc/decode/ccsds` | — | Decode a hex-encoded CCSDS Space Packet (version, TM/TC type, secondary header flag, APID, sequence flags/count, payload) |
 
 ## Testing
 

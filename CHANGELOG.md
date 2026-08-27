@@ -49,3 +49,4 @@ Format based on [Keep a Changelog](https://keepachangelog.com/), using
 - Audit logging: `audit_log` table, `GET /audit-log` (admin-only), records auth events, agent-key lifecycle, and satellite upserts
 - App-wide login gate: dashboard and all read endpoints now require authentication; seeded `admin`/`admin` bootstrap account (overridable, warns loudly); `POST /auth/change-password`; Login screen and session handling in the frontend
 - CI fix: bumped frontend Node version to 22 (jsdom 30 needs undici APIs from Node 22+)
+- CCSDS Space Packet Protocol decoder (`internal/tmtc/ccsds.go`) and `POST /api/v1/tmtc/decode/ccsds`: decodes version, TM/TC packet type, secondary header flag, APID, sequence flags/count, and payload from a hex-encoded packet; rejects packets whose actual length doesn't match the declared data length. Fuzz-tested (~1M executions across both entry points, zero panics), 98%+ package coverage
