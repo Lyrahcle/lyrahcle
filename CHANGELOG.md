@@ -8,3 +8,6 @@ Format based on [Keep a Changelog](https://keepachangelog.com/), using
 ### Added
 - Initial monorepo scaffold (apps/, enterprise/, packages/, deploy/, scripts/, docs/)
 - Project branding: name, logo, slogan "Lyrahcle – Never Lies"
+- Backend base (Go + chi): `/healthz` and `/api/v1/ping` endpoints, config loader
+- Frontend base (React + Vite + Tailwind): landing page pinging backend
+- Dockerfiles for backend, frontend, cve-sync

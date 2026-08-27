@@ -1,0 +1,13 @@
+# syntax=docker/dockerfile:1
+FROM golang:1.22-alpine AS build
+WORKDIR /src
+COPY apps/backend/go.mod ./
+RUN go mod download 2>/dev/null || true
+COPY apps/backend/ ./
+RUN CGO_ENABLED=0 go build -o /out/lyrahcle-backend ./cmd/server
+
+FROM gcr.io/distroless/static-debian12
+COPY --from=build /out/lyrahcle-backend /lyrahcle-backend
+USER nonroot:nonroot
+EXPOSE 8080
+ENTRYPOINT ["/lyrahcle-backend"]

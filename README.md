@@ -13,7 +13,7 @@ paid enterprise modules — aiming for transparency, community, and sustainabili
 
 ## Status
 
-🚧 Early development — Phase 1 (branding & repo bootstrap).
+🚧 Early development — Phase 2 (backend/frontend base scaffolded, no persistence yet).
 
 ## Repository layout
 
