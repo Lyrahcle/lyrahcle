@@ -28,3 +28,5 @@ Format based on [Keep a Changelog](https://keepachangelog.com/), using
 - Interactive world map: hover tooltip per satellite (name, NORAD ID, lat/lon, altitude), pulsing marker
 - Expanded README: architecture diagram, env vars, API reference, roadmap checklist
 - Responsive/accessibility polish: horizontal scroll for data tables on narrow screens (no more cramped/wrapped columns), visible focus rings on tabs, `motion-safe` guards on all pulse/spin animations, tighter mobile spacing, meta description and theme-color
+- Dashboard screenshot added to README
+- Palette change: neutral graphite/black background (previously deep purple) with gold as the sole accent; centered README header, logo, and screenshot

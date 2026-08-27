@@ -9,7 +9,7 @@ export default function WorldMap({ satellites }) {
     () =>
       map.getSVG({
         radius: 0.24,
-        color: '#332b56',
+        color: '#2c2c30',
         shape: 'circle',
         backgroundColor: 'transparent',
       }),

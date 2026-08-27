@@ -1,20 +1,31 @@
-# Lyrahcle — Constellation Analytics
+<p align="center">
+  <img src="./assets/logo-mark.svg" alt="Lyrahcle" width="140" />
+</p>
 
-**Never Lies.**
+<h1 align="center">Lyrahcle — Constellation Analytics</h1>
 
-Lyrahcle is a professional space-cybersecurity platform for assessing, monitoring, and
-defending space infrastructure: satellites, ground stations, RF links, TM/TC protocols,
-embedded firmware, and orbital telemetry.
+<p align="center"><b>Never Lies.</b></p>
 
-Lyrahcle follows an **Open Core** model — an open, auditable core (AGPLv3) combined with
-paid enterprise modules — aiming for transparency, community, and sustainability.
+<p align="center">
+  Lyrahcle is a professional space-cybersecurity platform for assessing, monitoring, and
+  defending space infrastructure: satellites, ground stations, RF links, TM/TC protocols,
+  embedded firmware, and orbital telemetry.
+</p>
 
-<img src="./assets/logo-mark.svg" alt="Lyrahcle" width="140" />
+<p align="center">
+  Lyrahcle follows an <b>Open Core</b> model — an open, auditable core (AGPLv3) combined with
+  paid enterprise modules — aiming for transparency, community, and sustainability.
+</p>
 
-Maintained by [mlko01](https://github.com/mlko01) — contact: manu.ciberseguridad@gmail.com
+<p align="center">
+  Maintained by <a href="https://github.com/mlko01">mlko01</a> — contact: manu.ciberseguridad@gmail.com
+</p>
 
-![Lyrahcle dashboard](./docs/screenshots/dashboard.png)
-*Orbital tracking tab with example data.*
+<p align="center">
+  <img src="./docs/screenshots/dashboard.png" alt="Lyrahcle dashboard" width="820" />
+  <br />
+  <sub><i>Orbital tracking tab with example data.</i></sub>
+</p>
 
 ## Status
 
