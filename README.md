@@ -15,7 +15,7 @@ Maintained by [mlko01](https://github.com/mlko01) — contact: manu.cibersegurid
 
 ## Status
 
-🚧 Early development — Phase 3 (Postgres persistence, migrations, scheduler, `/assets` endpoint).
+🚧 Early development — Phase 4 (branded dashboard: assets table, live backend status).
 
 ## Repository layout
 

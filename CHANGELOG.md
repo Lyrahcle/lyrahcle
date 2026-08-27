@@ -15,3 +15,4 @@ Format based on [Keep a Changelog](https://keepachangelog.com/), using
 - Postgres schema (programs, assets, scans, findings) + minimal SQL migration runner
 - Asset store (upsert/list) and `GET /api/v1/assets`
 - Cron-based scheduler (robfig/cron) wired for future recon sweeps
+- Branded dashboard (Header, StatCard, AssetsTable) using logo and purple/gold palette
