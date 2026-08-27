@@ -27,6 +27,20 @@
   <sub><i>Orbital tracking tab with example data.</i></sub>
 </p>
 
+## Documentation map
+
+This README covers the overview, quick start, and API reference. For anything
+deeper:
+
+| Guide | Covers |
+|---|---|
+| [docs/deployment.md](./docs/deployment.md) | Taking Lyrahcle to production: checklist, Docker Compose vs Kubernetes, TLS options, backups, monitoring, rollout |
+| [docs/configuration.md](./docs/configuration.md) | Every environment variable, across every service, in one table |
+| [CONTRIBUTING.md](./CONTRIBUTING.md) | Local dev setup, coding conventions, testing, PR workflow |
+| [SECURITY.md](./SECURITY.md) | Vulnerability disclosure policy |
+| [SECURITY_ROADMAP.md](./SECURITY_ROADMAP.md) | Short-term hardening plan and what's already shipped |
+| [PLAN.md](./PLAN.md) | Full original development plan and long-term roadmap |
+
 ## Status
 
 🚧 Early development — Phase 7 of 9 (TM/TC protocol decoding). See [PLAN.md](./PLAN.md) for

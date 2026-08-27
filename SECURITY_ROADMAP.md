@@ -34,8 +34,13 @@ Tracked incrementally, one item at a time, before the v1.0.0 release.
       falls back to the existing operator/admin JWT for backward compatibility;
       unit-tested including the fallback path, integration-tested against real
       Postgres including revocation actually cutting off access)
-- [ ] **Improved documentation** — deployment guides, configuration, endpoint usage,
-      contribution guide
+- [x] **Improved documentation** — deployment guides, configuration, endpoint usage,
+      contribution guide (`docs/deployment.md`: production checklist, Compose vs
+      Kubernetes, TLS options, backups, monitoring, rollout; `docs/configuration.md`:
+      every env var across every service in one table; `CONTRIBUTING.md`: local
+      setup, coding conventions, testing, security-sensitive-change guidelines, PR
+      workflow; README gained a documentation map linking all of it. Endpoint usage
+      was already covered by the README's API table and per-feature curl examples.)
 - [ ] **Real SDR hardware integration** (RTL-SDR, HackRF, etc.) to validate capture
       beyond the mock source
 - [ ] **Security logging & audit trail** in backend and agents
@@ -87,4 +92,15 @@ Tracked incrementally, one item at a time, before the v1.0.0 release.
   compatibility. Unit tests cover the middleware fallback logic; integration tests
   against real Postgres cover create/lookup/duplicate/revoke, including confirming
   a revoked key stops authenticating immediately.
-  Next: expanded documentation (item 7), then audit logging (item 9).
+- 2026-08-27: shipped expanded documentation — `docs/deployment.md` (production
+  checklist, Docker Compose vs Kubernetes, TLS options ranked by recommendation,
+  database/backup notes, monitoring, rollout steps), `docs/configuration.md` (every
+  env var across backend/frontend/sdr-agent/cve-sync/compose in one reference),
+  `CONTRIBUTING.md` (local setup for both Docker and bare-metal dev, coding
+  conventions including the no-comments/English-only rules, testing, a
+  security-sensitive-change checklist, PR workflow, commit style), and a
+  documentation map at the top of the README linking all of it. Cross-checked every
+  factual claim against the actual code (e.g. confirmed `REDIS_URL` is loaded but
+  unused by any code path, and that `deploy/k8s`/`deploy/helm` are placeholder
+  directories) rather than assuming.
+  Next: audit logging (item 9), then versioned releases (item 10).
