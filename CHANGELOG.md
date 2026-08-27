@@ -20,3 +20,4 @@ Format based on [Keep a Changelog](https://keepachangelog.com/), using
 - `rf_readings` table, `POST /api/v1/rf/ingest`, `GET /api/v1/rf/readings`
 - Dashboard RF spectrum panel (RfPanel)
 - `sdr-agent` compose service under the `sdr` profile (`docker compose --profile sdr up`)
+- Dashboard redesign: mission-console look (deep purple/gold palette, Space Grotesk/Inter/JetBrains Mono type system, starfield background, live UTC clock, signal-strength meters, kind badges)

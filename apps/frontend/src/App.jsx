@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
+import { Database, Radio, Server } from 'lucide-react'
 import Header from './components/Header.jsx'
 import StatCard from './components/StatCard.jsx'
+import Panel from './components/Panel.jsx'
 import AssetsTable from './components/AssetsTable.jsx'
 import RfPanel from './components/RfPanel.jsx'
 import { fetchAssets, fetchPing, fetchRfReadings } from './lib/api.js'
@@ -25,33 +27,37 @@ function App() {
       .catch(() => {})
   }, [])
 
-  const kinds = new Set(assets.map((a) => a.kind))
-
   return (
-    <div className="min-h-screen bg-lyra-bg text-lyra-text">
-      <Header />
+    <div className="min-h-screen bg-transparent text-lyra-text">
+      <Header backendStatus={backendStatus} />
 
-      <main className="mx-auto max-w-5xl px-8 py-10">
+      <main className="mx-auto max-w-6xl px-8 py-10">
         <div className="mb-8 grid grid-cols-3 gap-4">
-          <StatCard label="Backend" value={backendStatus} />
-          <StatCard label="Assets tracked" value={assets.length} />
-          <StatCard label="RF readings" value={rfReadings.length} />
+          <StatCard icon={Server} label="Backend status" value={backendStatus} accent="good" />
+          <StatCard icon={Database} label="Assets tracked" value={assets.length} accent="gold" />
+          <StatCard icon={Radio} label="RF readings" value={rfReadings.length} accent="neutral" />
         </div>
 
-        <section className="mb-8 rounded-lg border border-lyra-panel bg-lyra-panel/20 p-6">
-          <h2 className="font-display mb-4 text-lg text-lyra-goldLight">Tracked assets</h2>
-          {error ? (
-            <p className="text-sm text-red-400">{error}</p>
-          ) : (
-            <AssetsTable assets={assets} />
-          )}
-        </section>
+        <div className="grid gap-6">
+          <Panel eyebrow="Asset Inventory" title="Tracked assets">
+            {error ? (
+              <p className="text-sm text-lyra-bad">{error}</p>
+            ) : (
+              <AssetsTable assets={assets} />
+            )}
+          </Panel>
 
-        <section className="rounded-lg border border-lyra-panel bg-lyra-panel/20 p-6">
-          <h2 className="font-display mb-4 text-lg text-lyra-goldLight">RF spectrum</h2>
-          <RfPanel readings={rfReadings} />
-        </section>
+          <Panel eyebrow="Signal Intelligence" title="RF spectrum">
+            <RfPanel readings={rfReadings} />
+          </Panel>
+        </div>
       </main>
+
+      <footer className="mx-auto max-w-6xl px-8 py-8 text-center">
+        <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-lyra-mutedDim">
+          Lyrahcle · Never Lies
+        </p>
+      </footer>
     </div>
   )
 }

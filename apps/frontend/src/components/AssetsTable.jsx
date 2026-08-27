@@ -1,27 +1,38 @@
+import KindBadge from './KindBadge.jsx'
+
 export default function AssetsTable({ assets }) {
   if (!assets.length) {
     return (
-      <p className="rounded-lg border border-dashed border-lyra-panel px-5 py-8 text-center text-sm text-lyra-muted">
-        No assets discovered yet.
-      </p>
+      <div className="rounded border border-dashed border-lyra-border px-5 py-10 text-center">
+        <p className="text-sm text-lyra-muted">No assets discovered yet.</p>
+        <p className="mt-1 text-xs text-lyra-mutedDim">
+          Assets will appear here once a recon scan runs against a program.
+        </p>
+      </div>
     )
   }
 
   return (
     <table className="w-full text-left text-sm">
       <thead>
-        <tr className="border-b border-lyra-panel text-lyra-muted">
-          <th className="py-2 font-normal">Kind</th>
-          <th className="py-2 font-normal">Value</th>
-          <th className="py-2 font-normal">Program</th>
+        <tr className="border-b border-lyra-borderSoft">
+          <th className="pb-2 text-[10px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+            Kind
+          </th>
+          <th className="pb-2 text-[10px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+            Value
+          </th>
+          <th className="pb-2 text-[10px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+            Program
+          </th>
         </tr>
       </thead>
       <tbody>
         {assets.map((a) => (
-          <tr key={a.id} className="border-b border-lyra-panel/60">
-            <td className="py-2 text-lyra-goldLight">{a.kind}</td>
-            <td className="py-2">{a.value}</td>
-            <td className="py-2 text-lyra-muted">{a.program_id}</td>
+          <tr key={a.id} className="border-b border-lyra-borderSoft/60 last:border-0">
+            <td className="py-2.5"><KindBadge kind={a.kind} /></td>
+            <td className="py-2.5 font-mono text-lyra-text">{a.value}</td>
+            <td className="py-2.5 font-mono text-xs text-lyra-mutedDim">{a.program_id}</td>
           </tr>
         ))}
       </tbody>
