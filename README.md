@@ -15,7 +15,7 @@ Maintained by [mlko01](https://github.com/mlko01) — contact: manu.cibersegurid
 
 ## Status
 
-🚧 Early development — Phase 6 (orbital tracking: TLE + SGP4 propagation, satellite panel).
+🚧 Early development — Phase 6 (orbital tracking with mission-console UX: hero, tabs, world map, live polling).
 
 ## Repository layout
 

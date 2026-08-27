@@ -1,67 +1,116 @@
 import { useEffect, useState } from 'react'
-import { Database, Radio, Server, Satellite } from 'lucide-react'
 import Header from './components/Header.jsx'
-import StatCard from './components/StatCard.jsx'
+import Hero from './components/Hero.jsx'
 import Panel from './components/Panel.jsx'
+import Tabs from './components/Tabs.jsx'
+import Skeleton from './components/Skeleton.jsx'
 import AssetsTable from './components/AssetsTable.jsx'
 import RfPanel from './components/RfPanel.jsx'
 import SatellitesPanel from './components/SatellitesPanel.jsx'
+import WorldMap from './components/WorldMap.jsx'
 import { fetchAssets, fetchPing, fetchRfReadings, fetchSatellites } from './lib/api.js'
 
+const REFRESH_MS = 8000
+
+const TABS = [
+  { id: 'orbital', label: 'Orbital' },
+  { id: 'assets', label: 'Assets' },
+  { id: 'signal', label: 'Signal' },
+]
+
 function App() {
-  const [assets, setAssets] = useState([])
-  const [rfReadings, setRfReadings] = useState([])
-  const [satellites, setSatellites] = useState([])
+  const [assets, setAssets] = useState(null)
+  const [rfReadings, setRfReadings] = useState(null)
+  const [satellites, setSatellites] = useState(null)
   const [backendStatus, setBackendStatus] = useState('checking')
-  const [error, setError] = useState(null)
+  const [dbStatus, setDbStatus] = useState('checking')
+  const [activeTab, setActiveTab] = useState('orbital')
 
   useEffect(() => {
-    fetchPing()
-      .then(() => setBackendStatus('online'))
-      .catch(() => setBackendStatus('offline'))
+    let cancelled = false
 
-    fetchAssets()
-      .then((data) => setAssets(data ?? []))
-      .catch((e) => setError(e.message))
+    async function poll() {
+      try {
+        await fetchPing()
+        if (!cancelled) setBackendStatus('online')
+      } catch {
+        if (!cancelled) setBackendStatus('offline')
+      }
 
-    fetchRfReadings()
-      .then((data) => setRfReadings(data ?? []))
-      .catch(() => {})
+      try {
+        const data = await fetchAssets()
+        if (!cancelled) {
+          setAssets(data ?? [])
+          setDbStatus('online')
+        }
+      } catch {
+        if (!cancelled) {
+          setAssets((prev) => prev ?? [])
+          setDbStatus('offline')
+        }
+      }
 
-    fetchSatellites()
-      .then((data) => setSatellites(data ?? []))
-      .catch(() => {})
+      try {
+        const data = await fetchRfReadings()
+        if (!cancelled) setRfReadings(data ?? [])
+      } catch {
+        if (!cancelled) setRfReadings((prev) => prev ?? [])
+      }
+
+      try {
+        const data = await fetchSatellites()
+        if (!cancelled) setSatellites(data ?? [])
+      } catch {
+        if (!cancelled) setSatellites((prev) => prev ?? [])
+      }
+    }
+
+    poll()
+    const id = setInterval(poll, REFRESH_MS)
+    return () => {
+      cancelled = true
+      clearInterval(id)
+    }
   }, [])
+
+  const lastRf = rfReadings?.[0]
+  const sdrStatus =
+    lastRf && Date.now() - new Date(lastRf.captured_at).getTime() < 30000 ? 'live' : 'idle'
 
   return (
     <div className="min-h-screen bg-transparent text-lyra-text">
-      <Header backendStatus={backendStatus} />
+      <Header />
+      <Hero backendStatus={backendStatus} dbStatus={dbStatus} sdrStatus={sdrStatus} />
 
       <main className="mx-auto max-w-6xl px-8 py-10">
-        <div className="mb-8 grid grid-cols-4 gap-4">
-          <StatCard icon={Server} label="Backend status" value={backendStatus} accent="good" />
-          <StatCard icon={Database} label="Assets tracked" value={assets.length} accent="gold" />
-          <StatCard icon={Radio} label="RF readings" value={rfReadings.length} accent="neutral" />
-          <StatCard icon={Satellite} label="Satellites" value={satellites.length} accent="gold" />
-        </div>
+        <Tabs tabs={TABS} active={activeTab} onChange={setActiveTab} />
 
-        <div className="grid gap-6">
-          <Panel eyebrow="Orbital Tracking" title="Tracked satellites">
-            <SatellitesPanel satellites={satellites} />
-          </Panel>
+        {activeTab === 'orbital' && (
+          <div className="grid gap-6">
+            <Panel eyebrow="Ground Track" title="Live orbital positions">
+              {satellites === null ? (
+                <Skeleton rows={1} />
+              ) : (
+                <WorldMap satellites={satellites} />
+              )}
+            </Panel>
+            <Panel eyebrow="Orbital Tracking" title="Tracked satellites">
+              {satellites === null ? <Skeleton /> : <SatellitesPanel satellites={satellites} />}
+            </Panel>
+          </div>
+        )}
 
+        {activeTab === 'assets' && (
           <Panel eyebrow="Asset Inventory" title="Tracked assets">
-            {error ? (
-              <p className="text-sm text-lyra-bad">{error}</p>
-            ) : (
-              <AssetsTable assets={assets} />
-            )}
+            {assets === null ? <Skeleton /> : <AssetsTable assets={assets} />}
           </Panel>
+        )}
 
+        {activeTab === 'signal' && (
           <Panel eyebrow="Signal Intelligence" title="RF spectrum">
-            <RfPanel readings={rfReadings} />
+            {rfReadings === null ? <Skeleton /> : <RfPanel readings={rfReadings} />}
           </Panel>
-        </div>
+        )}
       </main>
 
       <footer className="mx-auto max-w-6xl px-8 py-8 text-center">
