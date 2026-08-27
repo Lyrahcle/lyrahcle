@@ -9,3 +9,9 @@ export async function fetchPing() {
   if (!res.ok) throw new Error('backend unreachable')
   return res.json()
 }
+
+export async function fetchRfReadings() {
+  const res = await fetch('/api/v1/rf/readings')
+  if (!res.ok) throw new Error('failed to fetch rf readings')
+  return res.json()
+}

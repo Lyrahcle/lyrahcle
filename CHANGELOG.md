@@ -16,3 +16,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/), using
 - Asset store (upsert/list) and `GET /api/v1/assets`
 - Cron-based scheduler (robfig/cron) wired for future recon sweeps
 - Branded dashboard (Header, StatCard, AssetsTable) using logo and purple/gold palette
+- SDR edge agent (`apps/sdr-agent`) with mock RF capture and HTTP uplink to backend
+- `rf_readings` table, `POST /api/v1/rf/ingest`, `GET /api/v1/rf/readings`
+- Dashboard RF spectrum panel (RfPanel)
+- `sdr-agent` compose service under the `sdr` profile (`docker compose --profile sdr up`)

@@ -44,5 +44,19 @@ services:
     depends_on:
       - postgres
 
+  sdr-agent:
+    build:
+      context: .
+      dockerfile: deploy/docker/Dockerfile.sdr-agent
+    depends_on:
+      - backend
+    environment:
+      - BACKEND_URL=http://backend:8080
+      - AGENT_ID=sdr-agent-dev
+      - FREQUENCY_HZ=437500000
+      - CAPTURE_INTERVAL_SECONDS=10
+    profiles:
+      - sdr
+
 volumes:
   pgdata:

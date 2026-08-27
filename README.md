@@ -15,7 +15,7 @@ Maintained by [mlko01](https://github.com/mlko01) — contact: manu.cibersegurid
 
 ## Status
 
-🚧 Early development — Phase 4 (branded dashboard: assets table, live backend status).
+🚧 Early development — Phase 5 (SDR edge agent with mock capture, RF ingest endpoint, dashboard spectrum panel).
 
 ## Repository layout
 

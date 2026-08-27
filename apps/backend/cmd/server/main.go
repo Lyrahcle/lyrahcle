@@ -31,6 +31,7 @@ func main() {
 	log.Println("migrations applied")
 
 	assets := store.NewAssetStore(pool)
+	rf := store.NewRFStore(pool)
 
 	sched := scheduler.New()
 	_ = sched.Every("0 */6 * * *", "recon-sweep", func() {
@@ -61,6 +62,31 @@ func main() {
 			}
 			w.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(w).Encode(list)
+		})
+
+		r.Route("/rf", func(r chi.Router) {
+			r.Post("/ingest", func(w http.ResponseWriter, r *http.Request) {
+				var reading store.RFReading
+				if err := json.NewDecoder(r.Body).Decode(&reading); err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+				if err := rf.Insert(r.Context(), reading); err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+				w.WriteHeader(http.StatusCreated)
+			})
+
+			r.Get("/readings", func(w http.ResponseWriter, r *http.Request) {
+				list, err := rf.Recent(r.Context(), 100)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(list)
+			})
 		})
 	})
 
