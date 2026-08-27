@@ -2,7 +2,7 @@
 
 ## Reporting a Vulnerability
 
-Please report security vulnerabilities privately to security@lyrahcle.dev (placeholder)
+Please report security vulnerabilities privately to manu.ciberseguridad@gmail.com
 instead of opening a public issue. We will acknowledge receipt within 72 hours.
 
 ## Scope

@@ -11,6 +11,8 @@ paid enterprise modules — aiming for transparency, community, and sustainabili
 
 ![Lyrahcle](./assets/logo.jpeg)
 
+Maintained by [mlko01](https://github.com/mlko01) — contact: manu.ciberseguridad@gmail.com
+
 ## Status
 
 🚧 Early development — Phase 3 (Postgres persistence, migrations, scheduler, `/assets` endpoint).
