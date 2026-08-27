@@ -11,3 +11,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/), using
 - Backend base (Go + chi): `/healthz` and `/api/v1/ping` endpoints, config loader
 - Frontend base (React + Vite + Tailwind): landing page pinging backend
 - Dockerfiles for backend, frontend, cve-sync
+- Vite dev proxy `/api` → backend
+- Postgres schema (programs, assets, scans, findings) + minimal SQL migration runner
+- Asset store (upsert/list) and `GET /api/v1/assets`
+- Cron-based scheduler (robfig/cron) wired for future recon sweeps

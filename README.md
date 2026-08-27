@@ -13,7 +13,7 @@ paid enterprise modules — aiming for transparency, community, and sustainabili
 
 ## Status
 
-🚧 Early development — Phase 2 (backend/frontend base scaffolded, no persistence yet).
+🚧 Early development — Phase 3 (Postgres persistence, migrations, scheduler, `/assets` endpoint).
 
 ## Repository layout
 

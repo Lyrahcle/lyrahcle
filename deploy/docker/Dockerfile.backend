@@ -8,6 +8,8 @@ RUN CGO_ENABLED=0 go build -o /out/lyrahcle-backend ./cmd/server
 
 FROM gcr.io/distroless/static-debian12
 COPY --from=build /out/lyrahcle-backend /lyrahcle-backend
+COPY apps/backend/migrations /migrations
+WORKDIR /
 USER nonroot:nonroot
 EXPOSE 8080
 ENTRYPOINT ["/lyrahcle-backend"]
