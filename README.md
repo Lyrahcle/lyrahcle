@@ -13,6 +13,9 @@ paid enterprise modules — aiming for transparency, community, and sustainabili
 
 Maintained by [mlko01](https://github.com/mlko01) — contact: manu.ciberseguridad@gmail.com
 
+![Lyrahcle dashboard](./docs/screenshots/dashboard.png)
+*Orbital tracking tab with example data.*
+
 ## Status
 
 🚧 Early development — Phase 6 of 9 (orbital tracking). See [PLAN.md](./PLAN.md) for the
