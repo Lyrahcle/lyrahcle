@@ -32,6 +32,7 @@ func testPool(t *testing.T) *pgxpool.Pool {
 	schema := `
 		CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
+		DROP TABLE IF EXISTS agent_keys CASCADE;
 		DROP TABLE IF EXISTS users CASCADE;
 		DROP TABLE IF EXISTS satellites CASCADE;
 		DROP TABLE IF EXISTS assets CASCADE;
@@ -68,6 +69,16 @@ func testPool(t *testing.T) *pgxpool.Pool {
 			password_hash TEXT NOT NULL,
 			role TEXT NOT NULL DEFAULT 'viewer',
 			created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+		);
+
+		DROP TABLE IF EXISTS agent_keys CASCADE;
+		CREATE TABLE agent_keys (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			agent_id TEXT NOT NULL UNIQUE,
+			key_hash TEXT NOT NULL UNIQUE,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+			last_used_at TIMESTAMPTZ,
+			revoked_at TIMESTAMPTZ
 		);
 	`
 	if _, err := pool.Exec(ctx, schema); err != nil {
@@ -193,5 +204,62 @@ func TestUserStoreCount(t *testing.T) {
 	}
 	if count != 1 {
 		t.Errorf("Count after one insert = %d, want 1", count)
+	}
+}
+
+func TestAgentKeyStoreCreateAndLookup(t *testing.T) {
+	pool := testPool(t)
+	ctx := context.Background()
+	store := NewAgentKeyStore(pool)
+
+	if err := store.Create(ctx, "sdr-agent-madrid", "hash-of-key-1"); err != nil {
+		t.Fatalf("Create returned error: %v", err)
+	}
+
+	agentID, err := store.AgentIDForHash(ctx, "hash-of-key-1")
+	if err != nil {
+		t.Fatalf("AgentIDForHash returned error: %v", err)
+	}
+	if agentID != "sdr-agent-madrid" {
+		t.Errorf("AgentIDForHash = %q, want %q", agentID, "sdr-agent-madrid")
+	}
+
+	if _, err := store.AgentIDForHash(ctx, "hash-of-a-different-key"); err != ErrAgentKeyNotFound {
+		t.Errorf("AgentIDForHash for unknown hash: err = %v, want ErrAgentKeyNotFound", err)
+	}
+}
+
+func TestAgentKeyStoreDuplicateAgentID(t *testing.T) {
+	pool := testPool(t)
+	ctx := context.Background()
+	store := NewAgentKeyStore(pool)
+
+	if err := store.Create(ctx, "sdr-agent-madrid", "hash-a"); err != nil {
+		t.Fatalf("first Create returned error: %v", err)
+	}
+	if err := store.Create(ctx, "sdr-agent-madrid", "hash-b"); err != ErrAgentIDTaken {
+		t.Errorf("second Create for same agent_id: err = %v, want ErrAgentIDTaken", err)
+	}
+}
+
+func TestAgentKeyStoreRevoke(t *testing.T) {
+	pool := testPool(t)
+	ctx := context.Background()
+	store := NewAgentKeyStore(pool)
+
+	if err := store.Create(ctx, "sdr-agent-madrid", "hash-c"); err != nil {
+		t.Fatalf("Create returned error: %v", err)
+	}
+
+	if _, err := store.Revoke(ctx, "sdr-agent-madrid"); err != nil {
+		t.Fatalf("Revoke returned error: %v", err)
+	}
+
+	if _, err := store.AgentIDForHash(ctx, "hash-c"); err != ErrAgentKeyNotFound {
+		t.Errorf("AgentIDForHash after revoke: err = %v, want ErrAgentKeyNotFound (revoked keys must stop working)", err)
+	}
+
+	if _, err := store.Revoke(ctx, "sdr-agent-madrid"); err != ErrAgentKeyNotFound {
+		t.Errorf("double Revoke: err = %v, want ErrAgentKeyNotFound", err)
 	}
 }

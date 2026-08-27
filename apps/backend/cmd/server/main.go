@@ -42,6 +42,7 @@ func main() {
 	rf := store.NewRFStore(pool)
 	satellites := store.NewSatelliteStore(pool)
 	users := store.NewUserStore(pool)
+	agentKeys := store.NewAgentKeyStore(pool)
 
 	sched := scheduler.New()
 	_ = sched.Every("0 */6 * * *", "recon-sweep", func() {
@@ -166,8 +167,63 @@ func main() {
 			})
 		})
 
+		r.Route("/agent-keys", func(r chi.Router) {
+			r.Use(auth.RequireRole(cfg.JWTSecret, auth.RoleAdmin))
+
+			r.Post("/", func(w http.ResponseWriter, r *http.Request) {
+				var body struct {
+					AgentID string `json:"agent_id"`
+				}
+				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+					http.Error(w, "invalid JSON body", http.StatusBadRequest)
+					return
+				}
+				body.AgentID = strings.TrimSpace(body.AgentID)
+				if err := validate.AgentID(body.AgentID); err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+
+				plaintext, hash, err := auth.GenerateAgentKey()
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+
+				if err := agentKeys.Create(r.Context(), body.AgentID, hash); err != nil {
+					if err == store.ErrAgentIDTaken {
+						http.Error(w, "agent_id already has an active key; revoke it first", http.StatusConflict)
+						return
+					}
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusCreated)
+				json.NewEncoder(w).Encode(map[string]string{
+					"agent_id": body.AgentID,
+					"api_key":  plaintext,
+				})
+			})
+
+			r.Delete("/{agentID}", func(w http.ResponseWriter, r *http.Request) {
+				agentID := chi.URLParam(r, "agentID")
+				if _, err := agentKeys.Revoke(r.Context(), agentID); err != nil {
+					if err == store.ErrAgentKeyNotFound {
+						http.Error(w, "no active key for that agent_id", http.StatusNotFound)
+						return
+					}
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+				w.WriteHeader(http.StatusNoContent)
+			})
+		})
+
 		r.Route("/rf", func(r chi.Router) {
-			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleOperator)).Post("/ingest", func(w http.ResponseWriter, r *http.Request) {
+			agentAuth := auth.RequireAgentKeyOrRole(cfg.JWTSecret, auth.RoleOperator, agentKeys.AgentIDForHash)
+			r.With(agentAuth).Post("/ingest", func(w http.ResponseWriter, r *http.Request) {
 				var reading store.RFReading
 				if err := json.NewDecoder(r.Body).Decode(&reading); err != nil {
 					http.Error(w, "invalid JSON body", http.StatusBadRequest)
@@ -190,6 +246,13 @@ func main() {
 				if err := validate.CapturedAt(reading.CapturedAt); err != nil {
 					http.Error(w, err.Error(), http.StatusBadRequest)
 					return
+				}
+
+				if authenticatedAgentID, ok := auth.AgentIDFromContext(r.Context()); ok {
+					if reading.AgentID != authenticatedAgentID {
+						http.Error(w, "agent_id does not match the authenticated agent key", http.StatusForbidden)
+						return
+					}
 				}
 
 				if err := rf.Insert(r.Context(), reading); err != nil {

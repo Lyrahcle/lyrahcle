@@ -1,0 +1,79 @@
+package store
+
+import (
+	"context"
+	"errors"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+var ErrAgentIDTaken = errors.New("store: agent_id already has a key")
+var ErrAgentKeyNotFound = errors.New("store: agent key not found or revoked")
+
+type AgentKey struct {
+	ID      uuid.UUID
+	AgentID string
+	KeyHash string
+	Revoked bool
+}
+
+type AgentKeyStore struct {
+	pool *pgxpool.Pool
+}
+
+func NewAgentKeyStore(pool *pgxpool.Pool) *AgentKeyStore {
+	return &AgentKeyStore{pool: pool}
+}
+
+func (s *AgentKeyStore) Create(ctx context.Context, agentID, keyHash string) error {
+	_, err := s.pool.Exec(ctx, `
+		INSERT INTO agent_keys (agent_id, key_hash)
+		VALUES ($1, $2)
+	`, agentID, keyHash)
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return ErrAgentIDTaken
+		}
+		return err
+	}
+	return nil
+}
+
+func (s *AgentKeyStore) AgentIDForHash(ctx context.Context, keyHash string) (string, error) {
+	var agentID string
+	err := s.pool.QueryRow(ctx, `
+		SELECT agent_id FROM agent_keys
+		WHERE key_hash = $1 AND revoked_at IS NULL
+	`, keyHash).Scan(&agentID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", ErrAgentKeyNotFound
+		}
+		return "", err
+	}
+
+	_, _ = s.pool.Exec(ctx, `UPDATE agent_keys SET last_used_at = now() WHERE key_hash = $1`, keyHash)
+
+	return agentID, nil
+}
+
+func (s *AgentKeyStore) Revoke(ctx context.Context, agentID string) (time.Time, error) {
+	var revokedAt time.Time
+	err := s.pool.QueryRow(ctx, `
+		UPDATE agent_keys SET revoked_at = now()
+		WHERE agent_id = $1 AND revoked_at IS NULL
+		RETURNING revoked_at
+	`, agentID).Scan(&revokedAt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return time.Time{}, ErrAgentKeyNotFound
+		}
+		return time.Time{}, err
+	}
+	return revokedAt, nil
+}

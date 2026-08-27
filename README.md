@@ -130,10 +130,35 @@ Roles: `viewer` < `operator` < `admin`. Promoting a user beyond the bootstrap ad
 currently requires updating `role` directly in the `users` table (a proper admin
 endpoint is planned — see [SECURITY_ROADMAP.md](./SECURITY_ROADMAP.md)).
 
-For the `sdr-agent` to publish RF readings, give it a token with at least the
-`operator` role via the `AGENT_TOKEN` environment variable (`docker-compose.yml`).
-Token-per-agent authentication (API keys, no shared user token) is tracked in the
-security roadmap.
+### SDR agent authentication
+
+`POST /rf/ingest` accepts two kinds of credentials:
+
+- **Agent API key** (recommended) — scoped to a single `agent_id`, long-lived,
+  independently revocable, and cannot be used to submit readings under a different
+  `agent_id` (the backend rejects any mismatch between the key's registered
+  `agent_id` and the one in the request body).
+- **Operator/admin bearer token** (legacy/fallback) — the shared human JWT from
+  `/auth/login`, kept for backward compatibility. Prefer the agent key below for
+  anything long-running.
+
+```bash
+# Create a key for an agent (admin token required):
+curl -X POST localhost:8080/api/v1/agent-keys \
+  -H "Authorization: Bearer <admin-token>" \
+  -H "Content-Type: application/json" \
+  -d '{"agent_id": "sdr-agent-madrid"}'
+# -> {"agent_id": "sdr-agent-madrid", "api_key": "lyr_agent_..."}  (shown once — store it now)
+
+# Revoke it later:
+curl -X DELETE localhost:8080/api/v1/agent-keys/sdr-agent-madrid \
+  -H "Authorization: Bearer <admin-token>"
+```
+
+Set the returned key as `AGENT_API_KEY` for that `sdr-agent` instance
+(`docker-compose.yml`); it's sent as an `X-Agent-Key` header, separately from the
+`Authorization: Bearer` header used by human sessions. Only the key's SHA-256 hash
+is stored — the plaintext key is shown exactly once, at creation time.
 
 ### TLS/HTTPS
 
@@ -182,7 +207,9 @@ by setting `TLS_CERT_FILE`/`TLS_KEY_FILE` directly on the backend.
 | `GET` | `/api/v1/assets` | — | List tracked assets |
 | `POST` | `/api/v1/auth/register` | — | Create a user (first user becomes admin) |
 | `POST` | `/api/v1/auth/login` | — | Exchange email + password for a bearer token |
-| `POST` | `/api/v1/rf/ingest` | operator+ | Ingest an RF reading (used by `sdr-agent`) |
+| `POST` | `/api/v1/agent-keys` | admin | Create an API key scoped to one `agent_id` |
+| `DELETE` | `/api/v1/agent-keys/{agentID}` | admin | Revoke that agent's key |
+| `POST` | `/api/v1/rf/ingest` | agent key or operator+ | Ingest an RF reading (used by `sdr-agent`) |
 | `GET` | `/api/v1/rf/readings` | — | List recent RF readings |
 | `GET` | `/api/v1/satellites/` | — | List tracked satellites with live computed position |
 | `POST` | `/api/v1/satellites/` | operator+ | Register a satellite by NORAD ID + TLE |

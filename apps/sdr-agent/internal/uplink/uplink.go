@@ -14,11 +14,12 @@ import (
 type Client struct {
 	BackendURL string
 	AgentID    string
+	APIKey     string
 	AuthToken  string
 	http       *http.Client
 }
 
-func New(backendURL, agentID, authToken string, insecureSkipVerify bool) *Client {
+func New(backendURL, agentID, apiKey, authToken string, insecureSkipVerify bool) *Client {
 	transport := &http.Transport{}
 	if insecureSkipVerify {
 		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
@@ -27,6 +28,7 @@ func New(backendURL, agentID, authToken string, insecureSkipVerify bool) *Client
 	return &Client{
 		BackendURL: backendURL,
 		AgentID:    agentID,
+		APIKey:     apiKey,
 		AuthToken:  authToken,
 		http:       &http.Client{Timeout: 5 * time.Second, Transport: transport},
 	}
@@ -49,7 +51,9 @@ func (c *Client) Send(r capture.Reading) error {
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	if c.AuthToken != "" {
+	if c.APIKey != "" {
+		req.Header.Set("X-Agent-Key", c.APIKey)
+	} else if c.AuthToken != "" {
 		req.Header.Set("Authorization", "Bearer "+c.AuthToken)
 	}
 

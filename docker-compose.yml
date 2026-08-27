@@ -68,6 +68,11 @@ services:
       - AGENT_ID=sdr-agent-dev
       - FREQUENCY_HZ=437500000
       - CAPTURE_INTERVAL_SECONDS=10
+      # Recommended: create with
+      #   POST /api/v1/agent-keys {"agent_id": "sdr-agent-dev"} (admin token required)
+      # and paste the returned api_key here. Falls back to AGENT_TOKEN (a shared
+      # operator JWT) if unset, for backward compatibility.
+      - AGENT_API_KEY=${AGENT_API_KEY:-}
       - AGENT_TOKEN=${AGENT_TOKEN:-}
       # If BACKEND_URL uses https:// with the self-signed dev cert, set this to
       # "true" for local testing ONLY. Never set it against a production backend.

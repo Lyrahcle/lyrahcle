@@ -26,7 +26,14 @@ Tracked incrementally, one item at a time, before the v1.0.0 release.
 - [x] **Rate limiting** and abuse protection on the public API (120 req/min per IP
       globally, 10 req/min per IP on `/auth/register` and `/auth/login` to slow down
       credential stuffing/brute force)
-- [ ] **SDR agent authentication** (API keys or certificates) to prevent fake RF ingestion
+- [x] **SDR agent authentication** (API keys or certificates) to prevent fake RF
+      ingestion (`agent_keys` table, `POST`/`DELETE /agent-keys`, SHA-256-hashed
+      keys — plaintext shown once at creation, sent as `X-Agent-Key`; the backend
+      rejects a reading whose `agent_id` doesn't match the authenticated key's
+      registered agent, preventing one agent from spoofing another's identity;
+      falls back to the existing operator/admin JWT for backward compatibility;
+      unit-tested including the fallback path, integration-tested against real
+      Postgres including revocation actually cutting off access)
 - [ ] **Improved documentation** — deployment guides, configuration, endpoint usage,
       contribution guide
 - [ ] **Real SDR hardware integration** (RTL-SDR, HackRF, etc.) to validate capture
@@ -69,4 +76,15 @@ Tracked incrementally, one item at a time, before the v1.0.0 release.
   and the `lib/api.js` fetch wrappers (15 tests, all passing). CI now actually runs
   build+test+vet for both apps against a real Postgres service container, replacing
   the previous placeholder steps that silently skipped when files didn't exist yet.
-  Next: per-agent API keys (item 6).
+- 2026-08-27: shipped SDR agent authentication — `agent_keys` table (SHA-256 hash
+  only, never plaintext), `POST /agent-keys` (admin-only, returns the plaintext key
+  once) and `DELETE /agent-keys/{agentID}`, a combined middleware that accepts
+  `X-Agent-Key` first and falls back to the existing operator/admin JWT, and a
+  server-side check rejecting any RF reading whose `agent_id` doesn't match the
+  authenticated key's registered agent (blocks one agent from spoofing another's
+  identity even with a valid key). `sdr-agent` now sends `AGENT_API_KEY` via
+  `X-Agent-Key` when set, falling back to the old `AGENT_TOKEN` bearer flow for
+  compatibility. Unit tests cover the middleware fallback logic; integration tests
+  against real Postgres cover create/lookup/duplicate/revoke, including confirming
+  a revoked key stops authenticating immediately.
+  Next: expanded documentation (item 7), then audit logging (item 9).
