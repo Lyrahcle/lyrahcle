@@ -12,7 +12,9 @@ Tracked incrementally, one item at a time, before the v1.0.0 release.
       format, AX.25 hex length; 1MB global request body cap)
 - [ ] **Automated test coverage** (unit, integration, fuzzing) for backend, frontend,
       and decoders before v1.0.0
-- [ ] **Rate limiting** and abuse protection on the public API
+- [x] **Rate limiting** and abuse protection on the public API (120 req/min per IP
+      globally, 10 req/min per IP on `/auth/register` and `/auth/login` to slow down
+      credential stuffing/brute force)
 - [ ] **SDR agent authentication** (API keys or certificates) to prevent fake RF ingestion
 - [ ] **Improved documentation** — deployment guides, configuration, endpoint usage,
       contribution guide
@@ -33,4 +35,8 @@ Tracked incrementally, one item at a time, before the v1.0.0 release.
   `/tmtc/decode/ax25` — bounded ranges for frequency/power/timestamps, NORAD ID and
   TLE line format checks, AX.25 hex length cap, tightened email regex (rejected a
   `<script>...</script>@x.com` payload that the first-pass regex let through), and a
-  1MB global request body limit. Next: per-agent API keys (item 6), then TLS (item 2).
+  1MB global request body limit.
+- 2026-08-27: shipped rate limiting (`go-chi/httprate`) — 120 req/min per IP across
+  the whole API, 10 req/min per IP on `/auth/register` and `/auth/login`; verified
+  with a standalone test (5-req limit: first 5 requests 200, next 3 return 429).
+  Next: per-agent API keys (item 6), then TLS (item 2).

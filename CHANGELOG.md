@@ -40,3 +40,5 @@ Format based on [Keep a Changelog](https://keepachangelog.com/), using
 - Authentication & authorization: `users` table, JWT (HS256) via `golang-jwt`, bcrypt password hashing, `admin`/`operator`/`viewer` role hierarchy, `POST /auth/register` + `POST /auth/login`; `POST /rf/ingest` and `POST /satellites/` now require an operator-or-higher bearer token; `sdr-agent` sends its token via `AGENT_TOKEN`
 - Added `SECURITY_ROADMAP.md` tracking the short-term hardening plan (TLS, input validation, tests, rate limiting, agent API keys, audit logging, releases) incrementally before v1.0.0
 - Strict input validation (`internal/validate`) across `/auth/register`, `/auth/login`, `/rf/ingest`, `POST /satellites/`, and `/tmtc/decode/ax25`: bounded frequency/power/timestamp ranges, NORAD ID and TLE line format checks, AX.25 hex length cap, hardened email regex, 1MB global request body limit
+- Rate limiting (`go-chi/httprate`): 120 req/min per IP globally, 10 req/min per IP on `/auth/register` and `/auth/login`
+- Clock now shows the browser's local time and UTC offset instead of a fixed UTC

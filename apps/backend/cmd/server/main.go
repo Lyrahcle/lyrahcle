@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/httprate"
 
 	"github.com/mlko01/lyrahcle/apps/backend/internal/auth"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/celestrak"
@@ -58,6 +59,7 @@ func main() {
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(maxBodySize(1 << 20))
+	r.Use(httprate.LimitByIP(120, time.Minute))
 
 	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -80,6 +82,8 @@ func main() {
 		})
 
 		r.Route("/auth", func(r chi.Router) {
+			r.Use(httprate.LimitByIP(10, time.Minute))
+
 			r.Post("/register", func(w http.ResponseWriter, r *http.Request) {
 				var body struct {
 					Email    string `json:"email"`
