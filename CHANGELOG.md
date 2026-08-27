@@ -27,3 +27,4 @@ Format based on [Keep a Changelog](https://keepachangelog.com/), using
 - Automatic TLE sync from Celestrak (`internal/celestrak`), runs on startup and every 6h via scheduler, configurable via `CELESTRAK_GROUPS`
 - Interactive world map: hover tooltip per satellite (name, NORAD ID, lat/lon, altitude), pulsing marker
 - Expanded README: architecture diagram, env vars, API reference, roadmap checklist
+- Responsive/accessibility polish: horizontal scroll for data tables on narrow screens (no more cramped/wrapped columns), visible focus rings on tabs, `motion-safe` guards on all pulse/spin animations, tighter mobile spacing, meta description and theme-color

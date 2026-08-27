@@ -1,4 +1,5 @@
 import KindBadge from './KindBadge.jsx'
+import TableScroll from './TableScroll.jsx'
 
 export default function AssetsTable({ assets }) {
   if (!assets.length) {
@@ -13,29 +14,31 @@ export default function AssetsTable({ assets }) {
   }
 
   return (
-    <table className="w-full text-left text-sm">
-      <thead>
-        <tr className="border-b border-lyra-borderSoft">
-          <th className="pb-2 text-[10px] font-normal uppercase tracking-wider text-lyra-mutedDim">
-            Kind
-          </th>
-          <th className="pb-2 text-[10px] font-normal uppercase tracking-wider text-lyra-mutedDim">
-            Value
-          </th>
-          <th className="pb-2 text-[10px] font-normal uppercase tracking-wider text-lyra-mutedDim">
-            Program
-          </th>
-        </tr>
-      </thead>
-      <tbody>
-        {assets.map((a) => (
-          <tr key={a.id} className="border-b border-lyra-borderSoft/60 last:border-0">
-            <td className="py-2.5"><KindBadge kind={a.kind} /></td>
-            <td className="py-2.5 font-mono text-lyra-text">{a.value}</td>
-            <td className="py-2.5 font-mono text-xs text-lyra-mutedDim">{a.program_id}</td>
+    <TableScroll>
+      <table className="w-full text-left text-sm">
+        <thead>
+          <tr className="border-b border-lyra-borderSoft">
+            <th className="pb-2 text-[10px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+              Kind
+            </th>
+            <th className="pb-2 text-[10px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+              Value
+            </th>
+            <th className="pb-2 text-[10px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+              Program
+            </th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {assets.map((a) => (
+            <tr key={a.id} className="border-b border-lyra-borderSoft/60 last:border-0">
+              <td className="py-2.5"><KindBadge kind={a.kind} /></td>
+              <td className="py-2.5 font-mono text-lyra-text">{a.value}</td>
+              <td className="py-2.5 font-mono text-xs text-lyra-mutedDim">{a.program_id}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </TableScroll>
   )
 }

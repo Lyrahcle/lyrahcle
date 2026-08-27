@@ -1,6 +1,6 @@
 export default function Panel({ eyebrow, title, children }) {
   return (
-    <section className="rounded-lg border border-lyra-border bg-lyra-panel/30 p-6">
+    <section className="rounded-lg border border-lyra-border bg-lyra-panel/30 p-4 sm:p-6">
       <div className="mb-5 flex items-baseline gap-3">
         <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-lyra-gold">
           {eyebrow}

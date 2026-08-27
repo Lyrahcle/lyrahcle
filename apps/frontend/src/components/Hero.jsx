@@ -8,12 +8,14 @@ export default function Hero({ backendStatus, dbStatus, sdrStatus }) {
     <div className="relative overflow-hidden border-b border-lyra-borderSoft">
       <OrbitRings />
 
-      <div className="relative mx-auto max-w-6xl px-8 py-16 text-center">
-        <div className="mx-auto mb-6 h-16 w-16">
-          <LogoMark className="h-16 w-16" />
+      <div className="relative mx-auto max-w-6xl px-6 py-12 text-center sm:px-8 sm:py-16">
+        <div className="mx-auto mb-6 h-14 w-14 sm:h-16 sm:w-16">
+          <LogoMark className="h-14 w-14 sm:h-16 sm:w-16" />
         </div>
 
-        <h1 className="font-display text-3xl font-semibold text-lyra-goldBright">Lyrahcle</h1>
+        <h1 className="font-display text-2xl font-semibold text-lyra-goldBright sm:text-3xl">
+          Lyrahcle
+        </h1>
         <p className="mt-2 font-mono text-[11px] uppercase tracking-[0.3em] text-lyra-muted">
           Constellation Analytics
         </p>
