@@ -1,0 +1,128 @@
+package validate
+
+import (
+	"fmt"
+	"regexp"
+	"strings"
+	"time"
+)
+
+var emailPattern = regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
+
+func Email(email string) error {
+	email = strings.TrimSpace(email)
+	if email == "" {
+		return fmt.Errorf("email is required")
+	}
+	if len(email) > 254 {
+		return fmt.Errorf("email is too long")
+	}
+	if !emailPattern.MatchString(email) {
+		return fmt.Errorf("email is not a valid address")
+	}
+	return nil
+}
+
+func Password(password string) error {
+	if len(password) < 8 {
+		return fmt.Errorf("password must be at least 8 characters")
+	}
+	if len(password) > 128 {
+		return fmt.Errorf("password must be at most 128 characters")
+	}
+	return nil
+}
+
+func AgentID(id string) error {
+	id = strings.TrimSpace(id)
+	if id == "" {
+		return fmt.Errorf("agent_id is required")
+	}
+	if len(id) > 128 {
+		return fmt.Errorf("agent_id is too long (max 128 characters)")
+	}
+	return nil
+}
+
+const (
+	minFrequencyHz = 1_000
+	maxFrequencyHz = 300_000_000_000
+	minPowerDbm    = -200
+	maxPowerDbm    = 50
+)
+
+func FrequencyHz(hz int64) error {
+	if hz < minFrequencyHz || hz > maxFrequencyHz {
+		return fmt.Errorf("frequency_hz must be between %d and %d Hz", minFrequencyHz, maxFrequencyHz)
+	}
+	return nil
+}
+
+func PowerDbm(dbm float64) error {
+	if dbm < minPowerDbm || dbm > maxPowerDbm {
+		return fmt.Errorf("power_dbm must be between %d and %d dBm", minPowerDbm, maxPowerDbm)
+	}
+	return nil
+}
+
+func CapturedAt(t time.Time) error {
+	if t.IsZero() {
+		return fmt.Errorf("captured_at is required")
+	}
+	if t.After(time.Now().Add(5 * time.Minute)) {
+		return fmt.Errorf("captured_at cannot be in the future")
+	}
+	if t.Before(time.Now().Add(-24 * time.Hour)) {
+		return fmt.Errorf("captured_at is more than 24h in the past")
+	}
+	return nil
+}
+
+func NoradID(id int) error {
+	if id < 1 || id > 999999 {
+		return fmt.Errorf("norad_id must be between 1 and 999999")
+	}
+	return nil
+}
+
+func SatelliteName(name string) error {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return fmt.Errorf("name is required")
+	}
+	if len(name) > 128 {
+		return fmt.Errorf("name is too long (max 128 characters)")
+	}
+	return nil
+}
+
+var tleLinePattern = regexp.MustCompile(`^[0-9 .+\-A-Z]+$`)
+
+func TLELine(line string, expectedPrefix string) error {
+	if len(line) < 68 || len(line) > 70 {
+		return fmt.Errorf("TLE line must be 68-70 characters, got %d", len(line))
+	}
+	if !strings.HasPrefix(line, expectedPrefix) {
+		return fmt.Errorf("TLE line must start with %q", expectedPrefix)
+	}
+	if !tleLinePattern.MatchString(line) {
+		return fmt.Errorf("TLE line contains invalid characters")
+	}
+	return nil
+}
+
+const maxAX25FrameHexLen = 8192
+
+func AX25FrameHex(frameHex string) error {
+	frameHex = strings.TrimSpace(frameHex)
+	if frameHex == "" {
+		return fmt.Errorf("frame_hex is required")
+	}
+	if len(frameHex) > maxAX25FrameHexLen {
+		return fmt.Errorf("frame_hex is too long (max %d hex characters)", maxAX25FrameHexLen)
+	}
+	if len(frameHex)%2 != 0 {
+		return fmt.Errorf("frame_hex must have an even number of characters")
+	}
+	return nil
+}

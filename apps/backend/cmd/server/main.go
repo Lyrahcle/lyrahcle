@@ -19,6 +19,7 @@ import (
 	"github.com/mlko01/lyrahcle/apps/backend/internal/scheduler"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/store"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/tmtc"
+	"github.com/mlko01/lyrahcle/apps/backend/internal/validate"
 )
 
 func main() {
@@ -56,6 +57,7 @@ func main() {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
+	r.Use(maxBodySize(1 << 20))
 
 	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -84,11 +86,16 @@ func main() {
 					Password string `json:"password"`
 				}
 				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+					http.Error(w, "invalid JSON body", http.StatusBadRequest)
+					return
+				}
+				body.Email = strings.TrimSpace(strings.ToLower(body.Email))
+				if err := validate.Email(body.Email); err != nil {
 					http.Error(w, err.Error(), http.StatusBadRequest)
 					return
 				}
-				if body.Email == "" || len(body.Password) < 8 {
-					http.Error(w, "email required, password must be at least 8 characters", http.StatusBadRequest)
+				if err := validate.Password(body.Password); err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
 					return
 				}
 
@@ -129,7 +136,12 @@ func main() {
 					Password string `json:"password"`
 				}
 				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-					http.Error(w, err.Error(), http.StatusBadRequest)
+					http.Error(w, "invalid JSON body", http.StatusBadRequest)
+					return
+				}
+				body.Email = strings.TrimSpace(strings.ToLower(body.Email))
+				if body.Email == "" || body.Password == "" {
+					http.Error(w, "invalid email or password", http.StatusUnauthorized)
 					return
 				}
 
@@ -154,9 +166,28 @@ func main() {
 			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleOperator)).Post("/ingest", func(w http.ResponseWriter, r *http.Request) {
 				var reading store.RFReading
 				if err := json.NewDecoder(r.Body).Decode(&reading); err != nil {
+					http.Error(w, "invalid JSON body", http.StatusBadRequest)
+					return
+				}
+				reading.AgentID = strings.TrimSpace(reading.AgentID)
+
+				if err := validate.AgentID(reading.AgentID); err != nil {
 					http.Error(w, err.Error(), http.StatusBadRequest)
 					return
 				}
+				if err := validate.FrequencyHz(reading.FrequencyHz); err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+				if err := validate.PowerDbm(reading.PowerDbm); err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+				if err := validate.CapturedAt(reading.CapturedAt); err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+
 				if err := rf.Insert(r.Context(), reading); err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
@@ -209,9 +240,28 @@ func main() {
 					Line2   string `json:"tle_line2"`
 				}
 				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+					http.Error(w, "invalid JSON body", http.StatusBadRequest)
+					return
+				}
+				body.Name = strings.TrimSpace(body.Name)
+
+				if err := validate.NoradID(body.NoradID); err != nil {
 					http.Error(w, err.Error(), http.StatusBadRequest)
 					return
 				}
+				if err := validate.SatelliteName(body.Name); err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+				if err := validate.TLELine(body.Line1, "1 "); err != nil {
+					http.Error(w, "tle_line1: "+err.Error(), http.StatusBadRequest)
+					return
+				}
+				if err := validate.TLELine(body.Line2, "2 "); err != nil {
+					http.Error(w, "tle_line2: "+err.Error(), http.StatusBadRequest)
+					return
+				}
+
 				if err := satellites.Upsert(r.Context(), body.NoradID, body.Name, body.Line1, body.Line2); err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
@@ -226,6 +276,10 @@ func main() {
 					FrameHex string `json:"frame_hex"`
 				}
 				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+					http.Error(w, "invalid JSON body", http.StatusBadRequest)
+					return
+				}
+				if err := validate.AX25FrameHex(body.FrameHex); err != nil {
 					http.Error(w, err.Error(), http.StatusBadRequest)
 					return
 				}
@@ -243,6 +297,15 @@ func main() {
 	log.Printf("lyrahcle backend listening on :%s", cfg.Port)
 	if err := http.ListenAndServe(":"+cfg.Port, r); err != nil {
 		log.Fatal(err)
+	}
+}
+
+func maxBodySize(n int64) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			r.Body = http.MaxBytesReader(w, r.Body, n)
+			next.ServeHTTP(w, r)
+		})
 	}
 }
 

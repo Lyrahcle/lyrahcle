@@ -6,8 +6,10 @@ Tracked incrementally, one item at a time, before the v1.0.0 release.
       endpoints like `/rf/ingest` and `/satellites/` (JWT + bcrypt + role hierarchy
       shipped; admin-managed role promotion and per-agent API keys still pending)
 - [ ] **TLS/HTTPS** across all frontend/backend/sdr-agent communication
-- [ ] **Strict input validation** on all endpoints, especially AX.25 decoding and RF
-      ingestion, to prevent injection and malformed-data issues
+- [x] **Strict input validation** on all endpoints, especially AX.25 decoding and RF
+      ingestion, to prevent injection and malformed-data issues (`internal/validate`:
+      email/password, agent_id, frequency/power/timestamp ranges, NORAD ID, TLE line
+      format, AX.25 hex length; 1MB global request body cap)
 - [ ] **Automated test coverage** (unit, integration, fuzzing) for backend, frontend,
       and decoders before v1.0.0
 - [ ] **Rate limiting** and abuse protection on the public API
@@ -25,5 +27,10 @@ Tracked incrementally, one item at a time, before the v1.0.0 release.
   hashing, `users` table with `admin`/`operator`/`viewer` roles, `POST /auth/register`
   (first user becomes admin) and `POST /auth/login`, `POST /rf/ingest` and
   `POST /satellites/` now require an `operator`-or-higher bearer token, `sdr-agent`
-  sends its token via `AGENT_TOKEN`. Next: role management endpoint, per-agent API
-  keys (item 6), then TLS (item 2).
+  sends its token via `AGENT_TOKEN`.
+- 2026-08-27: shipped strict input validation (`internal/validate`) across
+  `/auth/register`, `/auth/login`, `/rf/ingest`, `POST /satellites/`, and
+  `/tmtc/decode/ax25` — bounded ranges for frequency/power/timestamps, NORAD ID and
+  TLE line format checks, AX.25 hex length cap, tightened email regex (rejected a
+  `<script>...</script>@x.com` payload that the first-pass regex let through), and a
+  1MB global request body limit. Next: per-agent API keys (item 6), then TLS (item 2).
