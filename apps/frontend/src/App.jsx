@@ -8,6 +8,7 @@ import AssetsTable from './components/AssetsTable.jsx'
 import RfPanel from './components/RfPanel.jsx'
 import SatellitesPanel from './components/SatellitesPanel.jsx'
 import WorldMap from './components/WorldMap.jsx'
+import Footer from './components/Footer.jsx'
 import { fetchAssets, fetchPing, fetchRfReadings, fetchSatellites } from './lib/api.js'
 
 const REFRESH_MS = 8000
@@ -82,7 +83,7 @@ function App() {
       <Header />
       <Hero backendStatus={backendStatus} dbStatus={dbStatus} sdrStatus={sdrStatus} />
 
-      <main className="mx-auto max-w-6xl px-6 py-10 sm:px-8">
+      <main id="main-content" className="mx-auto max-w-7xl px-6 py-12 sm:px-8">
         <Tabs tabs={TABS} active={activeTab} onChange={setActiveTab} />
 
         {activeTab === 'orbital' && (
@@ -113,11 +114,7 @@ function App() {
         )}
       </main>
 
-      <footer className="mx-auto max-w-6xl px-6 py-8 text-center sm:px-8">
-        <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-lyra-mutedDim">
-          Lyrahcle · Never Lies
-        </p>
-      </footer>
+      <Footer />
     </div>
   )
 }

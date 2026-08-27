@@ -31,3 +31,6 @@ Format based on [Keep a Changelog](https://keepachangelog.com/), using
 - Dashboard screenshot added to README
 - Palette change: neutral graphite/black background (previously deep purple) with gold as the sole accent; centered README header, logo, and screenshot
 - Fixed world map marker stacking: hovered satellite tooltip now renders above other nearby markers instead of being covered
+- Scaled up UI: larger hero, logo, tabs, table text and padding across the dashboard
+- Full footer: brand blurb, project/contact links, license and roadmap-phase line
+- Open Graph/Twitter meta tags, apple-touch-icon, and a keyboard-accessible skip-to-content link

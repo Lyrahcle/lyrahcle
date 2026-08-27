@@ -18,13 +18,13 @@ export default function AssetsTable({ assets }) {
       <table className="w-full text-left text-sm">
         <thead>
           <tr className="border-b border-lyra-borderSoft">
-            <th className="pb-2 text-[10px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+            <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
               Kind
             </th>
-            <th className="pb-2 text-[10px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+            <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
               Value
             </th>
-            <th className="pb-2 text-[10px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+            <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
               Program
             </th>
           </tr>
@@ -32,9 +32,9 @@ export default function AssetsTable({ assets }) {
         <tbody>
           {assets.map((a) => (
             <tr key={a.id} className="border-b border-lyra-borderSoft/60 last:border-0">
-              <td className="py-2.5"><KindBadge kind={a.kind} /></td>
-              <td className="py-2.5 font-mono text-lyra-text">{a.value}</td>
-              <td className="py-2.5 font-mono text-xs text-lyra-mutedDim">{a.program_id}</td>
+              <td className="py-3"><KindBadge kind={a.kind} /></td>
+              <td className="py-3 font-mono text-lyra-text">{a.value}</td>
+              <td className="py-3 font-mono text-xs text-lyra-mutedDim">{a.program_id}</td>
             </tr>
           ))}
         </tbody>

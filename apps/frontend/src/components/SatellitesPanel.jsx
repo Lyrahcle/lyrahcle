@@ -17,19 +17,19 @@ export default function SatellitesPanel({ satellites }) {
       <table className="w-full text-left text-sm">
         <thead>
           <tr className="border-b border-lyra-borderSoft">
-            <th className="pb-2 text-[10px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+            <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
               Satellite
             </th>
-            <th className="pb-2 text-[10px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+            <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
               NORAD ID
             </th>
-            <th className="pb-2 text-[10px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+            <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
               Latitude
             </th>
-            <th className="pb-2 text-[10px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+            <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
               Longitude
             </th>
-            <th className="pb-2 text-[10px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+            <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
               Altitude
             </th>
           </tr>
@@ -37,15 +37,15 @@ export default function SatellitesPanel({ satellites }) {
         <tbody>
           {satellites.map((s) => (
             <tr key={s.id} className="border-b border-lyra-borderSoft/60 last:border-0">
-              <td className="py-2.5 text-lyra-goldBright">{s.name}</td>
-              <td className="py-2.5 font-mono text-xs text-lyra-mutedDim">{s.norad_id}</td>
-              <td className="py-2.5 font-mono text-lyra-text">
+              <td className="py-3 text-lyra-goldBright">{s.name}</td>
+              <td className="py-3 font-mono text-xs text-lyra-mutedDim">{s.norad_id}</td>
+              <td className="py-3 font-mono text-lyra-text">
                 {s.position ? `${s.position.latitude_deg.toFixed(2)}°` : '—'}
               </td>
-              <td className="py-2.5 font-mono text-lyra-text">
+              <td className="py-3 font-mono text-lyra-text">
                 {s.position ? `${s.position.longitude_deg.toFixed(2)}°` : '—'}
               </td>
-              <td className="py-2.5 font-mono text-lyra-text">
+              <td className="py-3 font-mono text-lyra-text">
                 {s.position ? `${s.position.altitude_km.toFixed(0)} km` : '—'}
               </td>
             </tr>

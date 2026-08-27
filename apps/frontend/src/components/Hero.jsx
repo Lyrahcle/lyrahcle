@@ -8,22 +8,22 @@ export default function Hero({ backendStatus, dbStatus, sdrStatus }) {
     <div className="relative overflow-hidden border-b border-lyra-borderSoft">
       <OrbitRings />
 
-      <div className="relative mx-auto max-w-6xl px-6 py-12 text-center sm:px-8 sm:py-16">
-        <div className="mx-auto mb-6 h-14 w-14 sm:h-16 sm:w-16">
-          <LogoMark className="h-14 w-14 sm:h-16 sm:w-16" />
+      <div className="relative mx-auto max-w-7xl px-6 py-14 text-center sm:px-8 sm:py-20">
+        <div className="mx-auto mb-7 h-16 w-16 sm:h-20 sm:w-20">
+          <LogoMark className="h-16 w-16 sm:h-20 sm:w-20" />
         </div>
 
-        <h1 className="font-display text-2xl font-semibold text-lyra-goldBright sm:text-3xl">
+        <h1 className="font-display text-3xl font-semibold text-lyra-goldBright sm:text-4xl">
           Lyrahcle
         </h1>
-        <p className="mt-2 font-mono text-[11px] uppercase tracking-[0.3em] text-lyra-muted">
+        <p className="mt-2 font-mono text-xs uppercase tracking-[0.3em] text-lyra-muted">
           Constellation Analytics
         </p>
-        <p className="mx-auto mt-4 max-w-md text-sm italic text-lyra-mutedDim">
+        <p className="mx-auto mt-4 max-w-lg text-base italic text-lyra-mutedDim">
           Never Lies. Mission telemetry for space infrastructure security.
         </p>
 
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+        <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
           <StatusPill label={`Backend · ${backendStatus}`} tone={toneFor(backendStatus)} />
           <StatusPill label={`Database · ${dbStatus}`} tone={toneFor(dbStatus)} />
           <StatusPill label={`SDR agent · ${sdrStatus}`} tone={toneFor(sdrStatus)} />
