@@ -49,10 +49,10 @@ export default function WorldMap({ satellites }) {
       {markers.map((m) => (
         <div
           key={m.id}
-          className="group absolute -translate-x-1/2 -translate-y-1/2"
+          className="group absolute z-0 -translate-x-1/2 -translate-y-1/2 hover:z-30 focus-within:z-30"
           style={{ left: `${m.leftPct}%`, top: `${m.topPct}%` }}
         >
-          <span className="absolute inset-0 -m-1.5 motion-safe:animate-ping rounded-full bg-lyra-gold/40" />
+          <span className="pointer-events-none absolute inset-0 -m-1.5 motion-safe:animate-ping rounded-full bg-lyra-gold/40" />
           <span className="relative block h-2 w-2 rounded-full bg-lyra-goldBright shadow-[0_0_6px_rgba(240,217,168,0.8)]" />
 
           <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 w-max -translate-x-1/2 rounded border border-lyra-border bg-lyra-panel px-3 py-2 opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">

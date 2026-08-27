@@ -30,3 +30,4 @@ Format based on [Keep a Changelog](https://keepachangelog.com/), using
 - Responsive/accessibility polish: horizontal scroll for data tables on narrow screens (no more cramped/wrapped columns), visible focus rings on tabs, `motion-safe` guards on all pulse/spin animations, tighter mobile spacing, meta description and theme-color
 - Dashboard screenshot added to README
 - Palette change: neutral graphite/black background (previously deep purple) with gold as the sole accent; centered README header, logo, and screenshot
+- Fixed world map marker stacking: hovered satellite tooltip now renders above other nearby markers instead of being covered
