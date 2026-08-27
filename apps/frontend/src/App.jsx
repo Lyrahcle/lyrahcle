@@ -1,15 +1,17 @@
 import { useEffect, useState } from 'react'
-import { Database, Radio, Server } from 'lucide-react'
+import { Database, Radio, Server, Satellite } from 'lucide-react'
 import Header from './components/Header.jsx'
 import StatCard from './components/StatCard.jsx'
 import Panel from './components/Panel.jsx'
 import AssetsTable from './components/AssetsTable.jsx'
 import RfPanel from './components/RfPanel.jsx'
-import { fetchAssets, fetchPing, fetchRfReadings } from './lib/api.js'
+import SatellitesPanel from './components/SatellitesPanel.jsx'
+import { fetchAssets, fetchPing, fetchRfReadings, fetchSatellites } from './lib/api.js'
 
 function App() {
   const [assets, setAssets] = useState([])
   const [rfReadings, setRfReadings] = useState([])
+  const [satellites, setSatellites] = useState([])
   const [backendStatus, setBackendStatus] = useState('checking')
   const [error, setError] = useState(null)
 
@@ -25,6 +27,10 @@ function App() {
     fetchRfReadings()
       .then((data) => setRfReadings(data ?? []))
       .catch(() => {})
+
+    fetchSatellites()
+      .then((data) => setSatellites(data ?? []))
+      .catch(() => {})
   }, [])
 
   return (
@@ -32,13 +38,18 @@ function App() {
       <Header backendStatus={backendStatus} />
 
       <main className="mx-auto max-w-6xl px-8 py-10">
-        <div className="mb-8 grid grid-cols-3 gap-4">
+        <div className="mb-8 grid grid-cols-4 gap-4">
           <StatCard icon={Server} label="Backend status" value={backendStatus} accent="good" />
           <StatCard icon={Database} label="Assets tracked" value={assets.length} accent="gold" />
           <StatCard icon={Radio} label="RF readings" value={rfReadings.length} accent="neutral" />
+          <StatCard icon={Satellite} label="Satellites" value={satellites.length} accent="gold" />
         </div>
 
         <div className="grid gap-6">
+          <Panel eyebrow="Orbital Tracking" title="Tracked satellites">
+            <SatellitesPanel satellites={satellites} />
+          </Panel>
+
           <Panel eyebrow="Asset Inventory" title="Tracked assets">
             {error ? (
               <p className="text-sm text-lyra-bad">{error}</p>

@@ -15,7 +15,7 @@ Maintained by [mlko01](https://github.com/mlko01) — contact: manu.cibersegurid
 
 ## Status
 
-🚧 Early development — Phase 5 (SDR edge agent with mock capture, RF ingest endpoint, mission-console dashboard).
+🚧 Early development — Phase 6 (orbital tracking: TLE + SGP4 propagation, satellite panel).
 
 ## Repository layout
 

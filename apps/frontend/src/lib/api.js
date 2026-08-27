@@ -15,3 +15,9 @@ export async function fetchRfReadings() {
   if (!res.ok) throw new Error('failed to fetch rf readings')
   return res.json()
 }
+
+export async function fetchSatellites() {
+  const res = await fetch('/api/v1/satellites/')
+  if (!res.ok) throw new Error('failed to fetch satellites')
+  return res.json()
+}

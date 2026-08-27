@@ -11,6 +11,7 @@ import (
 
 	"github.com/mlko01/lyrahcle/apps/backend/internal/config"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/db"
+	"github.com/mlko01/lyrahcle/apps/backend/internal/orbit"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/scheduler"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/store"
 )
@@ -32,6 +33,7 @@ func main() {
 
 	assets := store.NewAssetStore(pool)
 	rf := store.NewRFStore(pool)
+	satellites := store.NewSatelliteStore(pool)
 
 	sched := scheduler.New()
 	_ = sched.Every("0 */6 * * *", "recon-sweep", func() {
@@ -86,6 +88,51 @@ func main() {
 				}
 				w.Header().Set("Content-Type", "application/json")
 				json.NewEncoder(w).Encode(list)
+			})
+		})
+
+		r.Route("/satellites", func(r chi.Router) {
+			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+				list, err := satellites.List(r.Context())
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+
+				type satWithPos struct {
+					store.Satellite
+					Position *orbit.Position `json:"position,omitempty"`
+				}
+
+				out := make([]satWithPos, 0, len(list))
+				for _, sat := range list {
+					entry := satWithPos{Satellite: sat}
+					if pos, err := orbit.CurrentPosition(sat.TLELine1, sat.TLELine2); err == nil {
+						entry.Position = &pos
+					}
+					out = append(out, entry)
+				}
+
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(out)
+			})
+
+			r.Post("/", func(w http.ResponseWriter, r *http.Request) {
+				var body struct {
+					NoradID int    `json:"norad_id"`
+					Name    string `json:"name"`
+					Line1   string `json:"tle_line1"`
+					Line2   string `json:"tle_line2"`
+				}
+				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+				if err := satellites.Upsert(r.Context(), body.NoradID, body.Name, body.Line1, body.Line2); err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+				w.WriteHeader(http.StatusCreated)
 			})
 		})
 	})
