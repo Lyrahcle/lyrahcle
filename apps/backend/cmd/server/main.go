@@ -33,7 +33,6 @@ func main() {
 	assets := store.NewAssetStore(pool)
 
 	sched := scheduler.New()
-	// Placeholder recon sweep; wire real scanners in Phase 3.x
 	_ = sched.Every("0 */6 * * *", "recon-sweep", func() {
 		log.Println("recon sweep tick (not yet implemented)")
 	})
