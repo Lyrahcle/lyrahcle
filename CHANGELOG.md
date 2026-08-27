@@ -25,3 +25,5 @@ Format based on [Keep a Changelog](https://keepachangelog.com/), using
 - Orbital tracking: `satellites` table, SGP4 propagation via go-satellite (`internal/orbit`), `GET/POST /api/v1/satellites`, dashboard satellites panel
 - Dashboard v2: hero section with animated orbit rings and live subsystem status, tab navigation (Orbital/Assets/Signal), dotted world map with live satellite ground-track pins, 8s auto-refresh polling, loading skeletons
 - Automatic TLE sync from Celestrak (`internal/celestrak`), runs on startup and every 6h via scheduler, configurable via `CELESTRAK_GROUPS`
+- Interactive world map: hover tooltip per satellite (name, NORAD ID, lat/lon, altitude), pulsing marker
+- Expanded README: architecture diagram, env vars, API reference, roadmap checklist
