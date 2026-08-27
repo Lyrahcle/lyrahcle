@@ -16,8 +16,13 @@ Tracked incrementally, one item at a time, before the v1.0.0 release.
       ingestion, to prevent injection and malformed-data issues (`internal/validate`:
       email/password, agent_id, frequency/power/timestamp ranges, NORAD ID, TLE line
       format, AX.25 hex length; 1MB global request body cap)
-- [ ] **Automated test coverage** (unit, integration, fuzzing) for backend, frontend,
-      and decoders before v1.0.0
+- [x] **Automated test coverage** (unit, integration, fuzzing) for backend, frontend,
+      and decoders before v1.0.0 (backend: unit tests for `auth`, `validate`, `tmtc`,
+      `celestrak` — `tmtc` at 100% statement coverage; fuzz tests for the AX.25
+      decoder ran for ~1M executions across both entry points with 0 crashes/panics
+      found; integration tests for `store` against a real Postgres, skip cleanly
+      without `TEST_DATABASE_URL`; frontend: Vitest + Testing Library for components
+      and the API client. CI runs all of it, including a Postgres service container.)
 - [x] **Rate limiting** and abuse protection on the public API (120 req/min per IP
       globally, 10 req/min per IP on `/auth/register` and `/auth/login` to slow down
       credential stuffing/brute force)
@@ -52,4 +57,16 @@ Tracked incrementally, one item at a time, before the v1.0.0 release.
   URLs plus a dev-only `AGENT_INSECURE_SKIP_VERIFY` flag, and
   `scripts/generate-dev-certs.sh` to generate a local cert. Defaults to plain HTTP
   with a startup warning so existing local setups keep working.
-  Next: automated tests (item 4), then per-agent API keys (item 6).
+- 2026-08-27: shipped automated tests. Backend: unit tests for `internal/auth`
+  (password hashing, JWT round-trip, expiry, wrong-secret rejection, role ranking),
+  `internal/validate` (every validator, valid/invalid/malicious cases), `internal/tmtc`
+  (AX.25 round-trip, edge cases — 100% coverage), `internal/celestrak` (TLE parsing).
+  Fuzz tests for both AX.25 decode entry points ran ~1M executions combined with zero
+  panics. Integration tests for `internal/store` against a real Postgres (installed
+  locally to verify, not just mocked) covering upsert idempotency and unique-email
+  handling; they skip cleanly when `TEST_DATABASE_URL` is unset. Frontend: Vitest +
+  Testing Library covering `SignalBar` (tone thresholds, width clamping), `KindBadge`,
+  and the `lib/api.js` fetch wrappers (15 tests, all passing). CI now actually runs
+  build+test+vet for both apps against a real Postgres service container, replacing
+  the previous placeholder steps that silently skipped when files didn't exist yet.
+  Next: per-agent API keys (item 6).

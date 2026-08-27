@@ -188,6 +188,29 @@ by setting `TLS_CERT_FILE`/`TLS_KEY_FILE` directly on the backend.
 | `POST` | `/api/v1/satellites/` | operator+ | Register a satellite by NORAD ID + TLE |
 | `POST` | `/api/v1/tmtc/decode/ax25` | — | Decode a hex-encoded AX.25 UI frame (destination/source callsign+SSID, control, PID, payload) |
 
+## Testing
+
+```bash
+cd apps/backend
+go test ./...                 # unit tests
+go vet ./...
+
+# Integration tests need a real Postgres; they skip cleanly without it.
+export TEST_DATABASE_URL="postgres://lyrahcle:lyrahcle@localhost:5432/lyrahcle_test?sslmode=disable"
+go test ./internal/store/... -v
+
+# Fuzz the AX.25 decoder (run manually; not part of the default CI run).
+go test ./internal/tmtc -fuzz=FuzzDecodeAX25Hex -fuzztime=30s
+```
+
+```bash
+cd apps/frontend
+npm test
+```
+
+CI runs backend build+vet+unit+integration tests (with a Postgres service
+container) and frontend build+tests on every push and pull request.
+
 ## Security
 
 See [SECURITY_ROADMAP.md](./SECURITY_ROADMAP.md) for the short-term hardening plan

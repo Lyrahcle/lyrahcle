@@ -17,6 +17,9 @@ build/
 # Docker
 *.pid
 
+# Go fuzz corpus (regenerated locally, can grow large)
+testdata/fuzz/
+
 # TLS certificates (never commit private keys)
 certs/
 *.pem
