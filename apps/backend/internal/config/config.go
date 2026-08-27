@@ -1,18 +1,23 @@
 package config
 
-import "os"
+import (
+	"os"
+	"strings"
+)
 
 type Config struct {
-	DatabaseURL string
-	RedisURL    string
-	Port        string
+	DatabaseURL     string
+	RedisURL        string
+	Port            string
+	CelestrakGroups []string
 }
 
 func Load() Config {
 	return Config{
-		DatabaseURL: getEnv("DATABASE_URL", "postgres://lyrahcle:lyrahcle@localhost:5432/lyrahcle?sslmode=disable"),
-		RedisURL:    getEnv("REDIS_URL", "localhost:6379"),
-		Port:        getEnv("PORT", "8080"),
+		DatabaseURL:     getEnv("DATABASE_URL", "postgres://lyrahcle:lyrahcle@localhost:5432/lyrahcle?sslmode=disable"),
+		RedisURL:        getEnv("REDIS_URL", "localhost:6379"),
+		Port:            getEnv("PORT", "8080"),
+		CelestrakGroups: strings.Split(getEnv("CELESTRAK_GROUPS", "stations"), ","),
 	}
 }
 

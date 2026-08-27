@@ -15,7 +15,7 @@ Maintained by [mlko01](https://github.com/mlko01) — contact: manu.cibersegurid
 
 ## Status
 
-🚧 Early development — Phase 6 (orbital tracking with mission-console UX: hero, tabs, world map, live polling).
+🚧 Early development — Phase 6 (orbital tracking with live Celestrak TLE sync, mission-console UX).
 
 ## Repository layout
 

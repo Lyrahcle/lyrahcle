@@ -11,6 +11,7 @@ services:
     environment:
       - DATABASE_URL=postgres://lyrahcle:lyrahcle@postgres:5432/lyrahcle?sslmode=disable
       - REDIS_URL=redis:6379
+      - CELESTRAK_GROUPS=stations
 
   frontend:
     build:

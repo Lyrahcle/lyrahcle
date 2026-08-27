@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
+	"github.com/mlko01/lyrahcle/apps/backend/internal/celestrak"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/config"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/db"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/orbit"
@@ -39,8 +41,13 @@ func main() {
 	_ = sched.Every("0 */6 * * *", "recon-sweep", func() {
 		log.Println("recon sweep tick (not yet implemented)")
 	})
+	_ = sched.Every("0 */6 * * *", "tle-sync", func() {
+		syncTLEs(ctx, cfg.CelestrakGroups, satellites)
+	})
 	sched.Start()
 	defer sched.Stop()
+
+	syncTLEs(ctx, cfg.CelestrakGroups, satellites)
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
@@ -140,5 +147,28 @@ func main() {
 	log.Printf("lyrahcle backend listening on :%s", cfg.Port)
 	if err := http.ListenAndServe(":"+cfg.Port, r); err != nil {
 		log.Fatal(err)
+	}
+}
+
+func syncTLEs(ctx context.Context, groups []string, satellites *store.SatelliteStore) {
+	for _, group := range groups {
+		group = strings.TrimSpace(group)
+		if group == "" {
+			continue
+		}
+
+		entries, err := celestrak.FetchGroup(group)
+		if err != nil {
+			log.Printf("tle-sync: fetch group %q: %v", group, err)
+			continue
+		}
+
+		for _, e := range entries {
+			if err := satellites.Upsert(ctx, e.NoradID, e.Name, e.Line1, e.Line2); err != nil {
+				log.Printf("tle-sync: upsert %d (%s): %v", e.NoradID, e.Name, err)
+			}
+		}
+
+		log.Printf("tle-sync: synced %d satellites from group %q", len(entries), group)
 	}
 }
