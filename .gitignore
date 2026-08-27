@@ -17,6 +17,12 @@ build/
 # Docker
 *.pid
 
+# TLS certificates (never commit private keys)
+certs/
+*.pem
+*.key
+*.crt
+
 # IDE
 .vscode/
 .idea/

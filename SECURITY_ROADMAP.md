@@ -5,7 +5,13 @@ Tracked incrementally, one item at a time, before the v1.0.0 release.
 - [x] **Authentication & authorization** — users, roles, tokens; protect sensitive
       endpoints like `/rf/ingest` and `/satellites/` (JWT + bcrypt + role hierarchy
       shipped; admin-managed role promotion and per-agent API keys still pending)
-- [ ] **TLS/HTTPS** across all frontend/backend/sdr-agent communication
+- [x] **TLS/HTTPS** across all frontend/backend/sdr-agent communication (opt-in:
+      backend serves HTTPS directly when `TLS_CERT_FILE`/`TLS_KEY_FILE` are set,
+      nginx has an HTTPS+redirect config, `sdr-agent` supports `https://` backends
+      and a dev-only cert-skip-verify flag; `scripts/generate-dev-certs.sh`
+      generates a local self-signed cert. Plain HTTP stays the default with a
+      startup warning, matching the `JWT_SECRET` pattern, so local dev isn't
+      broken. Production should prefer a real CA cert via a reverse proxy.)
 - [x] **Strict input validation** on all endpoints, especially AX.25 decoding and RF
       ingestion, to prevent injection and malformed-data issues (`internal/validate`:
       email/password, agent_id, frequency/power/timestamp ranges, NORAD ID, TLE line
@@ -39,4 +45,11 @@ Tracked incrementally, one item at a time, before the v1.0.0 release.
 - 2026-08-27: shipped rate limiting (`go-chi/httprate`) — 120 req/min per IP across
   the whole API, 10 req/min per IP on `/auth/register` and `/auth/login`; verified
   with a standalone test (5-req limit: first 5 requests 200, next 3 return 429).
-  Next: per-agent API keys (item 6), then TLS (item 2).
+- 2026-08-27: shipped opt-in TLS/HTTPS — backend serves HTTPS natively when
+  `TLS_CERT_FILE`/`TLS_KEY_FILE` are set (verified with a real self-signed cert:
+  `curl -k` succeeds, plain `curl` correctly fails on the untrusted cert), an nginx
+  HTTPS+redirect config for the frontend, `sdr-agent` supports `https://` backend
+  URLs plus a dev-only `AGENT_INSECURE_SKIP_VERIFY` flag, and
+  `scripts/generate-dev-certs.sh` to generate a local cert. Defaults to plain HTTP
+  with a startup warning so existing local setups keep working.
+  Next: automated tests (item 4), then per-agent API keys (item 6).

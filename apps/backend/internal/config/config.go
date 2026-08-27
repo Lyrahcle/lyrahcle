@@ -12,6 +12,8 @@ type Config struct {
 	Port            string
 	CelestrakGroups []string
 	JWTSecret       []byte
+	TLSCertFile     string
+	TLSKeyFile      string
 }
 
 func Load() Config {
@@ -28,10 +30,15 @@ func Load() Config {
 		Port:            getEnv("PORT", "8080"),
 		CelestrakGroups: strings.Split(getEnv("CELESTRAK_GROUPS", "stations"), ","),
 		JWTSecret:       []byte(secret),
+		TLSCertFile:     getEnv("TLS_CERT_FILE", ""),
+		TLSKeyFile:      getEnv("TLS_KEY_FILE", ""),
 	}
 
 	if insecureDefault {
 		log.Println("WARNING: JWT_SECRET is not set; using an insecure default. Set JWT_SECRET in production.")
+	}
+	if cfg.TLSCertFile == "" || cfg.TLSKeyFile == "" {
+		log.Println("WARNING: TLS_CERT_FILE/TLS_KEY_FILE not set; serving plain HTTP. Set both to enable HTTPS (see scripts/generate-dev-certs.sh).")
 	}
 
 	return cfg

@@ -2,6 +2,7 @@ package uplink
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -17,12 +18,17 @@ type Client struct {
 	http       *http.Client
 }
 
-func New(backendURL, agentID, authToken string) *Client {
+func New(backendURL, agentID, authToken string, insecureSkipVerify bool) *Client {
+	transport := &http.Transport{}
+	if insecureSkipVerify {
+		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	}
+
 	return &Client{
 		BackendURL: backendURL,
 		AgentID:    agentID,
 		AuthToken:  authToken,
-		http:       &http.Client{Timeout: 5 * time.Second},
+		http:       &http.Client{Timeout: 5 * time.Second, Transport: transport},
 	}
 }
 

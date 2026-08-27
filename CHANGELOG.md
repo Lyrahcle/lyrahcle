@@ -42,3 +42,4 @@ Format based on [Keep a Changelog](https://keepachangelog.com/), using
 - Strict input validation (`internal/validate`) across `/auth/register`, `/auth/login`, `/rf/ingest`, `POST /satellites/`, and `/tmtc/decode/ax25`: bounded frequency/power/timestamp ranges, NORAD ID and TLE line format checks, AX.25 hex length cap, hardened email regex, 1MB global request body limit
 - Rate limiting (`go-chi/httprate`): 120 req/min per IP globally, 10 req/min per IP on `/auth/register` and `/auth/login`
 - Clock now shows the browser's local time and UTC offset instead of a fixed UTC
+- Opt-in TLS/HTTPS: backend can serve HTTPS directly (`TLS_CERT_FILE`/`TLS_KEY_FILE`), nginx gained an HTTPS+redirect config, `sdr-agent` supports `https://` backends with a dev-only cert-skip-verify flag, and `scripts/generate-dev-certs.sh` generates a local self-signed cert; plain HTTP remains the default with a startup warning

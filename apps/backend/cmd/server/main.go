@@ -298,7 +298,15 @@ func main() {
 		})
 	})
 
-	log.Printf("lyrahcle backend listening on :%s", cfg.Port)
+	if cfg.TLSCertFile != "" && cfg.TLSKeyFile != "" {
+		log.Printf("lyrahcle backend listening on :%s (TLS enabled)", cfg.Port)
+		if err := http.ListenAndServeTLS(":"+cfg.Port, cfg.TLSCertFile, cfg.TLSKeyFile, r); err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
+
+	log.Printf("lyrahcle backend listening on :%s (plain HTTP)", cfg.Port)
 	if err := http.ListenAndServe(":"+cfg.Port, r); err != nil {
 		log.Fatal(err)
 	}

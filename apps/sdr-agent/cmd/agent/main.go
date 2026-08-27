@@ -21,15 +21,19 @@ func main() {
 	backendURL := getEnv("BACKEND_URL", "http://backend:8080")
 	agentID := getEnv("AGENT_ID", "sdr-agent-dev")
 	authToken := getEnv("AGENT_TOKEN", "")
+	insecureSkipVerify := getEnv("AGENT_INSECURE_SKIP_VERIFY", "false") == "true"
 	freqHz, _ := strconv.ParseInt(getEnv("FREQUENCY_HZ", "437500000"), 10, 64)
 	intervalSec, _ := strconv.Atoi(getEnv("CAPTURE_INTERVAL_SECONDS", "10"))
 
 	if authToken == "" {
 		log.Println("WARNING: AGENT_TOKEN is not set; the backend will reject RF ingestion until an operator/admin token is provided")
 	}
+	if insecureSkipVerify {
+		log.Println("WARNING: AGENT_INSECURE_SKIP_VERIFY is enabled; TLS certificate verification is OFF. Use only against known self-signed dev certs, never in production.")
+	}
 
 	var source capture.Source = capture.MockSource{}
-	client := uplink.New(backendURL, agentID, authToken)
+	client := uplink.New(backendURL, agentID, authToken, insecureSkipVerify)
 
 	log.Printf("lyrahcle sdr-agent %q starting, target=%s, freq=%d Hz, interval=%ds", agentID, backendURL, freqHz, intervalSec)
 

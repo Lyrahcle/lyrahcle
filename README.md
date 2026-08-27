@@ -135,6 +135,33 @@ For the `sdr-agent` to publish RF readings, give it a token with at least the
 Token-per-agent authentication (API keys, no shared user token) is tracked in the
 security roadmap.
 
+### TLS/HTTPS
+
+Plain HTTP is the default for zero-friction local development (the backend logs a
+warning on every startup while it is). To enable HTTPS end-to-end:
+
+```bash
+./scripts/generate-dev-certs.sh
+```
+
+This creates a self-signed certificate in `./certs` (gitignored). Then in
+`docker-compose.yml`:
+
+- Uncomment the `volumes` and `TLS_CERT_FILE`/`TLS_KEY_FILE` lines under `backend`
+  (and change its port mapping to `8443:8443` with `PORT=8443` if you want the
+  backend directly reachable over HTTPS).
+- Uncomment the `volumes` lines under `frontend` to swap in
+  `deploy/docker/nginx.frontend.tls.conf`, which serves HTTPS on 443 and redirects
+  plain HTTP to it.
+- If `sdr-agent` talks to an HTTPS backend using this self-signed cert, set
+  `AGENT_INSECURE_SKIP_VERIFY=true` for that agent — **local development only**,
+  never against a production backend.
+
+In production, prefer certificates from a trusted CA (Let's Encrypt via
+[Caddy](https://caddyserver.com/) or [Traefik](https://traefik.io/) in front of
+Lyrahcle) over the self-signed dev certificate, and terminate TLS at that proxy or
+by setting `TLS_CERT_FILE`/`TLS_KEY_FILE` directly on the backend.
+
 ### Environment variables (backend)
 
 | Variable | Default | Description |
@@ -144,6 +171,7 @@ security roadmap.
 | `PORT` | `8080` | HTTP listen port |
 | `CELESTRAK_GROUPS` | `stations` | Comma-separated [Celestrak groups](https://celestrak.org/NORAD/elements/) to sync TLEs from |
 | `JWT_SECRET` | *(insecure dev default, logs a warning)* | Secret used to sign auth tokens — set a strong value in any non-local deployment |
+| `TLS_CERT_FILE` / `TLS_KEY_FILE` | *(unset, plain HTTP, logs a warning)* | Paths to a TLS certificate/key to serve HTTPS directly from the backend |
 
 ### API endpoints
 
