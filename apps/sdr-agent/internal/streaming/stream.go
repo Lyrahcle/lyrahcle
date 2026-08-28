@@ -11,25 +11,26 @@ import (
 )
 
 type StreamConfig struct {
-	NumSamples   int
-	BufferSize   int
-	Timeout      time.Duration
-	SaveCapture  bool
-	ReplayFile   string
+	NumSamples  int
+	BufferSize  int
+	Timeout     time.Duration
+	SaveCapture bool
+	ReplayFile  string
 }
 
 type IQData struct {
-	Samples       []complex64
-	Timestamp     time.Time
-	Frequency     uint64
-	SampleRate    uint64
-	Metadata      map[string]string
+	Samples    []complex64
+	Timestamp  time.Time
+	Frequency  uint64
+	SampleRate uint64
+	Metadata   map[string]string
 }
 
 type IQCapture struct {
-	mu       sync.Mutex
-	samples  []complex64
-	metadata map[string]interface{}
+	mu         sync.Mutex
+	samples    []complex64
+	sampleRate uint64
+	metadata   map[string]interface{}
 }
 
 type StreamManager struct {
@@ -107,17 +108,18 @@ func (sm *StreamManager) ReadStream(duration time.Duration) (*IQData, error) {
 	}
 
 	if sm.config.SaveCapture {
-		sm.captureToMemory(samples)
+		sm.captureToMemory(samples, rate)
 	}
 
 	return data, nil
 }
 
-func (sm *StreamManager) captureToMemory(samples []complex64) {
+func (sm *StreamManager) captureToMemory(samples []complex64, sampleRate uint64) {
 	sm.capture.mu.Lock()
 	defer sm.capture.mu.Unlock()
 
 	sm.capture.samples = append(sm.capture.samples, samples...)
+	sm.capture.sampleRate = sampleRate
 	sm.capture.metadata["last_capture"] = time.Now().String()
 	sm.capture.metadata["total_samples"] = len(sm.capture.samples)
 }
@@ -149,21 +151,38 @@ func (sm *StreamManager) exportIQFile() []byte {
 	return buf.Bytes()
 }
 
+// exportWAV encodes the capture as a 2-channel (I, Q), 32-bit IEEE-float
+// PCM WAV file at the capture's actual sample rate — playable in any audio
+// tool that supports float WAV, and importable into most SDR software as
+// a stand-in for a raw IQ file.
 func (sm *StreamManager) exportWAV() []byte {
+	const (
+		numChannels    = 2
+		bitsPerSample  = 32
+		bytesPerSample = bitsPerSample / 8
+	)
+	sampleRate := uint32(sm.capture.sampleRate)
+	if sampleRate == 0 {
+		sampleRate = 2_000_000 // fallback: capture predates sample-rate tracking
+	}
+	blockAlign := uint16(numChannels * bytesPerSample)
+	byteRate := sampleRate * uint32(blockAlign)
+	dataSize := uint32(len(sm.capture.samples) * numChannels * bytesPerSample)
+
 	buf := new(bytes.Buffer)
 	buf.WriteString("RIFF")
-	binary.Write(buf, binary.LittleEndian, uint32(36+len(sm.capture.samples)*8))
+	binary.Write(buf, binary.LittleEndian, uint32(36+dataSize))
 	buf.WriteString("WAVE")
 	buf.WriteString("fmt ")
 	binary.Write(buf, binary.LittleEndian, uint32(16))
-	binary.Write(buf, binary.LittleEndian, uint16(1))
-	binary.Write(buf, binary.LittleEndian, uint16(2))
-	binary.Write(buf, binary.LittleEndian, uint32(2e6))
-	binary.Write(buf, binary.LittleEndian, uint32(2e6*4))
-	binary.Write(buf, binary.LittleEndian, uint16(4))
-	binary.Write(buf, binary.LittleEndian, uint16(32))
+	binary.Write(buf, binary.LittleEndian, uint16(3)) // 3 = IEEE float
+	binary.Write(buf, binary.LittleEndian, uint16(numChannels))
+	binary.Write(buf, binary.LittleEndian, sampleRate)
+	binary.Write(buf, binary.LittleEndian, byteRate)
+	binary.Write(buf, binary.LittleEndian, blockAlign)
+	binary.Write(buf, binary.LittleEndian, uint16(bitsPerSample))
 	buf.WriteString("data")
-	binary.Write(buf, binary.LittleEndian, uint32(len(sm.capture.samples)*8))
+	binary.Write(buf, binary.LittleEndian, dataSize)
 
 	for _, s := range sm.capture.samples {
 		binary.Write(buf, binary.LittleEndian, real(s))

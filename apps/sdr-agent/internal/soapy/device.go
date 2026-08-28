@@ -26,8 +26,8 @@ type Device interface {
 }
 
 type DeviceInfo struct {
-	Driver      string
-	Hardware    string
+	Driver       string
+	Hardware     string
 	Manufacturer string
 	Product      string
 	Serial       string
@@ -48,16 +48,16 @@ type Config struct {
 }
 
 type MockDevice struct {
-	mu              sync.Mutex
-	frequency       uint64
-	sampleRate      uint64
-	gain            float64
-	antenna         string
-	streaming       bool
-	buffer          []complex64
-	info            *DeviceInfo
-	lastReadTime    time.Time
-	simulatedNoise  bool
+	mu             sync.Mutex
+	frequency      uint64
+	sampleRate     uint64
+	gain           float64
+	antenna        string
+	streaming      bool
+	buffer         []complex64
+	info           *DeviceInfo
+	lastReadTime   time.Time
+	simulatedNoise bool
 }
 
 func NewMockDevice() Device {

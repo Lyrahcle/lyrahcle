@@ -23,5 +23,6 @@ are in [CHANGELOG.md](./CHANGELOG.md); this page tracks status only.
 - [x] Backend observability — Prometheus metrics at `/metrics`
 - [x] Automated database backups (`scripts/backup-db.sh`)
 - [x] API pagination on list endpoints
+- [x] IQ capture & forensic playback — record raw IQ to disk, replay a saved capture as historical RF readings
 - [ ] Real SDR hardware integration (RTL-SDR, HackRF) to validate capture
       beyond the mock source
