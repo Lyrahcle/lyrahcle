@@ -148,6 +148,7 @@ const DECODE_ENDPOINTS = {
   ax25: { path: '/api/v1/tmtc/decode/ax25', field: 'frame_hex' },
   ccsds: { path: '/api/v1/tmtc/decode/ccsds', field: 'packet_hex' },
   pus: { path: '/api/v1/tmtc/decode/pus', field: 'packet_hex' },
+  csp: { path: '/api/v1/tmtc/decode/csp', field: 'packet_hex' },
 }
 
 export async function decodeFrame(protocol, hex) {

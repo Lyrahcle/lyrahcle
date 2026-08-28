@@ -57,7 +57,11 @@ Tracked incrementally, one item at a time, before the v1.0.0 release.
       own password. Verified end-to-end: no token → 401, valid login → 200,
       wrong password → 401 (and audited), password change invalidates the
       old password immediately.
-- [ ] **Versioned releases & published packages** (Docker Hub, npm, etc.)
+- [x] **Versioned releases & published packages** — pushing a `v*.*.*` tag builds and
+      publishes all four Docker images (backend, frontend, cve-sync, sdr-agent) to
+      GHCR and cuts a GitHub Release with auto-generated notes; see
+      [RELEASING.md](./RELEASING.md). npm publishing is deferred until `packages/`
+      has actual code in it
 
 ## Status notes
 

@@ -5,6 +5,7 @@ const PROTOCOLS = [
   { id: 'ax25', label: 'AX.25', placeholder: '82a0a4a64040609c60868298986f03f0...' },
   { id: 'ccsds', label: 'CCSDS Space Packet', placeholder: '0864c02a000b54454c454d455452592d4f4b' },
   { id: 'pus', label: 'PUS', placeholder: '0941c22b00141003190fa10007484b2d...' },
+  { id: 'csp', label: 'CSP', placeholder: '5012bf0154454d503d32312e34' },
 ]
 
 export default function Decoder() {

@@ -156,6 +156,12 @@ func CCSDSPacketHex(packetHex string) error {
 	return HexFrame(packetHex, maxCCSDSPacketHexLen)
 }
 
+const maxCSPPacketHexLen = 8192
+
+func CSPPacketHex(packetHex string) error {
+	return HexFrame(packetHex, maxCSPPacketHexLen)
+}
+
 func HexFrame(value string, maxLen int) error {
 	value = strings.TrimSpace(value)
 	if value == "" {

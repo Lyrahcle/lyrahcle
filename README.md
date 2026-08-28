@@ -24,7 +24,7 @@
 <p align="center">
   <img src="./docs/screenshots/dashboard.png" alt="Lyrahcle dashboard" width="820" />
   <br />
-  <sub><i>Orbital tracking tab with example data.</i></sub>
+  <sub><i>Orbital tracking tab, redesigned status strip and account menu (mock data).</i></sub>
 </p>
 
 ## Documentation map
@@ -39,6 +39,7 @@ deeper:
 | [CONTRIBUTING.md](./CONTRIBUTING.md) | Local dev setup, coding conventions, testing, PR workflow |
 | [SECURITY.md](./SECURITY.md) | Vulnerability disclosure policy |
 | [SECURITY_ROADMAP.md](./SECURITY_ROADMAP.md) | Short-term hardening plan and what's already shipped |
+| [RELEASING.md](./RELEASING.md) | Versioning policy and how to cut a release (Docker images to GHCR) |
 | [PLAN.md](./PLAN.md) | Full original development plan and long-term roadmap |
 
 ## Status
@@ -52,7 +53,7 @@ the full roadmap.
 - [x] Phase 4 — Branded dashboard
 - [x] Phase 5 — SDR edge agent, RF ingest
 - [x] Phase 6 — Orbital tracking (SGP4, live Celestrak TLE sync, interactive world map)
-- [ ] Phase 7 — TM/TC protocol decoding, ground station & firmware modules (AX.25, CCSDS Space Packet, and PUS decoders shipped; space-CVE threat-intel feed shipped; CubeSat Space Protocol and anomaly detection still pending)
+- [ ] Phase 7 — TM/TC protocol decoding, ground station & firmware modules (AX.25, CCSDS Space Packet, PUS, and CSP decoders shipped; space-CVE threat-intel feed shipped; anomaly detection still pending)
 - [ ] Phase 8 — Test coverage, hardening, v1.0.0 release
 - [ ] Phase 9 — Enterprise modules (advanced RF, proprietary decoders, SIEM integrations)
 
@@ -65,6 +66,9 @@ the full roadmap.
   and plotted on an interactive world map with hover detail.
 - **RF signal intelligence** — an edge `sdr-agent` streams spectrum readings to the
   backend; the dashboard shows live signal-strength meters per reading.
+- **TM/TC protocol decoding** — paste a hex frame/packet in the Decoder tab and
+  get back the parsed fields for AX.25, CCSDS Space Packet, PUS, or CubeSat
+  Space Protocol (CSP v1).
 - **Mission-console dashboard** — React + Tailwind, dark purple/gold identity, tab
   navigation, live subsystem status, 8s auto-refresh.
 
@@ -266,6 +270,7 @@ every service (including `cve-sync`, `sdr-agent`, and Docker Compose).
 | `POST` | `/api/v1/tmtc/decode/ax25` | — | Decode a hex-encoded AX.25 UI frame (destination/source callsign+SSID, control, PID, payload) |
 | `POST` | `/api/v1/tmtc/decode/ccsds` | — | Decode a hex-encoded CCSDS Space Packet (version, TM/TC type, secondary header flag, APID, sequence flags/count, payload) |
 | `POST` | `/api/v1/tmtc/decode/pus` | — | Decode a hex-encoded PUS packet (CCSDS header fields + PUS version, service type/subtype, message counter, destination ID, payload) |
+| `POST` | `/api/v1/tmtc/decode/csp` | — | Decode a hex-encoded CubeSat Space Protocol (CSP v1) packet (priority, source/destination, source/destination port, HMAC/XTEA/RDP/CRC flags, payload) |
 | `GET` | `/api/v1/threat-intel/space-cves` | viewer+ | List space-related CVEs synced from the NVD (auto-updates daily) |
 
 ## Testing
