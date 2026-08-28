@@ -86,10 +86,21 @@ should prefer them:
 ## Database
 
 - Migrations run automatically on backend startup (`db.Migrate`, applying
-  everything under `apps/backend/migrations/` in order). There's no separate
-  migration step to remember.
-- Back up with standard `pg_dump`/`pg_restore`; nothing Lyrahcle-specific is
-  required. There's no built-in backup scheduling yet.
+  everything under `apps/backend/migrations/` in order, tracked in a
+  `schema_migrations` table so each file only runs once).
+- Back up with `scripts/backup-db.sh` — dumps and gzips the database (via
+  `docker compose exec postgres pg_dump` if Compose is running, or `pg_dump`
+  against `$DATABASE_URL` directly otherwise), then prunes anything older
+  than `$RETENTION_DAYS` (default 14). Verified end-to-end: dump → restore
+  into a clean database → all tables present.
+
+  ```bash
+  ./scripts/backup-db.sh                          # writes to ./backups/
+  BACKUP_DIR=/mnt/backups RETENTION_DAYS=30 ./scripts/backup-db.sh
+  ```
+
+  Run it on a schedule with cron or a systemd timer; it isn't scheduled by
+  Lyrahcle itself. To restore: `gunzip -c backups/lyrahcle-<timestamp>.sql.gz | psql "$DATABASE_URL"`.
 - The `pgdata` named volume in `docker-compose.yml` is where data lives for
   the single-host setup — make sure your host's volume backups actually
   include it.
@@ -100,6 +111,10 @@ should prefer them:
   orchestrator's health check or an uptime monitor at it.
 - `GET /api/v1/ping` — confirms the API layer (not just the process) is
   responding.
+- `GET /metrics` — Prometheus metrics (request count and latency histograms
+  by method/route/status). Already wired into `deploy/prometheus/prometheus.yml`
+  (scraped every 15s) when running via Docker Compose; `cve-sync` exposes its
+  own `/metrics` on port 9091 the same way.
 - Backend logs (`docker compose logs backend` or your platform's log
   aggregation) include startup warnings for every insecure default that's
   still active (`JWT_SECRET`, TLS) — treat those as an actionable checklist,

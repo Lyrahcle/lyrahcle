@@ -31,7 +31,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version: 'stable'
       - name: Build
         run: go build ./...
       - name: Unit tests
@@ -39,9 +39,38 @@ jobs:
       - name: Integration tests
         env:
           TEST_DATABASE_URL: postgres://lyrahcle:lyrahcle@localhost:5432/lyrahcle_test?sslmode=disable
-        run: go test ./internal/store/... -v
+        run: |
+          go test ./internal/store/... -v
+          go test ./cmd/server/... -v
       - name: Vet
         run: go vet ./...
+      - name: Vulnerability scan (govulncheck)
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
+
+  other-go-modules:
+    name: Build & vet (${{ matrix.module }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        module: [cve-sync, sdr-agent]
+    defaults:
+      run:
+        working-directory: apps/${{ matrix.module }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+      - name: Build
+        run: go build ./...
+      - name: Vet
+        run: go vet ./...
+      - name: Vulnerability scan (govulncheck)
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
 
   frontend:
     name: Frontend (Node)
@@ -60,6 +89,8 @@ jobs:
         run: npm test
       - name: Build
         run: npm run build
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
 
   docker-build:
     name: Docker build check

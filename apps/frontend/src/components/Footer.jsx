@@ -43,6 +43,14 @@ export default function Footer() {
               <li>
                 <a
                   className="outline-none transition-colors hover:text-lyra-goldBright focus-visible:text-lyra-goldBright"
+                  href="https://github.com/mlko01/lyrahcle/blob/main/SECURITY_ROADMAP.md"
+                >
+                  Security roadmap
+                </a>
+              </li>
+              <li>
+                <a
+                  className="outline-none transition-colors hover:text-lyra-goldBright focus-visible:text-lyra-goldBright"
                   href="https://github.com/mlko01/lyrahcle/blob/main/SECURITY.md"
                 >
                   Security policy
@@ -80,9 +88,17 @@ export default function Footer() {
               Platform
             </p>
             <ul className="mt-3 space-y-2 text-sm text-lyra-muted">
-              <li className="flex items-center gap-2">
+              <li className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-wider text-lyra-mutedDim">
                 <span className="h-1.5 w-1.5 rounded-full bg-lyra-good" />
                 Open core · AGPLv3
+              </li>
+              <li>
+                <a
+                  className="outline-none transition-colors hover:text-lyra-goldBright focus-visible:text-lyra-goldBright"
+                  href="https://github.com/mlko01/lyrahcle/blob/main/RELEASING.md"
+                >
+                  Releasing
+                </a>
               </li>
               <li>
                 <a
@@ -109,7 +125,7 @@ export default function Footer() {
             © {year} Lyrahcle. Core licensed under AGPLv3.
           </p>
           <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-lyra-mutedDim">
-            Phase 7 · TM/TC Decoding
+            Phase 8 · Hardening &amp; v1.0 Prep
           </p>
         </div>
       </div>
