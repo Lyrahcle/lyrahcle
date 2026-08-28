@@ -60,3 +60,12 @@ Format based on [Keep a Changelog](https://keepachangelog.com/), using
 - `GET /api/v1/agent-keys/` to list issued agent keys (previously create/revoke only, no listing)
 - Frontend: "+ New asset" form (with inline program creation), "+ Register satellite" form, and a new Admin tab (agent key issue/revoke, live audit log) — all role-gated, verified viewers don't see them
 - README screenshot updated to reflect the redesigned dashboard (slim status strip, 6 tabs including Admin, edge-to-edge map, action buttons)
+- Auth UI completed: registration screen and a "change password" flow (header user menu) — previously `POST /auth/register` and `POST /auth/change-password` only existed as raw API calls
+- **Architecture decision: `apps/cve-sync` is now the sole writer of `space_cves`.** Removed the backend's duplicate in-process sync (`internal/threatintel`, the `space-cve-sync` cron job, and the startup goroutine) — two independent workers were racing to upsert the same table. `apps/cve-sync` was kept because it has NVD sync incremental tracking, a Redis dedup cache, and Prometheus metrics; the backend now only reads the table via `GET /api/v1/threat-intel/space-cves`. `SPACE_CVE_KEYWORDS` is no longer a backend env var
+- Removed `TIER1_IMPLEMENTATION.md` (superseded by `docker-compose.yml`, the migrations, and this changelog)
+- Added `.env.example` documenting every environment variable across all services
+- Production safety check: the backend now refuses to start (instead of only logging a warning) when `ENV=production` and `JWT_SECRET`, `SEED_ADMIN_PASSWORD`, or TLS are still on insecure defaults
+- User role administration: `GET /api/v1/users/`, `PATCH /api/v1/users/{userID}/role` (admin-only, blocks demoting the last remaining admin, audit-logged), plus a "Users & roles" panel in the Admin tab — previously the only way to promote/demote a user was editing the `users` table by hand
+- Clarified in the README that `packages/` and `enterprise/` are unimplemented placeholders, not existing structure
+- Fixed audit-log IP capture: `clientIP()` previously read `RemoteAddr`, which behind the nginx reverse proxy is always the proxy's own address; it now prefers `X-Real-IP`/`X-Forwarded-For`
+- Redesigned Header (user menu with role badge, change password, sign out) and Footer (platform/changelog/contributing links) to the existing graphite/gold visual language

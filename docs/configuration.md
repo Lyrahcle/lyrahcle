@@ -17,6 +17,7 @@ page is the complete cross-service reference.
 | `TLS_KEY_FILE` | unset | recommended | Path to the matching TLS private key |
 | `SEED_ADMIN_EMAIL` | `admin` | **yes, before first boot** | Bootstrap admin account email/username, only used if no users exist yet |
 | `SEED_ADMIN_PASSWORD` | `admin` | **yes, before first boot** | Bootstrap admin account password — `admin`/`admin` is a well-known default; rotate it via `POST /auth/change-password` immediately after first login if you didn't override this |
+| `ENV` | `development` | **yes** | Set to `production` to enable a startup safety check: the backend refuses to start if `JWT_SECRET`, `SEED_ADMIN_PASSWORD`, or TLS are still on their insecure defaults, instead of just logging a warning |
 
 ## frontend (`apps/frontend`, served by nginx in the container)
 
@@ -41,7 +42,26 @@ proxied. Change `proxy_pass` there if the backend isn't reachable at
 
 ## cve-sync (`apps/cve-sync`)
 
-Placeholder service, not yet implemented — no configuration surface yet.
+The single source of truth for the space-CVE feed (`space_cves` table). Runs as
+its own worker with a Redis-backed dedup cache and Prometheus metrics — the
+backend only reads this table (`GET /api/v1/threat-intel/space-cves`) and never
+writes to it. See [CHANGELOG.md](../CHANGELOG.md) for why the backend's earlier,
+duplicate in-process sync was removed.
+
+| Variable | Default | Description |
+|---|---|---|
+| `DATABASE_URL` | `postgres://lyrahcle:lyrahcle@localhost:5432/lyrahcle` | Postgres connection string |
+| `REDIS_ADDR` | `localhost:6379` | Redis address, used to skip re-fetching a keyword that was synced recently |
+| `PROMETHEUS_PORT` | `9091` | Port the `/metrics` endpoint is served on |
+| `SYNC_INTERVAL_SEC` | `3600` | Seconds between sync cycles |
+| `NVD_RESULTS_PER_PAGE` | `100` | Results requested per page from the NVD API |
+| `NVD_RATE_LIMIT_PER_MIN` | `10` | Client-side rate limit applied to NVD API calls |
+| `LOG_LEVEL` | `info` | Log verbosity |
+| `ENVIRONMENT` | `development` | Free-text environment label included in worker logs |
+
+Sync keywords (`satellite`, `space`, `RF`, `TM/TC`, `firmware`, `orbit`) are
+currently fixed in code (`apps/cve-sync/internal/config/config.go`), not an
+environment variable.
 
 ## docker-compose
 

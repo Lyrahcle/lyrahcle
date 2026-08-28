@@ -207,6 +207,70 @@ func TestUserStoreCount(t *testing.T) {
 	}
 }
 
+func TestUserStoreListAndUpdateRoleAndCountAdmins(t *testing.T) {
+	pool := testPool(t)
+	ctx := context.Background()
+	store := NewUserStore(pool)
+
+	admin, err := store.Create(ctx, "admin@example.com", "hash", "admin")
+	if err != nil {
+		t.Fatalf("Create admin returned error: %v", err)
+	}
+	viewer, err := store.Create(ctx, "viewer@example.com", "hash", "viewer")
+	if err != nil {
+		t.Fatalf("Create viewer returned error: %v", err)
+	}
+
+	list, err := store.List(ctx)
+	if err != nil {
+		t.Fatalf("List returned error: %v", err)
+	}
+	if len(list) != 2 {
+		t.Fatalf("List returned %d users, want 2", len(list))
+	}
+
+	adminCount, err := store.CountAdmins(ctx)
+	if err != nil {
+		t.Fatalf("CountAdmins returned error: %v", err)
+	}
+	if adminCount != 1 {
+		t.Fatalf("CountAdmins = %d, want 1", adminCount)
+	}
+
+	updated, err := store.UpdateRole(ctx, viewer.ID, "operator")
+	if err != nil {
+		t.Fatalf("UpdateRole returned error: %v", err)
+	}
+	if updated.Role != "operator" {
+		t.Errorf("UpdateRole result role = %q, want %q", updated.Role, "operator")
+	}
+
+	fetched, err := store.GetByID(ctx, viewer.ID)
+	if err != nil {
+		t.Fatalf("GetByID returned error: %v", err)
+	}
+	if fetched.Role != "operator" {
+		t.Errorf("GetByID after UpdateRole role = %q, want %q", fetched.Role, "operator")
+	}
+
+	if _, err := store.UpdateRole(ctx, admin.ID, "viewer"); err != nil {
+		t.Fatalf("UpdateRole on last admin returned error: %v", err)
+	}
+	adminCount, err = store.CountAdmins(ctx)
+	if err != nil {
+		t.Fatalf("CountAdmins returned error: %v", err)
+	}
+	if adminCount != 0 {
+		t.Fatalf("CountAdmins after demoting the only admin = %d, want 0 (the handler layer, not the store, enforces keeping one admin)", adminCount)
+	}
+
+	randomID := admin.ID
+	randomID[0] ^= 0xFF
+	if _, err := store.UpdateRole(ctx, randomID, "admin"); err != ErrUserNotFound {
+		t.Errorf("UpdateRole for missing user: err = %v, want ErrUserNotFound", err)
+	}
+}
+
 func TestAgentKeyStoreCreateAndLookup(t *testing.T) {
 	pool := testPool(t)
 	ctx := context.Background()

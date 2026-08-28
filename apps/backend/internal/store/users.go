@@ -89,6 +89,47 @@ func (s *UserStore) UpdatePassword(ctx context.Context, id uuid.UUID, newHash st
 	return nil
 }
 
+func (s *UserStore) List(ctx context.Context) ([]User, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT id, email, password_hash, role FROM users ORDER BY created_at ASC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []User
+	for rows.Next() {
+		var u User
+		if err := rows.Scan(&u.ID, &u.Email, &u.PasswordHash, &u.Role); err != nil {
+			return nil, err
+		}
+		out = append(out, u)
+	}
+	return out, rows.Err()
+}
+
+func (s *UserStore) UpdateRole(ctx context.Context, id uuid.UUID, role string) (User, error) {
+	var u User
+	err := s.pool.QueryRow(ctx, `
+		UPDATE users SET role = $1 WHERE id = $2
+		RETURNING id, email, password_hash, role
+	`, role, id).Scan(&u.ID, &u.Email, &u.PasswordHash, &u.Role)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return User{}, ErrUserNotFound
+		}
+		return User{}, err
+	}
+	return u, nil
+}
+
+func (s *UserStore) CountAdmins(ctx context.Context) (int, error) {
+	var count int
+	err := s.pool.QueryRow(ctx, `SELECT count(*) FROM users WHERE role = 'admin'`).Scan(&count)
+	return count, err
+}
+
 func isUniqueViolation(err error) bool {
 	var pgErr *pgconn.PgError
 	return errors.As(err, &pgErr) && pgErr.Code == "23505"

@@ -22,7 +22,6 @@ import (
 	"github.com/mlko01/lyrahcle/apps/backend/internal/orbit"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/scheduler"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/store"
-	"github.com/mlko01/lyrahcle/apps/backend/internal/threatintel"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/tmtc"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/validate"
 )
@@ -62,14 +61,10 @@ func main() {
 	_ = sched.Every("0 */6 * * *", "tle-sync", func() {
 		syncTLEs(ctx, cfg.CelestrakGroups, satellites)
 	})
-	_ = sched.Every("0 4 * * *", "space-cve-sync", func() {
-		syncSpaceCVEs(ctx, cfg.SpaceCVEKeywords, spaceCVEs)
-	})
 	sched.Start()
 	defer sched.Stop()
 
 	go syncTLEs(ctx, cfg.CelestrakGroups, satellites)
-	go syncSpaceCVEs(ctx, cfg.SpaceCVEKeywords, spaceCVEs)
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
@@ -300,6 +295,75 @@ func main() {
 				logAudit(r.Context(), auditLog, audit.ActorUser, user.ID.String(), audit.ActionPasswordChanged, clientIP(r), map[string]interface{}{"email": user.Email})
 
 				w.WriteHeader(http.StatusNoContent)
+			})
+		})
+
+		r.Route("/users", func(r chi.Router) {
+			r.Use(auth.RequireRole(cfg.JWTSecret, auth.RoleAdmin))
+
+			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+				list, err := users.List(r.Context())
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(list)
+			})
+
+			r.Patch("/{userID}/role", func(w http.ResponseWriter, r *http.Request) {
+				userID, err := uuid.Parse(chi.URLParam(r, "userID"))
+				if err != nil {
+					http.Error(w, "userID must be a valid UUID", http.StatusBadRequest)
+					return
+				}
+
+				var body struct {
+					Role string `json:"role"`
+				}
+				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+					http.Error(w, "invalid JSON body", http.StatusBadRequest)
+					return
+				}
+				if !auth.ValidRole(body.Role) {
+					http.Error(w, "role must be one of: viewer, operator, admin", http.StatusBadRequest)
+					return
+				}
+
+				target, err := users.GetByID(r.Context(), userID)
+				if err != nil {
+					if err == store.ErrUserNotFound {
+						http.Error(w, "user not found", http.StatusNotFound)
+						return
+					}
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+
+				if target.Role == string(auth.RoleAdmin) && body.Role != string(auth.RoleAdmin) {
+					adminCount, err := users.CountAdmins(r.Context())
+					if err != nil {
+						http.Error(w, err.Error(), http.StatusInternalServerError)
+						return
+					}
+					if adminCount <= 1 {
+						http.Error(w, "cannot demote the last remaining admin", http.StatusConflict)
+						return
+					}
+				}
+
+				updated, err := users.UpdateRole(r.Context(), userID, body.Role)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+
+				if claims, ok := auth.FromContext(r.Context()); ok {
+					logAudit(r.Context(), auditLog, audit.ActorUser, claims.UserID.String(), audit.ActionRoleChanged, clientIP(r), map[string]interface{}{"target_user_id": updated.ID.String(), "target_email": updated.Email, "new_role": updated.Role})
+				}
+
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(map[string]string{"id": updated.ID.String(), "email": updated.Email, "role": updated.Role})
 			})
 		})
 
@@ -632,36 +696,6 @@ func syncTLEs(ctx context.Context, groups []string, satellites *store.SatelliteS
 		}
 
 		log.Printf("tle-sync: synced %d satellites from group %q", len(entries), group)
-	}
-}
-
-func syncSpaceCVEs(ctx context.Context, keywords []string, spaceCVEs *store.SpaceCVEStore) {
-	for i, keyword := range keywords {
-		keyword = strings.TrimSpace(keyword)
-		if keyword == "" {
-			continue
-		}
-		if i > 0 {
-			time.Sleep(6 * time.Second)
-		}
-
-		cves, err := threatintel.FetchByKeyword(keyword, 50)
-		if err != nil {
-			log.Printf("space-cve-sync: fetch keyword %q: %v", keyword, err)
-			continue
-		}
-
-		for _, c := range cves {
-			severity := c.Severity
-			if !c.HasScore {
-				severity = "unknown"
-			}
-			if err := spaceCVEs.Upsert(ctx, c.ID, c.Description, c.Published, severity, c.Score, keyword); err != nil {
-				log.Printf("space-cve-sync: upsert %s: %v", c.ID, err)
-			}
-		}
-
-		log.Printf("space-cve-sync: synced %d CVEs for keyword %q", len(cves), keyword)
 	}
 }
 

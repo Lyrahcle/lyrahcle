@@ -71,3 +71,14 @@ jobs:
         continue-on-error: true
         with:
           dockerfile: deploy/docker/Dockerfile.backend
+
+  smoke-test:
+    name: Full-stack smoke test (docker compose)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run smoke test
+        run: ./scripts/smoke-test.sh
+      - name: Dump logs on failure
+        if: failure()
+        run: docker compose logs

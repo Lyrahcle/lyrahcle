@@ -14,6 +14,7 @@ import NewAssetForm from './NewAssetForm.jsx'
 import NewSatelliteForm from './NewSatelliteForm.jsx'
 import AgentKeysPanel from './AgentKeysPanel.jsx'
 import AuditLogPanel from './AuditLogPanel.jsx'
+import UsersPanel from './UsersPanel.jsx'
 import Footer from './Footer.jsx'
 import { canWrite, isAdmin } from '../lib/auth.js'
 import {
@@ -24,6 +25,7 @@ import {
   fetchRfReadings,
   fetchSatellites,
   fetchSpaceCVEs,
+  fetchUsers,
   UnauthorizedError,
 } from '../lib/api.js'
 
@@ -36,6 +38,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
   const [spaceCVEs, setSpaceCVEs] = useState(null)
   const [agentKeys, setAgentKeys] = useState(null)
   const [auditEntries, setAuditEntries] = useState(null)
+  const [users, setUsers] = useState(null)
   const [backendStatus, setBackendStatus] = useState('checking')
   const [dbStatus, setDbStatus] = useState('checking')
 
@@ -97,6 +100,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
       if (admin) {
         await safeFetch(fetchAgentKeys, setAgentKeys)
         await safeFetch(fetchAuditLog, setAuditEntries)
+        await safeFetch(fetchUsers, setUsers)
       }
     }
 
@@ -120,6 +124,9 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
   }
   function reloadAgentKeys() {
     fetchAgentKeys().then(setAgentKeys).catch(() => {})
+  }
+  function reloadUsers() {
+    fetchUsers().then(setUsers).catch(() => {})
   }
 
   return (
@@ -177,6 +184,9 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
 
         {activeTab === 'admin' && admin && (
           <div className="grid gap-6">
+            <Panel eyebrow="Access Control" title="Users & roles">
+              {users === null ? <Skeleton /> : <UsersPanel users={users} onChanged={reloadUsers} />}
+            </Panel>
             <Panel eyebrow="SDR Agents" title="Agent API keys">
               {agentKeys === null ? <Skeleton /> : <AgentKeysPanel keys={agentKeys} onChanged={reloadAgentKeys} />}
             </Panel>

@@ -74,15 +74,23 @@ the full roadmap.
 ┌─────────────┐      HTTP        ┌─────────────┐      SQL      ┌────────────┐
 │  frontend    │ ───────────────▶ │   backend    │ ─────────────▶ │  postgres   │
 │  React/Vite  │ ◀─────────────── │  Go / chi    │ ◀───────────── │             │
-└─────────────┘                  └──────┬───────┘                └────────────┘
-                                          │  ▲
-                        POST /rf/ingest   │  │  TLE sync (cron)
-                                          ▼  │
-                                   ┌─────────────┐        ┌───────────────┐
-                                   │  sdr-agent   │        │   Celestrak    │
-                                   │  (edge, Go)  │        │   (external)   │
-                                   └─────────────┘        └───────────────┘
+└─────────────┘                  └──────┬───────┘                └──────┬─────┘
+                                          │  ▲                            ▲
+                        POST /rf/ingest   │  │  TLE sync (cron)           │ writes space_cves
+                                          ▼  │                            │
+                                   ┌─────────────┐        ┌───────────────┐   ┌──────────┐
+                                   │  sdr-agent   │        │   Celestrak    │   │ cve-sync  │
+                                   │  (edge, Go)  │        │   (external)   │   │ (worker)  │
+                                   └─────────────┘        └───────────────┘   └────┬─────┘
+                                                                                     ▼
+                                                                              NVD API + Redis
 ```
+
+`apps/cve-sync` is the **only** writer of the `space_cves` table (Redis-backed
+dedup cache, Prometheus metrics, configurable interval); the backend only
+reads it via `GET /api/v1/threat-intel/space-cves`. See
+[CHANGELOG.md](./CHANGELOG.md) for why the backend's earlier duplicate
+in-process sync was removed.
 
 ## Repository layout
 
@@ -92,10 +100,10 @@ lyrahcle/
 │   ├── backend/       # Go API: chi router, Postgres store, SGP4 orbit, Celestrak sync, scheduler
 │   ├── frontend/       # React + Vite + Tailwind dashboard
 │   ├── sdr-agent/      # Edge RF capture agent (mock capture, real SDR pending hardware)
-│   ├── cve-sync/       # NVD sync worker (placeholder)
+│   ├── cve-sync/       # NVD sync worker — source of truth for the space-CVE feed (Redis cache, Prometheus metrics)
 │   └── docs/           # Generated API docs
-├── enterprise/         # Proprietary modules (not published in the public repo)
-├── packages/           # Shared MIT-licensed libraries (planned)
+├── enterprise/         # Placeholder for proprietary modules — not implemented yet, not published in the public repo
+├── packages/           # Placeholder for shared MIT-licensed libraries — not implemented yet
 ├── deploy/             # Dockerfiles, Helm charts, Kubernetes manifests
 ├── scripts/            # Dev / CI utilities
 └── docs/               # Technical & user documentation
@@ -159,9 +167,8 @@ curl -X POST localhost:8080/api/v1/satellites/ \
   -d '{"norad_id": 25544, "name": "ISS (ZARYA)", "tle_line1": "...", "tle_line2": "..."}'
 ```
 
-Roles: `viewer` < `operator` < `admin`. Promoting a user beyond the bootstrap admin
-currently requires updating `role` directly in the `users` table (a proper admin
-endpoint is planned — see [SECURITY_ROADMAP.md](./SECURITY_ROADMAP.md)).
+Roles: `viewer` < `operator` < `admin`. Admins can promote or demote any user's
+role from the Admin tab in the dashboard, or via `PATCH /api/v1/users/{userID}/role`.
 
 ### SDR agent authentication
 
@@ -231,7 +238,11 @@ by setting `TLS_CERT_FILE`/`TLS_KEY_FILE` directly on the backend.
 | `JWT_SECRET` | *(insecure dev default, logs a warning)* | Secret used to sign auth tokens — set a strong value in any non-local deployment |
 | `TLS_CERT_FILE` / `TLS_KEY_FILE` | *(unset, plain HTTP, logs a warning)* | Paths to a TLS certificate/key to serve HTTPS directly from the backend |
 | `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` | `admin` / `admin` | Bootstrap admin account, created only if no users exist yet. Change immediately after first login |
-| `SPACE_CVE_KEYWORDS` | `CCSDS,spacecraft,satellite ground station,SATCOM,CubeSat,space segment,satellite communication,orbital` | Comma-separated NVD keyword searches synced daily into the space-CVE feed |
+| `ENV` | `development` | Set to `production` to make the backend refuse to start with insecure defaults (unset `JWT_SECRET`, default `SEED_ADMIN_PASSWORD`, or no TLS) instead of only logging a warning |
+
+See [.env.example](./.env.example) for a copy-pasteable starting point, and
+[docs/configuration.md](./docs/configuration.md) for every variable across
+every service (including `cve-sync`, `sdr-agent`, and Docker Compose).
 
 ### API endpoints
 
@@ -243,6 +254,8 @@ by setting `TLS_CERT_FILE`/`TLS_KEY_FILE` directly on the backend.
 | `POST` | `/api/v1/auth/register` | — | Create a user (first user ever becomes admin) |
 | `POST` | `/api/v1/auth/login` | — | Exchange email + password for a bearer token |
 | `POST` | `/api/v1/auth/change-password` | viewer+ | Change your own password |
+| `GET` | `/api/v1/users/` | admin | List all users and their roles |
+| `PATCH` | `/api/v1/users/{userID}/role` | admin | Promote or demote a user's role (blocks demoting the last remaining admin) |
 | `GET` | `/api/v1/audit-log` | admin | List the 200 most recent security-relevant events |
 | `POST` | `/api/v1/agent-keys` | admin | Create an API key scoped to one `agent_id` |
 | `DELETE` | `/api/v1/agent-keys/{agentID}` | admin | Revoke that agent's key |
@@ -275,8 +288,17 @@ cd apps/frontend
 npm test
 ```
 
+```bash
+# Full-stack smoke test: builds and starts all 7 docker-compose services
+# (postgres, redis, backend, frontend, cve-sync, prometheus, and optionally
+# sdr-agent) and verifies each one's health check before tearing back down.
+./scripts/smoke-test.sh            # core services
+./scripts/smoke-test.sh --with-sdr # also starts sdr-agent (needs an agent key configured)
+```
+
 CI runs backend build+vet+unit+integration tests (with a Postgres service
-container) and frontend build+tests on every push and pull request.
+container), frontend build+tests, and the full-stack smoke test on every push
+and pull request.
 
 ## Security
 

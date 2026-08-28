@@ -128,6 +128,22 @@ export async function fetchAuditLog() {
   return res.json()
 }
 
+export async function fetchUsers() {
+  const res = await authedFetch('/api/v1/users/')
+  if (!res.ok) throw new Error('failed to fetch users')
+  return res.json()
+}
+
+export async function updateUserRole(userId, role) {
+  const res = await authedFetch(`/api/v1/users/${encodeURIComponent(userId)}/role`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ role }),
+  })
+  if (!res.ok) throw new Error(await readErrorText(res, 'failed to update role'))
+  return res.json()
+}
+
 const DECODE_ENDPOINTS = {
   ax25: { path: '/api/v1/tmtc/decode/ax25', field: 'frame_hex' },
   ccsds: { path: '/api/v1/tmtc/decode/ccsds', field: 'packet_hex' },

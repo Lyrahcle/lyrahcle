@@ -3,8 +3,9 @@
 Tracked incrementally, one item at a time, before the v1.0.0 release.
 
 - [x] **Authentication & authorization** — users, roles, tokens; protect sensitive
-      endpoints like `/rf/ingest` and `/satellites/` (JWT + bcrypt + role hierarchy
-      shipped; admin-managed role promotion and per-agent API keys still pending)
+      endpoints like `/rf/ingest` and `/satellites/` (JWT + bcrypt + role hierarchy,
+      per-agent API keys, and admin-managed role promotion/demotion via
+      `PATCH /users/{userID}/role` all shipped)
 - [x] **TLS/HTTPS** across all frontend/backend/sdr-agent communication (opt-in:
       backend serves HTTPS directly when `TLS_CERT_FILE`/`TLS_KEY_FILE` are set,
       nginx has an HTTPS+redirect config, `sdr-agent` supports `https://` backends
@@ -146,3 +147,13 @@ Tracked incrementally, one item at a time, before the v1.0.0 release.
   10-item list; item 8 (real SDR hardware) needs physical hardware not
   available in this environment. The user's newer, much larger roadmap has
   many more items beyond these 10.
+- 2026-08-28: closed the short-term-roadmap UI-parity audit. Removed the
+  duplicate space-CVE sync (`internal/threatintel` + backend cron job) now
+  that `apps/cve-sync` is the documented single writer of `space_cves`;
+  deleted the stale `TIER1_IMPLEMENTATION.md`; added `.env.example` and a
+  startup safety check that refuses to boot with insecure defaults when
+  `ENV=production`; fixed `clientIP()` to read `X-Real-IP`/`X-Forwarded-For`
+  instead of the reverse proxy's own address; and shipped admin-managed role
+  promotion/demotion (`GET/PATCH /users/*`, guards against removing the last
+  admin, audit-logged) with a "Users & roles" panel in the dashboard's Admin
+  tab — closing the one endpoint that previously had no UI path.

@@ -7,16 +7,16 @@ import (
 )
 
 type Config struct {
-	DatabaseURL      string
-	RedisURL         string
-	Port             string
-	CelestrakGroups  []string
-	JWTSecret        []byte
-	TLSCertFile      string
-	TLSKeyFile       string
-	SeedAdminEmail   string
-	SeedAdminPass    string
-	SpaceCVEKeywords []string
+	DatabaseURL     string
+	RedisURL        string
+	Port            string
+	CelestrakGroups []string
+	JWTSecret       []byte
+	TLSCertFile     string
+	TLSKeyFile      string
+	SeedAdminEmail  string
+	SeedAdminPass   string
+	Environment     string
 }
 
 func Load() Config {
@@ -28,22 +28,38 @@ func Load() Config {
 	}
 
 	cfg := Config{
-		DatabaseURL:      getEnv("DATABASE_URL", "postgres://lyrahcle:lyrahcle@localhost:5432/lyrahcle?sslmode=disable"),
-		RedisURL:         getEnv("REDIS_URL", "localhost:6379"),
-		Port:             getEnv("PORT", "8080"),
-		CelestrakGroups:  strings.Split(getEnv("CELESTRAK_GROUPS", "stations"), ","),
-		JWTSecret:        []byte(secret),
-		TLSCertFile:      getEnv("TLS_CERT_FILE", ""),
-		TLSKeyFile:       getEnv("TLS_KEY_FILE", ""),
-		SeedAdminEmail:   getEnv("SEED_ADMIN_EMAIL", "admin"),
-		SeedAdminPass:    getEnv("SEED_ADMIN_PASSWORD", "admin"),
-		SpaceCVEKeywords: strings.Split(getEnv("SPACE_CVE_KEYWORDS", "CCSDS,spacecraft,satellite ground station,SATCOM,CubeSat,space segment,satellite communication,orbital"), ","),
+		DatabaseURL:     getEnv("DATABASE_URL", "postgres://lyrahcle:lyrahcle@localhost:5432/lyrahcle?sslmode=disable"),
+		RedisURL:        getEnv("REDIS_URL", "localhost:6379"),
+		Port:            getEnv("PORT", "8080"),
+		CelestrakGroups: strings.Split(getEnv("CELESTRAK_GROUPS", "stations"), ","),
+		JWTSecret:       []byte(secret),
+		TLSCertFile:     getEnv("TLS_CERT_FILE", ""),
+		TLSKeyFile:      getEnv("TLS_KEY_FILE", ""),
+		SeedAdminEmail:  getEnv("SEED_ADMIN_EMAIL", "admin"),
+		SeedAdminPass:   getEnv("SEED_ADMIN_PASSWORD", "admin"),
+		Environment:     getEnv("ENV", "development"),
 	}
 
+	production := strings.EqualFold(cfg.Environment, "production") || strings.EqualFold(cfg.Environment, "prod")
+
 	if insecureDefault {
+		if production {
+			log.Fatal("FATAL: ENV=production but JWT_SECRET is not set. Refusing to start with an insecure default secret.")
+		}
 		log.Println("WARNING: JWT_SECRET is not set; using an insecure default. Set JWT_SECRET in production.")
 	}
+
+	if cfg.SeedAdminPass == "admin" {
+		if production {
+			log.Fatal("FATAL: ENV=production but SEED_ADMIN_PASSWORD is unset or still the default 'admin'. Refusing to start.")
+		}
+		log.Println("WARNING: SEED_ADMIN_PASSWORD is unset or still the default 'admin'. Set a strong value in production.")
+	}
+
 	if cfg.TLSCertFile == "" || cfg.TLSKeyFile == "" {
+		if production {
+			log.Fatal("FATAL: ENV=production but TLS_CERT_FILE/TLS_KEY_FILE are not set. Refusing to serve plain HTTP in production.")
+		}
 		log.Println("WARNING: TLS_CERT_FILE/TLS_KEY_FILE not set; serving plain HTTP. Set both to enable HTTPS (see scripts/generate-dev-certs.sh).")
 	}
 
