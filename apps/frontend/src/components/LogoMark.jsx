@@ -1,6 +1,6 @@
 export default function LogoMark({ className = 'h-9 w-9' }) {
   return (
-    <svg viewBox="0 0 200 200" className={className} xmlns="http://www.w3.org/2000/svg">
+    <svg viewBox="0 0 200 200" className={className} xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
       <defs>
         <linearGradient id="lyraGold" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#f0d9a8" />

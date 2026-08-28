@@ -26,5 +26,6 @@ are in [CHANGELOG.md](./CHANGELOG.md); this page tracks status only.
 - [x] IQ capture & forensic playback — record raw IQ to disk, replay a saved capture as historical RF readings
 - [x] Robust anomaly baselines — median/MAD spot check + EWMA trend detection, replacing the plain mean/stddev z-score
 - [x] Dashboard UX polish — light/dark theme, English/Spanish i18n, Settings tab, user search
+- [x] Accessibility pass — WCAG AA contrast audit and fixes, focus-trapped modal dialog, keyboard-operable map markers, form label associations, live regions, axe-core test coverage
 - [ ] Real SDR hardware integration (RTL-SDR, HackRF) to validate capture
       beyond the mock source

@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { supportedLanguages, translations } from './translations.js'
 
 const STORAGE_KEY = 'lyra_lang'
@@ -24,6 +24,10 @@ const I18nContext = createContext(null)
 
 export function I18nProvider({ children }) {
   const [lang, setLangState] = useState(detectLanguage)
+
+  useEffect(() => {
+    document.documentElement.lang = lang
+  }, [lang])
 
   const setLang = useCallback((next) => {
     if (!supportedLanguages.includes(next)) return

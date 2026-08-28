@@ -35,22 +35,22 @@ export default function AnomaliesPanel({ anomalies }) {
       <table className="w-full text-left text-sm">
         <thead>
           <tr className="border-b border-lyra-borderSoft">
-            <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+            <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
               Agent
             </th>
-            <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+            <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
               Metric
             </th>
-            <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+            <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
               Value
             </th>
-            <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+            <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
               Baseline
             </th>
-            <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+            <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
               Z-score
             </th>
-            <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+            <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
               Detected
             </th>
           </tr>

@@ -48,14 +48,14 @@ export default function SettingsPanel() {
   return (
     <div className="grid gap-6 sm:grid-cols-2">
       <SettingsCard heading={t('settings.appearance')} hint={t('settings.appearanceHint')}>
-        <div className="flex gap-3">
+        <div role="group" aria-label={t('settings.appearance')} className="flex gap-3">
           <ThemeOption value="dark" current={theme} onSelect={setThemeState} label={t('settings.dark')} Icon={Moon} />
           <ThemeOption value="light" current={theme} onSelect={setThemeState} label={t('settings.light')} Icon={Sun} />
         </div>
       </SettingsCard>
 
       <SettingsCard heading={t('settings.language')} hint={t('settings.languageHint')}>
-        <div className="flex gap-3">
+        <div role="group" aria-label={t('settings.language')} className="flex gap-3">
           {supportedLanguages.map((code) => (
             <button
               key={code}

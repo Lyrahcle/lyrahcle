@@ -72,7 +72,11 @@ export default function Login({ onSuccess, onShowRegister }) {
             />
           </div>
 
-          {error && <p className="mb-4 text-sm text-lyra-bad">{error}</p>}
+          {error && (
+            <p role="alert" className="mb-4 text-sm text-lyra-bad">
+              {error}
+            </p>
+          )}
 
           <button
             type="submit"

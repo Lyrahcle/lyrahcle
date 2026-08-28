@@ -14,16 +14,16 @@ export default function AuditLogPanel({ page, onPrev, onNext }) {
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b border-lyra-borderSoft">
-              <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+              <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
                 When
               </th>
-              <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+              <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
                 Action
               </th>
-              <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+              <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
                 Actor
               </th>
-              <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+              <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
                 IP
               </th>
             </tr>

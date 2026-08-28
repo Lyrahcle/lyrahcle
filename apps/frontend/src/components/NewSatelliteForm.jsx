@@ -49,10 +49,11 @@ export default function NewSatelliteForm({ onCreated }) {
     <form onSubmit={handleSubmit} className="mb-6 rounded border border-lyra-borderSoft bg-lyra-bgSoft/30 p-4">
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
-          <label className="mb-1 block text-[11px] uppercase tracking-wider text-lyra-mutedDim">
+          <label htmlFor="sat-norad-id" className="mb-1 block text-[11px] uppercase tracking-wider text-lyra-mutedDim">
             NORAD ID
           </label>
           <input
+            id="sat-norad-id"
             value={noradId}
             onChange={(e) => setNoradId(e.target.value)}
             type="number"
@@ -61,10 +62,11 @@ export default function NewSatelliteForm({ onCreated }) {
           />
         </div>
         <div>
-          <label className="mb-1 block text-[11px] uppercase tracking-wider text-lyra-mutedDim">
+          <label htmlFor="sat-name" className="mb-1 block text-[11px] uppercase tracking-wider text-lyra-mutedDim">
             Name
           </label>
           <input
+            id="sat-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="ISS (ZARYA)"
@@ -73,10 +75,11 @@ export default function NewSatelliteForm({ onCreated }) {
           />
         </div>
         <div className="sm:col-span-2">
-          <label className="mb-1 block text-[11px] uppercase tracking-wider text-lyra-mutedDim">
+          <label htmlFor="sat-tle1" className="mb-1 block text-[11px] uppercase tracking-wider text-lyra-mutedDim">
             TLE line 1
           </label>
           <input
+            id="sat-tle1"
             value={line1}
             onChange={(e) => setLine1(e.target.value)}
             className="w-full rounded border border-lyra-border bg-lyra-bgSoft px-2 py-1.5 font-mono text-xs text-lyra-text outline-none focus:border-lyra-gold"
@@ -84,10 +87,11 @@ export default function NewSatelliteForm({ onCreated }) {
           />
         </div>
         <div className="sm:col-span-2">
-          <label className="mb-1 block text-[11px] uppercase tracking-wider text-lyra-mutedDim">
+          <label htmlFor="sat-tle2" className="mb-1 block text-[11px] uppercase tracking-wider text-lyra-mutedDim">
             TLE line 2
           </label>
           <input
+            id="sat-tle2"
             value={line2}
             onChange={(e) => setLine2(e.target.value)}
             className="w-full rounded border border-lyra-border bg-lyra-bgSoft px-2 py-1.5 font-mono text-xs text-lyra-text outline-none focus:border-lyra-gold"
@@ -96,7 +100,11 @@ export default function NewSatelliteForm({ onCreated }) {
         </div>
       </div>
 
-      {error && <p className="mt-3 text-sm text-lyra-bad">{error}</p>}
+      {error && (
+        <p role="alert" className="mt-3 text-sm text-lyra-bad">
+          {error}
+        </p>
+      )}
 
       <div className="mt-4 flex gap-2">
         <button

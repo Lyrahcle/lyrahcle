@@ -17,19 +17,19 @@ export default function SatellitesPanel({ satellites }) {
       <table className="w-full text-left text-sm">
         <thead>
           <tr className="border-b border-lyra-borderSoft">
-            <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+            <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
               Satellite
             </th>
-            <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+            <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
               NORAD ID
             </th>
-            <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+            <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
               Latitude
             </th>
-            <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+            <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
               Longitude
             </th>
-            <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+            <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
               Altitude
             </th>
           </tr>

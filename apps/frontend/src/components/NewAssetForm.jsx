@@ -62,10 +62,11 @@ export default function NewAssetForm({ onCreated }) {
     <form onSubmit={handleSubmit} className="mb-6 rounded border border-lyra-borderSoft bg-lyra-bgSoft/30 p-4">
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
-          <label className="mb-1 block text-[11px] uppercase tracking-wider text-lyra-mutedDim">
+          <label htmlFor="asset-program" className="mb-1 block text-[11px] uppercase tracking-wider text-lyra-mutedDim">
             Program
           </label>
           <select
+            id="asset-program"
             value={programId}
             onChange={(e) => setProgramId(e.target.value)}
             className="w-full rounded border border-lyra-border bg-lyra-bgSoft px-2 py-1.5 text-sm text-lyra-text outline-none focus:border-lyra-gold"
@@ -78,20 +79,27 @@ export default function NewAssetForm({ onCreated }) {
             ))}
           </select>
           {!programId && (
-            <input
-              value={newProgramName}
-              onChange={(e) => setNewProgramName(e.target.value)}
-              placeholder="New program name"
-              className="mt-1.5 w-full rounded border border-lyra-border bg-lyra-bgSoft px-2 py-1.5 text-sm text-lyra-text outline-none focus:border-lyra-gold"
-            />
+            <>
+              <label htmlFor="asset-new-program" className="sr-only">
+                New program name
+              </label>
+              <input
+                id="asset-new-program"
+                value={newProgramName}
+                onChange={(e) => setNewProgramName(e.target.value)}
+                placeholder="New program name"
+                className="mt-1.5 w-full rounded border border-lyra-border bg-lyra-bgSoft px-2 py-1.5 text-sm text-lyra-text outline-none focus:border-lyra-gold"
+              />
+            </>
           )}
         </div>
 
         <div>
-          <label className="mb-1 block text-[11px] uppercase tracking-wider text-lyra-mutedDim">
+          <label htmlFor="asset-kind" className="mb-1 block text-[11px] uppercase tracking-wider text-lyra-mutedDim">
             Kind
           </label>
           <select
+            id="asset-kind"
             value={kind}
             onChange={(e) => setKind(e.target.value)}
             className="w-full rounded border border-lyra-border bg-lyra-bgSoft px-2 py-1.5 text-sm text-lyra-text outline-none focus:border-lyra-gold"
@@ -105,10 +113,11 @@ export default function NewAssetForm({ onCreated }) {
         </div>
 
         <div className="sm:col-span-2">
-          <label className="mb-1 block text-[11px] uppercase tracking-wider text-lyra-mutedDim">
+          <label htmlFor="asset-value" className="mb-1 block text-[11px] uppercase tracking-wider text-lyra-mutedDim">
             Value
           </label>
           <input
+            id="asset-value"
             value={value}
             onChange={(e) => setValue(e.target.value)}
             placeholder="e.g. ops.example.com, 198.51.100.42, NORAD 25544"
@@ -118,7 +127,11 @@ export default function NewAssetForm({ onCreated }) {
         </div>
       </div>
 
-      {error && <p className="mt-3 text-sm text-lyra-bad">{error}</p>}
+      {error && (
+        <p role="alert" className="mt-3 text-sm text-lyra-bad">
+          {error}
+        </p>
+      )}
 
       <div className="mt-4 flex gap-2">
         <button
