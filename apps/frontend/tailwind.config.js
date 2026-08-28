@@ -1,22 +1,23 @@
 export default {
   content: ["./index.html", "./src/**/*.{js,jsx}"],
+  darkMode: ["class"],
   theme: {
     extend: {
       colors: {
         lyra: {
-          bg: "#0a0a0c",
-          bgSoft: "#101012",
-          panel: "#141416",
-          border: "#26262a",
-          borderSoft: "#1c1c1f",
-          gold: "#c9a56e",
-          goldBright: "#f0d9a8",
-          text: "#ececeb",
-          muted: "#8c8c90",
-          mutedDim: "#5c5c60",
-          good: "#7dd3a0",
-          warn: "#e8b563",
-          bad: "#e0748c",
+          bg: "rgb(var(--lyra-bg) / <alpha-value>)",
+          bgSoft: "rgb(var(--lyra-bg-soft) / <alpha-value>)",
+          panel: "rgb(var(--lyra-panel) / <alpha-value>)",
+          border: "rgb(var(--lyra-border) / <alpha-value>)",
+          borderSoft: "rgb(var(--lyra-border-soft) / <alpha-value>)",
+          gold: "rgb(var(--lyra-gold) / <alpha-value>)",
+          goldBright: "rgb(var(--lyra-gold-bright) / <alpha-value>)",
+          text: "rgb(var(--lyra-text) / <alpha-value>)",
+          muted: "rgb(var(--lyra-muted) / <alpha-value>)",
+          mutedDim: "rgb(var(--lyra-muted-dim) / <alpha-value>)",
+          good: "rgb(var(--lyra-good) / <alpha-value>)",
+          warn: "rgb(var(--lyra-warn) / <alpha-value>)",
+          bad: "rgb(var(--lyra-bad) / <alpha-value>)",
         },
       },
       fontFamily: {

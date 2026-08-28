@@ -1,7 +1,9 @@
 import { Search } from 'lucide-react'
 import { useState } from 'react'
+import { useI18n } from '../lib/I18nContext.jsx'
 
 export default function SearchBar() {
+  const { t } = useI18n()
   const [value, setValue] = useState('')
 
   return (
@@ -11,7 +13,7 @@ export default function SearchBar() {
         value={value}
         onChange={(e) => setValue(e.target.value)}
         type="text"
-        placeholder="Search assets, satellites, CVEs…"
+        placeholder={t('header.searchPlaceholder')}
         className="w-56 bg-transparent font-mono text-[11px] text-lyra-text placeholder:text-lyra-mutedDim focus:outline-none"
       />
       <kbd className="rounded border border-lyra-borderSoft px-1.5 py-0.5 font-mono text-[10px] text-lyra-mutedDim">
