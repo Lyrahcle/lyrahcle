@@ -18,16 +18,16 @@ export default function RfPanel({ readings }) {
       <table className="w-full text-left text-sm">
         <thead>
           <tr className="border-b border-lyra-borderSoft">
-            <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+            <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
               Agent
             </th>
-            <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+            <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
               Frequency
             </th>
-            <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+            <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
               Signal
             </th>
-            <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+            <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
               Captured
             </th>
           </tr>

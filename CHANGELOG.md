@@ -27,6 +27,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/), using
 - Anomaly detection upgraded from a plain mean/stddev z-score to two complementary statistical baselines: a robust modified z-score (median + MAD) for spot outliers, resistant to a prior anomaly already in the window skewing the baseline; and an EWMA control-chart trend baseline that catches a sustained drift too gradual to trip a single-point check
 - Dashboard light/dark theme (all colors now CSS custom properties, toggleable and following the system preference by default) and a bilingual English/Spanish interface, both configurable from a new Settings tab alongside account/password management
 - Users & roles panel gained a search-by-email filter and a match count
+- Accessibility pass across the dashboard: fixed unassociated form labels (3 forms), added `scope="col"` to every data table, `role="alert"` on form errors, a proper focus-trapped `role="dialog"` for the change-password modal (Tab cycling, Escape-to-close, focus restored on close), keyboard-focusable world-map markers, live-region status/loading announcements, and a dynamic `<html lang>`. Also found and fixed two WCAG AA contrast failures in the new light/dark theme's dimmest text color (was 2.8–3.6:1, now 4.7–5.0:1 in both themes). 12 new tests, including an automated axe-core audit
 
 ### Changed
 - `apps/cve-sync` is now the sole writer of `space_cves`; the backend only reads it, removing a duplicate in-process sync that raced on the same table

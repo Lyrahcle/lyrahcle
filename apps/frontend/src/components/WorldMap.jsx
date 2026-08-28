@@ -42,6 +42,7 @@ export default function WorldMap({ satellites }) {
   return (
     <div className="relative w-full">
       <div
+        aria-hidden="true"
         className="w-full [&_svg]:h-auto [&_svg]:w-full"
         dangerouslySetInnerHTML={{ __html: baseSvg }}
       />
@@ -52,10 +53,16 @@ export default function WorldMap({ satellites }) {
           className="group absolute z-0 -translate-x-1/2 -translate-y-1/2 hover:z-30 focus-within:z-30"
           style={{ left: `${m.leftPct}%`, top: `${m.topPct}%` }}
         >
-          <span className="pointer-events-none absolute inset-0 -m-1.5 motion-safe:animate-ping rounded-full bg-lyra-gold/40" />
-          <span className="relative block h-2 w-2 rounded-full bg-lyra-goldBright shadow-[0_0_6px_rgba(240,217,168,0.8)]" />
+          <span aria-hidden="true" className="pointer-events-none absolute inset-0 -m-1.5 motion-safe:animate-ping rounded-full bg-lyra-gold/40" />
+          <button
+            type="button"
+            aria-label={`${m.name}, NORAD ${m.noradId}, ${m.position.latitude_deg.toFixed(2)}°, ${m.position.longitude_deg.toFixed(2)}°, ${m.position.altitude_km.toFixed(0)} km altitude`}
+            className="relative block h-3 w-3 -m-0.5 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-lyra-gold"
+          >
+            <span aria-hidden="true" className="absolute inset-0 m-0.5 block rounded-full bg-lyra-goldBright shadow-[0_0_6px_rgba(240,217,168,0.8)]" />
+          </button>
 
-          <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 w-max -translate-x-1/2 rounded border border-lyra-border bg-lyra-panel px-3 py-2 opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">
+          <div aria-hidden="true" className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 w-max -translate-x-1/2 rounded border border-lyra-border bg-lyra-panel px-3 py-2 opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100">
             <p className="font-display text-xs font-medium text-lyra-goldBright">{m.name}</p>
             <p className="mt-0.5 font-mono text-[10px] text-lyra-mutedDim">
               NORAD {m.noradId}

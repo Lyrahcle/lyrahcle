@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { changePassword } from '../lib/api.js'
 import { useI18n } from '../lib/I18nContext.jsx'
+import { useFocusTrap } from '../lib/useFocusTrap.js'
 
 export default function ChangePasswordModal({ onClose }) {
   const { t } = useI18n()
@@ -10,6 +11,16 @@ export default function ChangePasswordModal({ onClose }) {
   const [error, setError] = useState(null)
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
+
+  const dialogRef = useFocusTrap()
+
+  useEffect(() => {
+    function handleEscape(e) {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', handleEscape)
+    return () => document.removeEventListener('keydown', handleEscape)
+  }, [onClose])
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -33,9 +44,16 @@ export default function ChangePasswordModal({ onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-6">
-      <div className="w-full max-w-sm rounded-lg border border-lyra-border bg-lyra-panel p-6">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="change-password-title"
+        tabIndex={-1}
+        className="w-full max-w-sm rounded-lg border border-lyra-border bg-lyra-panel p-6 outline-none"
+      >
         <div className="mb-5 flex items-center justify-between">
-          <h2 className="font-display text-sm font-medium text-lyra-goldBright">
+          <h2 id="change-password-title" className="font-display text-sm font-medium text-lyra-goldBright">
             {t('changePasswordModal.title')}
           </h2>
           <button
@@ -50,7 +68,9 @@ export default function ChangePasswordModal({ onClose }) {
 
         {success ? (
           <div>
-            <p className="mb-5 text-sm text-lyra-good">{t('changePasswordModal.success')}</p>
+            <p role="status" className="mb-5 text-sm text-lyra-good">
+              {t('changePasswordModal.success')}
+            </p>
             <button
               type="button"
               onClick={onClose}
@@ -108,7 +128,11 @@ export default function ChangePasswordModal({ onClose }) {
               />
             </div>
 
-            {error && <p className="mb-4 text-sm text-lyra-bad">{error}</p>}
+            {error && (
+              <p role="alert" className="mb-4 text-sm text-lyra-bad">
+                {error}
+              </p>
+            )}
 
             <div className="flex gap-3">
               <button

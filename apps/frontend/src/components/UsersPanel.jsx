@@ -56,7 +56,11 @@ export default function UsersPanel({ users, onChanged }) {
         </p>
       </div>
 
-      {error && <p className="mb-4 text-sm text-lyra-bad">{error}</p>}
+      {error && (
+            <p role="alert" className="mb-4 text-sm text-lyra-bad">
+              {error}
+            </p>
+          )}
 
       {!filtered.length ? (
         <p className="text-sm text-lyra-muted">{t('users.noMatches')}</p>
@@ -65,13 +69,13 @@ export default function UsersPanel({ users, onChanged }) {
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-lyra-borderSoft">
-                <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+                <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
                   {t('users.email')}
                 </th>
-                <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+                <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
                   {t('users.role')}
                 </th>
-                <th className="pb-2" />
+                <th scope="col" className="pb-2" />
               </tr>
             </thead>
             <tbody>

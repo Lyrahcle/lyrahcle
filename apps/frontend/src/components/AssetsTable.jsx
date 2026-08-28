@@ -22,13 +22,13 @@ export default function AssetsTable({ page, onPrev, onNext }) {
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b border-lyra-borderSoft">
-              <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+              <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
                 Kind
               </th>
-              <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+              <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
                 Value
               </th>
-              <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+              <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
                 Program
               </th>
             </tr>

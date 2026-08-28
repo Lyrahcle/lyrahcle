@@ -22,19 +22,19 @@ export default function ThreatIntelPanel({ page, onPrev, onNext }) {
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b border-lyra-borderSoft">
-              <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+              <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
                 CVE
               </th>
-              <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+              <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
                 Severity
               </th>
-              <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+              <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
                 Score
               </th>
-              <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+              <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
                 Published
               </th>
-              <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+              <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
                 Description
               </th>
             </tr>

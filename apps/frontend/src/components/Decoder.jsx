@@ -77,7 +77,7 @@ export default function Decoder() {
       </form>
 
       {error && (
-        <p className="mt-4 rounded border border-lyra-bad/30 bg-lyra-bad/10 px-3 py-2 text-sm text-lyra-bad">
+        <p role="alert" className="mt-4 rounded border border-lyra-bad/30 bg-lyra-bad/10 px-3 py-2 text-sm text-lyra-bad">
           {error}
         </p>
       )}

@@ -38,10 +38,11 @@ export default function AgentKeysPanel({ keys, onChanged }) {
     <div>
       <form onSubmit={handleCreate} className="mb-5 flex flex-wrap items-end gap-3">
         <div>
-          <label className="mb-1 block text-[11px] uppercase tracking-wider text-lyra-mutedDim">
+          <label htmlFor="new-agent-id" className="mb-1 block text-[11px] uppercase tracking-wider text-lyra-mutedDim">
             New agent_id
           </label>
           <input
+            id="new-agent-id"
             value={newAgentId}
             onChange={(e) => setNewAgentId(e.target.value)}
             placeholder="sdr-agent-madrid"
@@ -58,10 +59,14 @@ export default function AgentKeysPanel({ keys, onChanged }) {
         </button>
       </form>
 
-      {error && <p className="mb-4 text-sm text-lyra-bad">{error}</p>}
+      {error && (
+        <p role="alert" className="mb-4 text-sm text-lyra-bad">
+          {error}
+        </p>
+      )}
 
       {issuedKey && (
-        <div className="mb-5 rounded border border-lyra-good/30 bg-lyra-good/10 p-3">
+        <div role="status" className="mb-5 rounded border border-lyra-good/30 bg-lyra-good/10 p-3">
           <p className="text-xs text-lyra-good">
             Key issued for <span className="font-mono">{issuedKey.agent_id}</span> — shown once, copy it now:
           </p>
@@ -76,19 +81,19 @@ export default function AgentKeysPanel({ keys, onChanged }) {
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-lyra-borderSoft">
-                <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+                <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
                   Agent
                 </th>
-                <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+                <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
                   Created
                 </th>
-                <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+                <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
                   Last used
                 </th>
-                <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+                <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
                   Status
                 </th>
-                <th className="pb-2" />
+                <th scope="col" className="pb-2" />
               </tr>
             </thead>
             <tbody>
@@ -110,6 +115,7 @@ export default function AgentKeysPanel({ keys, onChanged }) {
                     {!k.revoked && (
                       <button
                         onClick={() => handleRevoke(k.agent_id)}
+                        aria-label={`Revoke key for ${k.agent_id}`}
                         className="font-mono text-xs uppercase tracking-wide text-lyra-bad outline-none hover:underline"
                       >
                         Revoke
