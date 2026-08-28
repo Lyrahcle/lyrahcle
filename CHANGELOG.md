@@ -24,6 +24,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/), using
 - Header search bar (UI, not yet wired to a backend search endpoint)
 - OpenAPI 3.0 spec covering all 22 endpoints, embedded in the backend binary and served at `/openapi.yaml`, with a browsable Swagger UI at `/docs`
 - `sdr-agent` IQ forensics: periodic raw IQ capture to disk (`IQ_CAPTURE_DIR`) and one-shot replay of a saved capture as historical RF readings (`REPLAY_FILE`), reconstructing the original timeline so replayed anomalies are flagged the same way a live signal would be — see [docs/forensics.md](./docs/forensics.md)
+- Anomaly detection upgraded from a plain mean/stddev z-score to two complementary statistical baselines: a robust modified z-score (median + MAD) for spot outliers, resistant to a prior anomaly already in the window skewing the baseline; and an EWMA control-chart trend baseline that catches a sustained drift too gradual to trip a single-point check
 
 ### Changed
 - `apps/cve-sync` is now the sole writer of `space_cves`; the backend only reads it, removing a duplicate in-process sync that raced on the same table

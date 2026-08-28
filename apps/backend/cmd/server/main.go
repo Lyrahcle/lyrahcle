@@ -841,6 +841,8 @@ func detectRFAnomalies(ctx context.Context, anomalies *store.AnomalyStore, readi
 	checks := []anomaly.Result{
 		anomaly.Detect("power_dbm", powerHistory, reading.PowerDbm),
 		anomaly.Detect("frequency_hz", freqHistory, float64(reading.FrequencyHz)),
+		anomaly.DetectTrend("power_dbm", powerHistory, reading.PowerDbm),
+		anomaly.DetectTrend("frequency_hz", freqHistory, float64(reading.FrequencyHz)),
 	}
 
 	for _, result := range checks {
