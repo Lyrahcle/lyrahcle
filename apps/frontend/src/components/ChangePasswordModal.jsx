@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { changePassword } from '../lib/api.js'
+import { useI18n } from '../lib/I18nContext.jsx'
 
 export default function ChangePasswordModal({ onClose }) {
+  const { t } = useI18n()
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -14,7 +16,7 @@ export default function ChangePasswordModal({ onClose }) {
     setError(null)
 
     if (newPassword !== confirmPassword) {
-      setError('New passwords do not match')
+      setError(t('changePasswordModal.newPasswordsDoNotMatch'))
       return
     }
 
@@ -33,11 +35,13 @@ export default function ChangePasswordModal({ onClose }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-6">
       <div className="w-full max-w-sm rounded-lg border border-lyra-border bg-lyra-panel p-6">
         <div className="mb-5 flex items-center justify-between">
-          <h2 className="font-display text-sm font-medium text-lyra-goldBright">Change password</h2>
+          <h2 className="font-display text-sm font-medium text-lyra-goldBright">
+            {t('changePasswordModal.title')}
+          </h2>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t('common.close')}
             className="rounded text-lyra-muted outline-none transition-colors hover:text-lyra-goldBright focus-visible:ring-1 focus-visible:ring-lyra-gold"
           >
             ✕
@@ -46,20 +50,20 @@ export default function ChangePasswordModal({ onClose }) {
 
         {success ? (
           <div>
-            <p className="mb-5 text-sm text-lyra-good">Password updated successfully.</p>
+            <p className="mb-5 text-sm text-lyra-good">{t('changePasswordModal.success')}</p>
             <button
               type="button"
               onClick={onClose}
               className="w-full rounded bg-lyra-gold px-4 py-2 text-sm font-medium text-lyra-bg outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-lyra-goldBright"
             >
-              Done
+              {t('common.done')}
             </button>
           </div>
         ) : (
           <form onSubmit={handleSubmit}>
             <div className="mb-4">
               <label htmlFor="current-password" className="mb-1.5 block text-xs uppercase tracking-wider text-lyra-mutedDim">
-                Current password
+                {t('changePasswordModal.currentPassword')}
               </label>
               <input
                 id="current-password"
@@ -74,7 +78,7 @@ export default function ChangePasswordModal({ onClose }) {
 
             <div className="mb-4">
               <label htmlFor="new-password" className="mb-1.5 block text-xs uppercase tracking-wider text-lyra-mutedDim">
-                New password
+                {t('changePasswordModal.newPassword')}
               </label>
               <input
                 id="new-password"
@@ -90,7 +94,7 @@ export default function ChangePasswordModal({ onClose }) {
 
             <div className="mb-5">
               <label htmlFor="confirm-new-password" className="mb-1.5 block text-xs uppercase tracking-wider text-lyra-mutedDim">
-                Confirm new password
+                {t('changePasswordModal.confirmNewPassword')}
               </label>
               <input
                 id="confirm-new-password"
@@ -112,14 +116,14 @@ export default function ChangePasswordModal({ onClose }) {
                 onClick={onClose}
                 className="w-full rounded border border-lyra-border px-4 py-2 text-sm text-lyra-muted outline-none transition-colors hover:text-lyra-text focus-visible:ring-1 focus-visible:ring-lyra-gold"
               >
-                Cancel
+                {t('common.cancel')}
               </button>
               <button
                 type="submit"
                 disabled={loading}
                 className="w-full rounded bg-lyra-gold px-4 py-2 text-sm font-medium text-lyra-bg outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-lyra-goldBright disabled:opacity-50"
               >
-                {loading ? 'Saving…' : 'Save'}
+                {loading ? t('common.saving') : t('common.save')}
               </button>
             </div>
           </form>

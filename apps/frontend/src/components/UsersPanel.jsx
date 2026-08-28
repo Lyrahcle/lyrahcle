@@ -1,15 +1,25 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
+import { Search } from 'lucide-react'
 import { updateUserRole } from '../lib/api.js'
 import { decodeToken, getToken } from '../lib/auth.js'
+import { useI18n } from '../lib/I18nContext.jsx'
 import TableScroll from './TableScroll.jsx'
 
 const ROLES = ['viewer', 'operator', 'admin']
 
 export default function UsersPanel({ users, onChanged }) {
+  const { t } = useI18n()
   const [error, setError] = useState(null)
   const [savingId, setSavingId] = useState(null)
+  const [query, setQuery] = useState('')
 
   const currentUserId = decodeToken(getToken())?.user_id
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return users
+    return users.filter((u) => u.email.toLowerCase().includes(q))
+  }, [users, query])
 
   async function handleRoleChange(userId, role) {
     setError(null)
@@ -24,34 +34,54 @@ export default function UsersPanel({ users, onChanged }) {
     }
   }
 
+  if (!users.length) {
+    return <p className="text-sm text-lyra-muted">{t('users.noUsers')}</p>
+  }
+
   return (
     <div>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <label className="group flex flex-1 max-w-xs items-center gap-2 rounded border border-lyra-border bg-lyra-bgSoft px-3 py-1.5 transition-colors focus-within:border-lyra-gold/50">
+          <Search className="h-3.5 w-3.5 text-lyra-mutedDim group-focus-within:text-lyra-gold" strokeWidth={1.75} />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            type="text"
+            placeholder={t('users.searchPlaceholder')}
+            className="w-full bg-transparent text-sm text-lyra-text placeholder:text-lyra-mutedDim focus:outline-none"
+          />
+        </label>
+        <p className="font-mono text-[11px] uppercase tracking-wider text-lyra-mutedDim">
+          {t('users.count', { n: filtered.length, total: users.length })}
+        </p>
+      </div>
+
       {error && <p className="mb-4 text-sm text-lyra-bad">{error}</p>}
 
-      {!users.length ? (
-        <p className="text-sm text-lyra-muted">No users found.</p>
+      {!filtered.length ? (
+        <p className="text-sm text-lyra-muted">{t('users.noMatches')}</p>
       ) : (
         <TableScroll>
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-lyra-borderSoft">
                 <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
-                  Email
+                  {t('users.email')}
                 </th>
                 <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
-                  Role
+                  {t('users.role')}
                 </th>
                 <th className="pb-2" />
               </tr>
             </thead>
             <tbody>
-              {users.map((u) => (
+              {filtered.map((u) => (
                 <tr key={u.id} className="border-b border-lyra-borderSoft/60 last:border-0">
                   <td className="py-2.5 font-mono text-xs text-lyra-goldBright">
                     {u.email}
                     {u.id === currentUserId && (
                       <span className="ml-2 rounded-full border border-lyra-border px-2 py-0.5 text-[10px] uppercase tracking-wider text-lyra-mutedDim">
-                        you
+                        {t('common.you')}
                       </span>
                     )}
                   </td>
@@ -70,7 +100,7 @@ export default function UsersPanel({ users, onChanged }) {
                     </select>
                   </td>
                   <td className="py-2.5 text-right font-mono text-[11px] text-lyra-mutedDim">
-                    {savingId === u.id ? 'Saving…' : ''}
+                    {savingId === u.id ? t('common.saving') : ''}
                   </td>
                 </tr>
               ))}

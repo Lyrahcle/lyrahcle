@@ -3,8 +3,10 @@ import LogoMark from './LogoMark.jsx'
 import OrbitRings from './OrbitRings.jsx'
 import { login } from '../lib/auth.js'
 import { registerUser } from '../lib/api.js'
+import { useI18n } from '../lib/I18nContext.jsx'
 
 export default function Register({ onSuccess, onBackToLogin }) {
+  const { t } = useI18n()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -16,7 +18,7 @@ export default function Register({ onSuccess, onBackToLogin }) {
     setError(null)
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match')
+      setError(t('auth.passwordsDoNotMatch'))
       return
     }
 
@@ -41,7 +43,7 @@ export default function Register({ onSuccess, onBackToLogin }) {
           <LogoMark className="mb-4 h-14 w-14" />
           <h1 className="font-display text-2xl font-semibold text-lyra-goldBright">Lyrahcle</h1>
           <p className="mt-1 font-mono text-xs uppercase tracking-[0.3em] text-lyra-muted">
-            Create account
+            {t('auth.createAccount')}
           </p>
         </div>
 
@@ -51,7 +53,7 @@ export default function Register({ onSuccess, onBackToLogin }) {
         >
           <div className="mb-4">
             <label htmlFor="reg-email" className="mb-1.5 block text-xs uppercase tracking-wider text-lyra-mutedDim">
-              Email
+              {t('common.email')}
             </label>
             <input
               id="reg-email"
@@ -66,7 +68,7 @@ export default function Register({ onSuccess, onBackToLogin }) {
 
           <div className="mb-4">
             <label htmlFor="reg-password" className="mb-1.5 block text-xs uppercase tracking-wider text-lyra-mutedDim">
-              Password
+              {t('common.password')}
             </label>
             <input
               id="reg-password"
@@ -82,7 +84,7 @@ export default function Register({ onSuccess, onBackToLogin }) {
 
           <div className="mb-5">
             <label htmlFor="reg-confirm" className="mb-1.5 block text-xs uppercase tracking-wider text-lyra-mutedDim">
-              Confirm password
+              {t('auth.confirmPassword')}
             </label>
             <input
               id="reg-confirm"
@@ -103,7 +105,7 @@ export default function Register({ onSuccess, onBackToLogin }) {
             disabled={loading}
             className="w-full rounded bg-lyra-gold px-4 py-2 text-sm font-medium text-lyra-bg outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-lyra-goldBright disabled:opacity-50"
           >
-            {loading ? 'Creating account…' : 'Create account'}
+            {loading ? t('auth.creatingAccount') : t('auth.createAccount')}
           </button>
         </form>
 
@@ -112,7 +114,7 @@ export default function Register({ onSuccess, onBackToLogin }) {
           onClick={onBackToLogin}
           className="mt-6 w-full text-center font-mono text-[11px] uppercase tracking-[0.2em] text-lyra-muted outline-none transition-colors hover:text-lyra-goldBright focus-visible:text-lyra-goldBright"
         >
-          Back to sign in
+          {t('auth.backToSignIn')}
         </button>
       </div>
     </div>

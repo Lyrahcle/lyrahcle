@@ -16,8 +16,10 @@ import NewSatelliteForm from './NewSatelliteForm.jsx'
 import AgentKeysPanel from './AgentKeysPanel.jsx'
 import AuditLogPanel from './AuditLogPanel.jsx'
 import UsersPanel from './UsersPanel.jsx'
+import SettingsPanel from './SettingsPanel.jsx'
 import Footer from './Footer.jsx'
 import { canWrite, isAdmin } from '../lib/auth.js'
+import { useI18n } from '../lib/I18nContext.jsx'
 import {
   fetchAgentKeys,
   fetchAssets,
@@ -35,6 +37,7 @@ const REFRESH_MS = 8000
 const PAGE_LIMIT = 50
 
 export default function Dashboard({ onLogout, onSessionExpired, activeTab, onChangeTab }) {
+  const { t } = useI18n()
   const [assets, setAssets] = useState(null)
   const [rfReadings, setRfReadings] = useState(null)
   const [rfAnomalies, setRfAnomalies] = useState(null)
@@ -64,12 +67,13 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
 
   const admin = isAdmin()
   const tabs = [
-    { id: 'orbital', label: 'Orbital' },
-    { id: 'assets', label: 'Assets' },
-    { id: 'signal', label: 'Signal' },
-    { id: 'intel', label: 'Intel' },
-    { id: 'decoder', label: 'Decoder' },
-    ...(admin ? [{ id: 'admin', label: 'Admin' }] : []),
+    { id: 'orbital', label: t('tabs.orbital') },
+    { id: 'assets', label: t('tabs.assets') },
+    { id: 'signal', label: t('tabs.signal') },
+    { id: 'intel', label: t('tabs.intel') },
+    { id: 'decoder', label: t('tabs.decoder') },
+    ...(admin ? [{ id: 'admin', label: t('tabs.admin') }] : []),
+    { id: 'settings', label: t('tabs.settings') },
   ]
 
   useEffect(() => {
@@ -161,7 +165,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
 
   return (
     <div className="min-h-screen bg-transparent text-lyra-text">
-      <Header onLogout={onLogout} onHome={() => onChangeTab('orbital')} />
+      <Header onLogout={onLogout} onHome={() => onChangeTab('orbital')} onOpenSettings={() => onChangeTab('settings')} />
       <StatusStrip backendStatus={backendStatus} dbStatus={dbStatus} sdrStatus={sdrStatus} />
 
       <main id="main-content" className="mx-auto max-w-7xl px-6 py-10 sm:px-8">
@@ -169,7 +173,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
 
         {activeTab === 'orbital' && (
           <div className="grid gap-6">
-            <Panel eyebrow="Ground Track" title="Live orbital positions" bleed>
+            <Panel eyebrow={t('panels.groundTrack')} title={t('panels.liveOrbitalPositions')} bleed>
               {satellites === null ? (
                 <div className="px-7 pb-7">
                   <Skeleton rows={1} />
@@ -180,7 +184,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
                 </div>
               )}
             </Panel>
-            <Panel eyebrow="Orbital Tracking" title="Tracked satellites">
+            <Panel eyebrow={t('panels.orbitalTracking')} title={t('panels.trackedSatellites')}>
               {canWrite() && <NewSatelliteForm onCreated={reloadSatellites} />}
               {satellites === null ? <Skeleton /> : <SatellitesPanel satellites={satellites} />}
             </Panel>
@@ -188,7 +192,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
         )}
 
         {activeTab === 'assets' && (
-          <Panel eyebrow="Asset Inventory" title="Tracked assets">
+          <Panel eyebrow={t('panels.assetInventory')} title={t('panels.trackedAssets')}>
             {canWrite() && <NewAssetForm onCreated={reloadAssets} />}
             {assets === null ? (
               <Skeleton />
@@ -204,17 +208,17 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
 
         {activeTab === 'signal' && (
           <div className="grid gap-6">
-            <Panel eyebrow="Signal Intelligence" title="RF spectrum">
+            <Panel eyebrow={t('panels.signalIntelligence')} title={t('panels.rfSpectrum')}>
               {rfReadings === null ? <Skeleton /> : <RfPanel readings={rfReadings} />}
             </Panel>
-            <Panel eyebrow="Anomaly Detection" title="Flagged RF anomalies">
+            <Panel eyebrow={t('panels.anomalyDetection')} title={t('panels.flaggedAnomalies')}>
               {rfAnomalies === null ? <Skeleton /> : <AnomaliesPanel anomalies={rfAnomalies} />}
             </Panel>
           </div>
         )}
 
         {activeTab === 'intel' && (
-          <Panel eyebrow="Threat Intelligence" title="Space-related CVEs">
+          <Panel eyebrow={t('panels.threatIntelligence')} title={t('panels.spaceCves')}>
             {spaceCVEs === null ? (
               <Skeleton />
             ) : (
@@ -228,20 +232,20 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
         )}
 
         {activeTab === 'decoder' && (
-          <Panel eyebrow="TM/TC" title="Protocol decoder">
+          <Panel eyebrow={t('panels.tmtc')} title={t('panels.protocolDecoder')}>
             <Decoder />
           </Panel>
         )}
 
         {activeTab === 'admin' && admin && (
           <div className="grid gap-6">
-            <Panel eyebrow="Access Control" title="Users & roles">
+            <Panel eyebrow={t('panels.accessControl')} title={t('panels.usersAndRoles')}>
               {users === null ? <Skeleton /> : <UsersPanel users={users} onChanged={reloadUsers} />}
             </Panel>
-            <Panel eyebrow="SDR Agents" title="Agent API keys">
+            <Panel eyebrow={t('panels.sdrAgents')} title={t('panels.agentApiKeys')}>
               {agentKeys === null ? <Skeleton /> : <AgentKeysPanel keys={agentKeys} onChanged={reloadAgentKeys} />}
             </Panel>
-            <Panel eyebrow="Security" title="Audit log">
+            <Panel eyebrow={t('panels.security')} title={t('panels.auditLog')}>
               {auditEntries === null ? (
                 <Skeleton />
               ) : (
@@ -253,6 +257,12 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
               )}
             </Panel>
           </div>
+        )}
+
+        {activeTab === 'settings' && (
+          <Panel eyebrow={t('settings.eyebrow')} title={t('settings.title')}>
+            <SettingsPanel />
+          </Panel>
         )}
       </main>
 
