@@ -21,6 +21,8 @@ Format based on [Keep a Changelog](https://keepachangelog.com/), using
 - Versioned releases: tagging `v*.*.*` builds and publishes all four Docker images to GHCR and cuts a GitHub Release — see [RELEASING.md](./RELEASING.md)
 - Backend observability (`GET /metrics`, Prometheus) and automated database backups (`scripts/backup-db.sh`)
 - React error boundary for frontend crash isolation
+- Header search bar (UI, not yet wired to a backend search endpoint)
+- OpenAPI 3.0 spec covering all 22 endpoints, embedded in the backend binary and served at `/openapi.yaml`, with a browsable Swagger UI at `/docs`
 
 ### Changed
 - `apps/cve-sync` is now the sole writer of `space_cves`; the backend only reads it, removing a duplicate in-process sync that raced on the same table

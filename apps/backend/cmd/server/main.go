@@ -145,6 +145,9 @@ func newRouter(
 		w.Write([]byte(`{"status":"ok","service":"lyrahcle-backend"}`))
 	})
 
+	r.Get("/openapi.yaml", serveOpenAPISpec)
+	r.Get("/docs", serveAPIDocs)
+
 	r.Handle("/metrics", promhttp.Handler())
 
 	r.Route("/api/v1", func(r chi.Router) {

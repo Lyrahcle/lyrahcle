@@ -30,7 +30,7 @@
 
 | Guide | Covers |
 |---|---|
-| [docs/api-reference.md](./docs/api-reference.md) | Every endpoint, authentication, agent keys |
+| [docs/api-reference.md](./docs/api-reference.md) · [`/docs`](http://localhost:8080/docs) | Every endpoint, authentication, agent keys · interactive Swagger UI |
 | [docs/deployment.md](./docs/deployment.md) | Production checklist, Docker Compose vs Kubernetes, TLS, backups |
 | [docs/configuration.md](./docs/configuration.md) | Every environment variable, across every service |
 | [CONTRIBUTING.md](./CONTRIBUTING.md) | Local dev setup, coding conventions, testing, PR workflow |
