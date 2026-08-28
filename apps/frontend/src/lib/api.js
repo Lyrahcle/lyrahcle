@@ -11,9 +11,39 @@ async function authedFetch(url, options = {}) {
   return res
 }
 
+async function readErrorText(res, fallback) {
+  const message = await res.text().catch(() => fallback)
+  return message.trim() || fallback
+}
+
 export async function fetchAssets() {
-  const res = await authedFetch('/api/v1/assets')
+  const res = await authedFetch('/api/v1/assets/')
   if (!res.ok) throw new Error('failed to fetch assets')
+  return res.json()
+}
+
+export async function createAsset({ programId, kind, value }) {
+  const res = await authedFetch('/api/v1/assets/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ program_id: programId, kind, value }),
+  })
+  if (!res.ok) throw new Error(await readErrorText(res, 'failed to create asset'))
+}
+
+export async function fetchPrograms() {
+  const res = await authedFetch('/api/v1/programs/')
+  if (!res.ok) throw new Error('failed to fetch programs')
+  return res.json()
+}
+
+export async function createProgram(name) {
+  const res = await authedFetch('/api/v1/programs/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name }),
+  })
+  if (!res.ok) throw new Error(await readErrorText(res, 'failed to create program'))
   return res.json()
 }
 
@@ -35,9 +65,47 @@ export async function fetchSatellites() {
   return res.json()
 }
 
+export async function createSatellite({ noradId, name, tleLine1, tleLine2 }) {
+  const res = await authedFetch('/api/v1/satellites/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ norad_id: noradId, name, tle_line1: tleLine1, tle_line2: tleLine2 }),
+  })
+  if (!res.ok) throw new Error(await readErrorText(res, 'failed to create satellite'))
+}
+
 export async function fetchSpaceCVEs() {
   const res = await authedFetch('/api/v1/threat-intel/space-cves')
   if (!res.ok) throw new Error('failed to fetch space CVEs')
+  return res.json()
+}
+
+export async function fetchAgentKeys() {
+  const res = await authedFetch('/api/v1/agent-keys/')
+  if (!res.ok) throw new Error('failed to fetch agent keys')
+  return res.json()
+}
+
+export async function createAgentKey(agentId) {
+  const res = await authedFetch('/api/v1/agent-keys/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ agent_id: agentId }),
+  })
+  if (!res.ok) throw new Error(await readErrorText(res, 'failed to create agent key'))
+  return res.json()
+}
+
+export async function revokeAgentKey(agentId) {
+  const res = await authedFetch(`/api/v1/agent-keys/${encodeURIComponent(agentId)}`, {
+    method: 'DELETE',
+  })
+  if (!res.ok) throw new Error(await readErrorText(res, 'failed to revoke agent key'))
+}
+
+export async function fetchAuditLog() {
+  const res = await authedFetch('/api/v1/audit-log')
+  if (!res.ok) throw new Error('failed to fetch audit log')
   return res.json()
 }
 
@@ -56,10 +124,7 @@ export async function decodeFrame(protocol, hex) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ [endpoint.field]: hex }),
   })
-  if (!res.ok) {
-    const message = await res.text().catch(() => 'decode failed')
-    throw new Error(message.trim() || 'decode failed')
-  }
+  if (!res.ok) throw new Error(await readErrorText(res, 'decode failed'))
   return res.json()
 }
 

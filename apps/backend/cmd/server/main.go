@@ -12,6 +12,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/httprate"
+	"github.com/google/uuid"
 
 	"github.com/mlko01/lyrahcle/apps/backend/internal/audit"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/auth"
@@ -42,6 +43,7 @@ func main() {
 	log.Println("migrations applied")
 
 	assets := store.NewAssetStore(pool)
+	programs := store.NewProgramStore(pool)
 	rf := store.NewRFStore(pool)
 	satellites := store.NewSatelliteStore(pool)
 	users := store.NewUserStore(pool)
@@ -85,14 +87,85 @@ func main() {
 			w.Write([]byte(`{"message":"pong from lyrahcle"}`))
 		})
 
-		r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer)).Get("/assets", func(w http.ResponseWriter, r *http.Request) {
-			list, err := assets.List(r.Context())
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(list)
+		r.Route("/assets", func(r chi.Router) {
+			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer)).Get("/", func(w http.ResponseWriter, r *http.Request) {
+				list, err := assets.List(r.Context())
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(list)
+			})
+
+			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleOperator)).Post("/", func(w http.ResponseWriter, r *http.Request) {
+				var body struct {
+					ProgramID string `json:"program_id"`
+					Kind      string `json:"kind"`
+					Value     string `json:"value"`
+				}
+				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+					http.Error(w, "invalid JSON body", http.StatusBadRequest)
+					return
+				}
+				body.Value = strings.TrimSpace(body.Value)
+
+				programID, err := uuid.Parse(body.ProgramID)
+				if err != nil {
+					http.Error(w, "program_id must be a valid UUID", http.StatusBadRequest)
+					return
+				}
+				if err := validate.AssetKind(body.Kind); err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+				if err := validate.AssetValue(body.Value); err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+
+				if err := assets.Upsert(r.Context(), programID, body.Kind, body.Value); err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+				w.WriteHeader(http.StatusCreated)
+			})
+		})
+
+		r.Route("/programs", func(r chi.Router) {
+			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer)).Get("/", func(w http.ResponseWriter, r *http.Request) {
+				list, err := programs.List(r.Context())
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(list)
+			})
+
+			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleOperator)).Post("/", func(w http.ResponseWriter, r *http.Request) {
+				var body struct {
+					Name string `json:"name"`
+				}
+				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+					http.Error(w, "invalid JSON body", http.StatusBadRequest)
+					return
+				}
+				body.Name = strings.TrimSpace(body.Name)
+				if err := validate.ProgramName(body.Name); err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+
+				program, err := programs.Create(r.Context(), body.Name)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusCreated)
+				json.NewEncoder(w).Encode(program)
+			})
 		})
 
 		r.Route("/auth", func(r chi.Router) {
@@ -232,6 +305,16 @@ func main() {
 
 		r.Route("/agent-keys", func(r chi.Router) {
 			r.Use(auth.RequireRole(cfg.JWTSecret, auth.RoleAdmin))
+
+			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+				list, err := agentKeys.List(r.Context())
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(list)
+			})
 
 			r.Post("/", func(w http.ResponseWriter, r *http.Request) {
 				var body struct {

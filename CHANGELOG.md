@@ -56,3 +56,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/), using
 - Frontend: Decoder tab (AX.25/CCSDS/PUS, paste hex → decoded fields) and Intel tab (space CVEs with severity badges, score, NVD link) — both capabilities now usable from the UI, not just curl
 - Frontend redesign: removed the oversized centered hero section (replaced with a slim status strip), added a subtle grain texture, world map now bleeds to its panel's edge, header logo/name is now a clickable link back to the dashboard home
 - Saved the user's full extended technical roadmap and business/differentiator goals to persistent memory
+- Programs and Assets are now actually usable end-to-end: `POST`/`GET /api/v1/programs/` and `POST /api/v1/assets/` (previously `assets` had no creation path at all — the feature was a dead end)
+- `GET /api/v1/agent-keys/` to list issued agent keys (previously create/revoke only, no listing)
+- Frontend: "+ New asset" form (with inline program creation), "+ Register satellite" form, and a new Admin tab (agent key issue/revoke, live audit log) — all role-gated, verified viewers don't see them
+- README screenshot updated to reflect the redesigned dashboard (slim status strip, 6 tabs including Admin, edge-to-edge map, action buttons)

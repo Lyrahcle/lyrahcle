@@ -85,6 +85,39 @@ func NoradID(id int) error {
 	return nil
 }
 
+var assetKinds = map[string]bool{
+	"domain": true, "ip": true, "satellite": true, "ground_station": true, "firmware": true,
+}
+
+func AssetKind(kind string) error {
+	if !assetKinds[kind] {
+		return fmt.Errorf("kind must be one of: domain, ip, satellite, ground_station, firmware")
+	}
+	return nil
+}
+
+func AssetValue(value string) error {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return fmt.Errorf("value is required")
+	}
+	if len(value) > 256 {
+		return fmt.Errorf("value is too long (max 256 characters)")
+	}
+	return nil
+}
+
+func ProgramName(name string) error {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return fmt.Errorf("name is required")
+	}
+	if len(name) > 128 {
+		return fmt.Errorf("name is too long (max 128 characters)")
+	}
+	return nil
+}
+
 func SatelliteName(name string) error {
 	name = strings.TrimSpace(name)
 	if name == "" {

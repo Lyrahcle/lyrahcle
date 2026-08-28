@@ -5,9 +5,9 @@ export default function AssetsTable({ assets }) {
   if (!assets.length) {
     return (
       <div className="rounded border border-dashed border-lyra-border px-5 py-10 text-center">
-        <p className="text-sm text-lyra-muted">No assets discovered yet.</p>
+        <p className="text-sm text-lyra-muted">No assets tracked yet.</p>
         <p className="mt-1 text-xs text-lyra-mutedDim">
-          Assets will appear here once a recon scan runs against a program.
+          Add one manually above, or wait for an automated recon scan (planned).
         </p>
       </div>
     )

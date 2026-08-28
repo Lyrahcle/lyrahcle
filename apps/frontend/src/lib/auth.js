@@ -50,3 +50,13 @@ export function authHeaders() {
   const token = getToken()
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
+
+const ROLE_RANK = { viewer: 0, operator: 1, admin: 2 }
+
+export function canWrite() {
+  return (ROLE_RANK[getRole()] ?? -1) >= ROLE_RANK.operator
+}
+
+export function isAdmin() {
+  return getRole() === 'admin'
+}

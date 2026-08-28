@@ -29,6 +29,35 @@ func NewAgentKeyStore(pool *pgxpool.Pool) *AgentKeyStore {
 	return &AgentKeyStore{pool: pool}
 }
 
+type AgentKeySummary struct {
+	AgentID    string     `json:"agent_id"`
+	CreatedAt  time.Time  `json:"created_at"`
+	LastUsedAt *time.Time `json:"last_used_at"`
+	Revoked    bool       `json:"revoked"`
+}
+
+func (s *AgentKeyStore) List(ctx context.Context) ([]AgentKeySummary, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT agent_id, created_at, last_used_at, revoked_at IS NOT NULL
+		FROM agent_keys
+		ORDER BY created_at DESC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []AgentKeySummary
+	for rows.Next() {
+		var summary AgentKeySummary
+		if err := rows.Scan(&summary.AgentID, &summary.CreatedAt, &summary.LastUsedAt, &summary.Revoked); err != nil {
+			return nil, err
+		}
+		out = append(out, summary)
+	}
+	return out, rows.Err()
+}
+
 func (s *AgentKeyStore) Create(ctx context.Context, agentID, keyHash string) error {
 	_, err := s.pool.Exec(ctx, `
 		INSERT INTO agent_keys (agent_id, key_hash)

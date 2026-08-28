@@ -10,9 +10,16 @@ import SatellitesPanel from './SatellitesPanel.jsx'
 import WorldMap from './WorldMap.jsx'
 import ThreatIntelPanel from './ThreatIntelPanel.jsx'
 import Decoder from './Decoder.jsx'
+import NewAssetForm from './NewAssetForm.jsx'
+import NewSatelliteForm from './NewSatelliteForm.jsx'
+import AgentKeysPanel from './AgentKeysPanel.jsx'
+import AuditLogPanel from './AuditLogPanel.jsx'
 import Footer from './Footer.jsx'
+import { canWrite, isAdmin } from '../lib/auth.js'
 import {
+  fetchAgentKeys,
   fetchAssets,
+  fetchAuditLog,
   fetchPing,
   fetchRfReadings,
   fetchSatellites,
@@ -22,24 +29,41 @@ import {
 
 const REFRESH_MS = 8000
 
-const TABS = [
-  { id: 'orbital', label: 'Orbital' },
-  { id: 'assets', label: 'Assets' },
-  { id: 'signal', label: 'Signal' },
-  { id: 'intel', label: 'Intel' },
-  { id: 'decoder', label: 'Decoder' },
-]
-
 export default function Dashboard({ onLogout, onSessionExpired, activeTab, onChangeTab }) {
   const [assets, setAssets] = useState(null)
   const [rfReadings, setRfReadings] = useState(null)
   const [satellites, setSatellites] = useState(null)
   const [spaceCVEs, setSpaceCVEs] = useState(null)
+  const [agentKeys, setAgentKeys] = useState(null)
+  const [auditEntries, setAuditEntries] = useState(null)
   const [backendStatus, setBackendStatus] = useState('checking')
   const [dbStatus, setDbStatus] = useState('checking')
 
+  const admin = isAdmin()
+  const tabs = [
+    { id: 'orbital', label: 'Orbital' },
+    { id: 'assets', label: 'Assets' },
+    { id: 'signal', label: 'Signal' },
+    { id: 'intel', label: 'Intel' },
+    { id: 'decoder', label: 'Decoder' },
+    ...(admin ? [{ id: 'admin', label: 'Admin' }] : []),
+  ]
+
   useEffect(() => {
     let cancelled = false
+
+    async function safeFetch(fetcher, setter) {
+      try {
+        const data = await fetcher()
+        if (!cancelled) setter(data ?? [])
+      } catch (err) {
+        if (err instanceof UnauthorizedError) {
+          onSessionExpired()
+          return
+        }
+        if (!cancelled) setter((prev) => prev ?? [])
+      }
+    }
 
     async function poll() {
       try {
@@ -66,37 +90,13 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
         }
       }
 
-      try {
-        const data = await fetchRfReadings()
-        if (!cancelled) setRfReadings(data ?? [])
-      } catch (err) {
-        if (err instanceof UnauthorizedError) {
-          onSessionExpired()
-          return
-        }
-        if (!cancelled) setRfReadings((prev) => prev ?? [])
-      }
+      await safeFetch(fetchRfReadings, setRfReadings)
+      await safeFetch(fetchSatellites, setSatellites)
+      await safeFetch(fetchSpaceCVEs, setSpaceCVEs)
 
-      try {
-        const data = await fetchSatellites()
-        if (!cancelled) setSatellites(data ?? [])
-      } catch (err) {
-        if (err instanceof UnauthorizedError) {
-          onSessionExpired()
-          return
-        }
-        if (!cancelled) setSatellites((prev) => prev ?? [])
-      }
-
-      try {
-        const data = await fetchSpaceCVEs()
-        if (!cancelled) setSpaceCVEs(data ?? [])
-      } catch (err) {
-        if (err instanceof UnauthorizedError) {
-          onSessionExpired()
-          return
-        }
-        if (!cancelled) setSpaceCVEs((prev) => prev ?? [])
+      if (admin) {
+        await safeFetch(fetchAgentKeys, setAgentKeys)
+        await safeFetch(fetchAuditLog, setAuditEntries)
       }
     }
 
@@ -106,11 +106,21 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
       cancelled = true
       clearInterval(id)
     }
-  }, [onSessionExpired])
+  }, [onSessionExpired, admin])
 
   const lastRf = rfReadings?.[0]
   const sdrStatus =
     lastRf && Date.now() - new Date(lastRf.captured_at).getTime() < 30000 ? 'live' : 'idle'
+
+  function reloadAssets() {
+    fetchAssets().then(setAssets).catch(() => {})
+  }
+  function reloadSatellites() {
+    fetchSatellites().then(setSatellites).catch(() => {})
+  }
+  function reloadAgentKeys() {
+    fetchAgentKeys().then(setAgentKeys).catch(() => {})
+  }
 
   return (
     <div className="min-h-screen bg-transparent text-lyra-text">
@@ -118,7 +128,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
       <StatusStrip backendStatus={backendStatus} dbStatus={dbStatus} sdrStatus={sdrStatus} />
 
       <main id="main-content" className="mx-auto max-w-7xl px-6 py-10 sm:px-8">
-        <Tabs tabs={TABS} active={activeTab} onChange={onChangeTab} />
+        <Tabs tabs={tabs} active={activeTab} onChange={onChangeTab} />
 
         {activeTab === 'orbital' && (
           <div className="grid gap-6">
@@ -134,6 +144,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
               )}
             </Panel>
             <Panel eyebrow="Orbital Tracking" title="Tracked satellites">
+              {canWrite() && <NewSatelliteForm onCreated={reloadSatellites} />}
               {satellites === null ? <Skeleton /> : <SatellitesPanel satellites={satellites} />}
             </Panel>
           </div>
@@ -141,6 +152,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
 
         {activeTab === 'assets' && (
           <Panel eyebrow="Asset Inventory" title="Tracked assets">
+            {canWrite() && <NewAssetForm onCreated={reloadAssets} />}
             {assets === null ? <Skeleton /> : <AssetsTable assets={assets} />}
           </Panel>
         )}
@@ -161,6 +173,17 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
           <Panel eyebrow="TM/TC" title="Protocol decoder">
             <Decoder />
           </Panel>
+        )}
+
+        {activeTab === 'admin' && admin && (
+          <div className="grid gap-6">
+            <Panel eyebrow="SDR Agents" title="Agent API keys">
+              {agentKeys === null ? <Skeleton /> : <AgentKeysPanel keys={agentKeys} onChanged={reloadAgentKeys} />}
+            </Panel>
+            <Panel eyebrow="Security" title="Audit log">
+              {auditEntries === null ? <Skeleton /> : <AuditLogPanel entries={auditEntries} />}
+            </Panel>
+          </div>
         )}
       </main>
 
