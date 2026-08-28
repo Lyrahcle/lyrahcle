@@ -35,25 +35,32 @@ func (s *SpaceCVEStore) Upsert(ctx context.Context, cveID, description string, p
 	return err
 }
 
-func (s *SpaceCVEStore) List(ctx context.Context, limit int) ([]SpaceCVE, error) {
+func (s *SpaceCVEStore) List(ctx context.Context, limit, offset int) (Page[SpaceCVE], error) {
+	limit, offset = ClampPageParams(limit, offset)
+
+	var total int
+	if err := s.pool.QueryRow(ctx, `SELECT count(*) FROM space_cves`).Scan(&total); err != nil {
+		return Page[SpaceCVE]{}, err
+	}
+
 	rows, err := s.pool.Query(ctx, `
 		SELECT cve_id, description, published, severity, score, keyword, synced_at
 		FROM space_cves
 		ORDER BY published DESC NULLS LAST
-		LIMIT $1
-	`, limit)
+		LIMIT $1 OFFSET $2
+	`, limit, offset)
 	if err != nil {
-		return nil, err
+		return Page[SpaceCVE]{}, err
 	}
 	defer rows.Close()
 
-	var out []SpaceCVE
+	items := []SpaceCVE{}
 	for rows.Next() {
 		var c SpaceCVE
 		var published *time.Time
 		var score *float64
 		if err := rows.Scan(&c.CVEID, &c.Description, &published, &c.Severity, &score, &c.Keyword, &c.SyncedAt); err != nil {
-			return nil, err
+			return Page[SpaceCVE]{}, err
 		}
 		if published != nil {
 			c.Published = *published
@@ -61,7 +68,11 @@ func (s *SpaceCVEStore) List(ctx context.Context, limit int) ([]SpaceCVE, error)
 		if score != nil {
 			c.Score = *score
 		}
-		out = append(out, c)
+		items = append(items, c)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return Page[SpaceCVE]{}, err
+	}
+
+	return Page[SpaceCVE]{Items: items, Total: total, Limit: limit, Offset: offset}, nil
 }

@@ -34,14 +34,15 @@ describe('api client', () => {
     vi.restoreAllMocks()
   })
 
-  it('fetchAssets sends the auth header and returns the parsed body', async () => {
+  it('fetchAssets sends the auth header, pagination params, and returns the parsed body', async () => {
     localStorage.setItem('lyra_token', 'test-token')
-    mockFetchOnce(true, [{ id: '1', kind: 'domain', value: 'example.com' }])
+    const page = { items: [{ id: '1', kind: 'domain', value: 'example.com' }], total: 1, limit: 50, offset: 0 }
+    mockFetchOnce(true, page)
     const data = await fetchAssets()
-    expect(fetch).toHaveBeenCalledWith('/api/v1/assets/', {
+    expect(fetch).toHaveBeenCalledWith('/api/v1/assets/?limit=50&offset=0', {
       headers: { Authorization: 'Bearer test-token' },
     })
-    expect(data).toEqual([{ id: '1', kind: 'domain', value: 'example.com' }])
+    expect(data).toEqual(page)
   })
 
   it('fetchAssets throws when the response is not ok', async () => {
@@ -147,9 +148,9 @@ describe('api client', () => {
     expect(fetch).toHaveBeenCalledWith('/api/v1/agent-keys/sdr-1', expect.objectContaining({ method: 'DELETE' }))
   })
 
-  it('fetchAuditLog calls the audit-log endpoint', async () => {
-    mockFetchOnce(true, [])
+  it('fetchAuditLog calls the audit-log endpoint with pagination params', async () => {
+    mockFetchOnce(true, { items: [], total: 0, limit: 50, offset: 0 })
     await fetchAuditLog()
-    expect(fetch).toHaveBeenCalledWith('/api/v1/audit-log', { headers: {} })
+    expect(fetch).toHaveBeenCalledWith('/api/v1/audit-log?limit=50&offset=0', { headers: {} })
   })
 })

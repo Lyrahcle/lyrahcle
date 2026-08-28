@@ -67,13 +67,13 @@ the `Authorization: Bearer` header used by human sessions.
 | `GET` | `/healthz` | — | Liveness check |
 | `GET` | `/metrics` | — | Prometheus metrics (request count/latency by method, route, status) |
 | `GET` | `/api/v1/ping` | — | Backend reachability check |
-| `GET` | `/api/v1/assets` | viewer+ | List tracked assets |
+| `GET` | `/api/v1/assets` | viewer+ | List tracked assets (paginated) |
 | `POST` | `/api/v1/auth/register` | — | Create a user (first user ever becomes admin) |
 | `POST` | `/api/v1/auth/login` | — | Exchange email + password for a bearer token |
 | `POST` | `/api/v1/auth/change-password` | viewer+ | Change your own password |
 | `GET` | `/api/v1/users/` | admin | List all users and their roles |
 | `PATCH` | `/api/v1/users/{userID}/role` | admin | Promote or demote a user's role (blocks demoting the last remaining admin) |
-| `GET` | `/api/v1/audit-log` | admin | List the 200 most recent security-relevant events |
+| `GET` | `/api/v1/audit-log` | admin | List security-relevant events (paginated) |
 | `POST` | `/api/v1/agent-keys` | admin | Create an API key scoped to one `agent_id` |
 | `DELETE` | `/api/v1/agent-keys/{agentID}` | admin | Revoke that agent's key |
 | `POST` | `/api/v1/rf/ingest` | agent key or operator+ | Ingest an RF reading (used by `sdr-agent`) |
@@ -85,7 +85,12 @@ the `Authorization: Bearer` header used by human sessions.
 | `POST` | `/api/v1/tmtc/decode/ccsds` | — | Decode a hex-encoded CCSDS Space Packet (version, TM/TC type, secondary header flag, APID, sequence flags/count, payload) |
 | `POST` | `/api/v1/tmtc/decode/pus` | — | Decode a hex-encoded PUS packet (CCSDS header fields + PUS version, service type/subtype, message counter, destination ID, payload) |
 | `POST` | `/api/v1/tmtc/decode/csp` | — | Decode a hex-encoded CubeSat Space Protocol (CSP v1) packet (priority, source/destination, source/destination port, HMAC/XTEA/RDP/CRC flags, payload) |
-| `GET` | `/api/v1/threat-intel/space-cves` | viewer+ | List space-related CVEs synced from the NVD (auto-updates daily) |
+| `GET` | `/api/v1/threat-intel/space-cves` | viewer+ | List space-related CVEs synced from the NVD (auto-updates daily, paginated) |
+
+`/assets`, `/audit-log`, and `/threat-intel/space-cves` accept `?limit=` (default
+50, max 200) and `?offset=` query params, and respond with
+`{"items": [...], "total": N, "limit": L, "offset": O}` instead of a bare
+array.
 
 Every endpoint above also has a matching panel or form in the dashboard —
 none of them require `curl` for day-to-day use.

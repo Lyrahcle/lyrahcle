@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -153,13 +154,14 @@ func newRouter(
 
 		r.Route("/assets", func(r chi.Router) {
 			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer)).Get("/", func(w http.ResponseWriter, r *http.Request) {
-				list, err := assets.List(r.Context())
+				limit, offset := pageParams(r)
+				page, err := assets.List(r.Context(), limit, offset)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
 				}
 				w.Header().Set("Content-Type", "application/json")
-				json.NewEncoder(w).Encode(list)
+				json.NewEncoder(w).Encode(page)
 			})
 
 			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleOperator)).Post("/", func(w http.ResponseWriter, r *http.Request) {
@@ -742,23 +744,25 @@ func newRouter(
 		})
 
 		r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleAdmin)).Get("/audit-log", func(w http.ResponseWriter, r *http.Request) {
-			entries, err := auditLog.List(r.Context(), 200)
+			limit, offset := pageParams(r)
+			page, err := auditLog.List(r.Context(), limit, offset)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(entries)
+			json.NewEncoder(w).Encode(page)
 		})
 
 		r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer)).Get("/threat-intel/space-cves", func(w http.ResponseWriter, r *http.Request) {
-			cves, err := spaceCVEs.List(r.Context(), 200)
+			limit, offset := pageParams(r)
+			page, err := spaceCVEs.List(r.Context(), limit, offset)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(cves)
+			json.NewEncoder(w).Encode(page)
 		})
 	})
 
@@ -772,6 +776,12 @@ func maxBodySize(n int64) func(http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+func pageParams(r *http.Request) (int, int) {
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
+	return limit, offset
 }
 
 func securityHeaders(tlsEnabled bool) func(http.Handler) http.Handler {

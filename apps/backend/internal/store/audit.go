@@ -37,25 +37,36 @@ func (s *AuditStore) Insert(ctx context.Context, actorType, actorID, action, ip 
 	return err
 }
 
-func (s *AuditStore) List(ctx context.Context, limit int) ([]AuditEntry, error) {
+func (s *AuditStore) List(ctx context.Context, limit, offset int) (Page[AuditEntry], error) {
+	limit, offset = ClampPageParams(limit, offset)
+
+	var total int
+	if err := s.pool.QueryRow(ctx, `SELECT count(*) FROM audit_log`).Scan(&total); err != nil {
+		return Page[AuditEntry]{}, err
+	}
+
 	rows, err := s.pool.Query(ctx, `
 		SELECT id, occurred_at, actor_type, actor_id, action, ip, details
 		FROM audit_log
 		ORDER BY occurred_at DESC
-		LIMIT $1
-	`, limit)
+		LIMIT $1 OFFSET $2
+	`, limit, offset)
 	if err != nil {
-		return nil, err
+		return Page[AuditEntry]{}, err
 	}
 	defer rows.Close()
 
-	var out []AuditEntry
+	items := []AuditEntry{}
 	for rows.Next() {
 		var e AuditEntry
 		if err := rows.Scan(&e.ID, &e.OccurredAt, &e.ActorType, &e.ActorID, &e.Action, &e.IP, &e.Details); err != nil {
-			return nil, err
+			return Page[AuditEntry]{}, err
 		}
-		out = append(out, e)
+		items = append(items, e)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return Page[AuditEntry]{}, err
+	}
+
+	return Page[AuditEntry]{Items: items, Total: total, Limit: limit, Offset: offset}, nil
 }
