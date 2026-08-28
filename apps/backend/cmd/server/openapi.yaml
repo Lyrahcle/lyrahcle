@@ -1,0 +1,803 @@
+openapi: 3.0.3
+info:
+  title: Lyrahcle API
+  description: >
+    Space-cybersecurity platform API: asset inventory, orbital tracking,
+    RF signal intelligence, TM/TC protocol decoding, and space-related
+    threat intelligence. See docs/api-reference.md for a narrative guide
+    with curl examples.
+  version: "0.9.0"
+  contact:
+    name: mlko01
+    email: manu.ciberseguridad@gmail.com
+  license:
+    name: AGPLv3
+    url: https://github.com/mlko01/lyrahcle/blob/main/LICENSE
+servers:
+  - url: http://localhost:8080
+    description: Local development
+
+tags:
+  - name: System
+  - name: Auth
+  - name: Users
+  - name: Assets
+  - name: Programs
+  - name: Satellites
+  - name: RF
+  - name: Agent Keys
+  - name: TM/TC
+  - name: Threat Intel
+  - name: Audit
+
+security:
+  - bearerAuth: []
+
+paths:
+  /healthz:
+    get:
+      tags: [System]
+      summary: Liveness check
+      security: []
+      responses:
+        "200":
+          description: Service is up
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HealthStatus" }
+
+  /metrics:
+    get:
+      tags: [System]
+      summary: Prometheus metrics
+      security: []
+      responses:
+        "200":
+          description: Prometheus text exposition format
+          content:
+            text/plain: {}
+
+  /api/v1/ping:
+    get:
+      tags: [System]
+      summary: Backend reachability check
+      security: []
+      responses:
+        "200":
+          description: Pong
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PingResponse" }
+
+  /api/v1/auth/register:
+    post:
+      tags: [Auth]
+      summary: Create a user
+      description: The first user ever registered becomes admin automatically.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RegisterRequest" }
+      responses:
+        "201":
+          description: User created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UserSummary" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "409":
+          description: Email already registered
+          content:
+            text/plain: {}
+
+  /api/v1/auth/login:
+    post:
+      tags: [Auth]
+      summary: Exchange email and password for a bearer token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LoginRequest" }
+      responses:
+        "200":
+          description: Authenticated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LoginResponse" }
+        "401":
+          description: Invalid email or password
+          content:
+            text/plain: {}
+
+  /api/v1/auth/change-password:
+    post:
+      tags: [Auth]
+      summary: Change your own password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ChangePasswordRequest" }
+      responses:
+        "204": { description: Password changed }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/v1/users/:
+    get:
+      tags: [Users]
+      summary: List all users and their roles
+      description: "Requires role: admin."
+      responses:
+        "200":
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/UserSummary" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/v1/users/{userID}/role:
+    patch:
+      tags: [Users]
+      summary: Promote or demote a user's role
+      description: >
+        Requires role: admin. Blocks demoting the last remaining admin.
+      parameters:
+        - $ref: "#/components/parameters/UserID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateRoleRequest" }
+      responses:
+        "200":
+          description: Role updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UserSummary" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404":
+          description: User not found
+          content:
+            text/plain: {}
+        "409":
+          description: Would demote the last remaining admin
+          content:
+            text/plain: {}
+
+  /api/v1/assets/:
+    get:
+      tags: [Assets]
+      summary: List tracked assets
+      description: "Requires role: viewer or higher."
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: Paginated list of assets
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AssetPage" }
+    post:
+      tags: [Assets]
+      summary: Create or update an asset
+      description: "Requires role: operator or higher."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateAssetRequest" }
+      responses:
+        "201": { description: Asset created }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/v1/programs/:
+    get:
+      tags: [Programs]
+      summary: List programs
+      description: "Requires role: viewer or higher."
+      responses:
+        "200":
+          description: List of programs
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Program" }
+    post:
+      tags: [Programs]
+      summary: Create a program
+      description: "Requires role: operator or higher."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, example: "Constellation Alpha" }
+      responses:
+        "201":
+          description: Program created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Program" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/v1/satellites/:
+    get:
+      tags: [Satellites]
+      summary: List tracked satellites with live computed position
+      description: "Requires role: viewer or higher."
+      responses:
+        "200":
+          description: List of satellites
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/SatelliteWithPosition" }
+    post:
+      tags: [Satellites]
+      summary: Register a satellite by NORAD ID and TLE
+      description: "Requires role: operator or higher."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RegisterSatelliteRequest" }
+      responses:
+        "201": { description: Satellite registered }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/v1/rf/ingest:
+    post:
+      tags: [RF]
+      summary: Ingest an RF reading
+      description: >
+        Used by sdr-agent. Auth via `X-Agent-Key` (per-agent API key,
+        preferred) or an operator-or-higher bearer token (legacy).
+        Each reading is checked against that agent's recent baseline and
+        flagged as an anomaly on statistical outliers.
+      security:
+        - bearerAuth: []
+        - agentKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RFReadingInput" }
+      responses:
+        "201": { description: Reading ingested }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403":
+          description: agent_id does not match the authenticated agent key
+          content:
+            text/plain: {}
+
+  /api/v1/rf/readings:
+    get:
+      tags: [RF]
+      summary: List recent RF readings
+      description: "Requires role: viewer or higher. Returns up to 100 most recent."
+      responses:
+        "200":
+          description: List of RF readings
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/RFReading" }
+
+  /api/v1/rf/anomalies:
+    get:
+      tags: [RF]
+      summary: List recent RF anomalies
+      description: >
+        Requires role: viewer or higher. Statistical outliers (z-score,
+        3σ threshold) in power or frequency vs. that agent's baseline.
+      responses:
+        "200":
+          description: List of RF anomalies
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/RFAnomaly" }
+
+  /api/v1/agent-keys/:
+    get:
+      tags: [Agent Keys]
+      summary: List issued agent keys
+      description: "Requires role: admin."
+      responses:
+        "200":
+          description: List of agent key summaries
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AgentKeySummary" }
+    post:
+      tags: [Agent Keys]
+      summary: Create an API key scoped to one agent_id
+      description: >
+        Requires role: admin. The plaintext key is returned once, at
+        creation time — only its SHA-256 hash is stored.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [agent_id]
+              properties:
+                agent_id: { type: string, example: "sdr-agent-madrid" }
+      responses:
+        "201":
+          description: Key created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AgentKeyCreated" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "409":
+          description: agent_id already has an active key
+          content:
+            text/plain: {}
+
+  /api/v1/agent-keys/{agentID}:
+    delete:
+      tags: [Agent Keys]
+      summary: Revoke that agent's key
+      description: "Requires role: admin."
+      parameters:
+        - name: agentID
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "204": { description: Key revoked }
+        "404":
+          description: No active key for that agent_id
+          content:
+            text/plain: {}
+
+  /api/v1/tmtc/decode/ax25:
+    post:
+      tags: [TM/TC]
+      summary: Decode a hex-encoded AX.25 UI frame
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [frame_hex]
+              properties:
+                frame_hex: { type: string, example: "82A0A4A6404060AE8482646860E103F0..." }
+      responses:
+        "200":
+          description: Decoded frame
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AX25Frame" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+
+  /api/v1/tmtc/decode/ccsds:
+    post:
+      tags: [TM/TC]
+      summary: Decode a hex-encoded CCSDS Space Packet
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [packet_hex]
+              properties:
+                packet_hex: { type: string }
+      responses:
+        "200":
+          description: Decoded packet
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CCSDSPacket" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+
+  /api/v1/tmtc/decode/pus:
+    post:
+      tags: [TM/TC]
+      summary: Decode a hex-encoded PUS packet
+      description: Built on the CCSDS Space Packet header.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [packet_hex]
+              properties:
+                packet_hex: { type: string }
+      responses:
+        "200":
+          description: Decoded packet
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PUSPacket" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+
+  /api/v1/tmtc/decode/csp:
+    post:
+      tags: [TM/TC]
+      summary: Decode a hex-encoded CubeSat Space Protocol (CSP v1) packet
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [packet_hex]
+              properties:
+                packet_hex: { type: string }
+      responses:
+        "200":
+          description: Decoded packet
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CSPPacket" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+
+  /api/v1/threat-intel/space-cves:
+    get:
+      tags: [Threat Intel]
+      summary: List space-related CVEs synced from the NVD
+      description: >
+        Requires role: viewer or higher. Auto-updates daily via the
+        cve-sync worker.
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: Paginated list of CVEs
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SpaceCVEPage" }
+
+  /api/v1/audit-log:
+    get:
+      tags: [Audit]
+      summary: List security-relevant events
+      description: "Requires role: admin."
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: Paginated list of audit entries
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuditPage" }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Human session token from /api/v1/auth/login.
+    agentKeyAuth:
+      type: apiKey
+      in: header
+      name: X-Agent-Key
+      description: Per-agent key issued via POST /api/v1/agent-keys.
+
+  parameters:
+    Limit:
+      name: limit
+      in: query
+      schema: { type: integer, default: 50, maximum: 200 }
+    Offset:
+      name: offset
+      in: query
+      schema: { type: integer, default: 0, minimum: 0 }
+    UserID:
+      name: userID
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+
+  responses:
+    BadRequest:
+      description: Invalid request body or parameters
+      content:
+        text/plain: {}
+    Unauthorized:
+      description: Missing or invalid credentials
+      content:
+        text/plain: {}
+    Forbidden:
+      description: Authenticated, but role does not permit this action
+      content:
+        text/plain: {}
+
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status: { type: string, example: ok }
+
+    PingResponse:
+      type: object
+      properties:
+        message: { type: string, example: "pong from lyrahcle" }
+
+    RegisterRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, format: password, minLength: 8 }
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string }
+        password: { type: string, format: password }
+
+    LoginResponse:
+      type: object
+      properties:
+        token: { type: string }
+        role: { type: string, enum: [viewer, operator, admin] }
+
+    ChangePasswordRequest:
+      type: object
+      required: [current_password, new_password]
+      properties:
+        current_password: { type: string, format: password }
+        new_password: { type: string, format: password, minLength: 8 }
+
+    UpdateRoleRequest:
+      type: object
+      required: [role]
+      properties:
+        role: { type: string, enum: [viewer, operator, admin] }
+
+    UserSummary:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string }
+        role: { type: string, enum: [viewer, operator, admin] }
+
+    Program:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+
+    Asset:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        program_id: { type: string, format: uuid }
+        kind: { type: string, example: domain }
+        value: { type: string, example: "ground-station.example.com" }
+
+    CreateAssetRequest:
+      type: object
+      required: [program_id, kind, value]
+      properties:
+        program_id: { type: string, format: uuid }
+        kind: { type: string, example: domain }
+        value: { type: string }
+
+    AssetPage:
+      allOf:
+        - $ref: "#/components/schemas/Page"
+        - type: object
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/Asset" }
+
+    Page:
+      type: object
+      properties:
+        total: { type: integer }
+        limit: { type: integer }
+        offset: { type: integer }
+
+    SatellitePosition:
+      type: object
+      properties:
+        latitude_deg: { type: number, format: double }
+        longitude_deg: { type: number, format: double }
+        altitude_km: { type: number, format: double }
+
+    SatelliteWithPosition:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        norad_id: { type: integer, example: 25544 }
+        name: { type: string, example: "ISS (ZARYA)" }
+        tle_line1: { type: string }
+        tle_line2: { type: string }
+        updated_at: { type: string, format: date-time }
+        position:
+          allOf:
+            - $ref: "#/components/schemas/SatellitePosition"
+          nullable: true
+          description: Omitted if SGP4 propagation fails for this TLE.
+
+    RegisterSatelliteRequest:
+      type: object
+      required: [norad_id, name, tle_line1, tle_line2]
+      properties:
+        norad_id: { type: integer }
+        name: { type: string }
+        tle_line1: { type: string }
+        tle_line2: { type: string }
+
+    RFReadingInput:
+      type: object
+      required: [agent_id, frequency_hz, power_dbm, captured_at]
+      properties:
+        agent_id: { type: string }
+        frequency_hz: { type: integer, format: int64, example: 437500000 }
+        power_dbm: { type: number, format: double, example: -62.4 }
+        captured_at: { type: string, format: date-time }
+
+    RFReading:
+      allOf:
+        - $ref: "#/components/schemas/RFReadingInput"
+        - type: object
+          properties:
+            id: { type: string, format: uuid }
+
+    RFAnomaly:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        reading_id: { type: string, format: uuid }
+        agent_id: { type: string }
+        metric: { type: string, enum: [power_dbm, frequency_hz] }
+        value: { type: number, format: double }
+        baseline_mean: { type: number, format: double }
+        baseline_stddev: { type: number, format: double }
+        z_score: { type: number, format: double }
+        detected_at: { type: string, format: date-time }
+
+    AgentKeySummary:
+      type: object
+      properties:
+        agent_id: { type: string }
+        created_at: { type: string, format: date-time }
+        last_used_at:
+          type: string
+          format: date-time
+          nullable: true
+        revoked: { type: boolean }
+
+    AgentKeyCreated:
+      type: object
+      properties:
+        agent_id: { type: string }
+        api_key:
+          type: string
+          description: Shown once — store it now, it cannot be retrieved again.
+
+    AX25Frame:
+      type: object
+      properties:
+        destination: { type: string }
+        destination_ssid: { type: integer }
+        source: { type: string }
+        source_ssid: { type: integer }
+        control: { type: integer }
+        pid: { type: integer }
+        payload: { type: string }
+        payload_hex: { type: string }
+
+    CCSDSPacket:
+      type: object
+      properties:
+        version: { type: integer }
+        packet_type: { type: string, enum: [TM, TC] }
+        secondary_header_flag: { type: boolean }
+        apid: { type: integer }
+        sequence_flags: { type: string }
+        sequence_count: { type: integer }
+        data_length: { type: integer }
+        payload: { type: string }
+        payload_hex: { type: string }
+
+    PUSPacket:
+      type: object
+      properties:
+        apid: { type: integer }
+        packet_type: { type: string, enum: [TM, TC] }
+        sequence_count: { type: integer }
+        pus_version: { type: integer }
+        service_type: { type: integer }
+        service_subtype: { type: integer }
+        message_type_counter: { type: integer }
+        destination_id: { type: integer }
+        payload: { type: string }
+        payload_hex: { type: string }
+
+    CSPPacket:
+      type: object
+      properties:
+        priority: { type: integer }
+        source: { type: integer }
+        destination: { type: integer }
+        destination_port: { type: integer }
+        source_port: { type: integer }
+        reserved: { type: integer }
+        hmac: { type: boolean }
+        xtea: { type: boolean }
+        rdp: { type: boolean }
+        crc: { type: boolean }
+        payload: { type: string }
+        payload_hex: { type: string }
+
+    SpaceCVE:
+      type: object
+      properties:
+        cve_id: { type: string, example: "CVE-2025-12345" }
+        description: { type: string }
+        published: { type: string, format: date-time }
+        severity: { type: string, enum: [LOW, MEDIUM, HIGH, CRITICAL] }
+        score: { type: number, format: double }
+        keyword: { type: string }
+        synced_at: { type: string, format: date-time }
+
+    SpaceCVEPage:
+      allOf:
+        - $ref: "#/components/schemas/Page"
+        - type: object
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/SpaceCVE" }
+
+    AuditEntry:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        occurred_at: { type: string, format: date-time }
+        actor_type: { type: string, enum: [user, agent, anonymous] }
+        actor_id: { type: string }
+        action: { type: string }
+        ip: { type: string }
+        details:
+          type: object
+          additionalProperties: true
+
+    AuditPage:
+      allOf:
+        - $ref: "#/components/schemas/Page"
+        - type: object
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/AuditEntry" }

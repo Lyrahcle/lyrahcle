@@ -3,6 +3,12 @@
 Base URL: `http://localhost:8080` (or wherever `PORT`/`TLS_CERT_FILE` point it).
 All routes below are under `/api/v1` unless noted otherwise.
 
+**Interactive docs**: the backend serves a full OpenAPI 3.0 spec at
+[`/openapi.yaml`](http://localhost:8080/openapi.yaml) and a browsable Swagger UI
+at [`/docs`](http://localhost:8080/docs) — both embedded in the binary, no
+extra setup required. The source spec lives at
+[`apps/backend/cmd/server/openapi.yaml`](../apps/backend/cmd/server/openapi.yaml).
+
 ## Authentication
 
 The entire app requires a login — both the dashboard and every endpoint
