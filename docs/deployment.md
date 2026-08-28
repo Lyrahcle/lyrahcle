@@ -53,7 +53,7 @@ Option B.
 ## Option B: Kubernetes
 
 Lyrahcle's monorepo already separates `deploy/k8s/` and `deploy/helm/` for
-this (see [PLAN.md](../PLAN.md)), but manifests/charts aren't populated yet —
+this, but manifests/charts aren't populated yet —
 this is tracked as future work. Until then, the Dockerfiles under
 `deploy/docker/` are what you'd wrap in your own Deployment/Service manifests:
 `backend` needs `DATABASE_URL` pointed at a managed or in-cluster Postgres and
@@ -91,8 +91,7 @@ should prefer them:
 - Back up with `scripts/backup-db.sh` — dumps and gzips the database (via
   `docker compose exec postgres pg_dump` if Compose is running, or `pg_dump`
   against `$DATABASE_URL` directly otherwise), then prunes anything older
-  than `$RETENTION_DAYS` (default 14). Verified end-to-end: dump → restore
-  into a clean database → all tables present.
+  than `$RETENTION_DAYS` (default 14).
 
   ```bash
   ./scripts/backup-db.sh                          # writes to ./backups/
@@ -130,5 +129,5 @@ docker compose up -d
 
 Migrations apply automatically on the new backend container's startup, before
 it starts serving traffic. There is currently no automated rollback path for a
-migration — see [SECURITY_ROADMAP.md](../SECURITY_ROADMAP.md) item 10
-(versioned releases) for where this is headed.
+migration — restore from a backup (see [Database](#database) above) if one
+needs to be undone.

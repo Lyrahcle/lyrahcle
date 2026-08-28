@@ -1,6 +1,7 @@
 import LogoMark from './LogoMark.jsx'
 import Clock from './Clock.jsx'
 import AccountMenu from './AccountMenu.jsx'
+import SearchBar from './SearchBar.jsx'
 
 export default function Header({ onLogout, onHome }) {
   return (
@@ -20,6 +21,7 @@ export default function Header({ onLogout, onHome }) {
         </button>
 
         <div className="flex items-center gap-4">
+          <SearchBar />
           <Clock />
           {onLogout && <AccountMenu onLogout={onLogout} />}
         </div>

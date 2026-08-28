@@ -36,14 +36,14 @@
 | [CONTRIBUTING.md](./CONTRIBUTING.md) | Local dev setup, coding conventions, testing, PR workflow |
 | [SECURITY.md](./SECURITY.md) · [SECURITY_ROADMAP.md](./SECURITY_ROADMAP.md) | Vulnerability disclosure · hardening plan & status |
 | [RELEASING.md](./RELEASING.md) | Versioning policy, cutting a release |
-| [PLAN.md](./PLAN.md) | Full development plan and long-term roadmap |
+| [CHANGELOG.md](./CHANGELOG.md) | Full history of shipped changes |
 
 ## Status
 
-🚧 Phase 8 of 9 — test coverage, hardening, v1.0.0 release. Phases 1–7 shipped
-(branding, backend/frontend base, Postgres persistence, branded dashboard, SDR
-edge agent, SGP4 orbital tracking, TM/TC decoding + RF anomaly detection). See
-[PLAN.md](./PLAN.md) for the full roadmap.
+🚧 Pre-v1.0.0 — core features (orbital tracking, RF signal intelligence,
+TM/TC decoding, threat intel, auth & RBAC) are shipped and in active
+hardening. See [SECURITY_ROADMAP.md](./SECURITY_ROADMAP.md) for what's done
+and what's left before v1.0.0.
 
 ## Features
 
@@ -166,6 +166,5 @@ what's already shipped.
 | Shared libraries (`rf-lib`, `tle-lib`, `ui-components`) | MIT |
 | Documentation | CC BY-SA 4.0 |
 
-See [PLAN.md](./PLAN.md) for the development plan and [SECURITY.md](./SECURITY.md)
-for the vulnerability disclosure policy. Enterprise modules require a license key
-(not yet implemented).
+See [SECURITY.md](./SECURITY.md) for the vulnerability disclosure policy.
+Enterprise modules require a license key (not yet implemented).
