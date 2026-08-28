@@ -52,7 +52,7 @@ the full roadmap.
 - [x] Phase 4 — Branded dashboard
 - [x] Phase 5 — SDR edge agent, RF ingest
 - [x] Phase 6 — Orbital tracking (SGP4, live Celestrak TLE sync, interactive world map)
-- [ ] Phase 7 — TM/TC protocol decoding, ground station & firmware modules (AX.25 and CCSDS Space Packet decoders shipped; PUS, CubeSat Space Protocol, threat-intel integration, and anomaly detection still pending)
+- [ ] Phase 7 — TM/TC protocol decoding, ground station & firmware modules (AX.25, CCSDS Space Packet, and PUS decoders shipped; space-CVE threat-intel feed shipped; CubeSat Space Protocol and anomaly detection still pending)
 - [ ] Phase 8 — Test coverage, hardening, v1.0.0 release
 - [ ] Phase 9 — Enterprise modules (advanced RF, proprietary decoders, SIEM integrations)
 
@@ -231,6 +231,7 @@ by setting `TLS_CERT_FILE`/`TLS_KEY_FILE` directly on the backend.
 | `JWT_SECRET` | *(insecure dev default, logs a warning)* | Secret used to sign auth tokens — set a strong value in any non-local deployment |
 | `TLS_CERT_FILE` / `TLS_KEY_FILE` | *(unset, plain HTTP, logs a warning)* | Paths to a TLS certificate/key to serve HTTPS directly from the backend |
 | `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` | `admin` / `admin` | Bootstrap admin account, created only if no users exist yet. Change immediately after first login |
+| `SPACE_CVE_KEYWORDS` | `CCSDS,spacecraft,satellite ground station,SATCOM,CubeSat,space segment,satellite communication,orbital` | Comma-separated NVD keyword searches synced daily into the space-CVE feed |
 
 ### API endpoints
 
@@ -251,6 +252,8 @@ by setting `TLS_CERT_FILE`/`TLS_KEY_FILE` directly on the backend.
 | `POST` | `/api/v1/satellites/` | operator+ | Register a satellite by NORAD ID + TLE |
 | `POST` | `/api/v1/tmtc/decode/ax25` | — | Decode a hex-encoded AX.25 UI frame (destination/source callsign+SSID, control, PID, payload) |
 | `POST` | `/api/v1/tmtc/decode/ccsds` | — | Decode a hex-encoded CCSDS Space Packet (version, TM/TC type, secondary header flag, APID, sequence flags/count, payload) |
+| `POST` | `/api/v1/tmtc/decode/pus` | — | Decode a hex-encoded PUS packet (CCSDS header fields + PUS version, service type/subtype, message counter, destination ID, payload) |
+| `GET` | `/api/v1/threat-intel/space-cves` | viewer+ | List space-related CVEs synced from the NVD (auto-updates daily) |
 
 ## Testing
 

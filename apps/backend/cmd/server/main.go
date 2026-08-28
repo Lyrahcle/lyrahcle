@@ -21,6 +21,7 @@ import (
 	"github.com/mlko01/lyrahcle/apps/backend/internal/orbit"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/scheduler"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/store"
+	"github.com/mlko01/lyrahcle/apps/backend/internal/threatintel"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/tmtc"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/validate"
 )
@@ -46,6 +47,7 @@ func main() {
 	users := store.NewUserStore(pool)
 	agentKeys := store.NewAgentKeyStore(pool)
 	auditLog := store.NewAuditStore(pool)
+	spaceCVEs := store.NewSpaceCVEStore(pool)
 
 	if err := seedAdmin(ctx, users, cfg); err != nil {
 		log.Printf("seed admin: %v", err)
@@ -58,10 +60,14 @@ func main() {
 	_ = sched.Every("0 */6 * * *", "tle-sync", func() {
 		syncTLEs(ctx, cfg.CelestrakGroups, satellites)
 	})
+	_ = sched.Every("0 4 * * *", "space-cve-sync", func() {
+		syncSpaceCVEs(ctx, cfg.SpaceCVEKeywords, spaceCVEs)
+	})
 	sched.Start()
 	defer sched.Stop()
 
-	syncTLEs(ctx, cfg.CelestrakGroups, satellites)
+	go syncTLEs(ctx, cfg.CelestrakGroups, satellites)
+	go syncSpaceCVEs(ctx, cfg.SpaceCVEKeywords, spaceCVEs)
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
@@ -456,6 +462,27 @@ func main() {
 				w.Header().Set("Content-Type", "application/json")
 				json.NewEncoder(w).Encode(decoded)
 			})
+
+			r.Post("/decode/pus", func(w http.ResponseWriter, r *http.Request) {
+				var body struct {
+					PacketHex string `json:"packet_hex"`
+				}
+				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+					http.Error(w, "invalid JSON body", http.StatusBadRequest)
+					return
+				}
+				if err := validate.CCSDSPacketHex(body.PacketHex); err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+				decoded, err := tmtc.DecodePUSHex(body.PacketHex)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(decoded)
+			})
 		})
 
 		r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleAdmin)).Get("/audit-log", func(w http.ResponseWriter, r *http.Request) {
@@ -466,6 +493,16 @@ func main() {
 			}
 			w.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(w).Encode(entries)
+		})
+
+		r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer)).Get("/threat-intel/space-cves", func(w http.ResponseWriter, r *http.Request) {
+			cves, err := spaceCVEs.List(r.Context(), 200)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(cves)
 		})
 	})
 
@@ -512,6 +549,36 @@ func syncTLEs(ctx context.Context, groups []string, satellites *store.SatelliteS
 		}
 
 		log.Printf("tle-sync: synced %d satellites from group %q", len(entries), group)
+	}
+}
+
+func syncSpaceCVEs(ctx context.Context, keywords []string, spaceCVEs *store.SpaceCVEStore) {
+	for i, keyword := range keywords {
+		keyword = strings.TrimSpace(keyword)
+		if keyword == "" {
+			continue
+		}
+		if i > 0 {
+			time.Sleep(6 * time.Second)
+		}
+
+		cves, err := threatintel.FetchByKeyword(keyword, 50)
+		if err != nil {
+			log.Printf("space-cve-sync: fetch keyword %q: %v", keyword, err)
+			continue
+		}
+
+		for _, c := range cves {
+			severity := c.Severity
+			if !c.HasScore {
+				severity = "unknown"
+			}
+			if err := spaceCVEs.Upsert(ctx, c.ID, c.Description, c.Published, severity, c.Score, keyword); err != nil {
+				log.Printf("space-cve-sync: upsert %s: %v", c.ID, err)
+			}
+		}
+
+		log.Printf("space-cve-sync: synced %d CVEs for keyword %q", len(cves), keyword)
 	}
 }
 

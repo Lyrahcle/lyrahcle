@@ -28,9 +28,19 @@ func DecodeCCSDSHex(packetHex string) (CCSDSPacket, error) {
 	return DecodeCCSDS(data)
 }
 
-func DecodeCCSDS(data []byte) (CCSDSPacket, error) {
+type ccsdsHeader struct {
+	Version             int
+	PacketType          string
+	SecondaryHeaderFlag bool
+	APID                int
+	SequenceFlags       string
+	SequenceCount       int
+	DataLength          int
+}
+
+func decodeCCSDSHeader(data []byte) (ccsdsHeader, []byte, error) {
 	if len(data) < ccsdsPrimaryHeaderLen {
-		return CCSDSPacket{}, fmt.Errorf("tmtc: packet too short, need at least %d bytes for the primary header, got %d", ccsdsPrimaryHeaderLen, len(data))
+		return ccsdsHeader{}, nil, fmt.Errorf("tmtc: packet too short, need at least %d bytes for the primary header, got %d", ccsdsPrimaryHeaderLen, len(data))
 	}
 
 	firstWord := uint16(data[0])<<8 | uint16(data[1])
@@ -50,12 +60,10 @@ func DecodeCCSDS(data []byte) (CCSDSPacket, error) {
 
 	expectedTotal := ccsdsPrimaryHeaderLen + dataLength
 	if len(data) != expectedTotal {
-		return CCSDSPacket{}, fmt.Errorf("tmtc: declared data length implies a %d-byte packet, got %d bytes", expectedTotal, len(data))
+		return ccsdsHeader{}, nil, fmt.Errorf("tmtc: declared data length implies a %d-byte packet, got %d bytes", expectedTotal, len(data))
 	}
 
-	payload := data[ccsdsPrimaryHeaderLen:]
-
-	return CCSDSPacket{
+	header := ccsdsHeader{
 		Version:             version,
 		PacketType:          packetType,
 		SecondaryHeaderFlag: secondaryHeaderFlag,
@@ -63,6 +71,24 @@ func DecodeCCSDS(data []byte) (CCSDSPacket, error) {
 		SequenceFlags:       sequenceFlags,
 		SequenceCount:       sequenceCount,
 		DataLength:          dataLength,
+	}
+	return header, data[ccsdsPrimaryHeaderLen:], nil
+}
+
+func DecodeCCSDS(data []byte) (CCSDSPacket, error) {
+	header, payload, err := decodeCCSDSHeader(data)
+	if err != nil {
+		return CCSDSPacket{}, err
+	}
+
+	return CCSDSPacket{
+		Version:             header.Version,
+		PacketType:          header.PacketType,
+		SecondaryHeaderFlag: header.SecondaryHeaderFlag,
+		APID:                header.APID,
+		SequenceFlags:       header.SequenceFlags,
+		SequenceCount:       header.SequenceCount,
+		DataLength:          header.DataLength,
 		Payload:             printableASCII(payload),
 		PayloadHex:          hex.EncodeToString(payload),
 	}, nil

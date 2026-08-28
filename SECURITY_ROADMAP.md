@@ -128,5 +128,21 @@ Tracked incrementally, one item at a time, before the v1.0.0 release.
   password rejected the instant the new one is set. Also fixed CI (Node 20 →
   22 for the frontend job — jsdom 30's bundled undici needs Node 22+; the
   Docker build image stays on Node 20 since it never loads jsdom).
-  Next: versioned releases (item 10, last one on this list) — item 8 (real SDR
-  hardware) needs physical hardware not available in this environment.
+- 2026-08-27: shipped CCSDS Space Packet and PUS decoders (both fuzz-tested,
+  ~2M executions combined across all tmtc decoders, zero panics), a
+  space-related CVE feed synced automatically from the NVD every 24h
+  (`GET /threat-intel/space-cves`, viewer+), moved the initial TLE/CVE sync to
+  background goroutines so a slow external API no longer delays the backend's
+  first response, and brought both new decoders plus the CVE feed into the
+  dashboard UI (new Decoder and Intel tabs) instead of leaving them curl-only.
+  Also did a real redesign pass on the frontend (removed the generic centered
+  hero pattern, added a grain texture, made the world map bleed to the panel
+  edge, made the header logo a home link) per explicit user feedback that the
+  UI "looked too AI-generated." Saved the user's full extended technical
+  roadmap (phases 7-9, SDR agent, cve-sync, Redis, testing, CI/CD,
+  observability, UX/UI, docs, additional security, plus business goals and
+  differentiators) to persistent memory for incremental work across sessions.
+  Item 10 (versioned releases) is the only item left on this original
+  10-item list; item 8 (real SDR hardware) needs physical hardware not
+  available in this environment. The user's newer, much larger roadmap has
+  many more items beyond these 10.

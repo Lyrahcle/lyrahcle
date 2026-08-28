@@ -5,6 +5,7 @@ import { isAuthenticated, logout } from './lib/auth.js'
 
 function App() {
   const [authenticated, setAuthenticated] = useState(isAuthenticated())
+  const [activeTab, setActiveTab] = useState('orbital')
 
   const handleLogout = useCallback(() => {
     logout()
@@ -15,7 +16,14 @@ function App() {
     return <Login onSuccess={() => setAuthenticated(true)} />
   }
 
-  return <Dashboard onLogout={handleLogout} onSessionExpired={handleLogout} />
+  return (
+    <Dashboard
+      onLogout={handleLogout}
+      onSessionExpired={handleLogout}
+      activeTab={activeTab}
+      onChangeTab={setActiveTab}
+    />
+  )
 }
 
 export default App

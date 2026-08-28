@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import Header from './Header.jsx'
-import Hero from './Hero.jsx'
+import StatusStrip from './StatusStrip.jsx'
 import Panel from './Panel.jsx'
 import Tabs from './Tabs.jsx'
 import Skeleton from './Skeleton.jsx'
@@ -8,8 +8,17 @@ import AssetsTable from './AssetsTable.jsx'
 import RfPanel from './RfPanel.jsx'
 import SatellitesPanel from './SatellitesPanel.jsx'
 import WorldMap from './WorldMap.jsx'
+import ThreatIntelPanel from './ThreatIntelPanel.jsx'
+import Decoder from './Decoder.jsx'
 import Footer from './Footer.jsx'
-import { fetchAssets, fetchPing, fetchRfReadings, fetchSatellites, UnauthorizedError } from '../lib/api.js'
+import {
+  fetchAssets,
+  fetchPing,
+  fetchRfReadings,
+  fetchSatellites,
+  fetchSpaceCVEs,
+  UnauthorizedError,
+} from '../lib/api.js'
 
 const REFRESH_MS = 8000
 
@@ -17,15 +26,17 @@ const TABS = [
   { id: 'orbital', label: 'Orbital' },
   { id: 'assets', label: 'Assets' },
   { id: 'signal', label: 'Signal' },
+  { id: 'intel', label: 'Intel' },
+  { id: 'decoder', label: 'Decoder' },
 ]
 
-export default function Dashboard({ onLogout, onSessionExpired }) {
+export default function Dashboard({ onLogout, onSessionExpired, activeTab, onChangeTab }) {
   const [assets, setAssets] = useState(null)
   const [rfReadings, setRfReadings] = useState(null)
   const [satellites, setSatellites] = useState(null)
+  const [spaceCVEs, setSpaceCVEs] = useState(null)
   const [backendStatus, setBackendStatus] = useState('checking')
   const [dbStatus, setDbStatus] = useState('checking')
-  const [activeTab, setActiveTab] = useState('orbital')
 
   useEffect(() => {
     let cancelled = false
@@ -76,6 +87,17 @@ export default function Dashboard({ onLogout, onSessionExpired }) {
         }
         if (!cancelled) setSatellites((prev) => prev ?? [])
       }
+
+      try {
+        const data = await fetchSpaceCVEs()
+        if (!cancelled) setSpaceCVEs(data ?? [])
+      } catch (err) {
+        if (err instanceof UnauthorizedError) {
+          onSessionExpired()
+          return
+        }
+        if (!cancelled) setSpaceCVEs((prev) => prev ?? [])
+      }
     }
 
     poll()
@@ -92,19 +114,23 @@ export default function Dashboard({ onLogout, onSessionExpired }) {
 
   return (
     <div className="min-h-screen bg-transparent text-lyra-text">
-      <Header onLogout={onLogout} />
-      <Hero backendStatus={backendStatus} dbStatus={dbStatus} sdrStatus={sdrStatus} />
+      <Header onLogout={onLogout} onHome={() => onChangeTab('orbital')} />
+      <StatusStrip backendStatus={backendStatus} dbStatus={dbStatus} sdrStatus={sdrStatus} />
 
-      <main id="main-content" className="mx-auto max-w-7xl px-6 py-12 sm:px-8">
-        <Tabs tabs={TABS} active={activeTab} onChange={setActiveTab} />
+      <main id="main-content" className="mx-auto max-w-7xl px-6 py-10 sm:px-8">
+        <Tabs tabs={TABS} active={activeTab} onChange={onChangeTab} />
 
         {activeTab === 'orbital' && (
           <div className="grid gap-6">
-            <Panel eyebrow="Ground Track" title="Live orbital positions">
+            <Panel eyebrow="Ground Track" title="Live orbital positions" bleed>
               {satellites === null ? (
-                <Skeleton rows={1} />
+                <div className="px-7 pb-7">
+                  <Skeleton rows={1} />
+                </div>
               ) : (
-                <WorldMap satellites={satellites} />
+                <div className="px-2 pb-4 sm:px-3">
+                  <WorldMap satellites={satellites} />
+                </div>
               )}
             </Panel>
             <Panel eyebrow="Orbital Tracking" title="Tracked satellites">
@@ -122,6 +148,18 @@ export default function Dashboard({ onLogout, onSessionExpired }) {
         {activeTab === 'signal' && (
           <Panel eyebrow="Signal Intelligence" title="RF spectrum">
             {rfReadings === null ? <Skeleton /> : <RfPanel readings={rfReadings} />}
+          </Panel>
+        )}
+
+        {activeTab === 'intel' && (
+          <Panel eyebrow="Threat Intelligence" title="Space-related CVEs">
+            {spaceCVEs === null ? <Skeleton /> : <ThreatIntelPanel cves={spaceCVEs} />}
+          </Panel>
+        )}
+
+        {activeTab === 'decoder' && (
+          <Panel eyebrow="TM/TC" title="Protocol decoder">
+            <Decoder />
           </Panel>
         )}
       </main>

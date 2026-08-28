@@ -50,3 +50,9 @@ Format based on [Keep a Changelog](https://keepachangelog.com/), using
 - App-wide login gate: dashboard and all read endpoints now require authentication; seeded `admin`/`admin` bootstrap account (overridable, warns loudly); `POST /auth/change-password`; Login screen and session handling in the frontend
 - CI fix: bumped frontend Node version to 22 (jsdom 30 needs undici APIs from Node 22+)
 - CCSDS Space Packet Protocol decoder (`internal/tmtc/ccsds.go`) and `POST /api/v1/tmtc/decode/ccsds`: decodes version, TM/TC packet type, secondary header flag, APID, sequence flags/count, and payload from a hex-encoded packet; rejects packets whose actual length doesn't match the declared data length. Fuzz-tested (~1M executions across both entry points, zero panics), 98%+ package coverage
+- PUS decoder (`internal/tmtc/pus.go`) and `POST /api/v1/tmtc/decode/pus`, built on the CCSDS header parser: service type/subtype, message counter, destination ID, payload. Fuzz-tested, zero panics
+- Space-related threat intelligence: `space_cves` table, NVD keyword-search client (`internal/threatintel`), daily auto-sync across 8 space-related keywords, `GET /api/v1/threat-intel/space-cves` (viewer+)
+- Initial TLE/CVE sync moved to background goroutines so backend startup no longer blocks on external API latency
+- Frontend: Decoder tab (AX.25/CCSDS/PUS, paste hex → decoded fields) and Intel tab (space CVEs with severity badges, score, NVD link) — both capabilities now usable from the UI, not just curl
+- Frontend redesign: removed the oversized centered hero section (replaced with a slim status strip), added a subtle grain texture, world map now bleeds to its panel's edge, header logo/name is now a clickable link back to the dashboard home
+- Saved the user's full extended technical roadmap and business/differentiator goals to persistent memory

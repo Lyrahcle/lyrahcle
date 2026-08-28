@@ -1,6 +1,9 @@
 package tmtc
 
-import "testing"
+import (
+	"encoding/hex"
+	"testing"
+)
 
 func FuzzDecodeAX25Hex(f *testing.F) {
 	seeds := []string{
@@ -87,5 +90,46 @@ func FuzzDecodeCCSDS(f *testing.F) {
 			}
 		}()
 		_, _ = DecodeCCSDS(data)
+	})
+}
+
+func FuzzDecodePUSHex(f *testing.F) {
+	secHeader := encodePUSSecondaryHeader(1, 3, 25, 4001, 7, []byte("test"))
+	seed := encodeCCSDS(0, false, true, 321, 3, 555, secHeader)
+
+	seeds := []string{
+		"",
+		"00",
+		"gg",
+		hex.EncodeToString(seed),
+		"ffffffffffffffffffffffffffffffff",
+	}
+	for _, s := range seeds {
+		f.Add(s)
+	}
+
+	f.Fuzz(func(t *testing.T, packetHex string) {
+		defer func() {
+			if r := recover(); r != nil {
+				t.Fatalf("DecodePUSHex panicked on input %q: %v", packetHex, r)
+			}
+		}()
+		_, _ = DecodePUSHex(packetHex)
+	})
+}
+
+func FuzzDecodePUS(f *testing.F) {
+	f.Add([]byte{})
+	f.Add([]byte{0x09, 0x41, 0xc2, 0x2b, 0x00, 0x14})
+	f.Add(make([]byte, 13))
+	f.Add(make([]byte, 1000))
+
+	f.Fuzz(func(t *testing.T, data []byte) {
+		defer func() {
+			if r := recover(); r != nil {
+				t.Fatalf("DecodePUS panicked on %d-byte input: %v", len(data), r)
+			}
+		}()
+		_, _ = DecodePUS(data)
 	})
 }

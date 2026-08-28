@@ -7,15 +7,16 @@ import (
 )
 
 type Config struct {
-	DatabaseURL     string
-	RedisURL        string
-	Port            string
-	CelestrakGroups []string
-	JWTSecret       []byte
-	TLSCertFile     string
-	TLSKeyFile      string
-	SeedAdminEmail  string
-	SeedAdminPass   string
+	DatabaseURL      string
+	RedisURL         string
+	Port             string
+	CelestrakGroups  []string
+	JWTSecret        []byte
+	TLSCertFile      string
+	TLSKeyFile       string
+	SeedAdminEmail   string
+	SeedAdminPass    string
+	SpaceCVEKeywords []string
 }
 
 func Load() Config {
@@ -27,15 +28,16 @@ func Load() Config {
 	}
 
 	cfg := Config{
-		DatabaseURL:     getEnv("DATABASE_URL", "postgres://lyrahcle:lyrahcle@localhost:5432/lyrahcle?sslmode=disable"),
-		RedisURL:        getEnv("REDIS_URL", "localhost:6379"),
-		Port:            getEnv("PORT", "8080"),
-		CelestrakGroups: strings.Split(getEnv("CELESTRAK_GROUPS", "stations"), ","),
-		JWTSecret:       []byte(secret),
-		TLSCertFile:     getEnv("TLS_CERT_FILE", ""),
-		TLSKeyFile:      getEnv("TLS_KEY_FILE", ""),
-		SeedAdminEmail:  getEnv("SEED_ADMIN_EMAIL", "admin"),
-		SeedAdminPass:   getEnv("SEED_ADMIN_PASSWORD", "admin"),
+		DatabaseURL:      getEnv("DATABASE_URL", "postgres://lyrahcle:lyrahcle@localhost:5432/lyrahcle?sslmode=disable"),
+		RedisURL:         getEnv("REDIS_URL", "localhost:6379"),
+		Port:             getEnv("PORT", "8080"),
+		CelestrakGroups:  strings.Split(getEnv("CELESTRAK_GROUPS", "stations"), ","),
+		JWTSecret:        []byte(secret),
+		TLSCertFile:      getEnv("TLS_CERT_FILE", ""),
+		TLSKeyFile:       getEnv("TLS_KEY_FILE", ""),
+		SeedAdminEmail:   getEnv("SEED_ADMIN_EMAIL", "admin"),
+		SeedAdminPass:    getEnv("SEED_ADMIN_PASSWORD", "admin"),
+		SpaceCVEKeywords: strings.Split(getEnv("SPACE_CVE_KEYWORDS", "CCSDS,spacecraft,satellite ground station,SATCOM,CubeSat,space segment,satellite communication,orbital"), ","),
 	}
 
 	if insecureDefault {
