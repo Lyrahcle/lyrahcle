@@ -22,22 +22,37 @@ func NewAssetStore(pool *pgxpool.Pool) *AssetStore {
 	return &AssetStore{pool: pool}
 }
 
-func (s *AssetStore) List(ctx context.Context) ([]Asset, error) {
-	rows, err := s.pool.Query(ctx, `SELECT id, program_id, kind, value FROM assets ORDER BY last_seen DESC LIMIT 200`)
+func (s *AssetStore) List(ctx context.Context, limit, offset int) (Page[Asset], error) {
+	limit, offset = ClampPageParams(limit, offset)
+
+	var total int
+	if err := s.pool.QueryRow(ctx, `SELECT count(*) FROM assets`).Scan(&total); err != nil {
+		return Page[Asset]{}, err
+	}
+
+	rows, err := s.pool.Query(ctx, `
+		SELECT id, program_id, kind, value FROM assets
+		ORDER BY last_seen DESC
+		LIMIT $1 OFFSET $2
+	`, limit, offset)
 	if err != nil {
-		return nil, err
+		return Page[Asset]{}, err
 	}
 	defer rows.Close()
 
-	var out []Asset
+	items := []Asset{}
 	for rows.Next() {
 		var a Asset
 		if err := rows.Scan(&a.ID, &a.ProgramID, &a.Kind, &a.Value); err != nil {
-			return nil, err
+			return Page[Asset]{}, err
 		}
-		out = append(out, a)
+		items = append(items, a)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return Page[Asset]{}, err
+	}
+
+	return Page[Asset]{Items: items, Total: total, Limit: limit, Offset: offset}, nil
 }
 
 func (s *AssetStore) Upsert(ctx context.Context, programID uuid.UUID, kind, value string) error {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Header from './Header.jsx'
 import StatusStrip from './StatusStrip.jsx'
 import Panel from './Panel.jsx'
@@ -32,6 +32,7 @@ import {
 } from '../lib/api.js'
 
 const REFRESH_MS = 8000
+const PAGE_LIMIT = 50
 
 export default function Dashboard({ onLogout, onSessionExpired, activeTab, onChangeTab }) {
   const [assets, setAssets] = useState(null)
@@ -44,6 +45,22 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
   const [users, setUsers] = useState(null)
   const [backendStatus, setBackendStatus] = useState('checking')
   const [dbStatus, setDbStatus] = useState('checking')
+
+  const [assetsOffset, setAssetsOffset] = useState(0)
+  const [cvesOffset, setCvesOffset] = useState(0)
+  const [auditOffset, setAuditOffset] = useState(0)
+  const assetsOffsetRef = useRef(0)
+  const cvesOffsetRef = useRef(0)
+  const auditOffsetRef = useRef(0)
+  useEffect(() => {
+    assetsOffsetRef.current = assetsOffset
+  }, [assetsOffset])
+  useEffect(() => {
+    cvesOffsetRef.current = cvesOffset
+  }, [cvesOffset])
+  useEffect(() => {
+    auditOffsetRef.current = auditOffset
+  }, [auditOffset])
 
   const admin = isAdmin()
   const tabs = [
@@ -58,16 +75,16 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
   useEffect(() => {
     let cancelled = false
 
-    async function safeFetch(fetcher, setter) {
+    async function safeFetch(fetcher, setter, fallback = []) {
       try {
         const data = await fetcher()
-        if (!cancelled) setter(data ?? [])
+        if (!cancelled) setter(data ?? fallback)
       } catch (err) {
         if (err instanceof UnauthorizedError) {
           onSessionExpired()
           return
         }
-        if (!cancelled) setter((prev) => prev ?? [])
+        if (!cancelled) setter((prev) => prev ?? fallback)
       }
     }
 
@@ -80,9 +97,9 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
       }
 
       try {
-        const data = await fetchAssets()
+        const data = await fetchAssets(PAGE_LIMIT, assetsOffsetRef.current)
         if (!cancelled) {
-          setAssets(data ?? [])
+          setAssets(data ?? { items: [], total: 0, limit: PAGE_LIMIT, offset: 0 })
           setDbStatus('online')
         }
       } catch (err) {
@@ -91,7 +108,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
           return
         }
         if (!cancelled) {
-          setAssets((prev) => prev ?? [])
+          setAssets((prev) => prev ?? { items: [], total: 0, limit: PAGE_LIMIT, offset: 0 })
           setDbStatus('offline')
         }
       }
@@ -99,11 +116,19 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
       await safeFetch(fetchRfReadings, setRfReadings)
       await safeFetch(fetchRfAnomalies, setRfAnomalies)
       await safeFetch(fetchSatellites, setSatellites)
-      await safeFetch(fetchSpaceCVEs, setSpaceCVEs)
+      await safeFetch(
+        () => fetchSpaceCVEs(PAGE_LIMIT, cvesOffsetRef.current),
+        setSpaceCVEs,
+        { items: [], total: 0, limit: PAGE_LIMIT, offset: 0 },
+      )
 
       if (admin) {
         await safeFetch(fetchAgentKeys, setAgentKeys)
-        await safeFetch(fetchAuditLog, setAuditEntries)
+        await safeFetch(
+          () => fetchAuditLog(PAGE_LIMIT, auditOffsetRef.current),
+          setAuditEntries,
+          { items: [], total: 0, limit: PAGE_LIMIT, offset: 0 },
+        )
         await safeFetch(fetchUsers, setUsers)
       }
     }
@@ -114,14 +139,15 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
       cancelled = true
       clearInterval(id)
     }
-  }, [onSessionExpired, admin])
+  }, [onSessionExpired, admin, assetsOffset, cvesOffset, auditOffset])
 
   const lastRf = rfReadings?.[0]
   const sdrStatus =
     lastRf && Date.now() - new Date(lastRf.captured_at).getTime() < 30000 ? 'live' : 'idle'
 
   function reloadAssets() {
-    fetchAssets().then(setAssets).catch(() => {})
+    setAssetsOffset(0)
+    fetchAssets(PAGE_LIMIT, 0).then(setAssets).catch(() => {})
   }
   function reloadSatellites() {
     fetchSatellites().then(setSatellites).catch(() => {})
@@ -164,7 +190,15 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
         {activeTab === 'assets' && (
           <Panel eyebrow="Asset Inventory" title="Tracked assets">
             {canWrite() && <NewAssetForm onCreated={reloadAssets} />}
-            {assets === null ? <Skeleton /> : <AssetsTable assets={assets} />}
+            {assets === null ? (
+              <Skeleton />
+            ) : (
+              <AssetsTable
+                page={assets}
+                onPrev={() => setAssetsOffset((o) => Math.max(0, o - PAGE_LIMIT))}
+                onNext={() => setAssetsOffset((o) => o + PAGE_LIMIT)}
+              />
+            )}
           </Panel>
         )}
 
@@ -181,7 +215,15 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
 
         {activeTab === 'intel' && (
           <Panel eyebrow="Threat Intelligence" title="Space-related CVEs">
-            {spaceCVEs === null ? <Skeleton /> : <ThreatIntelPanel cves={spaceCVEs} />}
+            {spaceCVEs === null ? (
+              <Skeleton />
+            ) : (
+              <ThreatIntelPanel
+                page={spaceCVEs}
+                onPrev={() => setCvesOffset((o) => Math.max(0, o - PAGE_LIMIT))}
+                onNext={() => setCvesOffset((o) => o + PAGE_LIMIT)}
+              />
+            )}
           </Panel>
         )}
 
@@ -200,7 +242,15 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
               {agentKeys === null ? <Skeleton /> : <AgentKeysPanel keys={agentKeys} onChanged={reloadAgentKeys} />}
             </Panel>
             <Panel eyebrow="Security" title="Audit log">
-              {auditEntries === null ? <Skeleton /> : <AuditLogPanel entries={auditEntries} />}
+              {auditEntries === null ? (
+                <Skeleton />
+              ) : (
+                <AuditLogPanel
+                  page={auditEntries}
+                  onPrev={() => setAuditOffset((o) => Math.max(0, o - PAGE_LIMIT))}
+                  onNext={() => setAuditOffset((o) => o + PAGE_LIMIT)}
+                />
+              )}
             </Panel>
           </div>
         )}

@@ -93,6 +93,10 @@ Tracked incrementally, one item at a time, before the v1.0.0 release.
 - [x] **Automated database backups** — `scripts/backup-db.sh` (`pg_dump` + gzip +
       age-based pruning). Verified end-to-end: backed up the real database,
       restored into a clean one, confirmed all tables came back correctly
+- [x] **API pagination** — `/assets`, `/audit-log`, `/threat-intel/space-cves` now
+      support `?limit=`/`?offset=` instead of a hardcoded 200-row cap, with matching
+      Prev/Next controls in the dashboard. Verified live (`curl`) and with a
+      Postgres integration test covering multiple pages and parameter clamping
 ## Status notes
 
 - 2026-08-27: shipped authentication & authorization — JWT (HS256) + bcrypt password
@@ -224,3 +228,11 @@ Tracked incrementally, one item at a time, before the v1.0.0 release.
   tag, consistent badge styling, new links), shortened the README ~55% by
   moving the API/auth walkthrough to `docs/api-reference.md`, and
   regenerated the dashboard screenshot again.
+- 2026-08-28: added pagination to `/assets`, `/audit-log`, and
+  `/threat-intel/space-cves` (`?limit=`/`?offset=`, `{items, total, limit,
+  offset}` response shape) with Prev/Next controls in the dashboard.
+  Verified live with `curl` and a Postgres integration test; along the way
+  found and fixed a test-isolation bug (`audit_log`/`space_cves` weren't
+  reset between test runs) and a frontend bug (clicking Next didn't
+  trigger an immediate refetch) — both confirmed fixed with real
+  requests/Puppeteer, not just code review.

@@ -103,6 +103,28 @@ func testPool(t *testing.T) *pgxpool.Pool {
 			z_score DOUBLE PRECISION NOT NULL,
 			detected_at TIMESTAMPTZ NOT NULL DEFAULT now()
 		);
+
+		DROP TABLE IF EXISTS audit_log CASCADE;
+		CREATE TABLE audit_log (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			occurred_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+			actor_type TEXT NOT NULL,
+			actor_id TEXT NOT NULL,
+			action TEXT NOT NULL,
+			ip TEXT NOT NULL DEFAULT '',
+			details JSONB NOT NULL DEFAULT '{}'::jsonb
+		);
+
+		DROP TABLE IF EXISTS space_cves CASCADE;
+		CREATE TABLE space_cves (
+			cve_id TEXT PRIMARY KEY,
+			description TEXT NOT NULL DEFAULT '',
+			published TIMESTAMPTZ,
+			severity TEXT NOT NULL DEFAULT 'unknown',
+			score DOUBLE PRECISION,
+			keyword TEXT NOT NULL DEFAULT '',
+			synced_at TIMESTAMPTZ NOT NULL DEFAULT now()
+		);
 	`
 	if _, err := pool.Exec(ctx, schema); err != nil {
 		t.Fatalf("failed to set up test schema: %v", err)
@@ -133,15 +155,18 @@ func TestAssetStoreUpsertAndList(t *testing.T) {
 		t.Fatalf("second Upsert (should update last_seen) returned error: %v", err)
 	}
 
-	assets, err := store.List(ctx)
+	page, err := store.List(ctx, 0, 0)
 	if err != nil {
 		t.Fatalf("List returned error: %v", err)
 	}
-	if len(assets) != 1 {
-		t.Fatalf("got %d assets, want 1 (upsert should not duplicate)", len(assets))
+	if len(page.Items) != 1 {
+		t.Fatalf("got %d assets, want 1 (upsert should not duplicate)", len(page.Items))
 	}
-	if assets[0].Value != "example.com" {
-		t.Errorf("asset value = %q, want %q", assets[0].Value, "example.com")
+	if page.Items[0].Value != "example.com" {
+		t.Errorf("asset value = %q, want %q", page.Items[0].Value, "example.com")
+	}
+	if page.Total != 1 {
+		t.Errorf("Total = %d, want 1", page.Total)
 	}
 }
 
@@ -435,5 +460,58 @@ func TestAnomalyStoreInsertAndRecent(t *testing.T) {
 	}
 	if list[0].Metric != "power_dbm" {
 		t.Errorf("Recent()[0].Metric = %q, want %q", list[0].Metric, "power_dbm")
+	}
+}
+
+func TestAuditStorePagination(t *testing.T) {
+	pool := testPool(t)
+	ctx := context.Background()
+	store := NewAuditStore(pool)
+
+	for i := 0; i < 5; i++ {
+		if err := store.Insert(ctx, "user", "tester", "test.action", "127.0.0.1", map[string]interface{}{"n": i}); err != nil {
+			t.Fatalf("Insert #%d returned error: %v", i, err)
+		}
+	}
+
+	page1, err := store.List(ctx, 2, 0)
+	if err != nil {
+		t.Fatalf("List page 1 returned error: %v", err)
+	}
+	if page1.Total != 5 {
+		t.Errorf("Total = %d, want 5", page1.Total)
+	}
+	if len(page1.Items) != 2 {
+		t.Fatalf("page 1 has %d items, want 2", len(page1.Items))
+	}
+
+	page2, err := store.List(ctx, 2, 2)
+	if err != nil {
+		t.Fatalf("List page 2 returned error: %v", err)
+	}
+	if len(page2.Items) != 2 {
+		t.Fatalf("page 2 has %d items, want 2", len(page2.Items))
+	}
+	if page1.Items[0].ID == page2.Items[0].ID {
+		t.Error("page 1 and page 2 returned the same first item; offset was not applied")
+	}
+
+	page3, err := store.List(ctx, 2, 4)
+	if err != nil {
+		t.Fatalf("List page 3 returned error: %v", err)
+	}
+	if len(page3.Items) != 1 {
+		t.Fatalf("page 3 (last, partial) has %d items, want 1", len(page3.Items))
+	}
+
+	clamped, err := store.List(ctx, 10000, -5)
+	if err != nil {
+		t.Fatalf("List with out-of-range params returned error: %v", err)
+	}
+	if clamped.Limit != MaxPageLimit {
+		t.Errorf("Limit = %d, want clamped to MaxPageLimit (%d)", clamped.Limit, MaxPageLimit)
+	}
+	if clamped.Offset != 0 {
+		t.Errorf("Offset = %d, want clamped to 0", clamped.Offset)
 	}
 }

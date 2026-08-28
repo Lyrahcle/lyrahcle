@@ -16,8 +16,8 @@ async function readErrorText(res, fallback) {
   return message.trim() || fallback
 }
 
-export async function fetchAssets() {
-  const res = await authedFetch('/api/v1/assets/')
+export async function fetchAssets(limit = 50, offset = 0) {
+  const res = await authedFetch(`/api/v1/assets/?limit=${limit}&offset=${offset}`)
   if (!res.ok) throw new Error('failed to fetch assets')
   return res.json()
 }
@@ -99,8 +99,8 @@ export async function createSatellite({ noradId, name, tleLine1, tleLine2 }) {
   if (!res.ok) throw new Error(await readErrorText(res, 'failed to create satellite'))
 }
 
-export async function fetchSpaceCVEs() {
-  const res = await authedFetch('/api/v1/threat-intel/space-cves')
+export async function fetchSpaceCVEs(limit = 50, offset = 0) {
+  const res = await authedFetch(`/api/v1/threat-intel/space-cves?limit=${limit}&offset=${offset}`)
   if (!res.ok) throw new Error('failed to fetch space CVEs')
   return res.json()
 }
@@ -128,8 +128,8 @@ export async function revokeAgentKey(agentId) {
   if (!res.ok) throw new Error(await readErrorText(res, 'failed to revoke agent key'))
 }
 
-export async function fetchAuditLog() {
-  const res = await authedFetch('/api/v1/audit-log')
+export async function fetchAuditLog(limit = 50, offset = 0) {
+  const res = await authedFetch(`/api/v1/audit-log?limit=${limit}&offset=${offset}`)
   if (!res.ok) throw new Error('failed to fetch audit log')
   return res.json()
 }
