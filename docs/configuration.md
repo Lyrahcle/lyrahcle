@@ -39,6 +39,12 @@ proxied. Change `proxy_pass` there if the backend isn't reachable at
 | `AGENT_INSECURE_SKIP_VERIFY` | `false` | Skip TLS certificate verification. **Local development only**, never against a production backend |
 | `FREQUENCY_HZ` | `437500000` | Center frequency the (currently mock) capture source reports readings for |
 | `CAPTURE_INTERVAL_SECONDS` | `10` | Seconds between simulated captures |
+| `IQ_CAPTURE_DIR` | unset (disabled) | Directory to record periodic raw IQ captures to, for later forensic replay — see [docs/forensics.md](./forensics.md) |
+| `IQ_CAPTURE_INTERVAL_SECONDS` | `60` | Seconds between IQ recordings, when `IQ_CAPTURE_DIR` is set |
+| `IQ_CAPTURE_SAMPLES` | `8192` | Samples per IQ recording |
+| `REPLAY_FILE` | unset (disabled) | Path to a saved capture's `.json` metadata file — when set, the agent replays it as historical RF readings and exits instead of running the live loop |
+| `REPLAY_WINDOW_SAMPLES` | `65536` | Samples per re-ingested power reading during replay |
+| `REPLAY_DELAY_MS` | `300` | Delay between posted readings during replay |
 
 ## cve-sync (`apps/cve-sync`)
 

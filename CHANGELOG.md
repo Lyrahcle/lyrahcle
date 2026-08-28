@@ -23,6 +23,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/), using
 - React error boundary for frontend crash isolation
 - Header search bar (UI, not yet wired to a backend search endpoint)
 - OpenAPI 3.0 spec covering all 22 endpoints, embedded in the backend binary and served at `/openapi.yaml`, with a browsable Swagger UI at `/docs`
+- `sdr-agent` IQ forensics: periodic raw IQ capture to disk (`IQ_CAPTURE_DIR`) and one-shot replay of a saved capture as historical RF readings (`REPLAY_FILE`), reconstructing the original timeline so replayed anomalies are flagged the same way a live signal would be — see [docs/forensics.md](./docs/forensics.md)
 
 ### Changed
 - `apps/cve-sync` is now the sole writer of `space_cves`; the backend only reads it, removing a duplicate in-process sync that raced on the same table
