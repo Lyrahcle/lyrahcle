@@ -18,8 +18,8 @@ func TestDetectStableHistoryFlagsOutlier(t *testing.T) {
 	if !result.Anomaly {
 		t.Errorf("Detect should flag -20 as an anomaly against a stable ~-60 baseline; z=%f", result.ZScore)
 	}
-	if result.ZScore <= ZScoreThreshold {
-		t.Errorf("ZScore = %f, want > %f", result.ZScore, ZScoreThreshold)
+	if result.ZScore <= ModifiedZScoreThreshold {
+		t.Errorf("ZScore = %f, want > %f", result.ZScore, ModifiedZScoreThreshold)
 	}
 }
 
@@ -27,7 +27,7 @@ func TestDetectValueWithinRangeIsNotAnomaly(t *testing.T) {
 	history := []float64{-60, -61, -59, -60.5, -59.5, -60.2, -60.1}
 	result := Detect("power_dbm", history, -60.3)
 	if result.Anomaly {
-		t.Errorf("Detect flagged a value close to the mean as an anomaly; z=%f", result.ZScore)
+		t.Errorf("Detect flagged a value close to the median as an anomaly; z=%f", result.ZScore)
 	}
 }
 
@@ -48,8 +48,69 @@ func TestDetectNegativeOutlier(t *testing.T) {
 	if !result.Anomaly {
 		t.Errorf("Detect should flag -95 as an anomaly against a stable ~-60 baseline; z=%f", result.ZScore)
 	}
-	if result.ZScore >= -ZScoreThreshold {
-		t.Errorf("ZScore = %f, want < %f", result.ZScore, -ZScoreThreshold)
+	if result.ZScore >= -ModifiedZScoreThreshold {
+		t.Errorf("ZScore = %f, want < %f", result.ZScore, -ModifiedZScoreThreshold)
+	}
+}
+
+func TestDetectResistsAPriorOutlierInHistory(t *testing.T) {
+	// One wild reading already sits in the window (a prior, already-
+	// flagged anomaly). A plain mean/stddev z-score would have its
+	// baseline dragged toward it, potentially masking the next real
+	// outlier; the median + MAD baseline should barely move.
+	history := []float64{-60, -61, -59, -60.5, -59.5, -60.2, -15}
+	result := Detect("power_dbm", history, -60.4)
+	if result.Anomaly {
+		t.Errorf("a normal -60ish reading was flagged, median-based baseline was skewed by the -15 outlier; median=%f mad-sigma=%f z=%f", result.Mean, result.StdDev, result.ZScore)
+	}
+	if math.Abs(result.Mean-(-60)) > 1.0 {
+		t.Errorf("baseline median = %f, want close to -60 despite the -15 outlier in history", result.Mean)
+	}
+}
+
+func TestDetectFallsBackToStdDevWhenMADIsZero(t *testing.T) {
+	// Four identical values and one different one: MAD from the median
+	// is 0 (the mode dominates), so Detect must fall back to mean/stddev
+	// instead of reporting zero spread.
+	history := []float64{-60, -60, -60, -60, -55}
+	result := Detect("power_dbm", history, -60)
+	if result.StdDev == 0 {
+		t.Error("expected a non-zero fallback stddev when MAD collapses to 0")
+	}
+}
+
+func TestMedianOddAndEven(t *testing.T) {
+	if got := Median([]float64{3, 1, 2}); got != 2 {
+		t.Errorf("Median(odd) = %f, want 2", got)
+	}
+	if got := Median([]float64{1, 2, 3, 4}); got != 2.5 {
+		t.Errorf("Median(even) = %f, want 2.5", got)
+	}
+	if got := Median(nil); got != 0 {
+		t.Errorf("Median(nil) = %f, want 0", got)
+	}
+}
+
+func TestMedianDoesNotMutateInput(t *testing.T) {
+	values := []float64{5, 3, 1, 4, 2}
+	original := append([]float64(nil), values...)
+	Median(values)
+	for i := range values {
+		if values[i] != original[i] {
+			t.Fatalf("Median mutated its input: got %v, want %v", values, original)
+		}
+	}
+}
+
+func TestMADKnownValues(t *testing.T) {
+	// median = 3; deviations from 3: 2,1,1,1,0,3,2 -> median of those = 1
+	values := []float64{1, 2, 2, 4, 3, 6, 5}
+	median := Median(values)
+	if median != 3 {
+		t.Fatalf("Median = %f, want 3", median)
+	}
+	if got := MAD(values, median); got != 1 {
+		t.Errorf("MAD = %f, want 1", got)
 	}
 }
 
@@ -72,5 +133,60 @@ func TestStdDevKnownValues(t *testing.T) {
 	want := 2.138089935
 	if math.Abs(got-want) > 1e-6 {
 		t.Errorf("StdDev = %f, want ~%f", got, want)
+	}
+}
+
+func TestDetectTrendNotEnoughHistory(t *testing.T) {
+	result := DetectTrend("power_dbm", []float64{-60, -61, -59}, -20)
+	if result.Anomaly {
+		t.Error("DetectTrend should not flag an anomaly with fewer than MinSamples history points")
+	}
+}
+
+func TestDetectTrendZeroVarianceNeverAnomalous(t *testing.T) {
+	history := []float64{-60, -60, -60, -60, -60}
+	result := DetectTrend("power_dbm", history, -60)
+	if result.Anomaly {
+		t.Error("DetectTrend should not flag an anomaly when history has zero variance")
+	}
+}
+
+func TestDetectTrendMetricNameHasSuffix(t *testing.T) {
+	history := []float64{-60, -61, -59, -60.5, -59.5}
+	result := DetectTrend("power_dbm", history, -60)
+	if result.Metric != "power_dbm_trend" {
+		t.Errorf("Metric = %q, want %q", result.Metric, "power_dbm_trend")
+	}
+}
+
+func TestDetectTrendUsesChronologicalOrder(t *testing.T) {
+	// history is most-recent-first, matching store.RFStore.RecentForAgent:
+	// oldest reading -65 ... newest reading -61. DetectTrend must replay
+	// it oldest-to-newest; replaying it as given (newest-to-oldest) would
+	// produce a different, incorrect EWMA value.
+	history := []float64{-61, -62, -63, -64, -65} // newest first
+	result := DetectTrend("power_dbm", history, -61)
+
+	// Hand-computed chronological EWMA (λ=0.2), seeded at the oldest
+	// value -65 and folding in -64, -63, -62, -61 in that order:
+	//   -64.8, -64.44, -63.952, -63.3616
+	want := -63.3616
+	if math.Abs(result.Mean-want) > 1e-6 {
+		t.Errorf("EWMA trend = %f, want %f (chronological oldest-to-newest replay); history may have been replayed in the wrong order", result.Mean, want)
+	}
+}
+
+func TestDetectTrendFlagsSustainedShift(t *testing.T) {
+	// A long, tightly stable baseline that just stepped to a new level.
+	// The most recent reading barely moved from the step, but continuing
+	// at the new level should trip the EWMA control limit even though
+	// each individual step is small.
+	history := []float64{
+		-60, -60.1, -59.9, -60, -60.05, -59.95, -60, // stable baseline
+		-63, -63.1, -62.9, -63, -63.05, // stepped and held
+	}
+	result := DetectTrend("power_dbm", history, -63)
+	if !result.Anomaly {
+		t.Errorf("expected the sustained step to trip the EWMA control limit; ewma=%f sigma=%f z=%f", result.Mean, result.StdDev, result.ZScore)
 	}
 }

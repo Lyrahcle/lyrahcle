@@ -3,10 +3,12 @@ import TableScroll from './TableScroll.jsx'
 const METRIC_LABELS = {
   power_dbm: 'Signal power',
   frequency_hz: 'Frequency',
+  power_dbm_trend: 'Signal power (trend)',
+  frequency_hz_trend: 'Frequency (trend)',
 }
 
 function formatValue(metric, value) {
-  if (metric === 'frequency_hz') return `${(value / 1e6).toFixed(3)} MHz`
+  if (metric.startsWith('frequency_hz')) return `${(value / 1e6).toFixed(3)} MHz`
   return `${value.toFixed(1)} dBm`
 }
 
@@ -21,7 +23,8 @@ export default function AnomaliesPanel({ anomalies }) {
       <div className="rounded border border-dashed border-lyra-border px-5 py-10 text-center">
         <p className="text-sm text-lyra-muted">No anomalies detected.</p>
         <p className="mt-1 text-xs text-lyra-mutedDim">
-          Each RF reading is checked against that agent's recent baseline (z-score, threshold 3σ).
+          Each reading is checked two ways: a spot outlier against a robust median/MAD baseline,
+          and a sustained-drift check against an EWMA trend baseline.
         </p>
       </div>
     )
