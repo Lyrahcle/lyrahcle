@@ -7,7 +7,6 @@ const LINK_GROUPS = [
     heading: 'Project',
     links: [
       { label: 'GitHub repository', href: REPO_URL },
-      { label: 'Development plan', href: `${REPO_URL}/blob/main/PLAN.md` },
       { label: 'Security roadmap', href: `${REPO_URL}/blob/main/SECURITY_ROADMAP.md` },
       { label: 'Security policy', href: `${REPO_URL}/blob/main/SECURITY.md` },
     ],

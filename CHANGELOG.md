@@ -1,93 +1,41 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+All notable changes to this project are documented in this file.
 Format based on [Keep a Changelog](https://keepachangelog.com/), using
 [Conventional Commits](https://www.conventionalcommits.org/).
 
 ## [Unreleased]
+
 ### Added
-- Initial monorepo scaffold (apps/, enterprise/, packages/, deploy/, scripts/, docs/)
-- Project branding: name, logo, slogan "Lyrahcle – Never Lies"
-- Backend base (Go + chi): `/healthz` and `/api/v1/ping` endpoints, config loader
-- Frontend base (React + Vite + Tailwind): landing page pinging backend
-- Dockerfiles for backend, frontend, cve-sync
-- Vite dev proxy `/api` → backend
-- Postgres schema (programs, assets, scans, findings) + minimal SQL migration runner
-- Asset store (upsert/list) and `GET /api/v1/assets`
-- Cron-based scheduler (robfig/cron) wired for future recon sweeps
-- Branded dashboard (Header, StatCard, AssetsTable) using logo and purple/gold palette
-- SDR edge agent (`apps/sdr-agent`) with mock RF capture and HTTP uplink to backend
-- `rf_readings` table, `POST /api/v1/rf/ingest`, `GET /api/v1/rf/readings`
-- Dashboard RF spectrum panel (RfPanel)
-- `sdr-agent` compose service under the `sdr` profile (`docker compose --profile sdr up`)
-- Dashboard redesign: mission-console look (deep purple/gold palette, Space Grotesk/Inter/JetBrains Mono type system, starfield background, live UTC clock, signal-strength meters, kind badges)
-- Custom vector logo (LogoMark, SVG constellation glyph) replacing the raster placeholder
-- Orbital tracking: `satellites` table, SGP4 propagation via go-satellite (`internal/orbit`), `GET/POST /api/v1/satellites`, dashboard satellites panel
-- Dashboard v2: hero section with animated orbit rings and live subsystem status, tab navigation (Orbital/Assets/Signal), dotted world map with live satellite ground-track pins, 8s auto-refresh polling, loading skeletons
-- Automatic TLE sync from Celestrak (`internal/celestrak`), runs on startup and every 6h via scheduler, configurable via `CELESTRAK_GROUPS`
-- Interactive world map: hover tooltip per satellite (name, NORAD ID, lat/lon, altitude), pulsing marker
-- Expanded README: architecture diagram, env vars, API reference, roadmap checklist
-- Responsive/accessibility polish: horizontal scroll for data tables on narrow screens (no more cramped/wrapped columns), visible focus rings on tabs, `motion-safe` guards on all pulse/spin animations, tighter mobile spacing, meta description and theme-color
-- Dashboard screenshot added to README
-- Palette change: neutral graphite/black background (previously deep purple) with gold as the sole accent; centered README header, logo, and screenshot
-- Fixed world map marker stacking: hovered satellite tooltip now renders above other nearby markers instead of being covered
-- Scaled up UI: larger hero, logo, tabs, table text and padding across the dashboard
-- Full footer: brand blurb, project/contact links, license and roadmap-phase line
-- Open Graph/Twitter meta tags, apple-touch-icon, and a keyboard-accessible skip-to-content link
-- Fixed clock placement: moved from the hero status row to a sticky header (always visible, no longer misaligned with status pills)
-- Phase 7 started: AX.25 frame decoder (`internal/tmtc`) and `POST /api/v1/tmtc/decode/ax25` endpoint — decodes destination/source callsign+SSID, control, PID, and payload from a hex-encoded frame
-- README screenshot upgraded to a browser-window mockup at 2x resolution
-- Authentication & authorization: `users` table, JWT (HS256) via `golang-jwt`, bcrypt password hashing, `admin`/`operator`/`viewer` role hierarchy, `POST /auth/register` + `POST /auth/login`; `POST /rf/ingest` and `POST /satellites/` now require an operator-or-higher bearer token; `sdr-agent` sends its token via `AGENT_TOKEN`
-- Added `SECURITY_ROADMAP.md` tracking the short-term hardening plan (TLS, input validation, tests, rate limiting, agent API keys, audit logging, releases) incrementally before v1.0.0
-- Strict input validation (`internal/validate`) across `/auth/register`, `/auth/login`, `/rf/ingest`, `POST /satellites/`, and `/tmtc/decode/ax25`: bounded frequency/power/timestamp ranges, NORAD ID and TLE line format checks, AX.25 hex length cap, hardened email regex, 1MB global request body limit
-- Rate limiting (`go-chi/httprate`): 120 req/min per IP globally, 10 req/min per IP on `/auth/register` and `/auth/login`
-- Clock now shows the browser's local time and UTC offset instead of a fixed UTC
-- Opt-in TLS/HTTPS: backend can serve HTTPS directly (`TLS_CERT_FILE`/`TLS_KEY_FILE`), nginx gained an HTTPS+redirect config, `sdr-agent` supports `https://` backends with a dev-only cert-skip-verify flag, and `scripts/generate-dev-certs.sh` generates a local self-signed cert; plain HTTP remains the default with a startup warning
-- Automated tests: backend unit tests (`auth`, `validate`, `tmtc` at 100% coverage, `celestrak`), AX.25 fuzz tests (~1M executions, zero panics), `store` integration tests against real Postgres, frontend Vitest/Testing Library tests (`SignalBar`, `KindBadge`, `lib/api.js`); CI now runs build+test+vet for both apps with a Postgres service container instead of the previous placeholder steps
-- SDR agent authentication: `agent_keys` table with SHA-256-hashed keys, `POST`/`DELETE /agent-keys` (admin-only), `X-Agent-Key` header support with fallback to the existing operator JWT, server-side rejection of RF readings whose `agent_id` doesn't match the authenticated key (blocks agent spoofing); `sdr-agent` sends `AGENT_API_KEY` when set
-- Expanded documentation: `docs/deployment.md`, `docs/configuration.md`, `CONTRIBUTING.md`, and a documentation map in the README linking all guides
-- Audit logging: `audit_log` table, `GET /audit-log` (admin-only), records auth events, agent-key lifecycle, and satellite upserts
-- App-wide login gate: dashboard and all read endpoints now require authentication; seeded `admin`/`admin` bootstrap account (overridable, warns loudly); `POST /auth/change-password`; Login screen and session handling in the frontend
-- CI fix: bumped frontend Node version to 22 (jsdom 30 needs undici APIs from Node 22+)
-- CCSDS Space Packet Protocol decoder (`internal/tmtc/ccsds.go`) and `POST /api/v1/tmtc/decode/ccsds`: decodes version, TM/TC packet type, secondary header flag, APID, sequence flags/count, and payload from a hex-encoded packet; rejects packets whose actual length doesn't match the declared data length. Fuzz-tested (~1M executions across both entry points, zero panics), 98%+ package coverage
-- PUS decoder (`internal/tmtc/pus.go`) and `POST /api/v1/tmtc/decode/pus`, built on the CCSDS header parser: service type/subtype, message counter, destination ID, payload. Fuzz-tested, zero panics
-- Space-related threat intelligence: `space_cves` table, NVD keyword-search client (`internal/threatintel`), daily auto-sync across 8 space-related keywords, `GET /api/v1/threat-intel/space-cves` (viewer+)
-- Initial TLE/CVE sync moved to background goroutines so backend startup no longer blocks on external API latency
-- Frontend: Decoder tab (AX.25/CCSDS/PUS, paste hex → decoded fields) and Intel tab (space CVEs with severity badges, score, NVD link) — both capabilities now usable from the UI, not just curl
-- Frontend redesign: removed the oversized centered hero section (replaced with a slim status strip), added a subtle grain texture, world map now bleeds to its panel's edge, header logo/name is now a clickable link back to the dashboard home
-- Saved the user's full extended technical roadmap and business/differentiator goals to persistent memory
-- Programs and Assets are now actually usable end-to-end: `POST`/`GET /api/v1/programs/` and `POST /api/v1/assets/` (previously `assets` had no creation path at all — the feature was a dead end)
-- `GET /api/v1/agent-keys/` to list issued agent keys (previously create/revoke only, no listing)
-- Frontend: "+ New asset" form (with inline program creation), "+ Register satellite" form, and a new Admin tab (agent key issue/revoke, live audit log) — all role-gated, verified viewers don't see them
-- README screenshot updated to reflect the redesigned dashboard (slim status strip, 6 tabs including Admin, edge-to-edge map, action buttons)
-- Auth UI completed: registration screen and a "change password" flow (header user menu) — previously `POST /auth/register` and `POST /auth/change-password` only existed as raw API calls
-- **Architecture decision: `apps/cve-sync` is now the sole writer of `space_cves`.** Removed the backend's duplicate in-process sync (`internal/threatintel`, the `space-cve-sync` cron job, and the startup goroutine) — two independent workers were racing to upsert the same table. `apps/cve-sync` was kept because it has NVD sync incremental tracking, a Redis dedup cache, and Prometheus metrics; the backend now only reads the table via `GET /api/v1/threat-intel/space-cves`. `SPACE_CVE_KEYWORDS` is no longer a backend env var
-- Removed `TIER1_IMPLEMENTATION.md` (superseded by `docker-compose.yml`, the migrations, and this changelog)
-- Added `.env.example` documenting every environment variable across all services
-- Production safety check: the backend now refuses to start (instead of only logging a warning) when `ENV=production` and `JWT_SECRET`, `SEED_ADMIN_PASSWORD`, or TLS are still on insecure defaults
-- User role administration: `GET /api/v1/users/`, `PATCH /api/v1/users/{userID}/role` (admin-only, blocks demoting the last remaining admin, audit-logged), plus a "Users & roles" panel in the Admin tab — previously the only way to promote/demote a user was editing the `users` table by hand
-- Clarified in the README that `packages/` and `enterprise/` are unimplemented placeholders, not existing structure
-- Fixed audit-log IP capture: `clientIP()` previously read `RemoteAddr`, which behind the nginx reverse proxy is always the proxy's own address; it now prefers `X-Real-IP`/`X-Forwarded-For`
-- Redesigned Header (user menu with role badge, change password, sign out) and Footer (platform/changelog/contributing links) to the existing graphite/gold visual language
-- Real dashboard screenshot regenerated with headless Chrome against the current build (mocked API data, admin session) and saved to `docs/screenshots/dashboard.png`, replacing the stale pre-redesign mockup
-- Versioned releases: pushing a `v*.*.*` tag now builds and publishes all four Docker images (backend, frontend, cve-sync, sdr-agent) to GHCR and cuts a GitHub Release with auto-generated notes (`.github/workflows/release.yml`); versioning policy and release steps documented in `RELEASING.md`
-- CubeSat Space Protocol (CSP v1) decoder (`internal/tmtc/csp.go`) and `POST /api/v1/tmtc/decode/csp`: decodes priority, source/destination, source/destination port, reserved bits, and the HMAC/XTEA/RDP/CRC flags from a hex-encoded packet's 32-bit header, plus the payload. Fuzz-tested (~750K executions, zero panics). Added as a fourth protocol tab in the dashboard's Decoder alongside AX.25/CCSDS/PUS, verified end-to-end (decode a sample packet, all fields render correctly)
-- **Phase 7 complete: RF anomaly detection.** New `rf_anomalies` table and `internal/anomaly` package (z-score, 3σ threshold, minimum 5-sample baseline). Every `POST /rf/ingest` now checks the new reading's power and frequency against that agent's recent history and records an anomaly if either is a statistical outlier. `GET /api/v1/rf/anomalies` (viewer+) and a new "Anomaly Detection" panel in the dashboard's Signal tab (severity-colored by z-score). Verified end-to-end against a real Postgres+Redis backend: 6 stable readings (~-60 dBm) establish a baseline, a 7th at -10 dBm is correctly flagged (z≈74) and appears in both the API and the UI. Unit tests for the detection math plus new Postgres integration tests for `RFStore`/`AnomalyStore` (all run against a real database, not just mocked)
-- Backend security headers: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, `Permissions-Policy`, a locked-down `Content-Security-Policy` (this is a JSON API, so `default-src 'none'`), and `Strict-Transport-Security` whenever TLS is enabled — applied on every response, verified live with `curl -I`
-- Frontend security headers: nginx now sends the same header set plus a CSP scoped to what the dashboard actually loads (self-hosted script/styles, Google Fonts, same-origin `/api/` calls only) in both the HTTP and TLS configs
-- Fixed a Docker Compose startup race that could crash-loop the whole stack on a cold start (reproduced in CI): `backend` and `cve-sync` connect to Postgres once at startup and exit fatally if it isn't ready yet, which — with no restart policy — permanently broke `frontend`'s nginx (`host not found in upstream "backend"`, since nginx resolves upstream hostnames once and a crashed container drops off Docker's embedded DNS). `postgres`/`redis` now have real healthchecks, `backend`/`cve-sync` depend on `service_healthy` instead of just `service_started`, and every long-running service has `restart: unless-stopped` as a safety net; `scripts/smoke-test.sh` timeouts extended for cold CI builds
-- Dashboard screenshot regenerated as a full-page capture (header through footer) so the whole app is visible in one image, replacing the earlier crop that only showed the top of the page
-- **Pre-Phase-8 hardening pass.**
-  - Dependency vulnerability scanning: `govulncheck` added to CI for all three Go modules (backend, cve-sync, sdr-agent — which, it turns out, were never being built or vetted in CI at all until now), `npm audit --audit-level=high` added to the frontend job, and `.github/dependabot.yml` covering all 3 Go modules, npm, Docker, and GitHub Actions.
-  - Found and fixed real vulnerabilities this scan surfaced (not just theoretical): `pgx` v5.5.5/v5.7.0 → v5.9.2 (fixes a real **SQL injection**, GO-2026-5004, in both backend and cve-sync), `golang.org/x/text` v0.14.0 → v0.39.0 (infinite loop on invalid input, GO-2026-5970), `github.com/redis/go-redis/v9` v9.5.1 → v9.22.0 (out-of-order responses on reconnect, GO-2025-3540). Go toolchain bumped from 1.22 (out of support) to `go 1.25` in all three `go.mod` files; Dockerfiles and CI now use floating tags (`golang:1-alpine`, `go-version: 'stable'`) instead of a hand-pinned version, so this doesn't rot again. Frontend `vite`/`vitest`/`@vitejs/plugin-react` bumped to v8/v4/v6 — `npm audit` now reports 0 vulnerabilities (was 5, including one critical).
-  - Graceful shutdown: the backend now runs as an `http.Server` that listens for `SIGINT`/`SIGTERM` and drains in-flight requests (15s timeout) before exiting, instead of a bare `http.ListenAndServe`. Verified live: sent a request, fired `SIGTERM` mid-flight, confirmed the request completed with 200 and the process exited cleanly with no zombie left behind.
-  - HTTP-level route tests: extracted the ~600-line inline router out of `main()` into a testable `newRouter()` function, and added 9 tests using `httptest` against a real Postgres-backed router (not mocks) — auth, RBAC (viewer correctly blocked from `/users`, `/audit-log`, and role changes), satellite create/list, CSP decode, RF ingest + anomaly detection end-to-end, and security headers. All 9 pass; wired into CI's integration-test step.
-  - Versioned migrations: added a `schema_migrations` tracking table. Each migration file now runs inside its own transaction and is recorded by filename once applied; re-running `Migrate()` skips already-applied files instead of re-executing every file's SQL on every boot (previously safe only by accident, via `IF NOT EXISTS` guards that would break on the first `ALTER TABLE`). Verified against a completely fresh database (all 9 migration files applied and recorded) and confirmed idempotent on a second run.
-- **Header/Footer redesign completed**: role badge in the Header now uses a semantic color per role (admin=gold, operator=green, viewer=muted-gray); Footer's phase tag updated to reflect actual status ("Phase 8 · Hardening & v1.0 Prep"), the "Open core · AGPLv3" line restyled to match the app's other status-pill badges (uppercase, tracking-wide), and two new links added (Security roadmap, Releasing).
-- Dashboard screenshot regenerated again to reflect the Header/Footer redesign.
-- **README shortened ~55%** (347 → 171 lines): moved the full authentication guide, agent-key walkthrough, and endpoint table out to a new `docs/api-reference.md`, keeping the README to overview + quick start + links. All internal doc links verified to resolve.
-- Added a React `ErrorBoundary` wrapping the whole app — a crash in any one panel now shows a "Reload" screen instead of taking down the entire dashboard. 2 new tests (happy path + a component that throws).
-- **Backend Prometheus metrics**: new `internal/metrics` middleware + `GET /metrics` (request count and latency histograms by method/route/status). `deploy/prometheus/prometheus.yml` was already configured to scrape `backend:8080/metrics` — it was just getting 404s until now. Verified live with real traffic (`curl /metrics` after a few requests shows real counters/histograms).
-- Confirmed container image scanning (Trivy, `exit-code: 1` on CRITICAL/HIGH) was already wired into `release.yml` from an earlier pass — no gap here.
-- Added `scripts/backup-db.sh`: `pg_dump` (via Compose if running, direct `$DATABASE_URL` otherwise) piped to gzip, with age-based pruning (`$RETENTION_DAYS`, default 14). Verified end-to-end: backed up the real dev database, restored the dump into a brand-new database, confirmed all 12 tables came back correctly. Documented in `docs/deployment.md`.
-- **Pagination**: `/assets`, `/audit-log`, and `/threat-intel/space-cves` now accept `?limit=`/`?offset=` and return `{items, total, limit, offset}` instead of a bare capped array (a generic `store.Page[T]` type + `ClampPageParams`, limit default 50/max 200). Verified live with `curl` (real `total`, correct slicing) and with a dedicated Postgres integration test (3 pages + limit/offset clamping). Found and fixed a real test-isolation bug along the way: `audit_log`/`space_cves` weren't being reset between test runs, so counts silently accumulated across sessions. Frontend: new `Pagination.jsx` control wired into `AssetsTable`, `AuditLogPanel`, and `ThreatIntelPanel`; also fixed a bug where clicking Next/Prev updated the offset but didn't trigger an immediate refetch (had to wait for the next 8s poll) — verified with Puppeteer that clicking Next now updates the visible range immediately (e.g. "1–50 of 137" → "51–100 of 137").
+- Monorepo scaffold (`apps/`, `enterprise/`, `packages/`, `deploy/`, `scripts/`, `docs/`) and project branding
+- Backend (Go + chi): REST API, Postgres persistence, cron-based scheduler
+- Frontend (React + Vite + Tailwind): mission-console dashboard, dark graphite/gold identity
+- Orbital tracking: SGP4 propagation (`go-satellite`), automatic TLE sync from Celestrak, interactive world map with live satellite ground-track pins
+- RF signal intelligence: edge `sdr-agent` (mock capture), spectrum readings pipeline, per-agent z-score anomaly detection
+- TM/TC protocol decoding: AX.25, CCSDS Space Packet, PUS, and CubeSat Space Protocol (CSP v1), fuzz-tested
+- Space-related threat intelligence: NVD-sourced CVE feed via `apps/cve-sync` (sole writer of `space_cves`, Redis dedup cache, Prometheus metrics)
+- Authentication & authorization: JWT (HS256) + bcrypt, `admin`/`operator`/`viewer` roles, per-agent API keys, admin-managed role changes
+- Audit logging (`/audit-log`, admin-only) and an app-wide login gate
+- Dashboard: asset inventory, satellite registration, protocol decoder, threat intel, and admin panels (agent keys, audit log, users & roles), all role-gated
+- API pagination (`?limit=`/`?offset=`) on list endpoints
+- Versioned releases: tagging `v*.*.*` builds and publishes all four Docker images to GHCR and cuts a GitHub Release — see [RELEASING.md](./RELEASING.md)
+- Backend observability (`GET /metrics`, Prometheus) and automated database backups (`scripts/backup-db.sh`)
+- React error boundary for frontend crash isolation
+
+### Changed
+- `apps/cve-sync` is now the sole writer of `space_cves`; the backend only reads it, removing a duplicate in-process sync that raced on the same table
+- Dashboard redesign: slim status strip, tab navigation, edge-to-edge world map, redesigned Header (role-colored account menu) and Footer (data-driven links)
+- README trimmed to overview + quick start + documentation links; full API/auth walkthrough moved to `docs/api-reference.md`
+
+### Fixed
+- `clientIP()` now reads `X-Real-IP`/`X-Forwarded-For` instead of the reverse proxy's own address
+- Docker Compose startup race: `postgres`/`redis` now have real healthchecks, dependent services wait on `service_healthy`, and every long-running service restarts automatically
+- Test isolation bug where `audit_log`/`space_cves` weren't reset between test runs
+- Frontend pagination not refetching immediately on Next/Prev
+
+### Security
+- Backend and frontend security response headers (`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, `Content-Security-Policy`, `Strict-Transport-Security`)
+- Dependency and container image vulnerability scanning (`govulncheck`, `npm audit`, Trivy, Dependabot) in CI, fixing a SQL injection in the Postgres driver and other real findings on first run
+- Graceful shutdown on `SIGINT`/`SIGTERM`, draining in-flight requests
+- Versioned, idempotent database migrations (`schema_migrations` tracking table)
+- Production safety check: the backend refuses to start with insecure defaults when `ENV=production`
