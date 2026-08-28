@@ -6,7 +6,7 @@ export default function Footer() {
   return (
     <footer className="border-t border-lyra-borderSoft">
       <div className="mx-auto max-w-7xl px-6 py-12 sm:px-8">
-        <div className="grid gap-10 sm:grid-cols-3">
+        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <div className="flex items-center gap-2">
               <LogoMark className="h-6 w-6" />
@@ -70,6 +70,34 @@ export default function Footer() {
                   href="https://github.com/mlko01"
                 >
                   @mlko01
+                </a>
+              </li>
+            </ul>
+          </div>
+
+          <div>
+            <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-lyra-gold">
+              Platform
+            </p>
+            <ul className="mt-3 space-y-2 text-sm text-lyra-muted">
+              <li className="flex items-center gap-2">
+                <span className="h-1.5 w-1.5 rounded-full bg-lyra-good" />
+                Open core · AGPLv3
+              </li>
+              <li>
+                <a
+                  className="outline-none transition-colors hover:text-lyra-goldBright focus-visible:text-lyra-goldBright"
+                  href="https://github.com/mlko01/lyrahcle/blob/main/CHANGELOG.md"
+                >
+                  Changelog
+                </a>
+              </li>
+              <li>
+                <a
+                  className="outline-none transition-colors hover:text-lyra-goldBright focus-visible:text-lyra-goldBright"
+                  href="https://github.com/mlko01/lyrahcle/blob/main/CONTRIBUTING.md"
+                >
+                  Contributing
                 </a>
               </li>
             </ul>

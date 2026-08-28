@@ -672,6 +672,14 @@ func logAudit(ctx context.Context, auditLog *store.AuditStore, actorType, actorI
 }
 
 func clientIP(r *http.Request) string {
+	if real := strings.TrimSpace(r.Header.Get("X-Real-IP")); real != "" {
+		return real
+	}
+	if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
+		if first := strings.TrimSpace(strings.Split(forwarded, ",")[0]); first != "" {
+			return first
+		}
+	}
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		return r.RemoteAddr

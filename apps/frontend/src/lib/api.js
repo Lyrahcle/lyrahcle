@@ -47,6 +47,25 @@ export async function createProgram(name) {
   return res.json()
 }
 
+export async function registerUser(email, password) {
+  const res = await fetch('/api/v1/auth/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  })
+  if (!res.ok) throw new Error(await readErrorText(res, 'registration failed'))
+  return res.json()
+}
+
+export async function changePassword(currentPassword, newPassword) {
+  const res = await authedFetch('/api/v1/auth/change-password', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+  })
+  if (!res.ok) throw new Error(await readErrorText(res, 'failed to change password'))
+}
+
 export async function fetchPing() {
   const res = await fetch('/api/v1/ping')
   if (!res.ok) throw new Error('backend unreachable')

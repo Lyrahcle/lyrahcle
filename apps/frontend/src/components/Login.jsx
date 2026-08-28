@@ -3,7 +3,7 @@ import LogoMark from './LogoMark.jsx'
 import OrbitRings from './OrbitRings.jsx'
 import { login } from '../lib/auth.js'
 
-export default function Login({ onSuccess }) {
+export default function Login({ onSuccess, onShowRegister }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState(null)
@@ -81,7 +81,15 @@ export default function Login({ onSuccess }) {
           </button>
         </form>
 
-        <p className="mt-6 text-center font-mono text-[11px] text-lyra-mutedDim">
+        <button
+          type="button"
+          onClick={onShowRegister}
+          className="mt-6 w-full text-center font-mono text-[11px] uppercase tracking-[0.2em] text-lyra-muted outline-none transition-colors hover:text-lyra-goldBright focus-visible:text-lyra-goldBright"
+        >
+          Create an account
+        </button>
+
+        <p className="mt-4 text-center font-mono text-[11px] text-lyra-mutedDim">
           Lyrahcle · Never Lies
         </p>
       </div>
