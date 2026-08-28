@@ -14,6 +14,7 @@ import (
 	"github.com/go-chi/httprate"
 	"github.com/google/uuid"
 
+	"github.com/mlko01/lyrahcle/apps/backend/internal/anomaly"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/audit"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/auth"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/celestrak"
@@ -44,6 +45,7 @@ func main() {
 	assets := store.NewAssetStore(pool)
 	programs := store.NewProgramStore(pool)
 	rf := store.NewRFStore(pool)
+	rfAnomalies := store.NewAnomalyStore(pool)
 	satellites := store.NewSatelliteStore(pool)
 	users := store.NewUserStore(pool)
 	agentKeys := store.NewAgentKeyStore(pool)
@@ -69,6 +71,7 @@ func main() {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
+	r.Use(securityHeaders(cfg.TLSCertFile != "" && cfg.TLSKeyFile != ""))
 	r.Use(maxBodySize(1 << 20))
 	r.Use(httprate.LimitByIP(120, time.Minute))
 
@@ -481,15 +484,34 @@ func main() {
 					}
 				}
 
-				if err := rf.Insert(r.Context(), reading); err != nil {
+				history, err := rf.RecentForAgent(r.Context(), reading.AgentID, anomalyHistoryWindow)
+				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
 				}
+
+				if err := rf.Insert(r.Context(), &reading); err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+
+				detectRFAnomalies(r.Context(), rfAnomalies, reading, history)
+
 				w.WriteHeader(http.StatusCreated)
 			})
 
 			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer)).Get("/readings", func(w http.ResponseWriter, r *http.Request) {
 				list, err := rf.Recent(r.Context(), 100)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(list)
+			})
+
+			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer)).Get("/anomalies", func(w http.ResponseWriter, r *http.Request) {
+				list, err := rfAnomalies.Recent(r.Context(), 100)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
@@ -697,6 +719,24 @@ func maxBodySize(n int64) func(http.Handler) http.Handler {
 	}
 }
 
+func securityHeaders(tlsEnabled bool) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			h := w.Header()
+			h.Set("X-Content-Type-Options", "nosniff")
+			h.Set("X-Frame-Options", "DENY")
+			h.Set("Referrer-Policy", "no-referrer")
+			h.Set("Cross-Origin-Resource-Policy", "same-origin")
+			h.Set("Permissions-Policy", "camera=(), microphone=(), geolocation=(), usb=()")
+			h.Set("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
+			if tlsEnabled {
+				h.Set("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
 func syncTLEs(ctx context.Context, groups []string, satellites *store.SatelliteStore) {
 	for _, group := range groups {
 		group = strings.TrimSpace(group)
@@ -717,6 +757,40 @@ func syncTLEs(ctx context.Context, groups []string, satellites *store.SatelliteS
 		}
 
 		log.Printf("tle-sync: synced %d satellites from group %q", len(entries), group)
+	}
+}
+
+const anomalyHistoryWindow = 20
+
+func detectRFAnomalies(ctx context.Context, anomalies *store.AnomalyStore, reading store.RFReading, history []store.RFReading) {
+	powerHistory := make([]float64, len(history))
+	freqHistory := make([]float64, len(history))
+	for i, h := range history {
+		powerHistory[i] = h.PowerDbm
+		freqHistory[i] = float64(h.FrequencyHz)
+	}
+
+	checks := []anomaly.Result{
+		anomaly.Detect("power_dbm", powerHistory, reading.PowerDbm),
+		anomaly.Detect("frequency_hz", freqHistory, float64(reading.FrequencyHz)),
+	}
+
+	for _, result := range checks {
+		if !result.Anomaly {
+			continue
+		}
+		a := store.RFAnomaly{
+			ReadingID:      reading.ID,
+			AgentID:        reading.AgentID,
+			Metric:         result.Metric,
+			Value:          result.Value,
+			BaselineMean:   result.Mean,
+			BaselineStddev: result.StdDev,
+			ZScore:         result.ZScore,
+		}
+		if err := anomalies.Insert(ctx, a); err != nil {
+			log.Printf("anomaly: failed to record %s anomaly for agent %s: %v", result.Metric, reading.AgentID, err)
+		}
 	}
 }
 

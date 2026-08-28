@@ -6,8 +6,11 @@ services:
     ports:
       - "8080:8080"
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
     environment:
       - DATABASE_URL=postgres://lyrahcle:lyrahcle@postgres:5432/lyrahcle?sslmode=disable
       - REDIS_URL=redis:6379
@@ -33,6 +36,7 @@ services:
       - "5173:80"
     depends_on:
       - backend
+    restart: unless-stopped
     # To enable HTTPS: run scripts/generate-dev-certs.sh, then uncomment below
     # and add "443:443" to ports (5173:80 keeps working as an HTTP->HTTPS redirect).
     # volumes:
@@ -49,19 +53,36 @@ services:
       - pgdata:/var/lib/postgresql/data
     ports:
       - "5432:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lyrahcle -d lyrahcle"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
 
   redis:
     image: redis:7-alpine
     ports:
       - "6379:6379"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
 
   cve-sync:
     build:
       context: .
       dockerfile: deploy/docker/Dockerfile.cve-sync
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
     environment:
       - DATABASE_URL=postgres://lyrahcle:lyrahcle@postgres:5432/lyrahcle?sslmode=disable
       - REDIS_ADDR=redis:6379
@@ -79,6 +100,7 @@ services:
     volumes:
       - ./deploy/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
+    restart: unless-stopped
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
@@ -89,6 +111,7 @@ services:
       dockerfile: deploy/docker/Dockerfile.sdr-agent
     depends_on:
       - backend
+    restart: unless-stopped
     environment:
       - BACKEND_URL=http://backend:8080
       - AGENT_ID=sdr-agent-dev

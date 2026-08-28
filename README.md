@@ -24,7 +24,7 @@
 <p align="center">
   <img src="./docs/screenshots/dashboard.png" alt="Lyrahcle dashboard" width="820" />
   <br />
-  <sub><i>Orbital tracking tab, redesigned status strip and account menu (mock data).</i></sub>
+  <sub><i>Full dashboard view — header, status strip, orbital tracking, and footer (mock data).</i></sub>
 </p>
 
 ## Documentation map
@@ -44,7 +44,7 @@ deeper:
 
 ## Status
 
-🚧 Early development — Phase 7 of 9 (TM/TC protocol decoding). See [PLAN.md](./PLAN.md) for
+🚧 Early development — Phase 8 of 9 (test coverage, hardening, v1.0.0 release). See [PLAN.md](./PLAN.md) for
 the full roadmap.
 
 - [x] Phase 1 — Branding & repo bootstrap
@@ -53,7 +53,7 @@ the full roadmap.
 - [x] Phase 4 — Branded dashboard
 - [x] Phase 5 — SDR edge agent, RF ingest
 - [x] Phase 6 — Orbital tracking (SGP4, live Celestrak TLE sync, interactive world map)
-- [ ] Phase 7 — TM/TC protocol decoding, ground station & firmware modules (AX.25, CCSDS Space Packet, PUS, and CSP decoders shipped; space-CVE threat-intel feed shipped; anomaly detection still pending)
+- [x] Phase 7 — TM/TC protocol decoding, ground station & firmware modules (AX.25, CCSDS Space Packet, PUS, and CSP decoders shipped; space-CVE threat-intel feed shipped; RF anomaly detection shipped)
 - [ ] Phase 8 — Test coverage, hardening, v1.0.0 release
 - [ ] Phase 9 — Enterprise modules (advanced RF, proprietary decoders, SIEM integrations)
 
@@ -66,6 +66,9 @@ the full roadmap.
   and plotted on an interactive world map with hover detail.
 - **RF signal intelligence** — an edge `sdr-agent` streams spectrum readings to the
   backend; the dashboard shows live signal-strength meters per reading.
+- **RF anomaly detection** — every incoming reading is checked against that agent's
+  recent baseline (z-score, 3σ threshold); statistical outliers in power or
+  frequency are flagged automatically and surfaced in the Signal tab.
 - **TM/TC protocol decoding** — paste a hex frame/packet in the Decoder tab and
   get back the parsed fields for AX.25, CCSDS Space Packet, PUS, or CubeSat
   Space Protocol (CSP v1).
@@ -265,6 +268,7 @@ every service (including `cve-sync`, `sdr-agent`, and Docker Compose).
 | `DELETE` | `/api/v1/agent-keys/{agentID}` | admin | Revoke that agent's key |
 | `POST` | `/api/v1/rf/ingest` | agent key or operator+ | Ingest an RF reading (used by `sdr-agent`) |
 | `GET` | `/api/v1/rf/readings` | viewer+ | List recent RF readings |
+| `GET` | `/api/v1/rf/anomalies` | viewer+ | List recent RF anomalies (statistical outliers in power or frequency vs. that agent's baseline) |
 | `GET` | `/api/v1/satellites/` | viewer+ | List tracked satellites with live computed position |
 | `POST` | `/api/v1/satellites/` | operator+ | Register a satellite by NORAD ID + TLE |
 | `POST` | `/api/v1/tmtc/decode/ax25` | — | Decode a hex-encoded AX.25 UI frame (destination/source callsign+SSID, control, PID, payload) |
@@ -306,6 +310,15 @@ container), frontend build+tests, and the full-stack smoke test on every push
 and pull request.
 
 ## Security
+
+Every response — API and static frontend alike — carries a locked-down set of
+security headers: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`,
+`Referrer-Policy: no-referrer`, a restrictive `Permissions-Policy`, a
+`Content-Security-Policy` (`default-src 'none'` on the API; scoped to
+self-hosted assets + Google Fonts + same-origin `/api/` calls on the
+frontend), and `Strict-Transport-Security` whenever TLS is enabled. Combined
+with the JWT auth, bcrypt password hashing, per-agent API keys, rate
+limiting, strict input validation, and audit logging already covered above.
 
 See [SECURITY_ROADMAP.md](./SECURITY_ROADMAP.md) for the short-term hardening plan
 (TLS, input validation, test coverage, rate limiting, agent-specific auth, audit

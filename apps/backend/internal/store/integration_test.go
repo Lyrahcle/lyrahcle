@@ -80,6 +80,29 @@ func testPool(t *testing.T) *pgxpool.Pool {
 			last_used_at TIMESTAMPTZ,
 			revoked_at TIMESTAMPTZ
 		);
+
+		DROP TABLE IF EXISTS rf_anomalies CASCADE;
+		DROP TABLE IF EXISTS rf_readings CASCADE;
+		CREATE TABLE rf_readings (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			agent_id TEXT NOT NULL,
+			frequency_hz BIGINT NOT NULL,
+			power_dbm DOUBLE PRECISION NOT NULL,
+			captured_at TIMESTAMPTZ NOT NULL,
+			received_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+			metadata JSONB NOT NULL DEFAULT '{}'::jsonb
+		);
+		CREATE TABLE rf_anomalies (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			reading_id UUID NOT NULL REFERENCES rf_readings(id) ON DELETE CASCADE,
+			agent_id TEXT NOT NULL,
+			metric TEXT NOT NULL,
+			value DOUBLE PRECISION NOT NULL,
+			baseline_mean DOUBLE PRECISION NOT NULL,
+			baseline_stddev DOUBLE PRECISION NOT NULL,
+			z_score DOUBLE PRECISION NOT NULL,
+			detected_at TIMESTAMPTZ NOT NULL DEFAULT now()
+		);
 	`
 	if _, err := pool.Exec(ctx, schema); err != nil {
 		t.Fatalf("failed to set up test schema: %v", err)
@@ -325,5 +348,92 @@ func TestAgentKeyStoreRevoke(t *testing.T) {
 
 	if _, err := store.Revoke(ctx, "sdr-agent-madrid"); err != ErrAgentKeyNotFound {
 		t.Errorf("double Revoke: err = %v, want ErrAgentKeyNotFound", err)
+	}
+}
+
+func TestRFStoreInsertAndRecentForAgent(t *testing.T) {
+	pool := testPool(t)
+	ctx := context.Background()
+	store := NewRFStore(pool)
+
+	base := time.Now().Add(-time.Hour)
+	for i := 0; i < 3; i++ {
+		r := RFReading{
+			AgentID:     "sdr-agent-madrid",
+			FrequencyHz: 437500000,
+			PowerDbm:    -60 - float64(i),
+			CapturedAt:  base.Add(time.Duration(i) * time.Minute),
+		}
+		if err := store.Insert(ctx, &r); err != nil {
+			t.Fatalf("Insert returned error: %v", err)
+		}
+		if r.ID == uuid.Nil {
+			t.Error("Insert did not populate the generated ID")
+		}
+	}
+
+	other := RFReading{AgentID: "sdr-agent-other", FrequencyHz: 437500000, PowerDbm: -50, CapturedAt: base}
+	if err := store.Insert(ctx, &other); err != nil {
+		t.Fatalf("Insert returned error: %v", err)
+	}
+
+	history, err := store.RecentForAgent(ctx, "sdr-agent-madrid", 10)
+	if err != nil {
+		t.Fatalf("RecentForAgent returned error: %v", err)
+	}
+	if len(history) != 3 {
+		t.Fatalf("RecentForAgent returned %d readings, want 3 (should exclude the other agent's reading)", len(history))
+	}
+	for _, h := range history {
+		if h.AgentID != "sdr-agent-madrid" {
+			t.Errorf("RecentForAgent returned a reading for agent %q, want only sdr-agent-madrid", h.AgentID)
+		}
+	}
+
+	all, err := store.Recent(ctx, 10)
+	if err != nil {
+		t.Fatalf("Recent returned error: %v", err)
+	}
+	if len(all) != 4 {
+		t.Fatalf("Recent returned %d readings, want 4 (all agents)", len(all))
+	}
+}
+
+func TestAnomalyStoreInsertAndRecent(t *testing.T) {
+	pool := testPool(t)
+	ctx := context.Background()
+	rfStore := NewRFStore(pool)
+	anomalyStore := NewAnomalyStore(pool)
+
+	reading := RFReading{AgentID: "sdr-agent-madrid", FrequencyHz: 437500000, PowerDbm: -20, CapturedAt: time.Now()}
+	if err := rfStore.Insert(ctx, &reading); err != nil {
+		t.Fatalf("Insert (reading) returned error: %v", err)
+	}
+
+	a := RFAnomaly{
+		ReadingID:      reading.ID,
+		AgentID:        reading.AgentID,
+		Metric:         "power_dbm",
+		Value:          -20,
+		BaselineMean:   -60,
+		BaselineStddev: 1.5,
+		ZScore:         26.6,
+	}
+	if err := anomalyStore.Insert(ctx, a); err != nil {
+		t.Fatalf("Insert (anomaly) returned error: %v", err)
+	}
+
+	list, err := anomalyStore.Recent(ctx, 10)
+	if err != nil {
+		t.Fatalf("Recent returned error: %v", err)
+	}
+	if len(list) != 1 {
+		t.Fatalf("Recent returned %d anomalies, want 1", len(list))
+	}
+	if list[0].ReadingID != reading.ID {
+		t.Errorf("Recent()[0].ReadingID = %v, want %v", list[0].ReadingID, reading.ID)
+	}
+	if list[0].Metric != "power_dbm" {
+		t.Errorf("Recent()[0].Metric = %q, want %q", list[0].Metric, "power_dbm")
 	}
 }

@@ -78,6 +78,12 @@ export async function fetchRfReadings() {
   return res.json()
 }
 
+export async function fetchRfAnomalies() {
+  const res = await authedFetch('/api/v1/rf/anomalies')
+  if (!res.ok) throw new Error('failed to fetch rf anomalies')
+  return res.json()
+}
+
 export async function fetchSatellites() {
   const res = await authedFetch('/api/v1/satellites/')
   if (!res.ok) throw new Error('failed to fetch satellites')

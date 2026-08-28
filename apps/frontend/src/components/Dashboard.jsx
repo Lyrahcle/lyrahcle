@@ -6,6 +6,7 @@ import Tabs from './Tabs.jsx'
 import Skeleton from './Skeleton.jsx'
 import AssetsTable from './AssetsTable.jsx'
 import RfPanel from './RfPanel.jsx'
+import AnomaliesPanel from './AnomaliesPanel.jsx'
 import SatellitesPanel from './SatellitesPanel.jsx'
 import WorldMap from './WorldMap.jsx'
 import ThreatIntelPanel from './ThreatIntelPanel.jsx'
@@ -22,6 +23,7 @@ import {
   fetchAssets,
   fetchAuditLog,
   fetchPing,
+  fetchRfAnomalies,
   fetchRfReadings,
   fetchSatellites,
   fetchSpaceCVEs,
@@ -34,6 +36,7 @@ const REFRESH_MS = 8000
 export default function Dashboard({ onLogout, onSessionExpired, activeTab, onChangeTab }) {
   const [assets, setAssets] = useState(null)
   const [rfReadings, setRfReadings] = useState(null)
+  const [rfAnomalies, setRfAnomalies] = useState(null)
   const [satellites, setSatellites] = useState(null)
   const [spaceCVEs, setSpaceCVEs] = useState(null)
   const [agentKeys, setAgentKeys] = useState(null)
@@ -94,6 +97,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
       }
 
       await safeFetch(fetchRfReadings, setRfReadings)
+      await safeFetch(fetchRfAnomalies, setRfAnomalies)
       await safeFetch(fetchSatellites, setSatellites)
       await safeFetch(fetchSpaceCVEs, setSpaceCVEs)
 
@@ -165,9 +169,14 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
         )}
 
         {activeTab === 'signal' && (
-          <Panel eyebrow="Signal Intelligence" title="RF spectrum">
-            {rfReadings === null ? <Skeleton /> : <RfPanel readings={rfReadings} />}
-          </Panel>
+          <div className="grid gap-6">
+            <Panel eyebrow="Signal Intelligence" title="RF spectrum">
+              {rfReadings === null ? <Skeleton /> : <RfPanel readings={rfReadings} />}
+            </Panel>
+            <Panel eyebrow="Anomaly Detection" title="Flagged RF anomalies">
+              {rfAnomalies === null ? <Skeleton /> : <AnomaliesPanel anomalies={rfAnomalies} />}
+            </Panel>
+          </div>
         )}
 
         {activeTab === 'intel' && (

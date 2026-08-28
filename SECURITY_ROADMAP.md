@@ -44,6 +44,10 @@ Tracked incrementally, one item at a time, before the v1.0.0 release.
       was already covered by the README's API table and per-feature curl examples.)
 - [ ] **Real SDR hardware integration** (RTL-SDR, HackRF, etc.) to validate capture
       beyond the mock source
+- [x] **Security response headers** on both the backend API and the frontend's
+      nginx: `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`,
+      `Permissions-Policy`, a scoped `Content-Security-Policy`, and `Strict-Transport-Security`
+      when TLS is enabled — verified live with `curl -I`
 - [x] **Security logging & audit trail** in backend and agents (`audit_log`
       table + `GET /audit-log` (admin-only); records login success/failure,
       registration, password changes, agent-key create/revoke, agent-key auth
@@ -161,3 +165,16 @@ Tracked incrementally, one item at a time, before the v1.0.0 release.
   promotion/demotion (`GET/PATCH /users/*`, guards against removing the last
   admin, audit-logged) with a "Users & roles" panel in the dashboard's Admin
   tab — closing the one endpoint that previously had no UI path.
+- 2026-08-28: closed Phase 7. Shipped RF anomaly detection (z-score baseline
+  per agent, `rf_anomalies` table, `GET /rf/anomalies`, a new Signal-tab
+  panel) — verified end-to-end against a real Postgres+Redis backend, not
+  just unit-tested. Added security response headers to both the backend
+  (Go middleware) and the frontend (nginx) — verified live with `curl -I`
+  against a running instance. Fixed a Docker Compose startup race (caught by
+  CI's own smoke-test job failing): `backend`/`cve-sync` used to `log.Fatal`
+  if Postgres wasn't ready yet, and with no restart policy that permanently
+  broke `frontend`'s nginx upstream DNS resolution; `postgres`/`redis` now
+  have real healthchecks, dependents wait on `service_healthy`, and every
+  service has `restart: unless-stopped`. Regenerated the dashboard
+  screenshot as a full-page capture so the whole app is visible in one
+  image.

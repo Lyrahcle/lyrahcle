@@ -26,8 +26,8 @@ trap cleanup EXIT
 wait_for() {
   local name="$1"
   local check_cmd="$2"
-  local attempts=30
-  local delay=2
+  local attempts=60
+  local delay=3
 
   echo -n "==> Waiting for $name"
   for ((i = 1; i <= attempts; i++)); do
