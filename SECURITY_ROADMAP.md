@@ -22,8 +22,11 @@ Tracked incrementally, one item at a time, before the v1.0.0 release.
       `celestrak` — `tmtc` at 100% statement coverage; fuzz tests for the AX.25
       decoder ran for ~1M executions across both entry points with 0 crashes/panics
       found; integration tests for `store` against a real Postgres, skip cleanly
-      without `TEST_DATABASE_URL`; frontend: Vitest + Testing Library for components
-      and the API client. CI runs all of it, including a Postgres service container.)
+      without `TEST_DATABASE_URL`; HTTP-level route tests (`cmd/server`) against a
+      real router + Postgres covering auth, RBAC, satellites, decoding, and RF
+      ingest/anomaly detection end-to-end; frontend: Vitest + Testing Library for
+      components and the API client. CI runs all of it, including a Postgres
+      service container.)
 - [x] **Rate limiting** and abuse protection on the public API (120 req/min per IP
       globally, 10 req/min per IP on `/auth/register` and `/auth/login` to slow down
       credential stuffing/brute force)
@@ -66,7 +69,30 @@ Tracked incrementally, one item at a time, before the v1.0.0 release.
       GHCR and cuts a GitHub Release with auto-generated notes; see
       [RELEASING.md](./RELEASING.md). npm publishing is deferred until `packages/`
       has actual code in it
-
+- [x] **Dependency vulnerability scanning** — `govulncheck` in CI for all three Go
+      modules, `npm audit --audit-level=high` for the frontend, Dependabot covering
+      Go/npm/Docker/GitHub Actions. Found and fixed 3 real vulnerabilities on the
+      first run, including a SQL injection in the Postgres driver — see CHANGELOG
+- [x] **Graceful shutdown** — the backend traps `SIGINT`/`SIGTERM` and drains
+      in-flight requests before exiting, instead of dying mid-request on every
+      restart/redeploy. Verified live (request in flight + `SIGTERM` mid-request →
+      request still completes with 200, process exits clean, no zombie)
+- [x] **Versioned database migrations** — a `schema_migrations` table now tracks
+      which migration files have run; each applies in its own transaction and is
+      skipped on subsequent boots instead of re-executing every file's SQL every
+      time (previously only safe by accident, via `IF NOT EXISTS` guards)
+- [x] **Container image vulnerability scanning** — Trivy scans every image built
+      by `release.yml`, failing the release on CRITICAL/HIGH findings
+- [x] **Application crash isolation** — a React `ErrorBoundary` wraps the
+      dashboard so a bug in one panel shows a recoverable error screen instead
+      of taking down the whole app
+- [x] **Backend observability** — `GET /metrics` (Prometheus: request count and
+      latency by method/route/status); Prometheus was already configured to
+      scrape it and had been getting 404s until now — verified live with real
+      traffic
+- [x] **Automated database backups** — `scripts/backup-db.sh` (`pg_dump` + gzip +
+      age-based pruning). Verified end-to-end: backed up the real database,
+      restored into a clean one, confirmed all tables came back correctly
 ## Status notes
 
 - 2026-08-27: shipped authentication & authorization — JWT (HS256) + bcrypt password
@@ -178,3 +204,23 @@ Tracked incrementally, one item at a time, before the v1.0.0 release.
   service has `restart: unless-stopped`. Regenerated the dashboard
   screenshot as a full-page capture so the whole app is visible in one
   image.
+- 2026-08-28: pre-Phase-8 hardening pass. Added `govulncheck`/`npm audit`/
+  Dependabot to CI and fixed the 3 real vulnerabilities they surfaced,
+  including a SQL injection in the Postgres driver (`pgx` → v5.9.2) — also
+  discovered `cve-sync`/`sdr-agent` were never being built in CI at all and
+  fixed that. Added graceful shutdown (`SIGINT`/`SIGTERM` drains in-flight
+  requests), verified live. Extracted the router out of `main()` into a
+  testable `newRouter()` and added 9 HTTP-level tests against a real
+  Postgres-backed router (auth, RBAC, satellites, decoding, RF
+  ingest/anomaly detection). Added a `schema_migrations` tracking table so
+  migrations run once each instead of re-executing every file's SQL on
+  every boot; verified against a fresh database and confirmed idempotent.
+- 2026-08-28: closed out the remaining pre-Phase-8 items. Added a React
+  `ErrorBoundary`, backend Prometheus metrics (`GET /metrics` — Prometheus
+  was already configured to scrape it and getting 404s), confirmed Trivy
+  container scanning was already in place, and added
+  `scripts/backup-db.sh` (verified with a real backup + restore). Also
+  redesigned the Header (role-colored badge) and Footer (accurate phase
+  tag, consistent badge styling, new links), shortened the README ~55% by
+  moving the API/auth walkthrough to `docs/api-reference.md`, and
+  regenerated the dashboard screenshot again.

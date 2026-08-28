@@ -6,13 +6,17 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/httprate"
 	"github.com/google/uuid"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/mlko01/lyrahcle/apps/backend/internal/anomaly"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/audit"
@@ -20,6 +24,7 @@ import (
 	"github.com/mlko01/lyrahcle/apps/backend/internal/celestrak"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/config"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/db"
+	"github.com/mlko01/lyrahcle/apps/backend/internal/metrics"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/orbit"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/scheduler"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/store"
@@ -68,10 +73,69 @@ func main() {
 
 	go syncTLEs(ctx, cfg.CelestrakGroups, satellites)
 
+	r := newRouter(cfg, assets, programs, rf, rfAnomalies, satellites, users, agentKeys, auditLog, spaceCVEs)
+
+	srv := &http.Server{
+		Addr:         ":" + cfg.Port,
+		Handler:      r,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 30 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+
+	serveErr := make(chan error, 1)
+	if cfg.TLSCertFile != "" && cfg.TLSKeyFile != "" {
+		log.Printf("lyrahcle backend listening on :%s (TLS enabled)", cfg.Port)
+		go func() {
+			serveErr <- srv.ListenAndServeTLS(cfg.TLSCertFile, cfg.TLSKeyFile)
+		}()
+	} else {
+		log.Printf("lyrahcle backend listening on :%s (plain HTTP)", cfg.Port)
+		go func() {
+			serveErr <- srv.ListenAndServe()
+		}()
+	}
+
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
+
+	select {
+	case err := <-serveErr:
+		if err != nil && err != http.ErrServerClosed {
+			log.Fatal(err)
+		}
+	case sig := <-stop:
+		log.Printf("received %s, shutting down gracefully (draining in-flight requests)...", sig)
+
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+
+		if err := srv.Shutdown(shutdownCtx); err != nil {
+			log.Printf("graceful shutdown timed out, forcing close: %v", err)
+			_ = srv.Close()
+		}
+
+		log.Println("shutdown complete")
+	}
+}
+
+func newRouter(
+	cfg config.Config,
+	assets *store.AssetStore,
+	programs *store.ProgramStore,
+	rf *store.RFStore,
+	rfAnomalies *store.AnomalyStore,
+	satellites *store.SatelliteStore,
+	users *store.UserStore,
+	agentKeys *store.AgentKeyStore,
+	auditLog *store.AuditStore,
+	spaceCVEs *store.SpaceCVEStore,
+) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(securityHeaders(cfg.TLSCertFile != "" && cfg.TLSKeyFile != ""))
+	r.Use(metrics.Middleware)
 	r.Use(maxBodySize(1 << 20))
 	r.Use(httprate.LimitByIP(120, time.Minute))
 
@@ -79,6 +143,8 @@ func main() {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"status":"ok","service":"lyrahcle-backend"}`))
 	})
+
+	r.Handle("/metrics", promhttp.Handler())
 
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Get("/ping", func(w http.ResponseWriter, r *http.Request) {
@@ -696,18 +762,7 @@ func main() {
 		})
 	})
 
-	if cfg.TLSCertFile != "" && cfg.TLSKeyFile != "" {
-		log.Printf("lyrahcle backend listening on :%s (TLS enabled)", cfg.Port)
-		if err := http.ListenAndServeTLS(":"+cfg.Port, cfg.TLSCertFile, cfg.TLSKeyFile, r); err != nil {
-			log.Fatal(err)
-		}
-		return
-	}
-
-	log.Printf("lyrahcle backend listening on :%s (plain HTTP)", cfg.Port)
-	if err := http.ListenAndServe(":"+cfg.Port, r); err != nil {
-		log.Fatal(err)
-	}
+	return r
 }
 
 func maxBodySize(n int64) func(http.Handler) http.Handler {
