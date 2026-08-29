@@ -16,6 +16,7 @@ import (
 
 	"github.com/mlko01/lyrahcle/apps/backend/internal/auth"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/config"
+	"github.com/mlko01/lyrahcle/apps/backend/internal/detection"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/store"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/testdb"
 )
@@ -381,13 +382,13 @@ func TestRFIngestFlagsAnomaly(t *testing.T) {
 	}
 	foundAutoIncident := false
 	for _, incident := range incidentPage.Items {
-		if incident.SourceType == "rf_anomaly" && incident.AgentID == "sdr-http-test" {
+		if incident.SourceType == "detection_rule" && incident.AgentID == "sdr-http-test" {
 			foundAutoIncident = true
 			break
 		}
 	}
 	if !foundAutoIncident {
-		t.Fatal("expected a high-confidence RF anomaly to create an incident")
+		t.Fatal("expected an RF detection rule to create a correlated incident")
 	}
 }
 
@@ -937,5 +938,66 @@ func TestIncidentEvidenceRequiresOperator(t *testing.T) {
 	}
 	if decoded.Evidence[0].Label != "Detection request" {
 		t.Fatalf("evidence label was mutated: %q", decoded.Evidence[0].Label)
+	}
+}
+
+func TestDetectionRuleRBACAndValidation(t *testing.T) {
+	router, _, users := testRouter(t)
+	viewerToken := seedUserAndLogin(t, router, users, "rule-viewer@example.com", "viewer-pass", string(auth.RoleViewer))
+	adminToken := seedUserAndLogin(t, router, users, "rule-admin@example.com", "admin-pass", string(auth.RoleAdmin))
+
+	listed := doJSON(t, router, http.MethodGet, "/api/v1/detection-rules/", viewerToken, nil)
+	if listed.Code != http.StatusOK {
+		t.Fatalf("viewer list: status = %d, body = %s", listed.Code, listed.Body.String())
+	}
+	var page store.Page[detection.Rule]
+	if err := json.Unmarshal(listed.Body.Bytes(), &page); err != nil {
+		t.Fatalf("decode rules: %v", err)
+	}
+	if page.Total < 2 {
+		t.Fatalf("default rules = %d, want at least 2", page.Total)
+	}
+
+	viewerCreate := doJSON(t, router, http.MethodPost, "/api/v1/detection-rules/", viewerToken, map[string]interface{}{
+		"name": "Viewer rule", "metric": "any", "operator": "abs_z_gte", "threshold": 5, "severity": "high", "cooldown_seconds": 60,
+	})
+	if viewerCreate.Code != http.StatusForbidden {
+		t.Fatalf("viewer create: status = %d", viewerCreate.Code)
+	}
+
+	invalid := doJSON(t, router, http.MethodPost, "/api/v1/detection-rules/", adminToken, map[string]interface{}{
+		"name": "Invalid rule", "metric": "any", "operator": "abs_z_gte", "threshold": 0, "severity": "high", "cooldown_seconds": 60,
+	})
+	if invalid.Code != http.StatusBadRequest {
+		t.Fatalf("invalid rule: status = %d, body = %s", invalid.Code, invalid.Body.String())
+	}
+
+	created := doJSON(t, router, http.MethodPost, "/api/v1/detection-rules/", adminToken, map[string]interface{}{
+		"name": "Negative frequency shift", "description": "Detect negative frequency deviations", "metric": "frequency_hz", "operator": "z_lte", "threshold": 7, "severity": "critical", "cooldown_seconds": 300, "auto_incident": true,
+	})
+	if created.Code != http.StatusCreated {
+		t.Fatalf("admin create: status = %d, body = %s", created.Code, created.Body.String())
+	}
+	var rule detection.Rule
+	if err := json.Unmarshal(created.Body.Bytes(), &rule); err != nil {
+		t.Fatalf("decode rule: %v", err)
+	}
+	if rule.ID == uuid.Nil || !rule.Enabled {
+		t.Fatalf("unexpected rule: %+v", rule)
+	}
+
+	viewerUpdate := doJSON(t, router, http.MethodPatch, "/api/v1/detection-rules/"+rule.ID.String(), viewerToken, map[string]interface{}{"enabled": false})
+	if viewerUpdate.Code != http.StatusForbidden {
+		t.Fatalf("viewer update: status = %d", viewerUpdate.Code)
+	}
+	adminUpdate := doJSON(t, router, http.MethodPatch, "/api/v1/detection-rules/"+rule.ID.String(), adminToken, map[string]interface{}{"enabled": false})
+	if adminUpdate.Code != http.StatusOK {
+		t.Fatalf("admin update: status = %d, body = %s", adminUpdate.Code, adminUpdate.Body.String())
+	}
+	if err := json.Unmarshal(adminUpdate.Body.Bytes(), &rule); err != nil {
+		t.Fatalf("decode updated rule: %v", err)
+	}
+	if rule.Enabled {
+		t.Fatal("rule should be disabled")
 	}
 }

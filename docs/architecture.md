@@ -24,7 +24,7 @@ Backend (Go/chi) <---- SDR Agent
 
 | Component | Owns |
 |---|---|
-| Backend | API, authentication, RBAC, TOTP, orbital propagation, RF anomaly detection, audit log, asset alerts |
+| Backend | API, authentication, RBAC, TOTP, orbital propagation, RF anomaly detection, detection-rule evaluation, incident correlation, audit log, asset alerts |
 | Frontend | Operator UX and session state |
 | SDR agent | RF capture source, device self-report, IQ recording/replay, authenticated uplink |
 | CVE sync | Writes `space_cves`, publishes newly synchronized CVEs, exposes worker metrics |
@@ -50,8 +50,10 @@ Satellite stream updates use Server-Sent Events. The HTTP middleware stack prese
 ## RF flow
 
 ```text
-SDR source -> sdr-agent -> authenticated RF ingest -> baseline analysis -> readings/anomalies -> Dashboard
+SDR source -> sdr-agent -> authenticated RF ingest -> baseline analysis -> anomaly -> typed detection rules -> correlated incident -> Dashboard
 ```
+
+Detection rules are data, not executable expressions. Admins select a supported RF metric, z-score operator, threshold, severity, cooldown, and whether a match may create an incident. Match history is persisted, cooldown checks are serialized per rule and agent, and multiple rule matches for one anomaly collapse into one incident.
 
 The current default source is simulated. The agent abstraction is designed so real SDR hardware can replace the mock source without changing the backend contract.
 

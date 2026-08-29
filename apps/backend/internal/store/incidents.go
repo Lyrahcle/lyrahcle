@@ -202,7 +202,7 @@ func (s *IncidentStore) Create(ctx context.Context, input CreateIncidentInput) (
 	}
 
 	eventType := "created"
-	if input.SourceType == "rf_anomaly" {
+	if input.SourceType == "rf_anomaly" || input.SourceType == "detection_rule" {
 		eventType = "auto_detected"
 	}
 	if _, err := tx.Exec(ctx, `

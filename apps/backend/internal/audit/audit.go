@@ -20,6 +20,8 @@ const (
 	ActionIncidentUpdated       = "incident.updated"
 	ActionIncidentNoteAdded     = "incident.note_added"
 	ActionIncidentEvidenceAdded = "incident.evidence_added"
+	ActionDetectionRuleCreated  = "detection_rule.created"
+	ActionDetectionRuleUpdated  = "detection_rule.updated"
 
 	ActorUser      = "user"
 	ActorAgent     = "agent"

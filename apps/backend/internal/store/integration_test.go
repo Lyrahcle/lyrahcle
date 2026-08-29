@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/mlko01/lyrahcle/apps/backend/internal/detection"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/testdb"
 )
 
@@ -507,5 +508,49 @@ func TestIncidentStoreRejectsInvalidStatusTransition(t *testing.T) {
 	}
 	if _, err := pool.Exec(ctx, `UPDATE incidents SET status = 'new' WHERE id = $1`, incident.ID); err == nil {
 		t.Fatal("database accepted invalid resolved -> new transition")
+	}
+}
+
+func TestDetectionRuleMatchCooldown(t *testing.T) {
+	pool := testPool(t)
+	ctx := context.Background()
+	users := NewUserStore(pool)
+	actor, err := users.Create(ctx, "rule-store@example.com", "test-hash", "admin")
+	if err != nil {
+		t.Fatalf("create actor: %v", err)
+	}
+	rules := NewDetectionRuleStore(pool)
+	rule, err := rules.Create(ctx, detection.Rule{
+		Name: "Cooldown integration rule", Enabled: true, Metric: "power_dbm", Operator: "abs_z_gte",
+		Threshold: 6, Severity: "high", CooldownSeconds: 300, AutoIncident: true,
+	}, actor.ID)
+	if err != nil {
+		t.Fatalf("create rule: %v", err)
+	}
+
+	rf := NewRFStore(pool)
+	anomalies := NewAnomalyStore(pool)
+	newAnomaly := func(power float64) RFAnomaly {
+		reading := RFReading{AgentID: "cooldown-agent", FrequencyHz: 437500000, PowerDbm: power, CapturedAt: time.Now().UTC()}
+		if err := rf.Insert(ctx, &reading); err != nil {
+			t.Fatalf("insert reading: %v", err)
+		}
+		anomaly, err := anomalies.InsertReturning(ctx, RFAnomaly{
+			ReadingID: reading.ID, AgentID: reading.AgentID, Metric: "power_dbm", Value: power,
+			BaselineMean: -60, BaselineStddev: 2, ZScore: 9,
+		})
+		if err != nil {
+			t.Fatalf("insert anomaly: %v", err)
+		}
+		return anomaly
+	}
+
+	first := newAnomaly(-10)
+	if _, created, err := rules.RecordMatchIfAllowed(ctx, rule, first.ID, first.AgentID, first.Metric, first.ZScore); err != nil || !created {
+		t.Fatalf("first match: created=%v err=%v", created, err)
+	}
+	second := newAnomaly(-9)
+	if _, created, err := rules.RecordMatchIfAllowed(ctx, rule, second.ID, second.AgentID, second.Metric, second.ZScore); err != nil || created {
+		t.Fatalf("second match inside cooldown: created=%v err=%v", created, err)
 	}
 }

@@ -6,6 +6,7 @@ import Skeleton from './Skeleton.jsx'
 import AssetsTable from './AssetsTable.jsx'
 import RfPanel from './RfPanel.jsx'
 import AnomaliesPanel from './AnomaliesPanel.jsx'
+import DetectionRulesPanel from './DetectionRulesPanel.jsx'
 import SatellitesPanel from './SatellitesPanel.jsx'
 import WorldMap from './WorldMap.jsx'
 import ThreatIntelPanel from './ThreatIntelPanel.jsx'
@@ -30,6 +31,7 @@ import {
   fetchPing,
   fetchRfAnomalies,
   fetchRfReadings,
+  fetchDetectionRules,
   fetchSatellites,
   fetchSpaceCVEs,
   fetchUsers,
@@ -46,6 +48,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
   const [assets, setAssets] = useState(null)
   const [rfReadings, setRfReadings] = useState(null)
   const [rfAnomalies, setRfAnomalies] = useState(null)
+  const [detectionRules, setDetectionRules] = useState(null)
   const [satellites, setSatellites] = useState(null)
   const [satellitesLive, setSatellitesLive] = useState(false)
   const [spaceCVEs, setSpaceCVEs] = useState(null)
@@ -148,6 +151,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
 
       await safeFetch(fetchRfReadings, setRfReadings)
       await safeFetch(fetchRfAnomalies, setRfAnomalies)
+      await safeFetch(() => fetchDetectionRules(PAGE_LIMIT, 0), setDetectionRules, { items: [], total: 0, limit: PAGE_LIMIT, offset: 0 })
       await safeFetch(fetchSatellites, setSatellites)
       await safeFetch(
         () => fetchSpaceCVEs(PAGE_LIMIT, cvesOffsetRef.current, cveFiltersRef.current),
@@ -222,6 +226,9 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
   function handleCveFiltersChange(next) {
     setCvesOffset(0)
     setCveFilters(next)
+  }
+  function reloadDetectionRules() {
+    fetchDetectionRules(PAGE_LIMIT, 0).then(setDetectionRules).catch(() => {})
   }
   function reloadSatellites() {
     fetchSatellites().then(setSatellites).catch(() => {})
@@ -316,6 +323,9 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
             </Panel>
             <Panel eyebrow={t('panels.anomalyDetection')} title={t('panels.flaggedAnomalies')}>
               {rfAnomalies === null ? <Skeleton /> : <AnomaliesPanel anomalies={rfAnomalies} />}
+            </Panel>
+            <Panel eyebrow={t('panels.detectionEngineering')} title={t('panels.rfDetectionRules')}>
+              {detectionRules === null ? <Skeleton /> : <DetectionRulesPanel page={detectionRules} onChanged={reloadDetectionRules} />}
             </Panel>
           </div>
         )}

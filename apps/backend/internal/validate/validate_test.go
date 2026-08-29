@@ -177,3 +177,33 @@ func TestAgentID(t *testing.T) {
 		t.Error("AgentID should reject an overly long id")
 	}
 }
+
+func TestDetectionRuleValidation(t *testing.T) {
+	if err := DetectionRuleName("Critical frequency shift"); err != nil {
+		t.Fatalf("valid name: %v", err)
+	}
+	if err := DetectionRuleName(""); err == nil {
+		t.Fatal("empty name should fail")
+	}
+	if err := DetectionRuleMetric("frequency_hz"); err != nil {
+		t.Fatalf("valid metric: %v", err)
+	}
+	if err := DetectionRuleMetric("shell"); err == nil {
+		t.Fatal("unknown metric should fail")
+	}
+	if err := DetectionRuleOperator("abs_z_gte"); err != nil {
+		t.Fatalf("valid operator: %v", err)
+	}
+	if err := DetectionRuleOperator("eval"); err == nil {
+		t.Fatal("unknown operator should fail")
+	}
+	if err := DetectionRuleThreshold(6); err != nil {
+		t.Fatalf("valid threshold: %v", err)
+	}
+	if err := DetectionRuleThreshold(0); err == nil {
+		t.Fatal("zero threshold should fail")
+	}
+	if err := DetectionRuleCooldown(86401); err == nil {
+		t.Fatal("oversized cooldown should fail")
+	}
+}

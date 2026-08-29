@@ -30,6 +30,7 @@ import (
 	"github.com/mlko01/lyrahcle/apps/backend/internal/celestrak"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/config"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/db"
+	"github.com/mlko01/lyrahcle/apps/backend/internal/detection"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/metrics"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/orbit"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/ratelimit"
@@ -161,6 +162,7 @@ func newRouter(
 	incidents *store.IncidentStore,
 	redisClient *redis.Client,
 ) http.Handler {
+	detectionRules := store.NewDetectionRuleStore(pool)
 	blocklist := tokenblocklist.New(redisClient)
 	cache := respcache.New(redisClient)
 	isTokenRevoked := blocklist.IsRevoked
@@ -779,6 +781,171 @@ func newRouter(
 			})
 		})
 
+		r.Route("/detection-rules", func(r chi.Router) {
+			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer, isTokenRevoked)).Get("/", func(w http.ResponseWriter, r *http.Request) {
+				limit, offset := pageParams(r)
+				page, err := detectionRules.List(r.Context(), limit, offset)
+				if err != nil {
+					http.Error(w, "failed to fetch detection rules", http.StatusInternalServerError)
+					return
+				}
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(page)
+			})
+
+			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleAdmin, isTokenRevoked)).Post("/", func(w http.ResponseWriter, r *http.Request) {
+				var body struct {
+					Name            string  `json:"name"`
+					Description     string  `json:"description"`
+					Enabled         *bool   `json:"enabled"`
+					Metric          string  `json:"metric"`
+					Operator        string  `json:"operator"`
+					Threshold       float64 `json:"threshold"`
+					Severity        string  `json:"severity"`
+					CooldownSeconds int     `json:"cooldown_seconds"`
+					AutoIncident    *bool   `json:"auto_incident"`
+				}
+				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+					http.Error(w, "invalid JSON body", http.StatusBadRequest)
+					return
+				}
+				body.Name = strings.TrimSpace(body.Name)
+				body.Description = strings.TrimSpace(body.Description)
+				body.Metric = strings.ToLower(strings.TrimSpace(body.Metric))
+				body.Operator = strings.ToLower(strings.TrimSpace(body.Operator))
+				body.Severity = strings.ToLower(strings.TrimSpace(body.Severity))
+				if err := validateDetectionRule(body.Name, body.Description, body.Metric, body.Operator, body.Threshold, body.Severity, body.CooldownSeconds); err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+				claims, ok := auth.FromContext(r.Context())
+				if !ok {
+					http.Error(w, "unauthorized", http.StatusUnauthorized)
+					return
+				}
+				enabled := true
+				if body.Enabled != nil {
+					enabled = *body.Enabled
+				}
+				if enabled {
+					count, err := detectionRules.EnabledCount(r.Context())
+					if err != nil {
+						http.Error(w, "failed to validate detection rule capacity", http.StatusInternalServerError)
+						return
+					}
+					if count >= store.MaxEnabledDetectionRules {
+						http.Error(w, "maximum enabled detection rules reached", http.StatusConflict)
+						return
+					}
+				}
+				autoIncident := true
+				if body.AutoIncident != nil {
+					autoIncident = *body.AutoIncident
+				}
+				rule, err := detectionRules.Create(r.Context(), detection.Rule{
+					Name: body.Name, Description: body.Description, Enabled: enabled, Metric: body.Metric,
+					Operator: body.Operator, Threshold: body.Threshold, Severity: body.Severity,
+					CooldownSeconds: body.CooldownSeconds, AutoIncident: autoIncident,
+				}, claims.UserID)
+				if err != nil {
+					http.Error(w, "failed to create detection rule", http.StatusConflict)
+					return
+				}
+				logAudit(r.Context(), auditLog, audit.ActorUser, claims.UserID.String(), audit.ActionDetectionRuleCreated, clientIP(r), map[string]interface{}{"rule_id": rule.ID.String(), "name": rule.Name})
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusCreated)
+				json.NewEncoder(w).Encode(rule)
+			})
+
+			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleAdmin, isTokenRevoked)).Patch("/{ruleID}", func(w http.ResponseWriter, r *http.Request) {
+				ruleID, err := uuid.Parse(chi.URLParam(r, "ruleID"))
+				if err != nil {
+					http.Error(w, "ruleID must be a valid UUID", http.StatusBadRequest)
+					return
+				}
+				rule, err := detectionRules.Get(r.Context(), ruleID)
+				if err != nil {
+					if err == store.ErrDetectionRuleNotFound {
+						http.Error(w, "detection rule not found", http.StatusNotFound)
+						return
+					}
+					http.Error(w, "failed to fetch detection rule", http.StatusInternalServerError)
+					return
+				}
+				wasEnabled := rule.Enabled
+				var body struct {
+					Name            *string  `json:"name"`
+					Description     *string  `json:"description"`
+					Enabled         *bool    `json:"enabled"`
+					Metric          *string  `json:"metric"`
+					Operator        *string  `json:"operator"`
+					Threshold       *float64 `json:"threshold"`
+					Severity        *string  `json:"severity"`
+					CooldownSeconds *int     `json:"cooldown_seconds"`
+					AutoIncident    *bool    `json:"auto_incident"`
+				}
+				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+					http.Error(w, "invalid JSON body", http.StatusBadRequest)
+					return
+				}
+				if body.Name != nil {
+					rule.Name = strings.TrimSpace(*body.Name)
+				}
+				if body.Description != nil {
+					rule.Description = strings.TrimSpace(*body.Description)
+				}
+				if body.Enabled != nil {
+					rule.Enabled = *body.Enabled
+				}
+				if body.Metric != nil {
+					rule.Metric = strings.ToLower(strings.TrimSpace(*body.Metric))
+				}
+				if body.Operator != nil {
+					rule.Operator = strings.ToLower(strings.TrimSpace(*body.Operator))
+				}
+				if body.Threshold != nil {
+					rule.Threshold = *body.Threshold
+				}
+				if body.Severity != nil {
+					rule.Severity = strings.ToLower(strings.TrimSpace(*body.Severity))
+				}
+				if body.CooldownSeconds != nil {
+					rule.CooldownSeconds = *body.CooldownSeconds
+				}
+				if body.AutoIncident != nil {
+					rule.AutoIncident = *body.AutoIncident
+				}
+				if err := validateDetectionRule(rule.Name, rule.Description, rule.Metric, rule.Operator, rule.Threshold, rule.Severity, rule.CooldownSeconds); err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+				if rule.Enabled && !wasEnabled {
+					count, err := detectionRules.EnabledCount(r.Context())
+					if err != nil {
+						http.Error(w, "failed to validate detection rule capacity", http.StatusInternalServerError)
+						return
+					}
+					if count >= store.MaxEnabledDetectionRules {
+						http.Error(w, "maximum enabled detection rules reached", http.StatusConflict)
+						return
+					}
+				}
+				claims, ok := auth.FromContext(r.Context())
+				if !ok {
+					http.Error(w, "unauthorized", http.StatusUnauthorized)
+					return
+				}
+				rule, err = detectionRules.Update(r.Context(), rule, claims.UserID)
+				if err != nil {
+					http.Error(w, "failed to update detection rule", http.StatusInternalServerError)
+					return
+				}
+				logAudit(r.Context(), auditLog, audit.ActorUser, claims.UserID.String(), audit.ActionDetectionRuleUpdated, clientIP(r), map[string]interface{}{"rule_id": rule.ID.String(), "name": rule.Name, "enabled": rule.Enabled})
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(rule)
+			})
+		})
+
 		r.Route("/rf", func(r chi.Router) {
 			auditedLookup := func(ctx context.Context, keyHash string) (string, error) {
 				agentID, err := agentKeys.AgentIDForHash(ctx, keyHash)
@@ -831,7 +998,7 @@ func newRouter(
 					return
 				}
 
-				detectRFAnomalies(r.Context(), rfAnomalies, incidents, reading, history)
+				detectRFAnomalies(r.Context(), rfAnomalies, detectionRules, incidents, auditLog, reading, history)
 
 				w.WriteHeader(http.StatusCreated)
 			})
@@ -1671,7 +1838,7 @@ func syncTLEs(ctx context.Context, groups []string, satellites *store.SatelliteS
 
 const anomalyHistoryWindow = 20
 
-func detectRFAnomalies(ctx context.Context, anomalies *store.AnomalyStore, incidents *store.IncidentStore, reading store.RFReading, history []store.RFReading) {
+func detectRFAnomalies(ctx context.Context, anomalies *store.AnomalyStore, rules *store.DetectionRuleStore, incidents *store.IncidentStore, auditLog *store.AuditStore, reading store.RFReading, history []store.RFReading) {
 	powerHistory := make([]float64, len(history))
 	freqHistory := make([]float64, len(history))
 	for i, h := range history {
@@ -1690,7 +1857,7 @@ func detectRFAnomalies(ctx context.Context, anomalies *store.AnomalyStore, incid
 		if !result.Anomaly {
 			continue
 		}
-		a := store.RFAnomaly{
+		created, err := anomalies.InsertReturning(ctx, store.RFAnomaly{
 			ReadingID:      reading.ID,
 			AgentID:        reading.AgentID,
 			Metric:         result.Metric,
@@ -1698,31 +1865,126 @@ func detectRFAnomalies(ctx context.Context, anomalies *store.AnomalyStore, incid
 			BaselineMean:   result.Mean,
 			BaselineStddev: result.StdDev,
 			ZScore:         result.ZScore,
-		}
-		created, err := anomalies.InsertReturning(ctx, a)
+		})
 		if err != nil {
 			log.Printf("anomaly: failed to record %s anomaly for agent %s: %v", result.Metric, reading.AgentID, err)
 			continue
 		}
-		if result.ZScore < 6 && result.ZScore > -6 {
+		correlateRFDetectionRules(ctx, rules, incidents, auditLog, created)
+	}
+}
+
+func correlateRFDetectionRules(ctx context.Context, rules *store.DetectionRuleStore, incidents *store.IncidentStore, auditLog *store.AuditStore, anomalyRecord store.RFAnomaly) {
+	enabledRules, err := rules.ListEnabled(ctx)
+	if err != nil {
+		log.Printf("detection: failed to load rules: %v", err)
+		return
+	}
+
+	type matchedRule struct {
+		rule  detection.Rule
+		match store.DetectionMatch
+	}
+	matched := []matchedRule{}
+	autoNames := []string{}
+	autoRuleCount := 0
+	autoSeverity := ""
+	for _, rule := range enabledRules {
+		if !detection.Matches(rule, detection.Signal{Metric: anomalyRecord.Metric, ZScore: anomalyRecord.ZScore}) {
 			continue
 		}
-		severity := "high"
-		if result.ZScore >= 8 || result.ZScore <= -8 {
-			severity = "critical"
-		}
-		_, err = incidents.Create(ctx, store.CreateIncidentInput{
-			Title:           fmt.Sprintf("High-confidence RF anomaly on %s", reading.AgentID),
-			Description:     fmt.Sprintf("%s deviated from its baseline with a z-score of %.2f.", result.Metric, result.ZScore),
-			Severity:        severity,
-			SourceType:      "rf_anomaly",
-			AgentID:         reading.AgentID,
-			SourceAnomalyID: &created.ID,
-		})
+		match, created, err := rules.RecordMatchIfAllowed(ctx, rule, anomalyRecord.ID, anomalyRecord.AgentID, anomalyRecord.Metric, anomalyRecord.ZScore)
 		if err != nil {
-			log.Printf("incident: failed to create incident for anomaly %s: %v", created.ID, err)
+			log.Printf("detection: failed to record rule %s match: %v", rule.ID, err)
+			continue
+		}
+		if !created {
+			continue
+		}
+		matched = append(matched, matchedRule{rule: rule, match: match})
+		if rule.AutoIncident {
+			autoRuleCount++
+			if len(autoNames) < 8 {
+				autoNames = append(autoNames, rule.Name)
+			}
+			autoSeverity = detection.HigherSeverity(autoSeverity, rule.Severity)
 		}
 	}
+	if autoRuleCount == 0 {
+		return
+	}
+
+	ruleSummary := strings.Join(autoNames, ", ")
+	if autoRuleCount > len(autoNames) {
+		ruleSummary = fmt.Sprintf("%s (+%d more)", ruleSummary, autoRuleCount-len(autoNames))
+	}
+	incident, err := incidents.Create(ctx, store.CreateIncidentInput{
+		Title:           fmt.Sprintf("RF detection on %s", anomalyRecord.AgentID),
+		Description:     fmt.Sprintf("Matched rules: %s. Metric %s produced a z-score of %.2f.", ruleSummary, anomalyRecord.Metric, anomalyRecord.ZScore),
+		Severity:        autoSeverity,
+		SourceType:      "detection_rule",
+		AgentID:         anomalyRecord.AgentID,
+		SourceAnomalyID: &anomalyRecord.ID,
+	})
+	if err != nil {
+		log.Printf("detection: failed to create correlated incident for anomaly %s: %v", anomalyRecord.ID, err)
+		return
+	}
+
+	matchIDs := make([]uuid.UUID, 0, len(matched))
+	for _, item := range matched {
+		matchIDs = append(matchIDs, item.match.ID)
+		if _, err := incidents.AddEvidence(ctx, incident.ID, store.CreateIncidentEvidenceInput{
+			EvidenceType: "detection_rule",
+			EvidenceRef:  item.rule.ID.String(),
+			Label:        item.rule.Name,
+			Metadata: map[string]interface{}{
+				"match_id": item.match.ID.String(),
+				"metric":   anomalyRecord.Metric,
+				"z_score":  anomalyRecord.ZScore,
+			},
+		}); err != nil {
+			log.Printf("detection: failed to attach rule evidence to incident %s: %v", incident.ID, err)
+		}
+	}
+	if _, err := incidents.AddEvidence(ctx, incident.ID, store.CreateIncidentEvidenceInput{
+		EvidenceType: "rf_anomaly",
+		EvidenceRef:  anomalyRecord.ID.String(),
+		Label:        anomalyRecord.Metric,
+	}); err != nil {
+		log.Printf("detection: failed to attach anomaly evidence to incident %s: %v", incident.ID, err)
+	}
+	if err := rules.AttachIncident(ctx, matchIDs, incident.ID); err != nil {
+		log.Printf("detection: failed to link matches to incident %s: %v", incident.ID, err)
+	}
+	logAudit(ctx, auditLog, audit.ActorSystem, "correlation-engine", audit.ActionIncidentCreated, "", map[string]interface{}{
+		"incident_id": incident.ID.String(),
+		"reference":   incident.Reference,
+		"anomaly_id":  anomalyRecord.ID.String(),
+		"rule_count":  len(matched),
+	})
+}
+
+func validateDetectionRule(name, description, metric, operator string, threshold float64, severity string, cooldownSeconds int) error {
+	if err := validate.DetectionRuleName(name); err != nil {
+		return err
+	}
+	if err := validate.DetectionRuleDescription(description); err != nil {
+		return err
+	}
+	if err := validate.DetectionRuleMetric(metric); err != nil {
+		return err
+	}
+	if err := validate.DetectionRuleOperator(operator); err != nil {
+		return err
+	}
+	if err := validate.DetectionRuleThreshold(threshold); err != nil {
+		return err
+	}
+	if err := validate.IncidentSeverity(severity); err != nil {
+		return err
+	}
+	return validate.DetectionRuleCooldown(cooldownSeconds)
 }
 
 func logAudit(ctx context.Context, auditLog *store.AuditStore, actorType, actorID, action, ip string, details map[string]interface{}) {

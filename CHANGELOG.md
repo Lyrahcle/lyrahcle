@@ -4,6 +4,14 @@ Notable changes are tracked here until versioned release notes take over.
 
 ## Unreleased
 
+### v8 detection engineering
+
+- Added typed RF detection rules with admin-only mutation and viewer-readable configuration.
+- Added persisted rule matches, per-rule/per-agent cooldown suppression, and bounded active-rule evaluation.
+- Added deterministic correlation that collapses multiple rule matches for one anomaly into one incident using the highest configured severity.
+- Added detection-rule and anomaly evidence to correlated incidents and system audit events for automatic incident creation.
+- Added Detection Engineering controls to the Signal dashboard and synchronized EN/ES/FR/DE translations and OpenAPI.
+
 ### v7.1 hardening
 
 - Enforced incident lifecycle transitions in Go and PostgreSQL.

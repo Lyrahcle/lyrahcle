@@ -1079,4 +1079,53 @@ for (const [language, extra] of Object.entries(incidentTranslations)) {
   translations[language].incidents = extra.incidents
 }
 
+
+const detectionTranslations = {
+  en: {
+    panels: { detectionEngineering: 'Detection Engineering', rfDetectionRules: 'RF detection rules' },
+    detections: {
+      name: 'Name', condition: 'Condition', cooldown: 'Cooldown', incident: 'Auto incident', status: 'Status', threshold: 'Z-score threshold',
+      create: 'Create rule', empty: 'No RF detection rules configured.', enabled: 'Enabled', disabled: 'Disabled', yes: 'Yes', no: 'No', autoIncident: 'Create an incident automatically when this rule matches.',
+      namePlaceholder: 'Rule name', descriptionPlaceholder: 'Purpose and analyst context',
+      metrics: { any: 'Any RF metric', power_dbm: 'Power', frequency_hz: 'Frequency', power_dbm_trend: 'Power trend', frequency_hz_trend: 'Frequency trend' },
+      operators: { abs_z_gte: '|z| ≥', z_gte: 'z ≥', z_lte: 'z ≤ −' },
+    },
+  },
+  es: {
+    panels: { detectionEngineering: 'Ingeniería de Detección', rfDetectionRules: 'Reglas de detección RF' },
+    detections: {
+      name: 'Nombre', condition: 'Condición', cooldown: 'Enfriamiento', incident: 'Incidente automático', status: 'Estado', threshold: 'Umbral z-score',
+      create: 'Crear regla', empty: 'No hay reglas de detección RF configuradas.', enabled: 'Activa', disabled: 'Desactivada', yes: 'Sí', no: 'No', autoIncident: 'Crear un incidente automáticamente cuando coincida esta regla.',
+      namePlaceholder: 'Nombre de la regla', descriptionPlaceholder: 'Propósito y contexto para analistas',
+      metrics: { any: 'Cualquier métrica RF', power_dbm: 'Potencia', frequency_hz: 'Frecuencia', power_dbm_trend: 'Tendencia de potencia', frequency_hz_trend: 'Tendencia de frecuencia' },
+      operators: { abs_z_gte: '|z| ≥', z_gte: 'z ≥', z_lte: 'z ≤ −' },
+    },
+  },
+  fr: {
+    panels: { detectionEngineering: 'Ingénierie de Détection', rfDetectionRules: 'Règles de détection RF' },
+    detections: {
+      name: 'Nom', condition: 'Condition', cooldown: 'Temporisation', incident: 'Incident automatique', status: 'Statut', threshold: 'Seuil z-score',
+      create: 'Créer une règle', empty: 'Aucune règle de détection RF configurée.', enabled: 'Activée', disabled: 'Désactivée', yes: 'Oui', no: 'Non', autoIncident: 'Créer automatiquement un incident lorsque cette règle correspond.',
+      namePlaceholder: 'Nom de la règle', descriptionPlaceholder: 'Objectif et contexte analyste',
+      metrics: { any: 'Toute métrique RF', power_dbm: 'Puissance', frequency_hz: 'Fréquence', power_dbm_trend: 'Tendance de puissance', frequency_hz_trend: 'Tendance de fréquence' },
+      operators: { abs_z_gte: '|z| ≥', z_gte: 'z ≥', z_lte: 'z ≤ −' },
+    },
+  },
+  de: {
+    panels: { detectionEngineering: 'Detection Engineering', rfDetectionRules: 'HF-Erkennungsregeln' },
+    detections: {
+      name: 'Name', condition: 'Bedingung', cooldown: 'Sperrzeit', incident: 'Automatischer Vorfall', status: 'Status', threshold: 'Z-Score-Schwelle',
+      create: 'Regel erstellen', empty: 'Keine HF-Erkennungsregeln konfiguriert.', enabled: 'Aktiv', disabled: 'Deaktiviert', yes: 'Ja', no: 'Nein', autoIncident: 'Automatisch einen Vorfall erstellen, wenn diese Regel zutrifft.',
+      namePlaceholder: 'Regelname', descriptionPlaceholder: 'Zweck und Analystenkontext',
+      metrics: { any: 'Beliebige HF-Metrik', power_dbm: 'Leistung', frequency_hz: 'Frequenz', power_dbm_trend: 'Leistungstrend', frequency_hz_trend: 'Frequenztrend' },
+      operators: { abs_z_gte: '|z| ≥', z_gte: 'z ≥', z_lte: 'z ≤ −' },
+    },
+  },
+}
+
+for (const [language, extra] of Object.entries(detectionTranslations)) {
+  Object.assign(translations[language].panels, extra.panels)
+  translations[language].detections = extra.detections
+}
+
 export const supportedLanguages = Object.keys(translations)

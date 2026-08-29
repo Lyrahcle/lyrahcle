@@ -229,10 +229,10 @@ func IncidentNote(value string) error {
 
 func IncidentEvidenceType(value string) error {
 	switch value {
-	case "rf_anomaly", "request", "cve", "agent", "satellite", "external":
+	case "rf_anomaly", "detection_rule", "request", "cve", "agent", "satellite", "external":
 		return nil
 	default:
-		return fmt.Errorf("evidence_type must be one of: rf_anomaly, request, cve, agent, satellite, external")
+		return fmt.Errorf("evidence_type must be one of: rf_anomaly, detection_rule, request, cve, agent, satellite, external")
 	}
 }
 
@@ -247,6 +247,56 @@ func IncidentEvidenceRef(value string) error {
 func IncidentEvidenceLabel(value string) error {
 	if len(strings.TrimSpace(value)) > 160 {
 		return fmt.Errorf("label must be at most 160 characters")
+	}
+	return nil
+}
+
+func DetectionRuleName(value string) error {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return fmt.Errorf("name is required")
+	}
+	if len(value) > 120 {
+		return fmt.Errorf("name is too long (max 120 characters)")
+	}
+	return nil
+}
+
+func DetectionRuleDescription(value string) error {
+	if len(value) > 1000 {
+		return fmt.Errorf("description is too long (max 1000 characters)")
+	}
+	return nil
+}
+
+func DetectionRuleMetric(value string) error {
+	switch value {
+	case "any", "power_dbm", "frequency_hz", "power_dbm_trend", "frequency_hz_trend":
+		return nil
+	default:
+		return fmt.Errorf("metric is invalid")
+	}
+}
+
+func DetectionRuleOperator(value string) error {
+	switch value {
+	case "abs_z_gte", "z_gte", "z_lte":
+		return nil
+	default:
+		return fmt.Errorf("operator is invalid")
+	}
+}
+
+func DetectionRuleThreshold(value float64) error {
+	if value <= 0 || value > 100 {
+		return fmt.Errorf("threshold must be greater than 0 and at most 100")
+	}
+	return nil
+}
+
+func DetectionRuleCooldown(value int) error {
+	if value < 0 || value > 86400 {
+		return fmt.Errorf("cooldown_seconds must be between 0 and 86400")
 	}
 	return nil
 }

@@ -3,7 +3,7 @@ info:
   title: Lyrahcle API
   description: Space cybersecurity operations API for assets, orbital tracking, RF telemetry, incident response, TM/TC decoding,
     threat intelligence, and security administration.
-  version: 0.10.1
+  version: 0.11.0
   contact:
     name: Lyrahcle
   license:
@@ -20,6 +20,7 @@ tags:
 - name: Programs
 - name: Satellites
 - name: RF
+- name: Detection
 - name: Agent Keys
 - name: TM/TC
 - name: Incidents
@@ -1276,6 +1277,86 @@ paths:
           description: Insufficient role
         '404':
           description: Incident not found
+  /api/v1/detection-rules/:
+    get:
+      tags:
+      - Detection
+      summary: List RF detection rules
+      description: 'Requires role: viewer or higher.'
+      parameters:
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: Paginated detection rules
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetectionRulePage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Insufficient role
+    post:
+      tags:
+      - Detection
+      summary: Create an RF detection rule
+      description: 'Requires role: admin. Rules are typed and cannot execute arbitrary expressions or scripts.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DetectionRuleCreateRequest'
+      responses:
+        '201':
+          description: Detection rule created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetectionRule'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Admin role required
+        '409':
+          description: Rule name conflict
+  /api/v1/detection-rules/{ruleID}:
+    patch:
+      tags:
+      - Detection
+      summary: Update an RF detection rule
+      description: 'Requires role: admin. Rules are disabled rather than deleted to preserve detection history.'
+      parameters:
+      - name: ruleID
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DetectionRuleUpdateRequest'
+      responses:
+        '200':
+          description: Detection rule updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetectionRule'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Admin role required
+        '404':
+          description: Detection rule not found
 components:
   securitySchemes:
     bearerAuth:
@@ -1913,6 +1994,7 @@ components:
           enum:
           - manual
           - rf_anomaly
+          - detection_rule
         satellite_id:
           type: string
           format: uuid
@@ -1983,6 +2065,7 @@ components:
           type: string
           enum:
           - rf_anomaly
+          - detection_rule
           - request
           - cve
           - agent
@@ -2011,6 +2094,7 @@ components:
           type: string
           enum:
           - rf_anomaly
+          - detection_rule
           - request
           - cve
           - agent
@@ -2102,3 +2186,123 @@ components:
           type: string
           format: uuid
           nullable: true
+    DetectionRule:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          maxLength: 120
+        description:
+          type: string
+          maxLength: 1000
+        enabled:
+          type: boolean
+        metric:
+          type: string
+          enum: [any, power_dbm, frequency_hz, power_dbm_trend, frequency_hz_trend]
+        operator:
+          type: string
+          enum: [abs_z_gte, z_gte, z_lte]
+        threshold:
+          type: number
+          minimum: 0
+          maximum: 100
+        severity:
+          type: string
+          enum: [critical, high, medium, low, info]
+        cooldown_seconds:
+          type: integer
+          minimum: 0
+          maximum: 86400
+        auto_incident:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    DetectionRulePage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/DetectionRule'
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+    DetectionRuleCreateRequest:
+      type: object
+      required: [name, metric, operator, threshold, severity, cooldown_seconds]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        description:
+          type: string
+          maxLength: 1000
+        enabled:
+          type: boolean
+          default: true
+        metric:
+          type: string
+          enum: [any, power_dbm, frequency_hz, power_dbm_trend, frequency_hz_trend]
+        operator:
+          type: string
+          enum: [abs_z_gte, z_gte, z_lte]
+        threshold:
+          type: number
+          exclusiveMinimum: true
+          minimum: 0
+          maximum: 100
+        severity:
+          type: string
+          enum: [critical, high, medium, low, info]
+        cooldown_seconds:
+          type: integer
+          minimum: 0
+          maximum: 86400
+        auto_incident:
+          type: boolean
+          default: true
+    DetectionRuleUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        description:
+          type: string
+          maxLength: 1000
+        enabled:
+          type: boolean
+        metric:
+          type: string
+          enum: [any, power_dbm, frequency_hz, power_dbm_trend, frequency_hz_trend]
+        operator:
+          type: string
+          enum: [abs_z_gte, z_gte, z_lte]
+        threshold:
+          type: number
+          exclusiveMinimum: true
+          minimum: 0
+          maximum: 100
+        severity:
+          type: string
+          enum: [critical, high, medium, low, info]
+        cooldown_seconds:
+          type: integer
+          minimum: 0
+          maximum: 86400
+        auto_incident:
+          type: boolean
+

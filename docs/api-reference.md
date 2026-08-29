@@ -91,6 +91,9 @@ Every backend response includes `X-Request-ID`. A safe incoming `X-Request-ID` m
 | `POST` | `/api/v1/rf/ingest` | Agent key or Operator | Ingest RF reading |
 | `GET` | `/api/v1/rf/readings` | Viewer | Recent RF readings |
 | `GET` | `/api/v1/rf/anomalies` | Viewer | Recent RF anomalies |
+| `GET` | `/api/v1/detection-rules/` | Viewer | List typed RF detection rules |
+| `POST` | `/api/v1/detection-rules/` | Admin | Create a detection rule |
+| `PATCH` | `/api/v1/detection-rules/{ruleID}` | Admin | Update or disable a detection rule |
 | `GET` | `/api/v1/incidents/` | Viewer | Filtered/paginated security incidents |
 | `POST` | `/api/v1/incidents/` | Operator | Create incident; assignment is admin-only |
 | `GET` | `/api/v1/incidents/stream` | Viewer | Live incident SSE snapshots |
@@ -110,7 +113,7 @@ Every backend response includes `X-Request-ID`. A safe incoming `X-Request-ID` m
 
 ## Pagination and CVE filters
 
-Paginated endpoints accept `limit` and `offset`; `limit` defaults to 50 and is capped at 200.
+Paginated endpoints accept `limit` and `offset`; `limit` defaults to 25 and is capped at 100.
 
 `GET /api/v1/threat-intel/space-cves` also supports:
 
@@ -131,6 +134,6 @@ Redis enables distributed rate limiting, JWT revocation, response caching, and t
 
 ## Incident response
 
-Incidents support filters for status, severity, agent, and satellite, and use validated workflow values for severity and status. Incident creation accepts an optional `Idempotency-Key`, and duplicate keys return the original incident instead of creating a second record. Viewers have read-only access, operators can create incidents, change status/severity, and add timeline notes, while assignment changes are restricted to admins. High-confidence RF anomalies with an absolute z-score of at least 6 create a deduplicated incident automatically; absolute z-scores of at least 8 are marked critical.
+Incidents support filters for status, severity, agent, and satellite, and use validated workflow values for severity and status. Incident creation accepts an optional `Idempotency-Key`, and duplicate keys return the original incident instead of creating a second record. Viewers have read-only access, operators can create incidents, change status/severity, and add timeline notes, while assignment changes are restricted to admins. RF anomalies are evaluated against typed detection rules. Rules support a fixed metric set, directional or absolute z-score comparisons, validated thresholds, severity, cooldown suppression, and optional automatic incident creation. Only admins can create or modify rules; viewers can inspect them. The platform ships with high and critical default deviation rules that preserve the previous escalation behavior. Multiple rule matches for the same anomaly are correlated into one incident using the highest matching auto-incident severity.
 
-The `source_anomaly_id` uniqueness constraint prevents one RF anomaly from generating duplicate incidents. Workflow transitions are enforced in both Go and PostgreSQL. Operator notes and immutable evidence references are recorded in the incident timeline, and security-relevant mutations are also written to the audit log.
+The `source_anomaly_id` uniqueness constraint prevents one RF anomaly from generating duplicate incidents, while persisted rule matches and per-rule/per-agent cooldown locks reduce alert storms. Workflow transitions are enforced in both Go and PostgreSQL. Operator notes and immutable evidence references are recorded in the incident timeline, and security-relevant mutations are also written to the audit log.

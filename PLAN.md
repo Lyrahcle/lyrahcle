@@ -11,7 +11,7 @@ Lyrahcle is moving from a collection of space-security capabilities toward a coh
 - Space CVE intelligence and asset alerts
 - JWT, TOTP, RBAC, audit logging, Redis-backed revocation and rate limiting
 - EN/ES/FR/DE dashboard localization
-- Incident response with timelines, workflow states, and high-confidence RF anomaly escalation
+- Incident response with timelines, workflow states, typed RF detection rules, cooldown suppression, and deterministic anomaly correlation
 
 ## v7.1 hardening baseline
 
@@ -24,9 +24,9 @@ Lyrahcle is moving from a collection of space-security capabilities toward a coh
 
 ## Next priorities
 
-### 1. Correlation and detection engineering
+### 1. Cross-domain correlation
 
-Expand the incident foundation into deterministic correlation across RF anomalies, asset alerts, orbital events, agents, and audit evidence. Add reusable detection rules and deduplication windows.
+Extend the shipped RF detection-rule engine across asset alerts, orbital events, agents, and audit evidence while preserving deterministic, explainable incident creation.
 
 ### 2. RF signal assurance
 

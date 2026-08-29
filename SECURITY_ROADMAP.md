@@ -23,6 +23,7 @@
 - [x] EN/ES/FR/DE localization and WCAG-oriented frontend improvements
 - [x] SSE orbital streaming preserved through middleware instrumentation
 - [x] Incident response with role-gated workflow changes, transaction-backed timelines, audit events, and RF anomaly escalation
+- [x] Typed RF detection rules with admin-only mutation, persisted matches, bounded evaluation, serialized cooldown suppression, and deterministic incident correlation
 
 ## Before v1.0
 
@@ -32,7 +33,7 @@
 - [ ] Produce SBOM, provenance, and signed release artifacts
 - [ ] Document and test backup restore and disaster recovery procedures
 - [ ] Add production deployment patterns for redundant backend/Redis/PostgreSQL infrastructure
-- [ ] Add multi-signal incident correlation, suppression windows, and reusable detection rules
+- [ ] Extend correlation beyond RF into asset alerts, orbital events, agent posture, and audit evidence
 
 ## v7.1 hardening
 
@@ -44,3 +45,12 @@
 - [x] Pagination defaults capped at 25/100
 - [x] Race detector and gosec CI gates
 - [x] SDR TLS verification through trusted CA bundles without verification bypass
+
+## v8 detection engineering
+
+- [x] Non-executable typed RF detection-rule model
+- [x] Admin-only rule creation and mutation
+- [x] Per-rule/per-agent cooldown suppression with transactional advisory locks
+- [x] Maximum active-rule evaluation bound
+- [x] Persisted detection matches linked to correlated incidents
+- [x] Highest-severity deterministic correlation for multiple matches on one anomaly

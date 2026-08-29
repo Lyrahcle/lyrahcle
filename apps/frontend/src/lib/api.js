@@ -403,3 +403,39 @@ export function subscribeIncidents({ onData, onError }) {
   run()
   return () => controller.abort()
 }
+
+export async function fetchDetectionRules(limit = 50, offset = 0) {
+  const res = await authedFetch(`/api/v1/detection-rules/?limit=${limit}&offset=${offset}`)
+  if (!res.ok) throw new Error(await readErrorText(res, 'failed to fetch detection rules'))
+  return res.json()
+}
+
+export async function createDetectionRule({ name, description, metric, operator, threshold, severity, cooldownSeconds, autoIncident }) {
+  const res = await authedFetch('/api/v1/detection-rules/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name,
+      description,
+      metric,
+      operator,
+      threshold,
+      severity,
+      cooldown_seconds: cooldownSeconds,
+      auto_incident: autoIncident,
+    }),
+  })
+  if (!res.ok) throw new Error(await readErrorText(res, 'failed to create detection rule'))
+  return res.json()
+}
+
+export async function updateDetectionRule(ruleId, fields) {
+  const res = await authedFetch(`/api/v1/detection-rules/${encodeURIComponent(ruleId)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(fields),
+  })
+  if (!res.ok) throw new Error(await readErrorText(res, 'failed to update detection rule'))
+  return res.json()
+}
+
