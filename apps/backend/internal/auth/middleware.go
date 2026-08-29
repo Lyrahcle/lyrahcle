@@ -11,7 +11,21 @@ type contextKey string
 const claimsContextKey contextKey = "auth_claims"
 const agentIDContextKey contextKey = "auth_agent_id"
 
-func RequireRole(secret []byte, minimum Role) func(http.Handler) http.Handler {
+// RevocationCheck reports whether the token identified by jti has been
+// revoked (logout, password change) before its natural expiry.
+type RevocationCheck func(ctx context.Context, jti string) bool
+
+// RequireRole authenticates a bearer JWT and requires at least the given
+// role. isRevoked is optional (pass nil, or omit it entirely — both
+// existing call sites and new ones work): when provided, a token whose jti
+// is revoked is rejected even though its signature and expiry are still
+// valid.
+func RequireRole(secret []byte, minimum Role, isRevoked ...RevocationCheck) func(http.Handler) http.Handler {
+	var check RevocationCheck
+	if len(isRevoked) > 0 {
+		check = isRevoked[0]
+	}
+
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			header := r.Header.Get("Authorization")
@@ -24,6 +38,11 @@ func RequireRole(secret []byte, minimum Role) func(http.Handler) http.Handler {
 			claims, err := ParseToken(secret, tokenString)
 			if err != nil {
 				http.Error(w, "invalid or expired token", http.StatusUnauthorized)
+				return
+			}
+
+			if check != nil && check(r.Context(), claims.ID) {
+				http.Error(w, "token has been revoked", http.StatusUnauthorized)
 				return
 			}
 
@@ -40,7 +59,7 @@ func RequireRole(secret []byte, minimum Role) func(http.Handler) http.Handler {
 
 type AgentKeyLookup func(ctx context.Context, keyHash string) (agentID string, err error)
 
-func RequireAgentKeyOrRole(secret []byte, minimum Role, lookup AgentKeyLookup) func(http.Handler) http.Handler {
+func RequireAgentKeyOrRole(secret []byte, minimum Role, lookup AgentKeyLookup, isRevoked ...RevocationCheck) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if agentKey := r.Header.Get("X-Agent-Key"); agentKey != "" {
@@ -54,7 +73,7 @@ func RequireAgentKeyOrRole(secret []byte, minimum Role, lookup AgentKeyLookup) f
 				return
 			}
 
-			RequireRole(secret, minimum)(next).ServeHTTP(w, r)
+			RequireRole(secret, minimum, isRevoked...)(next).ServeHTTP(w, r)
 		})
 	}
 }

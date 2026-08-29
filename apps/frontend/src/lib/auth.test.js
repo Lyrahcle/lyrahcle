@@ -58,10 +58,35 @@ describe('auth client', () => {
     expect(getToken()).toBeNull()
   })
 
-  it('logout clears the stored token and role', () => {
+  it('logout clears the stored token and role', async () => {
     localStorage.setItem('lyra_token', 'a-token')
     localStorage.setItem('lyra_role', 'admin')
-    logout()
+    global.fetch.mockResolvedValue({ ok: true })
+    await logout()
+    expect(getToken()).toBeNull()
+    expect(getRole()).toBeNull()
+  })
+
+  it('logout revokes the token server-side', async () => {
+    localStorage.setItem('lyra_token', 'a-token')
+    global.fetch.mockResolvedValue({ ok: true })
+    await logout()
+    expect(global.fetch).toHaveBeenCalledWith(
+      '/api/v1/auth/logout',
+      expect.objectContaining({ method: 'POST', headers: { Authorization: 'Bearer a-token' } }),
+    )
+  })
+
+  it('logout does not call the backend when there was no token', async () => {
+    await logout()
+    expect(global.fetch).not.toHaveBeenCalled()
+  })
+
+  it('logout clears local state even if the backend call fails', async () => {
+    localStorage.setItem('lyra_token', 'a-token')
+    localStorage.setItem('lyra_role', 'admin')
+    global.fetch.mockRejectedValue(new Error('network error'))
+    await expect(logout()).resolves.not.toThrow()
     expect(getToken()).toBeNull()
     expect(getRole()).toBeNull()
   })

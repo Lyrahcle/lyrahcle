@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -18,6 +19,7 @@ import (
 	"github.com/go-chi/httprate"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/redis/go-redis/v9"
 
 	"github.com/mlko01/lyrahcle/apps/backend/internal/anomaly"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/audit"
@@ -27,9 +29,13 @@ import (
 	"github.com/mlko01/lyrahcle/apps/backend/internal/db"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/metrics"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/orbit"
+	"github.com/mlko01/lyrahcle/apps/backend/internal/ratelimit"
+	"github.com/mlko01/lyrahcle/apps/backend/internal/redisclient"
+	"github.com/mlko01/lyrahcle/apps/backend/internal/respcache"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/scheduler"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/store"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/tmtc"
+	"github.com/mlko01/lyrahcle/apps/backend/internal/tokenblocklist"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/validate"
 )
 
@@ -62,6 +68,14 @@ func main() {
 		log.Printf("seed admin: %v", err)
 	}
 
+	redisClient, err := redisclient.Connect(cfg.RedisURL, 5*time.Second)
+	if err != nil {
+		log.Printf("WARNING: Redis not available at %s (%v). Rate limiting will use an in-memory counter (does not survive a restart or work correctly with multiple replicas), and logout/password-change token revocation and response caching will be disabled.", cfg.RedisURL, err)
+	} else {
+		log.Printf("connected to Redis at %s", cfg.RedisURL)
+		defer redisClient.Close()
+	}
+
 	sched := scheduler.New()
 	_ = sched.Every("0 */6 * * *", "recon-sweep", func() {
 		log.Println("recon sweep tick (not yet implemented)")
@@ -74,7 +88,7 @@ func main() {
 
 	go syncTLEs(ctx, cfg.CelestrakGroups, satellites)
 
-	r := newRouter(cfg, assets, programs, rf, rfAnomalies, satellites, users, agentKeys, auditLog, spaceCVEs)
+	r := newRouter(cfg, assets, programs, rf, rfAnomalies, satellites, users, agentKeys, auditLog, spaceCVEs, redisClient)
 
 	srv := &http.Server{
 		Addr:         ":" + cfg.Port,
@@ -131,14 +145,26 @@ func newRouter(
 	agentKeys *store.AgentKeyStore,
 	auditLog *store.AuditStore,
 	spaceCVEs *store.SpaceCVEStore,
+	redisClient *redis.Client,
 ) http.Handler {
+	blocklist := tokenblocklist.New(redisClient)
+	cache := respcache.New(redisClient)
+	isTokenRevoked := blocklist.IsRevoked
+
+	globalLimiter := httprate.Limit(120, time.Minute, httprate.WithKeyByIP())
+	authLimiter := httprate.Limit(10, time.Minute, httprate.WithKeyByIP())
+	if redisClient != nil {
+		globalLimiter = httprate.Limit(120, time.Minute, httprate.WithKeyByIP(), httprate.WithLimitCounter(ratelimit.NewRedisCounter(redisClient)))
+		authLimiter = httprate.Limit(10, time.Minute, httprate.WithKeyByIP(), httprate.WithLimitCounter(ratelimit.NewRedisCounter(redisClient)))
+	}
+
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(securityHeaders(cfg.TLSCertFile != "" && cfg.TLSKeyFile != ""))
 	r.Use(metrics.Middleware)
 	r.Use(maxBodySize(1 << 20))
-	r.Use(httprate.LimitByIP(120, time.Minute))
+	r.Use(globalLimiter)
 
 	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -156,7 +182,7 @@ func newRouter(
 		})
 
 		r.Route("/assets", func(r chi.Router) {
-			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer)).Get("/", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer, isTokenRevoked)).Get("/", func(w http.ResponseWriter, r *http.Request) {
 				limit, offset := pageParams(r)
 				page, err := assets.List(r.Context(), limit, offset)
 				if err != nil {
@@ -167,7 +193,7 @@ func newRouter(
 				json.NewEncoder(w).Encode(page)
 			})
 
-			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleOperator)).Post("/", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleOperator, isTokenRevoked)).Post("/", func(w http.ResponseWriter, r *http.Request) {
 				var body struct {
 					ProgramID string `json:"program_id"`
 					Kind      string `json:"kind"`
@@ -202,7 +228,7 @@ func newRouter(
 		})
 
 		r.Route("/programs", func(r chi.Router) {
-			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer)).Get("/", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer, isTokenRevoked)).Get("/", func(w http.ResponseWriter, r *http.Request) {
 				list, err := programs.List(r.Context())
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -212,7 +238,7 @@ func newRouter(
 				json.NewEncoder(w).Encode(list)
 			})
 
-			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleOperator)).Post("/", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleOperator, isTokenRevoked)).Post("/", func(w http.ResponseWriter, r *http.Request) {
 				var body struct {
 					Name string `json:"name"`
 				}
@@ -238,7 +264,7 @@ func newRouter(
 		})
 
 		r.Route("/auth", func(r chi.Router) {
-			r.Use(httprate.LimitByIP(10, time.Minute))
+			r.Use(authLimiter)
 
 			r.Post("/register", func(w http.ResponseWriter, r *http.Request) {
 				var body struct {
@@ -326,7 +352,23 @@ func newRouter(
 				json.NewEncoder(w).Encode(map[string]string{"token": token, "role": user.Role})
 			})
 
-			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer)).Post("/change-password", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer, isTokenRevoked)).Post("/logout", func(w http.ResponseWriter, r *http.Request) {
+				claims, ok := auth.FromContext(r.Context())
+				if !ok {
+					http.Error(w, "unauthorized", http.StatusUnauthorized)
+					return
+				}
+
+				remaining := time.Until(claims.ExpiresAt.Time)
+				if err := blocklist.Revoke(r.Context(), claims.ID, remaining); err != nil {
+					log.Printf("logout: failed to revoke token for user %s: %v", claims.UserID, err)
+				}
+
+				logAudit(r.Context(), auditLog, audit.ActorUser, claims.UserID.String(), audit.ActionLogout, clientIP(r), nil)
+				w.WriteHeader(http.StatusNoContent)
+			})
+
+			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer, isTokenRevoked)).Post("/change-password", func(w http.ResponseWriter, r *http.Request) {
 				var body struct {
 					CurrentPassword string `json:"current_password"`
 					NewPassword     string `json:"new_password"`
@@ -366,6 +408,16 @@ func newRouter(
 					return
 				}
 
+				// Force re-authentication with the new password: the token
+				// used to make this request stays valid, by JWT signature
+				// alone, until it would have expired anyway unless revoked.
+				if claims, ok := auth.FromContext(r.Context()); ok {
+					remaining := time.Until(claims.ExpiresAt.Time)
+					if err := blocklist.Revoke(r.Context(), claims.ID, remaining); err != nil {
+						log.Printf("change-password: failed to revoke token for user %s: %v", user.ID, err)
+					}
+				}
+
 				logAudit(r.Context(), auditLog, audit.ActorUser, user.ID.String(), audit.ActionPasswordChanged, clientIP(r), map[string]interface{}{"email": user.Email})
 
 				w.WriteHeader(http.StatusNoContent)
@@ -373,7 +425,7 @@ func newRouter(
 		})
 
 		r.Route("/users", func(r chi.Router) {
-			r.Use(auth.RequireRole(cfg.JWTSecret, auth.RoleAdmin))
+			r.Use(auth.RequireRole(cfg.JWTSecret, auth.RoleAdmin, isTokenRevoked))
 
 			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 				list, err := users.List(r.Context())
@@ -442,7 +494,7 @@ func newRouter(
 		})
 
 		r.Route("/agent-keys", func(r chi.Router) {
-			r.Use(auth.RequireRole(cfg.JWTSecret, auth.RoleAdmin))
+			r.Use(auth.RequireRole(cfg.JWTSecret, auth.RoleAdmin, isTokenRevoked))
 
 			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 				list, err := agentKeys.List(r.Context())
@@ -522,7 +574,7 @@ func newRouter(
 				}
 				return agentID, err
 			}
-			agentAuth := auth.RequireAgentKeyOrRole(cfg.JWTSecret, auth.RoleOperator, auditedLookup)
+			agentAuth := auth.RequireAgentKeyOrRole(cfg.JWTSecret, auth.RoleOperator, auditedLookup, isTokenRevoked)
 			r.With(agentAuth).Post("/ingest", func(w http.ResponseWriter, r *http.Request) {
 				var reading store.RFReading
 				if err := json.NewDecoder(r.Body).Decode(&reading); err != nil {
@@ -571,7 +623,7 @@ func newRouter(
 				w.WriteHeader(http.StatusCreated)
 			})
 
-			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer)).Get("/readings", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer, isTokenRevoked)).Get("/readings", func(w http.ResponseWriter, r *http.Request) {
 				list, err := rf.Recent(r.Context(), 100)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -581,7 +633,7 @@ func newRouter(
 				json.NewEncoder(w).Encode(list)
 			})
 
-			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer)).Get("/anomalies", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer, isTokenRevoked)).Get("/anomalies", func(w http.ResponseWriter, r *http.Request) {
 				list, err := rfAnomalies.Recent(r.Context(), 100)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -593,19 +645,31 @@ func newRouter(
 		})
 
 		r.Route("/satellites", func(r chi.Router) {
-			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer)).Get("/", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer, isTokenRevoked)).Get("/", func(w http.ResponseWriter, r *http.Request) {
+				type satWithPos struct {
+					store.Satellite
+					Position *orbit.Position `json:"position,omitempty"`
+				}
+
+				// Not user-scoped — every viewer+ sees the same list — so a
+				// short TTL is safe. SGP4 propagation is cheap per call but
+				// this is polled by every open dashboard every few seconds;
+				// caching avoids redoing the same computation for each of them.
+				const cacheKey = "lyrahcle:cache:satellites"
+				var out []satWithPos
+				if hit, _ := cache.Get(r.Context(), cacheKey, &out); hit {
+					w.Header().Set("Content-Type", "application/json")
+					json.NewEncoder(w).Encode(out)
+					return
+				}
+
 				list, err := satellites.List(r.Context())
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
 				}
 
-				type satWithPos struct {
-					store.Satellite
-					Position *orbit.Position `json:"position,omitempty"`
-				}
-
-				out := make([]satWithPos, 0, len(list))
+				out = make([]satWithPos, 0, len(list))
 				for _, sat := range list {
 					entry := satWithPos{Satellite: sat}
 					if pos, err := orbit.CurrentPosition(sat.TLELine1, sat.TLELine2); err == nil {
@@ -614,11 +678,13 @@ func newRouter(
 					out = append(out, entry)
 				}
 
+				cache.Set(r.Context(), cacheKey, out, 5*time.Second)
+
 				w.Header().Set("Content-Type", "application/json")
 				json.NewEncoder(w).Encode(out)
 			})
 
-			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleOperator)).Post("/", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleOperator, isTokenRevoked)).Post("/", func(w http.ResponseWriter, r *http.Request) {
 				var body struct {
 					NoradID int    `json:"norad_id"`
 					Name    string `json:"name"`
@@ -746,7 +812,7 @@ func newRouter(
 			})
 		})
 
-		r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleAdmin)).Get("/audit-log", func(w http.ResponseWriter, r *http.Request) {
+		r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleAdmin, isTokenRevoked)).Get("/audit-log", func(w http.ResponseWriter, r *http.Request) {
 			limit, offset := pageParams(r)
 			page, err := auditLog.List(r.Context(), limit, offset)
 			if err != nil {
@@ -757,13 +823,25 @@ func newRouter(
 			json.NewEncoder(w).Encode(page)
 		})
 
-		r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer)).Get("/threat-intel/space-cves", func(w http.ResponseWriter, r *http.Request) {
+		r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer, isTokenRevoked)).Get("/threat-intel/space-cves", func(w http.ResponseWriter, r *http.Request) {
 			limit, offset := pageParams(r)
+
+			// The cve-sync worker only refreshes this feed once a day, so a
+			// much longer TTL than the satellites cache is safe here.
+			cacheKey := fmt.Sprintf("lyrahcle:cache:space-cves:%d:%d", limit, offset)
+			var page store.Page[store.SpaceCVE]
+			if hit, _ := cache.Get(r.Context(), cacheKey, &page); hit {
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(page)
+				return
+			}
+
 			page, err := spaceCVEs.List(r.Context(), limit, offset)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
+			cache.Set(r.Context(), cacheKey, page, 30*time.Second)
 			w.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(w).Encode(page)
 		})

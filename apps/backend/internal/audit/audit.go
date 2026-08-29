@@ -2,6 +2,7 @@ package audit
 
 const (
 	ActionLogin              = "auth.login"
+	ActionLogout             = "auth.logout"
 	ActionLoginFailed        = "auth.login_failed"
 	ActionRegister           = "auth.register"
 	ActionPasswordChanged    = "auth.password_changed"

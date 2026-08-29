@@ -75,7 +75,7 @@ func testRouter(t *testing.T) (http.Handler, *pgxpool.Pool) {
 	auditLog := store.NewAuditStore(pool)
 	spaceCVEs := store.NewSpaceCVEStore(pool)
 
-	router := newRouter(cfg, assets, programs, rf, rfAnomalies, satellites, users, agentKeys, auditLog, spaceCVEs)
+	router := newRouter(cfg, assets, programs, rf, rfAnomalies, satellites, users, agentKeys, auditLog, spaceCVEs, nil)
 	return router, pool
 }
 
