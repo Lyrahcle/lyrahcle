@@ -14,6 +14,8 @@ type Role string
 const (
 	RoleAdmin     Role = "admin"
 	RoleOperator  Role = "operator"
+	RoleAnalyst   Role = "analyst"
+	RoleAuditor   Role = "auditor"
 	RoleViewer    Role = "viewer"
 	TokenIssuer        = "lyrahcle"
 	TokenAudience      = "lyrahcle-api"
@@ -21,7 +23,7 @@ const (
 
 func ValidRole(r string) bool {
 	switch Role(r) {
-	case RoleAdmin, RoleOperator, RoleViewer:
+	case RoleAdmin, RoleOperator, RoleAnalyst, RoleAuditor, RoleViewer:
 		return true
 	default:
 		return false
@@ -29,9 +31,11 @@ func ValidRole(r string) bool {
 }
 
 type Claims struct {
-	UserID          uuid.UUID `json:"user_id"`
-	Role            Role      `json:"role"`
-	SessionIssuedAt int64     `json:"session_iat_ns"`
+	UserID                 uuid.UUID `json:"user_id"`
+	Role                   Role      `json:"role"`
+	SessionIssuedAt        int64     `json:"session_iat_ns"`
+	PasswordChangeRequired bool      `json:"password_change_required,omitempty"`
+	AuthVersion            int64     `json:"auth_version"`
 	jwt.RegisteredClaims
 }
 
@@ -50,11 +54,21 @@ func IssueToken(secret []byte, userID uuid.UUID, role Role, ttl time.Duration) (
 }
 
 func IssueTokenWithClaims(secret []byte, userID uuid.UUID, role Role, ttl time.Duration) (string, *Claims, error) {
+	return IssueUserTokenWithClaims(secret, userID, role, false, ttl)
+}
+
+func IssueUserTokenWithClaims(secret []byte, userID uuid.UUID, role Role, passwordChangeRequired bool, ttl time.Duration) (string, *Claims, error) {
+	return IssueUserTokenWithState(secret, userID, role, passwordChangeRequired, 1, ttl)
+}
+
+func IssueUserTokenWithState(secret []byte, userID uuid.UUID, role Role, passwordChangeRequired bool, authVersion int64, ttl time.Duration) (string, *Claims, error) {
 	now := time.Now()
 	claims := &Claims{
-		UserID:          userID,
-		Role:            role,
-		SessionIssuedAt: now.UnixNano(),
+		UserID:                 userID,
+		Role:                   role,
+		SessionIssuedAt:        now.UnixNano(),
+		PasswordChangeRequired: passwordChangeRequired,
+		AuthVersion:            authVersion,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ID:        uuid.NewString(),
 			Issuer:    TokenIssuer,
@@ -110,13 +124,13 @@ func parseToken(secret []byte, tokenString string) (*Claims, error) {
 	if !token.Valid {
 		return nil, errors.New("auth: invalid token")
 	}
-	if claims.UserID == uuid.Nil || claims.Subject != claims.UserID.String() || !ValidRole(string(claims.Role)) || claims.ID == "" || claims.SessionIssuedAt <= 0 {
+	if claims.UserID == uuid.Nil || claims.Subject != claims.UserID.String() || !ValidRole(string(claims.Role)) || claims.ID == "" || claims.SessionIssuedAt <= 0 || claims.AuthVersion <= 0 {
 		return nil, errors.New("auth: invalid claims")
 	}
 	return claims, nil
 }
 
 func RoleAtLeast(role Role, minimum Role) bool {
-	rank := map[Role]int{RoleViewer: 0, RoleOperator: 1, RoleAdmin: 2}
+	rank := map[Role]int{RoleViewer: 0, RoleAuditor: 0, RoleAnalyst: 1, RoleOperator: 2, RoleAdmin: 3}
 	return rank[role] >= rank[minimum]
 }

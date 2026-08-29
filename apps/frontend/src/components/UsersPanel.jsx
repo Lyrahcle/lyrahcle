@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react'
 import { Search } from 'lucide-react'
-import { createUser, updateUserRole } from '../lib/api.js'
+import { createUser, deleteUser, updateUserRole, updateUserStatus } from '../lib/api.js'
 import { decodeToken, getToken } from '../lib/auth.js'
 import { useI18n } from '../lib/I18nContext.jsx'
 import TableScroll from './TableScroll.jsx'
 
-const ROLES = ['viewer', 'operator', 'admin']
+const ROLES = ['viewer', 'auditor', 'analyst', 'operator', 'admin']
 
 function NewUserForm({ onCreated }) {
   const { t } = useI18n()
@@ -62,7 +62,8 @@ function NewUserForm({ onCreated }) {
           onChange={(e) => setPassword(e.target.value)}
           className="w-full rounded border border-lyra-border bg-lyra-bg px-2.5 py-1.5 text-sm text-lyra-text outline-none focus:border-lyra-gold"
           required
-          minLength={8}
+          minLength={12}
+          maxLength={72}
         />
       </div>
       <div>
@@ -109,7 +110,7 @@ export default function UsersPanel({ users, onChanged }) {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     if (!q) return users
-    return users.filter((u) => u.email.toLowerCase().includes(q))
+    return users.filter((u) => `${u.email} ${u.username ?? ''} ${u.role}`.toLowerCase().includes(q))
   }, [users, query])
 
   async function handleRoleChange(userId, role) {
@@ -117,6 +118,33 @@ export default function UsersPanel({ users, onChanged }) {
     setSavingId(userId)
     try {
       await updateUserRole(userId, role)
+      onChanged()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSavingId(null)
+    }
+  }
+
+  async function handleStatusChange(userId, enabled) {
+    setError(null)
+    setSavingId(userId)
+    try {
+      await updateUserStatus(userId, enabled)
+      onChanged()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSavingId(null)
+    }
+  }
+
+  async function handleDelete(userId) {
+    if (!window.confirm(t('users.deleteConfirm'))) return
+    setError(null)
+    setSavingId(userId)
+    try {
+      await deleteUser(userId)
       onChanged()
     } catch (err) {
       setError(err.message)
@@ -173,7 +201,12 @@ export default function UsersPanel({ users, onChanged }) {
                 <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
                   {t('users.role')}
                 </th>
-                <th scope="col" className="pb-2" />
+                <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+                  {t('users.status')}
+                </th>
+                <th scope="col" className="pb-2 text-right text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+                  {t('users.actions')}
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -201,8 +234,27 @@ export default function UsersPanel({ users, onChanged }) {
                       ))}
                     </select>
                   </td>
-                  <td className="py-2.5 text-right font-mono text-[11px] text-lyra-mutedDim">
-                    {savingId === u.id ? t('common.saving') : ''}
+                  <td className="py-2.5">
+                    <button
+                      type="button"
+                      disabled={savingId === u.id || u.id === currentUserId}
+                      onClick={() => handleStatusChange(u.id, !u.enabled)}
+                      className="rounded border border-lyra-border px-2 py-1 font-mono text-[11px] text-lyra-muted outline-none hover:text-lyra-goldBright disabled:opacity-40"
+                    >
+                      {u.enabled ? t('users.active') : t('users.disabled')}
+                    </button>
+                  </td>
+                  <td className="py-2.5 text-right">
+                    {u.id !== currentUserId && (
+                      <button
+                        type="button"
+                        disabled={savingId === u.id}
+                        onClick={() => handleDelete(u.id)}
+                        className="rounded border border-lyra-bad/40 px-2 py-1 font-mono text-[11px] text-lyra-bad outline-none hover:bg-lyra-bad/10 disabled:opacity-40"
+                      >
+                        {t('users.delete')}
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}

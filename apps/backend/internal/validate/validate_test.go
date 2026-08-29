@@ -32,9 +32,13 @@ func TestPassword(t *testing.T) {
 		password string
 		wantErr  bool
 	}{
-		{"supersecret123", false},
+		{"Strong-Passphrase-9!", false},
+		{"alllowercase-123!", true},
+		{"NOLOWERCASE-123!", true},
+		{"NoDigits-Allowed!", true},
+		{"NoSymbolsAllowed123", true},
 		{"short", true},
-		{strings.Repeat("a", 129), true},
+		{strings.Repeat("A1!a", 19), true},
 	}
 	for _, c := range cases {
 		err := Password(c.password)

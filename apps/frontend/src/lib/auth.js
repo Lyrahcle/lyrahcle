@@ -79,12 +79,24 @@ export function authHeaders() {
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
-const ROLE_RANK = { viewer: 0, operator: 1, admin: 2 }
+const ROLE_RANK = { viewer: 0, auditor: 0, analyst: 1, operator: 2, admin: 3 }
 
 export function canWrite() {
   return (ROLE_RANK[getRole()] ?? -1) >= ROLE_RANK.operator
 }
 
+export function canInvestigate() {
+  return ['analyst', 'operator', 'admin'].includes(getRole())
+}
+
+export function canAudit() {
+  return ['auditor', 'admin'].includes(getRole())
+}
+
 export function isAdmin() {
   return getRole() === 'admin'
+}
+
+export function passwordChangeRequired() {
+  return Boolean(decodeToken(getToken())?.password_change_required)
 }

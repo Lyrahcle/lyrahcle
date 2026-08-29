@@ -21,3 +21,5 @@ This directory contains the technical documentation for Lyrahcle. The root READM
 | [Releasing](../RELEASING.md) | Versioning and GHCR release process |
 
 The backend also embeds an OpenAPI specification at `/openapi.yaml` and Swagger UI at `/docs`.
+
+- [User administration and permissions](user-administration.md)

@@ -24,11 +24,27 @@ func Email(email string) error {
 }
 
 func Password(password string) error {
-	if len(password) < 8 {
-		return fmt.Errorf("password must be at least 8 characters")
+	if len(password) < 12 {
+		return fmt.Errorf("password must be at least 12 characters")
 	}
-	if len(password) > 128 {
-		return fmt.Errorf("password must be at most 128 characters")
+	if len(password) > 72 {
+		return fmt.Errorf("password must be at most 72 bytes")
+	}
+	var hasLower, hasUpper, hasDigit, hasSymbol bool
+	for _, r := range password {
+		switch {
+		case r >= 'a' && r <= 'z':
+			hasLower = true
+		case r >= 'A' && r <= 'Z':
+			hasUpper = true
+		case r >= '0' && r <= '9':
+			hasDigit = true
+		default:
+			hasSymbol = true
+		}
+	}
+	if !hasLower || !hasUpper || !hasDigit || !hasSymbol {
+		return fmt.Errorf("password must include uppercase, lowercase, number, and symbol")
 	}
 	return nil
 }

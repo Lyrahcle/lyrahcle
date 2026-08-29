@@ -286,6 +286,21 @@ export async function updateUserRole(userId, role) {
   return res.json()
 }
 
+export async function updateUserStatus(userId, enabled) {
+  const res = await authedFetch(`/api/v1/users/${encodeURIComponent(userId)}/status`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enabled }),
+  })
+  if (!res.ok) throw new Error(await readErrorText(res, 'failed to update user status'))
+  return res.json()
+}
+
+export async function deleteUser(userId) {
+  const res = await authedFetch(`/api/v1/users/${encodeURIComponent(userId)}`, { method: 'DELETE' })
+  if (!res.ok) throw new Error(await readErrorText(res, 'failed to delete user'))
+}
+
 const DECODE_ENDPOINTS = {
   ax25: { path: '/api/v1/tmtc/decode/ax25', field: 'frame_hex' },
   ccsds: { path: '/api/v1/tmtc/decode/ccsds', field: 'packet_hex' },

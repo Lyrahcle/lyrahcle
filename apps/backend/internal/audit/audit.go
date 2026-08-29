@@ -16,6 +16,8 @@ const (
 	ActionAgentKeyAuthFailed    = "agent_key.auth_failed"
 	ActionSatelliteUpserted     = "satellite.upserted"
 	ActionRoleChanged           = "user.role_changed"
+	ActionUserStatusChanged     = "user.status_changed"
+	ActionUserDeleted           = "user.deleted"
 	ActionAssetAlertCreated     = "asset_alert.created"
 	ActionAssetAlertAcked       = "asset_alert.acknowledged"
 	ActionIncidentCreated       = "incident.created"

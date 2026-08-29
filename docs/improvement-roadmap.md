@@ -13,20 +13,20 @@ Status values: **Shipped**, **Partial**, **Next**, and **Later**.
 | Login-specific Redis rate limiting | Shipped | Current |
 | Strict input validation | Shipped | Current |
 | JWT signing-key rotation overlap and user-wide revocation | Shipped | Current |
-| WebAuthn security-key second factor | Next | v8.3-v9 |
-| Password recovery with 2FA and temporary link | Next | v8.3-v9 |
-| Force password change on first default-admin login | Next | v8.3 |
-| Stronger password policy | Next | v8.3 |
-| Enforce TLS for all production authentication traffic | Partial | v8.3 |
+| WebAuthn security-key second factor | Next | v8.4-v9 |
+| Password recovery with 2FA and temporary link | Next | v8.4-v9 |
+| Force password change on first default-admin login | Shipped | Current |
+| Stronger password policy | Shipped | Current |
+| Enforce TLS for all production authentication traffic | Shipped | Current |
 | CSRF protection if cookie-based authentication is introduced | Partial | Before v1.0 |
 | Automatic agent API-key rotation | Next | v9 |
 | Agent enrollment and mTLS | Later | v9 |
-| Additional roles such as analyst and auditor | Next | v8.3-v9 |
+| Additional roles such as analyst and auditor | Shipped | Current |
 | Administrator subroles | Later | v9 |
-| Explicit permission matrix | Next | v8.3 |
-| Edit, disable, and delete users | Next | v8.3 |
-| Complete sensitive-endpoint authorization review | Next | v8.3 |
-| Complete administrative audit-coverage review | Partial | v8.3 |
+| Explicit permission matrix | Shipped | Current |
+| Disable and soft-delete users | Shipped | Current |
+| Complete sensitive-endpoint authorization review | Partial | Before v1.0 |
+| Complete administrative audit-coverage review | Partial | Before v1.0 |
 
 ## Detection, RF, and orbital security
 
@@ -100,7 +100,7 @@ Status values: **Shipped**, **Partial**, **Next**, and **Later**.
 | Refactored technical documentation | Shipped | Current |
 | Updated README for auth, realtime, and languages | Shipped | Current |
 | TLS and secrets deployment guide | Shipped | Current |
-| User administration and role guide | Next | v8.3 |
+| User administration and role guide | Shipped | Current |
 | Connectivity/device support guide | Next | v8.3 |
 | CVE user guide | Next | v8.3 |
 | RF heat-map and chart documentation | Later | With feature |

@@ -3,7 +3,7 @@ import { changePassword } from '../lib/api.js'
 import { useI18n } from '../lib/I18nContext.jsx'
 import { useFocusTrap } from '../lib/useFocusTrap.js'
 
-export default function ChangePasswordModal({ onClose, onSecurityChange }) {
+export default function ChangePasswordModal({ onClose, onSecurityChange, required = false }) {
   const { t } = useI18n()
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -16,11 +16,11 @@ export default function ChangePasswordModal({ onClose, onSecurityChange }) {
 
   useEffect(() => {
     function handleEscape(e) {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape' && !required) onClose()
     }
     document.addEventListener('keydown', handleEscape)
     return () => document.removeEventListener('keydown', handleEscape)
-  }, [onClose])
+  }, [onClose, required])
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -56,14 +56,16 @@ export default function ChangePasswordModal({ onClose, onSecurityChange }) {
           <h2 id="change-password-title" className="font-display text-sm font-medium text-lyra-goldBright">
             {t('changePasswordModal.title')}
           </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label={t('common.close')}
-            className="rounded text-lyra-muted outline-none transition-colors hover:text-lyra-goldBright focus-visible:ring-1 focus-visible:ring-lyra-gold"
-          >
-            ✕
-          </button>
+          {!required && (
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label={t('common.close')}
+              className="rounded text-lyra-muted outline-none transition-colors hover:text-lyra-goldBright focus-visible:ring-1 focus-visible:ring-lyra-gold"
+            >
+              ✕
+            </button>
+          )}
         </div>
 
         {success ? (
@@ -109,7 +111,8 @@ export default function ChangePasswordModal({ onClose, onSecurityChange }) {
                 onChange={(e) => setNewPassword(e.target.value)}
                 className="w-full rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 text-sm text-lyra-text outline-none focus:border-lyra-gold"
                 required
-                minLength={8}
+                minLength={12}
+                maxLength={72}
               />
             </div>
 
@@ -125,7 +128,8 @@ export default function ChangePasswordModal({ onClose, onSecurityChange }) {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 className="w-full rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 text-sm text-lyra-text outline-none focus:border-lyra-gold"
                 required
-                minLength={8}
+                minLength={12}
+                maxLength={72}
               />
             </div>
 
@@ -136,13 +140,15 @@ export default function ChangePasswordModal({ onClose, onSecurityChange }) {
             )}
 
             <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={onClose}
-                className="w-full rounded border border-lyra-border px-4 py-2 text-sm text-lyra-muted outline-none transition-colors hover:text-lyra-text focus-visible:ring-1 focus-visible:ring-lyra-gold"
-              >
-                {t('common.cancel')}
-              </button>
+              {!required && (
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="w-full rounded border border-lyra-border px-4 py-2 text-sm text-lyra-muted outline-none transition-colors hover:text-lyra-text focus-visible:ring-1 focus-visible:ring-lyra-gold"
+                >
+                  {t('common.cancel')}
+                </button>
+              )}
               <button
                 type="submit"
                 disabled={loading}

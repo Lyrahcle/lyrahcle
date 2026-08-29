@@ -51,3 +51,7 @@ Complete real SDR hardware validation, high-availability deployment guidance, di
 ## v1.0 gate
 
 v1.0 should require green CI, production-safe defaults, tested recovery procedures, real SDR validation, documented trust boundaries, and a stable operator workflow for detection through investigation.
+
+## Identity and authorization hardening
+
+Delivered in v8.3: bootstrap password rotation, stronger password policy, analyst/auditor roles, account disable/delete, and a documented permission matrix. Password recovery and WebAuthn remain isolated follow-up work.

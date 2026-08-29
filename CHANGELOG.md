@@ -4,6 +4,15 @@ Notable changes are tracked here until versioned release notes take over.
 
 ## Unreleased
 
+### v8.3 identity and authorization hardening
+
+- Added mandatory first-login password change for the bootstrap administrator and database-backed authorization-version enforcement for stale JWTs and role/status changes.
+- Hardened password policy to 12-72 bytes with uppercase, lowercase, number, and symbol requirements.
+- Added `analyst` and `auditor` roles with explicit operational permissions; auditors can read the audit log and analysts can investigate incidents without operator privileges.
+- Added admin-managed account enable/disable and privacy-preserving soft deletion with last-admin and self-lockout protections.
+- Added audit events for account lifecycle changes and invalidation of authorization state after role/status changes.
+- Added a user-administration guide and updated OpenAPI and roadmap documentation.
+
 ### v8.2 observability, sessions, and release integrity
 
 - Added Redis-backed active-session tracking with self-service session listing, per-session revocation, and sign-out-everywhere.
@@ -43,7 +52,7 @@ Notable changes are tracked here until versioned release notes take over.
 ### Platform
 
 - Go/chi backend with PostgreSQL migrations, Redis integration, Prometheus metrics, graceful shutdown, and request correlation IDs.
-- React/Vite dashboard with light/dark themes, EN/ES/FR/DE localization, accessibility improvements, and role-gated operator/admin workflows.
+- React/Vite dashboard with light/dark themes, EN/ES/FR/DE localization, accessibility improvements, and role-gated analyst/operator/admin workflows.
 - Orbital tracking with Celestrak TLE synchronization, SGP4 positions, interactive map, and live SSE updates.
 - RF ingestion through `sdr-agent`, authenticated device self-report, IQ capture/replay, and robust anomaly baselines using median/MAD and EWMA techniques.
 - TM/TC decoders for AX.25, CCSDS Space Packet, PUS, and CSP v1.
@@ -52,7 +61,7 @@ Notable changes are tracked here until versioned release notes take over.
 
 ### Security
 
-- JWT + bcrypt authentication, TOTP, `viewer`/`operator`/`admin` RBAC, admin-managed user creation, and public registration disabled.
+- JWT + bcrypt authentication, TOTP, `viewer`/`auditor`/`analyst`/`operator`/`admin` RBAC, admin-managed user creation, and public registration disabled.
 - Revocable per-agent API keys; agent self-report identity is derived from credentials.
 - Redis-backed token revocation, caching, and distributed rate limiting with separate namespaces for global traffic and login attempts.
 - Security headers, request-size limits, strict validation, audit logging, dependency scanning, Trivy image scanning, and production startup checks.

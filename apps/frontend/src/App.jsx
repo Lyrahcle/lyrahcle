@@ -1,7 +1,8 @@
 import { useCallback, useState } from 'react'
 import Login from './components/Login.jsx'
 import Dashboard from './components/Dashboard.jsx'
-import { isAuthenticated, logout } from './lib/auth.js'
+import ChangePasswordModal from './components/ChangePasswordModal.jsx'
+import { isAuthenticated, logout, passwordChangeRequired } from './lib/auth.js'
 
 function App() {
   const [authenticated, setAuthenticated] = useState(isAuthenticated())
@@ -14,6 +15,10 @@ function App() {
 
   if (!authenticated) {
     return <Login onSuccess={() => setAuthenticated(true)} />
+  }
+
+  if (passwordChangeRequired()) {
+    return <ChangePasswordModal required onClose={() => {}} onSecurityChange={handleLogout} />
   }
 
   return (

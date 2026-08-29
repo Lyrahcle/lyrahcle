@@ -25,7 +25,7 @@ curl -X POST http://localhost:8080/api/v1/auth/login \
 
 Use the returned token as `Authorization: Bearer <token>`. Access tokens default to a 30-minute lifetime, carry fixed Lyrahcle issuer/audience claims, and are invalidated when the user changes password/TOTP state or an administrator changes the user role.
 
-Roles are ordered `viewer < operator < admin`. Admins create users through `POST /api/v1/users/` or the dashboard.
+Roles are `viewer`, `auditor`, `analyst`, `operator`, and `admin`. `auditor` adds audit-log access to read-only operations; `analyst` adds incident-investigation actions; `operator` adds operational mutations; `admin` manages identities and security configuration. Admins create users through `POST /api/v1/users/` or the dashboard.
 
 ## Google Authenticator
 
@@ -79,7 +79,9 @@ Every backend response includes `X-Request-ID`. A safe incoming `X-Request-ID` m
 | `POST` | `/api/v1/auth/totp/disable` | Viewer | Disable Google Authenticator after password verification |
 | `GET` | `/api/v1/users/` | Admin | List users |
 | `POST` | `/api/v1/users/` | Admin | Create user with role |
-| `PATCH` | `/api/v1/users/{userID}/role` | Admin | Change role; last admin cannot be demoted |
+| `PATCH` | `/api/v1/users/{userID}/role` | Admin | Change role; last active admin cannot be demoted |
+| `PATCH` | `/api/v1/users/{userID}/status` | Admin | Enable or disable an account |
+| `DELETE` | `/api/v1/users/{userID}` | Admin | Privacy-preserving soft delete |
 | `GET` | `/api/v1/programs/` | Viewer | List programs |
 | `POST` | `/api/v1/programs/` | Operator | Create program |
 | `GET` | `/api/v1/assets/` | Viewer | List assets |
@@ -140,3 +142,14 @@ Redis enables distributed rate limiting, JWT revocation, active-session tracking
 Incidents support filters for status, severity, agent, and satellite, and use validated workflow values for severity and status. Incident creation accepts an optional `Idempotency-Key`, and duplicate keys return the original incident instead of creating a second record. Viewers have read-only access, operators can create incidents, change status/severity, and add timeline notes, while assignment changes are restricted to admins. RF anomalies are evaluated against typed detection rules. Rules support a fixed metric set, directional or absolute z-score comparisons, validated thresholds, severity, cooldown suppression, and optional automatic incident creation. Only admins can create or modify rules; viewers can inspect them. The platform ships with high and critical default deviation rules that preserve the previous escalation behavior. Multiple rule matches for the same anomaly are correlated into one incident using the highest matching auto-incident severity.
 
 The `source_anomaly_id` uniqueness constraint prevents one RF anomaly from generating duplicate incidents, while persisted rule matches and per-rule/per-agent cooldown locks reduce alert storms. Workflow transitions are enforced in both Go and PostgreSQL. Operator notes and immutable evidence references are recorded in the incident timeline, and security-relevant mutations are also written to the audit log.
+
+
+### User lifecycle
+
+Admin-only endpoints:
+
+- `PATCH /api/v1/users/{userID}/role` changes the role and invalidates existing authorization state.
+- `PATCH /api/v1/users/{userID}/status` enables or disables the account.
+- `DELETE /api/v1/users/{userID}` performs privacy-preserving soft deletion.
+
+`auditor` can read `/api/v1/audit-log` without user-management privileges. `analyst` can update incident workflow state, add notes, and attach evidence without gaining operator-level RF or asset mutation permissions.

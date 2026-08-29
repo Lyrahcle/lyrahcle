@@ -25,7 +25,7 @@ cd lyrahcle
 docker compose up --build
 ```
 
-Open `http://localhost:5173`. For local development only, the bootstrap login is `admin` / `admin` unless overridden with `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD`.
+Open `http://localhost:5173`. For local development only, the bootstrap login is `admin` / `admin` unless overridden with `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD`. The bootstrap account is restricted to password change until a new policy-compliant password is set.
 
 To run the observability profile:
 
@@ -55,6 +55,7 @@ Start with [`docs/README.md`](./docs/README.md).
 - [Architecture](./docs/architecture.md)
 - [API reference](./docs/api-reference.md)
 - [Configuration](./docs/configuration.md)
+- [User administration](./docs/user-administration.md)
 - [Deployment](./docs/deployment.md)
 - [IQ forensics](./docs/forensics.md)
 - [Observability](./docs/observability.md)

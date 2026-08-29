@@ -49,7 +49,7 @@ function InfoRow({ label, value }) {
   )
 }
 
-export default function SettingsPanel({ admin, onNavigateToConnectivity }) {
+export default function SettingsPanel({ admin, onNavigateToConnectivity, onSecurityChange }) {
   const { t, lang, setLang } = useI18n()
   const [theme, setThemeState] = useState(getPreferredTheme)
   const [changingPassword, setChangingPassword] = useState(false)
@@ -190,7 +190,7 @@ export default function SettingsPanel({ admin, onNavigateToConnectivity }) {
         </div>
       </SettingsCard>
 
-      {changingPassword && <ChangePasswordModal onClose={() => setChangingPassword(false)} />}
+      {changingPassword && <ChangePasswordModal onClose={() => setChangingPassword(false)} onSecurityChange={onSecurityChange} />}
     </div>
   )
 }

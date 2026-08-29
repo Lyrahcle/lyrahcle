@@ -554,3 +554,33 @@ func TestDetectionRuleMatchCooldown(t *testing.T) {
 		t.Fatalf("second match inside cooldown: created=%v err=%v", created, err)
 	}
 }
+
+func TestUserStoreLifecycle(t *testing.T) {
+	pool := testPool(t)
+	ctx := context.Background()
+	store := NewUserStore(pool)
+
+	user, err := store.CreateProvisioned(ctx, "lifecycle@example.com", "hash", "analyst")
+	if err != nil {
+		t.Fatalf("CreateProvisioned: %v", err)
+	}
+	if !user.Enabled || !user.MustChangePassword {
+		t.Fatalf("provisioned user state = enabled:%v must_change:%v", user.Enabled, user.MustChangePassword)
+	}
+	if _, err := store.SetEnabled(ctx, user.ID, false); err != nil {
+		t.Fatalf("SetEnabled: %v", err)
+	}
+	fetched, err := store.GetByID(ctx, user.ID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if fetched.Enabled {
+		t.Fatal("disabled user returned enabled=true")
+	}
+	if err := store.SoftDelete(ctx, user.ID); err != nil {
+		t.Fatalf("SoftDelete: %v", err)
+	}
+	if _, err := store.GetByID(ctx, user.ID); err != ErrUserNotFound {
+		t.Fatalf("GetByID after delete: err = %v, want ErrUserNotFound", err)
+	}
+}

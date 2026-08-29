@@ -6,7 +6,7 @@ Before exposing Lyrahcle outside a trusted development environment:
 
 - Set `ENV=production`.
 - Use a random `JWT_SECRET` of at least 32 bytes and keep `JWT_ACCESS_TTL` short.
-- Set non-default `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` before first boot.
+- Set non-default `SEED_ADMIN_EMAIL` and a policy-compliant `SEED_ADMIN_PASSWORD` before first boot. The bootstrap admin is still forced to rotate that password on first login.
 - Enable TLS and keep private keys outside the repository.
 - Replace the default PostgreSQL credentials and do not expose PostgreSQL publicly.
 - Restrict Redis to trusted networks and authentication controls appropriate to your environment; production startup fails when Redis is unavailable because session revocation is security-critical.
@@ -42,7 +42,7 @@ For a rotation without intentionally accepting long-lived tokens:
 4. Wait longer than `JWT_ACCESS_TTL`.
 5. Remove `JWT_SECRET_PREVIOUS` and deploy again.
 
-A deployment from a pre-v8.1 build invalidates existing JWTs because older tokens do not contain the stricter issuer/audience/session claims. Plan one user re-authentication during that upgrade.
+A deployment from a pre-v8.1 build invalidates existing JWTs because older tokens do not contain the stricter issuer/audience/session claims. v8.3 also introduces a per-user authorization version in JWTs, so upgrading from v8.2 or earlier requires one user re-authentication. Plan this explicitly during deployment.
 
 ## Database migrations
 

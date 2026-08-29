@@ -370,7 +370,7 @@ paths:
     get:
       tags:
       - Users
-      summary: List all users and their roles
+      summary: List active and disabled non-deleted users
       description: 'Requires role: admin.'
       responses:
         '200':
@@ -426,8 +426,8 @@ paths:
     patch:
       tags:
       - Users
-      summary: Promote or demote a user's role
-      description: 'Requires role: admin. Blocks demoting the last remaining admin.
+      summary: Change a user's role
+      description: 'Requires role: admin. Blocks demoting the last remaining active admin.
 
         '
       parameters:
@@ -633,6 +633,59 @@ paths:
                 type: string
         '401':
           $ref: '#/components/responses/Unauthorized'
+  /api/v1/users/{userID}/status:
+    patch:
+      tags:
+      - Users
+      summary: Enable or disable a user account
+      description: 'Requires role: admin. Disabling revokes authorization state. The current user and last active admin cannot be disabled.'
+      parameters:
+      - $ref: '#/components/parameters/UserID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - enabled
+              properties:
+                enabled:
+                  type: boolean
+      responses:
+        '200':
+          description: User status updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSummary'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: User not found
+        '409':
+          description: Self-lockout or last-admin protection
+  /api/v1/users/{userID}:
+    delete:
+      tags:
+      - Users
+      summary: Soft-delete a user account
+      description: 'Requires role: admin. Removes login identifiers and TOTP material while preserving audit-linked identity. The current user and last active admin cannot be deleted.'
+      parameters:
+      - $ref: '#/components/parameters/UserID'
+      responses:
+        '204':
+          description: User deleted
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: User not found
+        '409':
+          description: Self-lockout or last-admin protection
   /api/v1/agent-keys/:
     get:
       tags:
@@ -1090,7 +1143,7 @@ paths:
       tags:
       - Audit
       summary: List security-relevant events
-      description: 'Requires role: admin.'
+      description: 'Requires role: auditor or admin.'
       parameters:
       - $ref: '#/components/parameters/Limit'
       - $ref: '#/components/parameters/Offset'
@@ -1234,7 +1287,7 @@ paths:
       tags:
       - Incidents
       summary: Update incident workflow fields
-      description: 'Requires role: operator or higher. Only admins may change assigned_to.'
+      description: 'Requires role: analyst, operator, or admin. Only admins may change assigned_to.'
       parameters:
       - name: incidentID
         in: path
@@ -1268,7 +1321,7 @@ paths:
       tags:
       - Incidents
       summary: Add an investigation note
-      description: 'Requires role: operator or higher.'
+      description: 'Requires role: analyst, operator, or admin.'
       parameters:
       - name: incidentID
         in: path
@@ -1301,7 +1354,7 @@ paths:
       tags:
       - Incidents
       summary: Add a typed evidence reference
-      description: 'Requires role: operator or higher. References are deduplicated per incident and evidence type.'
+      description: 'Requires role: analyst, operator, or admin. References are deduplicated per incident and evidence type.'
       parameters:
       - name: incidentID
         in: path
@@ -1494,8 +1547,12 @@ components:
           type: string
           enum:
           - viewer
+          - auditor
+          - analyst
           - operator
           - admin
+        must_change_password:
+          type: boolean
     ChangePasswordRequest:
       type: object
       required:
@@ -1508,7 +1565,8 @@ components:
         new_password:
           type: string
           format: password
-          minLength: 8
+          minLength: 12
+          maxLength: 72
     UpdateRoleRequest:
       type: object
       required:
@@ -1518,6 +1576,8 @@ components:
           type: string
           enum:
           - viewer
+          - auditor
+          - analyst
           - operator
           - admin
     UserSummary:
@@ -1534,9 +1594,15 @@ components:
           type: string
           enum:
           - viewer
+          - auditor
+          - analyst
           - operator
           - admin
         totp_enabled:
+          type: boolean
+        enabled:
+          type: boolean
+        must_change_password:
           type: boolean
     Program:
       type: object
@@ -1962,11 +2028,14 @@ components:
         password:
           type: string
           format: password
-          minLength: 8
+          minLength: 12
+          maxLength: 72
         role:
           type: string
           enum:
           - viewer
+          - auditor
+          - analyst
           - operator
           - admin
           default: viewer

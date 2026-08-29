@@ -5,6 +5,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/mlko01/lyrahcle/apps/backend/internal/validate"
 )
 
 type Config struct {
@@ -80,6 +82,11 @@ func Load() Config {
 			log.Fatal("FATAL: ENV=production but SEED_ADMIN_PASSWORD is unset or still the default 'admin'. Refusing to start.")
 		}
 		log.Println("WARNING: SEED_ADMIN_PASSWORD is unset or still the default 'admin'. Set a strong value in production.")
+	}
+	if production {
+		if err := validate.Password(cfg.SeedAdminPass); err != nil {
+			log.Fatalf("FATAL: SEED_ADMIN_PASSWORD does not meet the password policy: %v", err)
+		}
 	}
 
 	if cfg.TLSCertFile == "" || cfg.TLSKeyFile == "" {

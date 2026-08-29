@@ -3,7 +3,7 @@ import Pagination from './Pagination.jsx'
 import SeverityBadge from './SeverityBadge.jsx'
 import TableScroll from './TableScroll.jsx'
 import { addIncidentEvidence, addIncidentNote, createIncident, fetchIncident, updateIncident } from '../lib/api.js'
-import { canWrite, isAdmin } from '../lib/auth.js'
+import { canInvestigate, canWrite, isAdmin } from '../lib/auth.js'
 import { useI18n } from '../lib/I18nContext.jsx'
 
 const STATUSES = ['new', 'investigating', 'contained', 'resolved', 'false_positive']
@@ -222,7 +222,7 @@ export default function IncidentsPanel({ page, filters, onFiltersChange, onPrev,
             <SeverityBadge severity={selected.severity} />
           </div>
 
-          {canWrite() && (
+          {canInvestigate() && (
             <div className="grid gap-3 sm:grid-cols-3">
               <select aria-label={t('incidents.status')} value={selected.status} disabled={saving} onChange={(e) => applyUpdate({ status: e.target.value })} className="rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 text-sm text-lyra-text">
                 {(NEXT_STATUSES[selected.status] || [selected.status]).map((status) => <option key={status} value={status}>{t(`incidents.statuses.${status}`)}</option>)}
@@ -271,7 +271,7 @@ export default function IncidentsPanel({ page, filters, onFiltersChange, onPrev,
             </div>
           </div>
 
-          {canWrite() && (
+          {canInvestigate() && (
             <form onSubmit={handleEvidence} className="grid gap-2 sm:grid-cols-[160px_1fr_1fr_auto]">
               <select value={evidence.type} onChange={(e) => setEvidence({ ...evidence, type: e.target.value })} className="rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 text-sm text-lyra-text">
                 {EVIDENCE_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
@@ -282,7 +282,7 @@ export default function IncidentsPanel({ page, filters, onFiltersChange, onPrev,
             </form>
           )}
 
-          {canWrite() && (
+          {canInvestigate() && (
             <form onSubmit={handleNote} className="flex gap-2">
               <input aria-label={t('incidents.notePlaceholder')} value={note} onChange={(e) => setNote(e.target.value)} maxLength={2000} placeholder={t('incidents.notePlaceholder')} className="min-w-0 flex-1 rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 text-sm text-lyra-text" />
               <button disabled={saving || !note.trim()} className="rounded border border-lyra-border px-3 py-2 font-mono text-xs uppercase text-lyra-goldBright disabled:opacity-50">{t('incidents.addNote')}</button>

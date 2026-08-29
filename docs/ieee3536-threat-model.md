@@ -189,14 +189,14 @@ Residual work:
 
 Threats:
 
-- viewer performs operator/admin mutations
+- lower-privileged roles perform unauthorized analyst/operator/admin mutations
 - stale JWT retains privileges after a role downgrade
 - agent credential reaches human-only endpoints
 - last administrator is accidentally removed
 
 Current controls:
 
-- `viewer`, `operator`, and `admin` checks enforced server-side
+- `viewer`, `auditor`, `analyst`, `operator`, and `admin` checks enforced server-side
 - role changes revoke all previously issued user sessions
 - agent-key middleware provides a separate agent identity context
 - last-admin demotion protection

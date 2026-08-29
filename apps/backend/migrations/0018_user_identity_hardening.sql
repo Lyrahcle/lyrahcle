@@ -1,0 +1,10 @@
+ALTER TABLE users ADD COLUMN IF NOT EXISTS enabled BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS password_changed_at TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS auth_version BIGINT NOT NULL DEFAULT 1;
+ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
+ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('viewer', 'auditor', 'analyst', 'operator', 'admin'));
+UPDATE users SET must_change_password = true WHERE role = 'admin' AND (username = 'admin' OR email = 'admin') AND password_changed_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_users_active_role ON users (role, enabled) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_users_enabled ON users (enabled) WHERE deleted_at IS NULL;

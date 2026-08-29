@@ -54,6 +54,11 @@ func requireRole(current, previous []byte, minimum Role, isRevoked ...Revocation
 				}
 			}
 
+			if claims.PasswordChangeRequired && !passwordChangePathAllowed(r.URL.Path) {
+				http.Error(w, "password change required", http.StatusForbidden)
+				return
+			}
+
 			if !RoleAtLeast(claims.Role, minimum) {
 				http.Error(w, "insufficient role", http.StatusForbidden)
 				return
@@ -62,6 +67,36 @@ func requireRole(current, previous []byte, minimum Role, isRevoked ...Revocation
 			ctx := context.WithValue(r.Context(), claimsContextKey, claims)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
+	}
+}
+
+func RequireAnyRoleWithFallback(current, previous []byte, roles []Role, isRevoked ...RevocationCheck) func(http.Handler) http.Handler {
+	allowed := make(map[Role]struct{}, len(roles))
+	for _, role := range roles {
+		allowed[role] = struct{}{}
+	}
+	return func(next http.Handler) http.Handler {
+		return requireRole(current, previous, RoleViewer, isRevoked...)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			claims, ok := FromContext(r.Context())
+			if !ok {
+				http.Error(w, "unauthorized", http.StatusUnauthorized)
+				return
+			}
+			if _, ok := allowed[claims.Role]; !ok {
+				http.Error(w, "insufficient role", http.StatusForbidden)
+				return
+			}
+			next.ServeHTTP(w, r)
+		}))
+	}
+}
+
+func passwordChangePathAllowed(path string) bool {
+	switch path {
+	case "/api/v1/auth/me", "/api/v1/auth/change-password", "/api/v1/auth/logout":
+		return true
+	default:
+		return false
 	}
 }
 

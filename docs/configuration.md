@@ -14,12 +14,12 @@
 | `TLS_CERT_FILE` | unset | Required in `ENV=production` by the backend's current safety policy |
 | `TLS_KEY_FILE` | unset | Required with `TLS_CERT_FILE` |
 | `SEED_ADMIN_EMAIL` | `admin` | Set before first boot |
-| `SEED_ADMIN_PASSWORD` | `admin` | Set before first boot; production refuses `admin` |
+| `SEED_ADMIN_PASSWORD` | `admin` | Set before first boot; production requires the normal strong-password policy |
 | `ENV` | `development` | Set to `production` to enable startup safety checks |
 
-The bootstrap admin is created only when the users table is empty. Changing `SEED_ADMIN_PASSWORD` later does not reset an existing account.
+The bootstrap admin is created only when the users table is empty and is marked for mandatory password change. Changing `SEED_ADMIN_PASSWORD` later does not reset an existing account. Passwords are validated at 12-72 bytes and must include uppercase, lowercase, a number, and a symbol.
 
-JWT rotation uses an overlap window: deploy the new value as `JWT_SECRET`, keep the old value temporarily in `JWT_SECRET_PREVIOUS`, wait longer than `JWT_ACCESS_TTL`, then remove the previous key. Password, Google Authenticator, and role changes invalidate all sessions for the affected user. Active session metadata is tracked in Redis and exposed only to the owning user.
+JWT rotation uses an overlap window: deploy the new value as `JWT_SECRET`, keep the old value temporarily in `JWT_SECRET_PREVIOUS`, wait longer than `JWT_ACCESS_TTL`, then remove the previous key. Password, Google Authenticator, role, and account-status changes increment a database-backed authorization version and invalidate older JWTs even when Redis is unavailable. Active session metadata is tracked in Redis and exposed only to the owning user.
 
 ## Frontend
 

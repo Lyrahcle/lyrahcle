@@ -166,11 +166,11 @@ func TestProtectedEndpointRejectsGarbageToken(t *testing.T) {
 func TestAdminOnlyCreateEndpointCreatesUsersWithRequestedRole(t *testing.T) {
 	router, _, users := testRouter(t)
 
-	adminToken := seedUserAndLogin(t, router, users, "first@example.com", "correct-horse-battery", "admin")
+	adminToken := seedUserAndLogin(t, router, users, "first@example.com", "Correct-Horse-Battery-9!", "admin")
 
 	rec := doJSON(t, router, http.MethodPost, "/api/v1/users/", adminToken, map[string]string{
 		"email":    "operator@example.com",
-		"password": "correct-horse-battery",
+		"password": "Correct-Horse-Battery-9!",
 		"role":     "operator",
 	})
 	if rec.Code != http.StatusCreated {
@@ -196,7 +196,7 @@ func TestPublicSelfRegistrationIsDisabled(t *testing.T) {
 
 	rec := doJSON(t, router, http.MethodPost, "/api/v1/auth/register", "", map[string]string{
 		"email":    "anyone@example.com",
-		"password": "correct-horse-battery",
+		"password": "Correct-Horse-Battery-9!",
 	})
 	if rec.Code == http.StatusCreated {
 		t.Fatalf("POST /auth/register: status = %d, want anything but 201 (public registration must be disabled)", rec.Code)
@@ -206,18 +206,18 @@ func TestPublicSelfRegistrationIsDisabled(t *testing.T) {
 func TestViewerCannotAccessAdminEndpoints(t *testing.T) {
 	router, _, users := testRouter(t)
 
-	adminToken := seedUserAndLogin(t, router, users, "admin@example.com", "correct-horse-battery", "admin")
+	adminToken := seedUserAndLogin(t, router, users, "admin@example.com", "Correct-Horse-Battery-9!", "admin")
 
 	rec := doJSON(t, router, http.MethodPost, "/api/v1/users/", adminToken, map[string]string{
 		"email":    "viewer@example.com",
-		"password": "correct-horse-battery",
+		"password": "Correct-Horse-Battery-9!",
 		"role":     "viewer",
 	})
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("admin create viewer: status = %d, body = %s", rec.Code, rec.Body.String())
 	}
 
-	viewerToken := registerAndLogin_loginOnly(t, router, "viewer@example.com", "correct-horse-battery")
+	viewerToken := registerAndLogin_loginOnly(t, router, "viewer@example.com", "Correct-Horse-Battery-9!")
 
 	rec = doJSON(t, router, http.MethodGet, "/api/v1/users/", viewerToken, nil)
 	if rec.Code != http.StatusForbidden {
@@ -226,7 +226,7 @@ func TestViewerCannotAccessAdminEndpoints(t *testing.T) {
 
 	rec = doJSON(t, router, http.MethodPost, "/api/v1/users/", viewerToken, map[string]string{
 		"email":    "other@example.com",
-		"password": "correct-horse-battery",
+		"password": "Correct-Horse-Battery-9!",
 	})
 	if rec.Code != http.StatusForbidden {
 		t.Errorf("POST /users as viewer: status = %d, want %d", rec.Code, http.StatusForbidden)
@@ -270,7 +270,7 @@ func registerAndLogin_loginOnly(t *testing.T, router http.Handler, email, passwo
 
 func TestSatelliteCreateAndListRoundTrip(t *testing.T) {
 	router, _, users := testRouter(t)
-	token := registerAndLogin(t, router, users, "operator@example.com", "correct-horse-battery")
+	token := registerAndLogin(t, router, users, "operator@example.com", "Correct-Horse-Battery-9!")
 
 	rec := doJSON(t, router, http.MethodPost, "/api/v1/satellites/", token, map[string]interface{}{
 		"norad_id":  25544,
@@ -298,7 +298,7 @@ func TestSatelliteCreateAndListRoundTrip(t *testing.T) {
 
 func TestDecodeCSPEndpoint(t *testing.T) {
 	router, _, users := testRouter(t)
-	token := registerAndLogin(t, router, users, "decoder@example.com", "correct-horse-battery")
+	token := registerAndLogin(t, router, users, "decoder@example.com", "Correct-Horse-Battery-9!")
 
 	rec := doJSON(t, router, http.MethodPost, "/api/v1/tmtc/decode/csp", token, map[string]string{
 		"packet_hex": "5012bf0154454d503d32312e34",
@@ -335,7 +335,7 @@ func TestDecodeEndpointsRequireAuth(t *testing.T) {
 
 func TestRFIngestFlagsAnomaly(t *testing.T) {
 	router, _, users := testRouter(t)
-	token := registerAndLogin(t, router, users, "rf@example.com", "correct-horse-battery")
+	token := registerAndLogin(t, router, users, "rf@example.com", "Correct-Horse-Battery-9!")
 
 	base := -60.0
 	for i := 0; i < 6; i++ {
@@ -408,7 +408,7 @@ func TestSecurityHeadersArePresent(t *testing.T) {
 func TestTOTPSetupEnableAndLoginFlow(t *testing.T) {
 	router, _, users := testRouter(t)
 
-	token := seedUserAndLogin(t, router, users, "totp@example.com", "correct-horse-battery", "viewer")
+	token := seedUserAndLogin(t, router, users, "totp@example.com", "Correct-Horse-Battery-9!", "viewer")
 
 	rec := doJSON(t, router, http.MethodPost, "/api/v1/auth/totp/setup", token, nil)
 	if rec.Code != http.StatusOK {
@@ -444,7 +444,7 @@ func TestTOTPSetupEnableAndLoginFlow(t *testing.T) {
 
 	rec = doJSON(t, router, http.MethodPost, "/api/v1/auth/login", "", map[string]string{
 		"identifier": "totp@example.com",
-		"password":   "correct-horse-battery",
+		"password":   "Correct-Horse-Battery-9!",
 	})
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("login without totp_code: status = %d, want 401", rec.Code)
@@ -459,7 +459,7 @@ func TestTOTPSetupEnableAndLoginFlow(t *testing.T) {
 
 	rec = doJSON(t, router, http.MethodPost, "/api/v1/auth/login", "", map[string]string{
 		"identifier": "totp@example.com",
-		"password":   "correct-horse-battery",
+		"password":   "Correct-Horse-Battery-9!",
 		"totp_code":  currentTOTPCode(t, setupResp.Secret),
 	})
 	if rec.Code != http.StatusOK {
@@ -473,14 +473,14 @@ func TestTOTPSetupEnableAndLoginFlow(t *testing.T) {
 		t.Fatalf("login with valid totp_code did not return a token: %s", rec.Body.String())
 	}
 
-	rec = doJSON(t, router, http.MethodPost, "/api/v1/auth/totp/disable", loginResp.Token, map[string]string{"password": "correct-horse-battery"})
+	rec = doJSON(t, router, http.MethodPost, "/api/v1/auth/totp/disable", loginResp.Token, map[string]string{"password": "Correct-Horse-Battery-9!"})
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("POST /auth/totp/disable: status = %d, body = %s", rec.Code, rec.Body.String())
 	}
 
 	rec = doJSON(t, router, http.MethodPost, "/api/v1/auth/login", "", map[string]string{
 		"identifier": "totp@example.com",
-		"password":   "correct-horse-battery",
+		"password":   "Correct-Horse-Battery-9!",
 	})
 	if rec.Code != http.StatusOK {
 		t.Errorf("login after disabling 2FA: status = %d, want 200, body = %s", rec.Code, rec.Body.String())
@@ -498,7 +498,7 @@ func currentTOTPCode(t *testing.T, secret string) string {
 
 func TestAuthMeReportsTOTPStatus(t *testing.T) {
 	router, _, users := testRouter(t)
-	token := seedUserAndLogin(t, router, users, "me@example.com", "correct-horse-battery", "viewer")
+	token := seedUserAndLogin(t, router, users, "me@example.com", "Correct-Horse-Battery-9!", "viewer")
 
 	rec := doJSON(t, router, http.MethodGet, "/api/v1/auth/me", token, nil)
 	if rec.Code != http.StatusOK {
@@ -518,7 +518,7 @@ func TestAuthMeReportsTOTPStatus(t *testing.T) {
 
 func TestSystemInfoEndpoint(t *testing.T) {
 	router, _, users := testRouter(t)
-	token := seedUserAndLogin(t, router, users, "sysinfo@example.com", "correct-horse-battery", "viewer")
+	token := seedUserAndLogin(t, router, users, "sysinfo@example.com", "Correct-Horse-Battery-9!", "viewer")
 
 	rec := doJSON(t, router, http.MethodGet, "/api/v1/system-info", token, nil)
 	if rec.Code != http.StatusOK {
@@ -535,8 +535,8 @@ func TestSystemInfoEndpoint(t *testing.T) {
 
 func TestSatellitesStreamEndpointSendsSSEEvent(t *testing.T) {
 	router, _, users := testRouter(t)
-	operatorToken := seedUserAndLogin(t, router, users, "stream-operator@example.com", "correct-horse-battery", "operator")
-	viewerToken := seedUserAndLogin(t, router, users, "stream-viewer@example.com", "correct-horse-battery", "viewer")
+	operatorToken := seedUserAndLogin(t, router, users, "stream-operator@example.com", "Correct-Horse-Battery-9!", "operator")
+	viewerToken := seedUserAndLogin(t, router, users, "stream-viewer@example.com", "Correct-Horse-Battery-9!", "viewer")
 
 	rec := doJSON(t, router, http.MethodPost, "/api/v1/satellites/", operatorToken, map[string]interface{}{
 		"norad_id":  25544,
@@ -571,7 +571,7 @@ func TestSatellitesStreamEndpointSendsSSEEvent(t *testing.T) {
 
 func TestAgentDeviceSelfReportFlow(t *testing.T) {
 	router, _, users := testRouter(t)
-	adminToken := seedUserAndLogin(t, router, users, "agentadmin@example.com", "correct-horse-battery", "admin")
+	adminToken := seedUserAndLogin(t, router, users, "agentadmin@example.com", "Correct-Horse-Battery-9!", "admin")
 
 	rec := doJSON(t, router, http.MethodPost, "/api/v1/agent-keys/", adminToken, map[string]string{"agent_id": "sdr-agent-test"})
 	if rec.Code != http.StatusCreated {
@@ -643,7 +643,7 @@ func TestAgentDeviceSelfReportFlow(t *testing.T) {
 
 func TestSpaceCVEsFilterAndSort(t *testing.T) {
 	router, pool, users := testRouter(t)
-	token := seedUserAndLogin(t, router, users, "cvefilter@example.com", "correct-horse-battery", "viewer")
+	token := seedUserAndLogin(t, router, users, "cvefilter@example.com", "Correct-Horse-Battery-9!", "viewer")
 
 	spaceCVEs := store.NewSpaceCVEStore(pool)
 	ctx := context.Background()
@@ -739,7 +739,7 @@ func TestRequestIDMiddleware(t *testing.T) {
 
 func TestAuthenticatedAuthTrafficDoesNotConsumeLoginLimit(t *testing.T) {
 	router, _, users := testRouter(t)
-	password := "correct-horse-battery"
+	password := "Correct-Horse-Battery-9!"
 	token := seedUserAndLogin(t, router, users, "relogin@example.com", password, string(auth.RoleAdmin))
 
 	for i := 0; i < 20; i++ {
@@ -1002,5 +1002,136 @@ func TestDetectionRuleRBACAndValidation(t *testing.T) {
 	}
 	if rule.Enabled {
 		t.Fatal("rule should be disabled")
+	}
+}
+
+func TestProvisionedAdminMustChangePasswordBeforeUsingProtectedAPI(t *testing.T) {
+	router, _, users := testRouter(t)
+	hash, err := auth.HashPassword("admin")
+	if err != nil {
+		t.Fatalf("HashPassword: %v", err)
+	}
+	user, err := users.CreateProvisioned(context.Background(), "admin", hash, string(auth.RoleAdmin))
+	if err != nil {
+		t.Fatalf("CreateProvisioned: %v", err)
+	}
+
+	rec := doJSON(t, router, http.MethodPost, "/api/v1/auth/login", "", map[string]string{"identifier": "admin", "password": "admin"})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("login: status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	var loginResp struct {
+		Token              string `json:"token"`
+		MustChangePassword bool   `json:"must_change_password"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &loginResp); err != nil {
+		t.Fatalf("decode login response: %v", err)
+	}
+	if !loginResp.MustChangePassword {
+		t.Fatal("must_change_password = false, want true")
+	}
+
+	rec = doJSON(t, router, http.MethodGet, "/api/v1/satellites/", loginResp.Token, nil)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("protected API before password change: status = %d, want %d", rec.Code, http.StatusForbidden)
+	}
+
+	newPassword := "Stronger-Admin-Pass-9!"
+	rec = doJSON(t, router, http.MethodPost, "/api/v1/auth/change-password", loginResp.Token, map[string]string{"current_password": "admin", "new_password": newPassword})
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("change password: status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+
+	rec = doJSON(t, router, http.MethodGet, "/api/v1/satellites/", loginResp.Token, nil)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("old token after password change: status = %d, want %d", rec.Code, http.StatusUnauthorized)
+	}
+
+	rec = doJSON(t, router, http.MethodPost, "/api/v1/auth/login", "", map[string]string{"identifier": user.Username, "password": newPassword})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("relogin: status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestAdminCanDisableAndSoftDeleteUser(t *testing.T) {
+	router, _, users := testRouter(t)
+	adminToken := seedUserAndLogin(t, router, users, "admin-lifecycle@example.com", "Correct-Horse-Battery-9!", "admin")
+	user, err := users.Create(context.Background(), "target@example.com", "hash", "viewer")
+	if err != nil {
+		t.Fatalf("create target: %v", err)
+	}
+
+	rec := doJSON(t, router, http.MethodPatch, "/api/v1/users/"+user.ID.String()+"/status", adminToken, map[string]bool{"enabled": false})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("disable user: status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	updated, err := users.GetByID(context.Background(), user.ID)
+	if err != nil {
+		t.Fatalf("GetByID after disable: %v", err)
+	}
+	if updated.Enabled {
+		t.Fatal("user remained enabled")
+	}
+
+	rec = doJSON(t, router, http.MethodDelete, "/api/v1/users/"+user.ID.String(), adminToken, nil)
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("delete user: status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	if _, err := users.GetByID(context.Background(), user.ID); err != store.ErrUserNotFound {
+		t.Fatalf("GetByID after delete: err = %v, want ErrUserNotFound", err)
+	}
+}
+
+func TestAuditorCanReadAuditLogButCannotManageUsers(t *testing.T) {
+	router, _, users := testRouter(t)
+	auditorToken := seedUserAndLogin(t, router, users, "auditor@example.com", "Correct-Horse-Battery-9!", "auditor")
+
+	rec := doJSON(t, router, http.MethodGet, "/api/v1/audit-log", auditorToken, nil)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("auditor GET /audit-log: status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	rec = doJSON(t, router, http.MethodGet, "/api/v1/users/", auditorToken, nil)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("auditor GET /users: status = %d, want %d", rec.Code, http.StatusForbidden)
+	}
+}
+
+func TestDisablingAndReenablingUserDoesNotRestoreOldToken(t *testing.T) {
+	router, _, users := testRouter(t)
+	adminToken := seedUserAndLogin(t, router, users, "admin-auth-version@example.com", "Correct-Horse-Battery-9!", "admin")
+	viewer, err := users.Create(context.Background(), "viewer-auth-version@example.com", "", "viewer")
+	if err != nil {
+		t.Fatalf("create viewer: %v", err)
+	}
+	hash, err := auth.HashPassword("Correct-Horse-Battery-9!")
+	if err != nil {
+		t.Fatalf("hash viewer password: %v", err)
+	}
+	if err := users.UpdatePassword(context.Background(), viewer.ID, hash); err != nil {
+		t.Fatalf("set viewer password: %v", err)
+	}
+	viewerToken := registerAndLogin_loginOnly(t, router, "viewer-auth-version@example.com", "Correct-Horse-Battery-9!")
+
+	rec := doJSON(t, router, http.MethodGet, "/api/v1/satellites/", viewerToken, nil)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("viewer before disable: status = %d", rec.Code)
+	}
+
+	rec = doJSON(t, router, http.MethodPatch, "/api/v1/users/"+viewer.ID.String()+"/status", adminToken, map[string]bool{"enabled": false})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("disable viewer: status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	rec = doJSON(t, router, http.MethodGet, "/api/v1/satellites/", viewerToken, nil)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("disabled viewer old token: status = %d, want %d", rec.Code, http.StatusUnauthorized)
+	}
+
+	rec = doJSON(t, router, http.MethodPatch, "/api/v1/users/"+viewer.ID.String()+"/status", adminToken, map[string]bool{"enabled": true})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("reenable viewer: status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	rec = doJSON(t, router, http.MethodGet, "/api/v1/satellites/", viewerToken, nil)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("reenabled viewer old token: status = %d, want %d", rec.Code, http.StatusUnauthorized)
 	}
 }

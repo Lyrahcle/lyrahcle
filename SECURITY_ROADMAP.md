@@ -1,9 +1,17 @@
 # Security Roadmap
 
+## v8.3 identity hardening
+
+- Mandatory bootstrap-admin password rotation.
+- Strong password policy.
+- Database-backed disabled/deleted-user enforcement.
+- Auditor and analyst roles with explicit permission boundaries.
+- Audited account disable and soft-delete lifecycle.
+
 ## Shipped
 
 - [x] JWT authentication with bcrypt password hashing
-- [x] `viewer`, `operator`, and `admin` RBAC
+- [x] `viewer`, `auditor`, `analyst`, `operator`, and `admin` RBAC
 - [x] Google Authenticator TOTP two-factor authentication with session revocation after security-state changes
 - [x] Admin-managed user creation and role changes; public self-registration disabled
 - [x] Per-agent revocable API keys and authenticated device self-report
@@ -90,7 +98,7 @@
 - [ ] Strengthen password policy and compromised-password guidance
 - [ ] Add WebAuthn security-key support as an isolated authentication milestone
 - [ ] Add password recovery with short-lived links and second-factor verification
-- [ ] Define an explicit permission matrix before expanding roles and administrator subroles
+- [x] Define an explicit permission matrix for current roles; administrator subroles remain future work
 - [ ] Add user disable/edit/delete lifecycle with full audit coverage
 - [ ] Review every sensitive endpoint against the permission matrix
 - [ ] Add automatic SDR agent credential rotation before mTLS enrollment

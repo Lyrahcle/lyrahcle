@@ -78,6 +78,9 @@ func TestRoleAtLeast(t *testing.T) {
 		{RoleOperator, RoleAdmin, false},
 		{RoleViewer, RoleOperator, false},
 		{RoleOperator, RoleOperator, true},
+		{RoleAnalyst, RoleOperator, false},
+		{RoleAnalyst, RoleViewer, true},
+		{RoleAuditor, RoleViewer, true},
 	}
 	for _, c := range cases {
 		got := RoleAtLeast(c.role, c.minimum)
@@ -88,7 +91,7 @@ func TestRoleAtLeast(t *testing.T) {
 }
 
 func TestValidRole(t *testing.T) {
-	valid := []string{"admin", "operator", "viewer"}
+	valid := []string{"admin", "operator", "analyst", "auditor", "viewer"}
 	for _, r := range valid {
 		if !ValidRole(r) {
 			t.Errorf("ValidRole(%q) = false, want true", r)
@@ -131,5 +134,21 @@ func TestParseTokenWithFallbackRejectsUnknownKey(t *testing.T) {
 		token,
 	); err == nil {
 		t.Fatal("ParseTokenWithFallback should reject a token signed with an unknown key")
+	}
+}
+
+func TestIssueUserTokenWithPasswordChangeRequirement(t *testing.T) {
+	secret := []byte("test-secret")
+	userID := uuid.New()
+	token, _, err := IssueUserTokenWithClaims(secret, userID, RoleAdmin, true, time.Hour)
+	if err != nil {
+		t.Fatalf("IssueUserTokenWithClaims returned error: %v", err)
+	}
+	claims, err := ParseToken(secret, token)
+	if err != nil {
+		t.Fatalf("ParseToken returned error: %v", err)
+	}
+	if !claims.PasswordChangeRequired {
+		t.Fatal("PasswordChangeRequired = false, want true")
 	}
 }

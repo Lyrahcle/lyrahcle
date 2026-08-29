@@ -171,6 +171,19 @@ func newRouter(
 	sessions := sessionstore.New(redisClient)
 	cache := respcache.New(redisClient)
 	isTokenRevoked := func(ctx context.Context, claims *auth.Claims) (bool, error) {
+		user, err := users.GetByID(ctx, claims.UserID)
+		if err != nil {
+			if errors.Is(err, store.ErrUserNotFound) {
+				return true, nil
+			}
+			return false, err
+		}
+		if !user.Enabled || user.Role != string(claims.Role) || user.AuthVersion != claims.AuthVersion {
+			return true, nil
+		}
+		if user.MustChangePassword != claims.PasswordChangeRequired {
+			return true, nil
+		}
 		issuedAt := time.Unix(0, claims.SessionIssuedAt).UTC()
 		return blocklist.Check(ctx, claims.ID, claims.UserID.String(), issuedAt)
 	}
@@ -336,7 +349,7 @@ func newRouter(
 				}
 
 				user, err := users.GetByIdentifier(r.Context(), body.Identifier)
-				if err != nil || !auth.CheckPassword(user.PasswordHash, body.Password) {
+				if err != nil || !auth.CheckPassword(user.PasswordHash, body.Password) || !user.Enabled {
 					metrics.AuthLoginsTotal.WithLabelValues("invalid_credentials").Inc()
 					logAudit(r.Context(), auditLog, audit.ActorAnonymous, body.Identifier, audit.ActionLoginFailed, clientIP(r), nil)
 					http.Error(w, "invalid credentials", http.StatusUnauthorized)
@@ -359,7 +372,7 @@ func newRouter(
 					}
 				}
 
-				token, tokenClaims, err := auth.IssueTokenWithClaims(cfg.JWTSecret, user.ID, auth.Role(user.Role), cfg.JWTAccessTTL)
+				token, tokenClaims, err := auth.IssueUserTokenWithState(cfg.JWTSecret, user.ID, auth.Role(user.Role), user.MustChangePassword, user.AuthVersion, cfg.JWTAccessTTL)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
@@ -382,7 +395,7 @@ func newRouter(
 				logAudit(r.Context(), auditLog, audit.ActorUser, user.ID.String(), audit.ActionLogin, clientIP(r), map[string]interface{}{"email": user.Email})
 
 				w.Header().Set("Content-Type", "application/json")
-				json.NewEncoder(w).Encode(map[string]string{"token": token, "role": user.Role})
+				json.NewEncoder(w).Encode(map[string]interface{}{"token": token, "role": user.Role, "must_change_password": user.MustChangePassword})
 			})
 
 			r.Route("/totp", func(r chi.Router) {
@@ -611,11 +624,13 @@ func newRouter(
 				}
 				w.Header().Set("Content-Type", "application/json")
 				json.NewEncoder(w).Encode(map[string]interface{}{
-					"id":           user.ID.String(),
-					"email":        user.Email,
-					"username":     user.Username,
-					"role":         user.Role,
-					"totp_enabled": user.TOTPEnabled,
+					"id":                   user.ID.String(),
+					"email":                user.Email,
+					"username":             user.Username,
+					"role":                 user.Role,
+					"totp_enabled":         user.TOTPEnabled,
+					"must_change_password": user.MustChangePassword,
+					"enabled":              user.Enabled,
 				})
 			})
 
@@ -669,6 +684,10 @@ func newRouter(
 				}
 				if err := validate.Password(body.NewPassword); err != nil {
 					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+				if auth.CheckPassword(user.PasswordHash, body.NewPassword) {
+					http.Error(w, "new password must differ from the current password", http.StatusBadRequest)
 					return
 				}
 
@@ -734,7 +753,7 @@ func newRouter(
 					body.Role = string(auth.RoleViewer)
 				}
 				if !auth.ValidRole(body.Role) {
-					http.Error(w, "role must be one of: viewer, operator, admin", http.StatusBadRequest)
+					http.Error(w, "role must be one of: viewer, auditor, analyst, operator, admin", http.StatusBadRequest)
 					return
 				}
 
@@ -760,7 +779,7 @@ func newRouter(
 
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusCreated)
-				json.NewEncoder(w).Encode(map[string]string{"id": user.ID.String(), "email": user.Email, "username": user.Username, "role": user.Role})
+				json.NewEncoder(w).Encode(map[string]interface{}{"id": user.ID.String(), "email": user.Email, "username": user.Username, "role": user.Role, "enabled": user.Enabled, "must_change_password": user.MustChangePassword})
 			})
 
 			r.Patch("/{userID}/role", func(w http.ResponseWriter, r *http.Request) {
@@ -778,7 +797,7 @@ func newRouter(
 					return
 				}
 				if !auth.ValidRole(body.Role) {
-					http.Error(w, "role must be one of: viewer, operator, admin", http.StatusBadRequest)
+					http.Error(w, "role must be one of: viewer, auditor, analyst, operator, admin", http.StatusBadRequest)
 					return
 				}
 
@@ -792,7 +811,7 @@ func newRouter(
 					return
 				}
 
-				if target.Role == string(auth.RoleAdmin) && body.Role != string(auth.RoleAdmin) {
+				if target.Role == string(auth.RoleAdmin) && target.Enabled && body.Role != string(auth.RoleAdmin) {
 					adminCount, err := users.CountAdmins(r.Context())
 					if err != nil {
 						http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -826,7 +845,116 @@ func newRouter(
 				}
 
 				w.Header().Set("Content-Type", "application/json")
-				json.NewEncoder(w).Encode(map[string]string{"id": updated.ID.String(), "email": updated.Email, "role": updated.Role})
+				json.NewEncoder(w).Encode(map[string]interface{}{"id": updated.ID.String(), "email": updated.Email, "role": updated.Role, "enabled": updated.Enabled})
+			})
+
+			r.Patch("/{userID}/status", func(w http.ResponseWriter, r *http.Request) {
+				userID, err := uuid.Parse(chi.URLParam(r, "userID"))
+				if err != nil {
+					http.Error(w, "userID must be a valid UUID", http.StatusBadRequest)
+					return
+				}
+				claims, ok := auth.FromContext(r.Context())
+				if !ok {
+					http.Error(w, "unauthorized", http.StatusUnauthorized)
+					return
+				}
+				var body struct {
+					Enabled bool `json:"enabled"`
+				}
+				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+					http.Error(w, "invalid JSON body", http.StatusBadRequest)
+					return
+				}
+				target, err := users.GetByID(r.Context(), userID)
+				if err != nil {
+					http.Error(w, "user not found", http.StatusNotFound)
+					return
+				}
+				if claims.UserID == userID && !body.Enabled {
+					http.Error(w, "cannot disable the current user", http.StatusConflict)
+					return
+				}
+				if target.Role == string(auth.RoleAdmin) && target.Enabled && !body.Enabled {
+					count, err := users.CountAdmins(r.Context())
+					if err != nil {
+						http.Error(w, err.Error(), http.StatusInternalServerError)
+						return
+					}
+					if count <= 1 {
+						http.Error(w, "cannot disable the last remaining admin", http.StatusConflict)
+						return
+					}
+				}
+				if !body.Enabled {
+					if err := blocklist.RevokeUser(r.Context(), userID.String(), time.Now(), cfg.JWTAccessTTL+time.Minute); err != nil {
+						http.Error(w, "authorization state update failed", http.StatusServiceUnavailable)
+						return
+					}
+					if redisClient != nil {
+						if err := sessions.DeleteUser(r.Context(), userID.String()); err != nil {
+							http.Error(w, "session revocation failed", http.StatusServiceUnavailable)
+							return
+						}
+					}
+				}
+				updated, err := users.SetEnabled(r.Context(), userID, body.Enabled)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+				logAudit(r.Context(), auditLog, audit.ActorUser, claims.UserID.String(), audit.ActionUserStatusChanged, clientIP(r), map[string]interface{}{"target_user_id": userID.String(), "enabled": body.Enabled})
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(updated)
+			})
+
+			r.Delete("/{userID}", func(w http.ResponseWriter, r *http.Request) {
+				userID, err := uuid.Parse(chi.URLParam(r, "userID"))
+				if err != nil {
+					http.Error(w, "userID must be a valid UUID", http.StatusBadRequest)
+					return
+				}
+				claims, ok := auth.FromContext(r.Context())
+				if !ok {
+					http.Error(w, "unauthorized", http.StatusUnauthorized)
+					return
+				}
+				if claims.UserID == userID {
+					http.Error(w, "cannot delete the current user", http.StatusConflict)
+					return
+				}
+				target, err := users.GetByID(r.Context(), userID)
+				if err != nil {
+					http.Error(w, "user not found", http.StatusNotFound)
+					return
+				}
+				if target.Role == string(auth.RoleAdmin) && target.Enabled {
+					count, err := users.CountAdmins(r.Context())
+					if err != nil {
+						http.Error(w, err.Error(), http.StatusInternalServerError)
+						return
+					}
+					if count <= 1 {
+						http.Error(w, "cannot delete the last remaining admin", http.StatusConflict)
+						return
+					}
+				}
+				if err := blocklist.RevokeUser(r.Context(), userID.String(), time.Now(), cfg.JWTAccessTTL+time.Minute); err != nil {
+					http.Error(w, "authorization state update failed", http.StatusServiceUnavailable)
+					return
+				}
+				if redisClient != nil {
+					if err := sessions.DeleteUser(r.Context(), userID.String()); err != nil {
+						http.Error(w, "session revocation failed", http.StatusServiceUnavailable)
+						return
+					}
+				}
+				if err := users.SoftDelete(r.Context(), userID); err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+				logAudit(r.Context(), auditLog, audit.ActorUser, claims.UserID.String(), audit.ActionUserDeleted, clientIP(r), map[string]interface{}{"target_user_id": userID.String(), "target_email": target.Email})
+				w.WriteHeader(http.StatusNoContent)
 			})
 		})
 
@@ -1373,7 +1501,7 @@ func newRouter(
 			})
 		})
 
-		r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleAdmin, isTokenRevoked)).Get("/audit-log", func(w http.ResponseWriter, r *http.Request) {
+		r.With(auth.RequireAnyRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, []auth.Role{auth.RoleAuditor, auth.RoleAdmin}, isTokenRevoked)).Get("/audit-log", func(w http.ResponseWriter, r *http.Request) {
 			limit, offset := pageParams(r)
 			page, err := auditLog.List(r.Context(), limit, offset)
 			if err != nil {
@@ -1605,7 +1733,7 @@ func newRouter(
 				json.NewEncoder(w).Encode(detail)
 			})
 
-			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleOperator, isTokenRevoked)).Patch("/{incidentID}", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequireAnyRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, []auth.Role{auth.RoleAnalyst, auth.RoleOperator, auth.RoleAdmin}, isTokenRevoked)).Patch("/{incidentID}", func(w http.ResponseWriter, r *http.Request) {
 				incidentID, err := uuid.Parse(chi.URLParam(r, "incidentID"))
 				if err != nil {
 					http.Error(w, "incidentID must be a valid UUID", http.StatusBadRequest)
@@ -1687,7 +1815,7 @@ func newRouter(
 				json.NewEncoder(w).Encode(incident)
 			})
 
-			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleOperator, isTokenRevoked)).Post("/{incidentID}/notes", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequireAnyRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, []auth.Role{auth.RoleAnalyst, auth.RoleOperator, auth.RoleAdmin}, isTokenRevoked)).Post("/{incidentID}/notes", func(w http.ResponseWriter, r *http.Request) {
 				incidentID, err := uuid.Parse(chi.URLParam(r, "incidentID"))
 				if err != nil {
 					http.Error(w, "incidentID must be a valid UUID", http.StatusBadRequest)
@@ -1722,7 +1850,7 @@ func newRouter(
 				w.WriteHeader(http.StatusNoContent)
 			})
 
-			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleOperator, isTokenRevoked)).Post("/{incidentID}/evidence", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequireAnyRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, []auth.Role{auth.RoleAnalyst, auth.RoleOperator, auth.RoleAdmin}, isTokenRevoked)).Post("/{incidentID}/evidence", func(w http.ResponseWriter, r *http.Request) {
 				incidentID, err := uuid.Parse(chi.URLParam(r, "incidentID"))
 				if err != nil {
 					http.Error(w, "incidentID must be a valid UUID", http.StatusBadRequest)
@@ -2207,7 +2335,7 @@ func seedAdmin(ctx context.Context, users *store.UserStore, cfg config.Config) e
 		return err
 	}
 
-	if _, err := users.Create(ctx, cfg.SeedAdminEmail, hash, string(auth.RoleAdmin)); err != nil {
+	if _, err := users.CreateProvisioned(ctx, cfg.SeedAdminEmail, hash, string(auth.RoleAdmin)); err != nil {
 		return err
 	}
 

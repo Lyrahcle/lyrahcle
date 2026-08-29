@@ -20,7 +20,7 @@ import AuditLogPanel from './AuditLogPanel.jsx'
 import UsersPanel from './UsersPanel.jsx'
 import SettingsPanel from './SettingsPanel.jsx'
 import Footer from './Footer.jsx'
-import { canWrite, isAdmin } from '../lib/auth.js'
+import { canAudit, canWrite, isAdmin } from '../lib/auth.js'
 import { useI18n } from '../lib/I18nContext.jsx'
 import {
   fetchAgentKeys,
@@ -97,6 +97,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
   }, [incidentFilters])
 
   const admin = isAdmin()
+  const auditAccess = canAudit()
   const tabs = [
     { id: 'orbital', label: t('tabs.orbital') },
     { id: 'assets', label: t('tabs.assets') },
@@ -105,7 +106,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
     { id: 'intel', label: t('tabs.intel') },
     { id: 'decoder', label: t('tabs.decoder') },
     { id: 'connectivity', label: t('tabs.connectivity') },
-    ...(admin ? [{ id: 'admin', label: t('tabs.admin') }] : []),
+    ...(auditAccess ? [{ id: 'admin', label: admin ? t('tabs.admin') : t('panels.auditLog') }] : []),
   ]
 
   useEffect(() => {
@@ -171,12 +172,14 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
 
       if (admin) {
         await safeFetch(fetchAgentKeys, setAgentKeys)
+        await safeFetch(fetchUsers, setUsers)
+      }
+      if (auditAccess) {
         await safeFetch(
           () => fetchAuditLog(PAGE_LIMIT, auditOffsetRef.current),
           setAuditEntries,
           { items: [], total: 0, limit: PAGE_LIMIT, offset: 0 },
         )
-        await safeFetch(fetchUsers, setUsers)
       }
     }
 
@@ -186,7 +189,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
       cancelled = true
       clearInterval(id)
     }
-  }, [onSessionExpired, admin, assetsOffset, cvesOffset, cveFilters, auditOffset, incidentsOffset, incidentFilters])
+  }, [onSessionExpired, admin, auditAccess, assetsOffset, cvesOffset, cveFilters, auditOffset, incidentsOffset, incidentFilters])
 
   
   
@@ -390,11 +393,13 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
           />
         )}
 
-        {activeTab === 'admin' && admin && (
+        {activeTab === 'admin' && auditAccess && (
           <div className="grid gap-6">
-            <Panel eyebrow={t('panels.accessControl')} title={t('panels.usersAndRoles')}>
-              {users === null ? <Skeleton /> : <UsersPanel users={users} onChanged={reloadUsers} />}
-            </Panel>
+            {admin && (
+              <Panel eyebrow={t('panels.accessControl')} title={t('panels.usersAndRoles')}>
+                {users === null ? <Skeleton /> : <UsersPanel users={users} onChanged={reloadUsers} />}
+              </Panel>
+            )}
             <Panel eyebrow={t('panels.security')} title={t('panels.auditLog')}>
               {auditEntries === null ? (
                 <Skeleton />
@@ -411,7 +416,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
 
         {activeTab === 'settings' && (
           <Panel eyebrow={t('settings.eyebrow')} title={t('settings.title')}>
-            <SettingsPanel admin={admin} onNavigateToConnectivity={() => onChangeTab('connectivity')} />
+            <SettingsPanel admin={admin} onNavigateToConnectivity={() => onChangeTab('connectivity')} onSecurityChange={onLogout} />
           </Panel>
         )}
       </main>
