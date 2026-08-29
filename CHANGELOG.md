@@ -12,6 +12,7 @@ Notable changes are tracked here until versioned release notes take over.
 - RF ingestion through `sdr-agent`, authenticated device self-report, IQ capture/replay, and robust anomaly baselines using median/MAD and EWMA techniques.
 - TM/TC decoders for AX.25, CCSDS Space Packet, PUS, and CSP v1.
 - NVD-backed space CVE synchronization, filtering, keyword discovery, and CVE-to-asset alerts.
+- Incident response with RBAC, filtered queues, live SSE updates, investigation timelines, admin-only assignment, and high-confidence RF anomaly escalation.
 
 ### Security
 

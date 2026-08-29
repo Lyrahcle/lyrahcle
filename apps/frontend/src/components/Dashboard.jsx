@@ -10,6 +10,7 @@ import SatellitesPanel from './SatellitesPanel.jsx'
 import WorldMap from './WorldMap.jsx'
 import ThreatIntelPanel from './ThreatIntelPanel.jsx'
 import AssetAlertsPanel from './AssetAlertsPanel.jsx'
+import IncidentsPanel from './IncidentsPanel.jsx'
 import Decoder from './Decoder.jsx'
 import NewAssetForm from './NewAssetForm.jsx'
 import NewSatelliteForm from './NewSatelliteForm.jsx'
@@ -22,6 +23,7 @@ import { canWrite, isAdmin } from '../lib/auth.js'
 import { useI18n } from '../lib/I18nContext.jsx'
 import {
   fetchAgentKeys,
+  fetchIncidents,
   fetchAssets,
   fetchAssetAlerts,
   fetchAuditLog,
@@ -32,6 +34,7 @@ import {
   fetchSpaceCVEs,
   fetchUsers,
   subscribeSatellites,
+  subscribeIncidents,
   UnauthorizedError,
 } from '../lib/api.js'
 
@@ -47,6 +50,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
   const [satellitesLive, setSatellitesLive] = useState(false)
   const [spaceCVEs, setSpaceCVEs] = useState(null)
   const [assetAlerts, setAssetAlerts] = useState(null)
+  const [incidents, setIncidents] = useState(null)
   const [agentKeys, setAgentKeys] = useState(null)
   const [auditEntries, setAuditEntries] = useState(null)
   const [users, setUsers] = useState(null)
@@ -61,10 +65,14 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
     cveFiltersRef.current = cveFilters
   }, [cveFilters])
   const [alertsOffset, setAlertsOffset] = useState(0)
+  const [incidentsOffset, setIncidentsOffset] = useState(0)
+  const [incidentFilters, setIncidentFilters] = useState({ status: '', severity: '', agentId: '', satelliteId: '' })
   const [auditOffset, setAuditOffset] = useState(0)
   const assetsOffsetRef = useRef(0)
   const cvesOffsetRef = useRef(0)
   const alertsOffsetRef = useRef(0)
+  const incidentsOffsetRef = useRef(0)
+  const incidentFiltersRef = useRef(incidentFilters)
   const auditOffsetRef = useRef(0)
   useEffect(() => {
     assetsOffsetRef.current = assetsOffset
@@ -78,12 +86,19 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
   useEffect(() => {
     auditOffsetRef.current = auditOffset
   }, [auditOffset])
+  useEffect(() => {
+    incidentsOffsetRef.current = incidentsOffset
+  }, [incidentsOffset])
+  useEffect(() => {
+    incidentFiltersRef.current = incidentFilters
+  }, [incidentFilters])
 
   const admin = isAdmin()
   const tabs = [
     { id: 'orbital', label: t('tabs.orbital') },
     { id: 'assets', label: t('tabs.assets') },
     { id: 'signal', label: t('tabs.signal') },
+    { id: 'incidents', label: t('tabs.incidents') },
     { id: 'intel', label: t('tabs.intel') },
     { id: 'decoder', label: t('tabs.decoder') },
     { id: 'connectivity', label: t('tabs.connectivity') },
@@ -144,6 +159,11 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
         setAssetAlerts,
         { items: [], total: 0, limit: PAGE_LIMIT, offset: 0 },
       )
+      await safeFetch(
+        () => fetchIncidents(PAGE_LIMIT, incidentsOffsetRef.current, incidentFiltersRef.current),
+        setIncidents,
+        { items: [], total: 0, limit: PAGE_LIMIT, offset: 0 },
+      )
 
       if (admin) {
         await safeFetch(fetchAgentKeys, setAgentKeys)
@@ -162,7 +182,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
       cancelled = true
       clearInterval(id)
     }
-  }, [onSessionExpired, admin, assetsOffset, cvesOffset, cveFilters, auditOffset])
+  }, [onSessionExpired, admin, assetsOffset, cvesOffset, cveFilters, auditOffset, incidentsOffset, incidentFilters])
 
   
   
@@ -175,6 +195,18 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
         setSatellitesLive(true)
       },
       onError: () => setSatellitesLive(false),
+    })
+    return unsubscribe
+  }, [])
+
+  useEffect(() => {
+    const unsubscribe = subscribeIncidents({
+      onData: (data) => {
+        if (incidentsOffsetRef.current === 0 && !incidentFiltersRef.current.status && !incidentFiltersRef.current.severity && !incidentFiltersRef.current.agentId && !incidentFiltersRef.current.satelliteId) {
+          setIncidents(data)
+        }
+      },
+      onError: () => {},
     })
     return unsubscribe
   }, [])
@@ -202,6 +234,13 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
   }
   function reloadAssetAlerts() {
     fetchAssetAlerts(PAGE_LIMIT, alertsOffsetRef.current).then(setAssetAlerts).catch(() => {})
+  }
+  function reloadIncidents() {
+    fetchIncidents(PAGE_LIMIT, incidentsOffsetRef.current, incidentFiltersRef.current).then(setIncidents).catch(() => {})
+  }
+  function handleIncidentFiltersChange(next) {
+    setIncidentsOffset(0)
+    setIncidentFilters(next)
   }
 
   return (
@@ -279,6 +318,25 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
               {rfAnomalies === null ? <Skeleton /> : <AnomaliesPanel anomalies={rfAnomalies} />}
             </Panel>
           </div>
+        )}
+
+        {activeTab === 'incidents' && (
+          <Panel eyebrow={t('panels.incidentResponse')} title={t('panels.securityIncidents')}>
+            {incidents === null ? (
+              <Skeleton />
+            ) : (
+              <IncidentsPanel
+                page={incidents}
+                filters={incidentFilters}
+                onFiltersChange={handleIncidentFiltersChange}
+                onPrev={() => setIncidentsOffset((o) => Math.max(0, o - PAGE_LIMIT))}
+                onNext={() => setIncidentsOffset((o) => o + PAGE_LIMIT)}
+                onChanged={reloadIncidents}
+                satellites={satellites ?? []}
+                users={users ?? []}
+              />
+            )}
+          </Panel>
         )}
 
         {activeTab === 'intel' && (

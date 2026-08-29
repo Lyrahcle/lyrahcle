@@ -22,6 +22,7 @@
 - [x] CVE-to-asset alerting and operator acknowledgement
 - [x] EN/ES/FR/DE localization and WCAG-oriented frontend improvements
 - [x] SSE orbital streaming preserved through middleware instrumentation
+- [x] Incident response with role-gated workflow changes, transaction-backed timelines, audit events, and RF anomaly escalation
 
 ## Before v1.0
 
@@ -31,4 +32,4 @@
 - [ ] Produce SBOM, provenance, and signed release artifacts
 - [ ] Document and test backup restore and disaster recovery procedures
 - [ ] Add production deployment patterns for redundant backend/Redis/PostgreSQL infrastructure
-- [ ] Add incident correlation and investigation workflows
+- [ ] Add multi-signal incident correlation, suppression windows, and reusable detection rules

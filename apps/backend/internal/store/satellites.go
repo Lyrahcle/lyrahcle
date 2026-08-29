@@ -56,3 +56,9 @@ func (s *SatelliteStore) List(ctx context.Context) ([]Satellite, error) {
 	}
 	return out, rows.Err()
 }
+
+func (s *SatelliteStore) Exists(ctx context.Context, id uuid.UUID) (bool, error) {
+	var exists bool
+	err := s.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM satellites WHERE id = $1)`, id).Scan(&exists)
+	return exists, err
+}

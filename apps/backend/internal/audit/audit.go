@@ -16,6 +16,9 @@ const (
 	ActionRoleChanged        = "user.role_changed"
 	ActionAssetAlertCreated  = "asset_alert.created"
 	ActionAssetAlertAcked    = "asset_alert.acknowledged"
+	ActionIncidentCreated    = "incident.created"
+	ActionIncidentUpdated    = "incident.updated"
+	ActionIncidentNoteAdded  = "incident.note_added"
 
 	ActorUser      = "user"
 	ActorAgent     = "agent"

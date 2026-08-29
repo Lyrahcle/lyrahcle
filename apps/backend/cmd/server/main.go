@@ -65,6 +65,7 @@ func main() {
 	auditLog := store.NewAuditStore(pool)
 	spaceCVEs := store.NewSpaceCVEStore(pool)
 	assetAlerts := store.NewAssetAlertStore(pool)
+	incidents := store.NewIncidentStore(pool)
 
 	if err := seedAdmin(ctx, users, cfg); err != nil {
 		log.Printf("seed admin: %v", err)
@@ -94,7 +95,7 @@ func main() {
 
 	go syncTLEs(ctx, cfg.CelestrakGroups, satellites)
 
-	r := newRouter(cfg, assets, programs, rf, rfAnomalies, satellites, users, agentKeys, auditLog, spaceCVEs, assetAlerts, redisClient)
+	r := newRouter(cfg, assets, programs, rf, rfAnomalies, satellites, users, agentKeys, auditLog, spaceCVEs, assetAlerts, incidents, redisClient)
 
 	srv := &http.Server{
 		Addr:         ":" + cfg.Port,
@@ -154,6 +155,7 @@ func newRouter(
 	auditLog *store.AuditStore,
 	spaceCVEs *store.SpaceCVEStore,
 	assetAlerts *store.AssetAlertStore,
+	incidents *store.IncidentStore,
 	redisClient *redis.Client,
 ) http.Handler {
 	blocklist := tokenblocklist.New(redisClient)
@@ -809,7 +811,7 @@ func newRouter(
 					return
 				}
 
-				detectRFAnomalies(r.Context(), rfAnomalies, reading, history)
+				detectRFAnomalies(r.Context(), rfAnomalies, incidents, reading, history)
 
 				w.WriteHeader(http.StatusCreated)
 			})
@@ -1079,6 +1081,290 @@ func newRouter(
 			json.NewEncoder(w).Encode(keywords)
 		})
 
+		r.Route("/incidents", func(r chi.Router) {
+			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer, isTokenRevoked)).Get("/", func(w http.ResponseWriter, r *http.Request) {
+				limit, offset := pageParams(r)
+				filter, err := parseIncidentFilter(r)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+				page, err := incidents.List(r.Context(), limit, offset, filter)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(page)
+			})
+
+			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer, isTokenRevoked)).Get("/stream", func(w http.ResponseWriter, r *http.Request) {
+				flusher, ok := w.(http.Flusher)
+				if !ok {
+					http.Error(w, "streaming unsupported", http.StatusInternalServerError)
+					return
+				}
+				w.Header().Set("Content-Type", "text/event-stream")
+				w.Header().Set("Cache-Control", "no-cache")
+				w.Header().Set("Connection", "keep-alive")
+				w.Header().Set("X-Accel-Buffering", "no")
+				w.WriteHeader(http.StatusOK)
+
+				ticker := time.NewTicker(5 * time.Second)
+				defer ticker.Stop()
+				send := func() bool {
+					page, err := incidents.List(r.Context(), 50, 0, store.IncidentFilter{})
+					if err != nil {
+						return true
+					}
+					payload, err := json.Marshal(page)
+					if err != nil {
+						return true
+					}
+					if _, err := fmt.Fprintf(w, "event: incidents\ndata: %s\n\n", payload); err != nil {
+						return false
+					}
+					flusher.Flush()
+					return true
+				}
+				if !send() {
+					return
+				}
+				for {
+					select {
+					case <-r.Context().Done():
+						return
+					case <-ticker.C:
+						if !send() {
+							return
+						}
+					}
+				}
+			})
+
+			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleOperator, isTokenRevoked)).Post("/", func(w http.ResponseWriter, r *http.Request) {
+				var body struct {
+					Title       string `json:"title"`
+					Description string `json:"description"`
+					Severity    string `json:"severity"`
+					SatelliteID string `json:"satellite_id"`
+					AgentID     string `json:"agent_id"`
+					AssignedTo  string `json:"assigned_to"`
+				}
+				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+					http.Error(w, "invalid JSON body", http.StatusBadRequest)
+					return
+				}
+				body.Title = strings.TrimSpace(body.Title)
+				body.Description = strings.TrimSpace(body.Description)
+				body.Severity = strings.ToLower(strings.TrimSpace(body.Severity))
+				body.AgentID = strings.TrimSpace(body.AgentID)
+				if err := validate.IncidentTitle(body.Title); err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+				if err := validate.IncidentDescription(body.Description); err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+				if err := validate.IncidentSeverity(body.Severity); err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+				if body.AgentID != "" {
+					if err := validate.AgentID(body.AgentID); err != nil {
+						http.Error(w, err.Error(), http.StatusBadRequest)
+						return
+					}
+				}
+
+				satelliteID, err := optionalUUID(body.SatelliteID, "satellite_id")
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+				assignedTo, err := optionalUUID(body.AssignedTo, "assigned_to")
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+				if satelliteID != nil {
+					exists, err := satellites.Exists(r.Context(), *satelliteID)
+					if err != nil {
+						http.Error(w, "failed to validate satellite", http.StatusInternalServerError)
+						return
+					}
+					if !exists {
+						http.Error(w, "satellite not found", http.StatusBadRequest)
+						return
+					}
+				}
+				claims, ok := auth.FromContext(r.Context())
+				if !ok {
+					http.Error(w, "unauthorized", http.StatusUnauthorized)
+					return
+				}
+				if assignedTo != nil && claims.Role != auth.RoleAdmin {
+					http.Error(w, "only admins can assign incidents", http.StatusForbidden)
+					return
+				}
+				if assignedTo != nil {
+					if _, err := users.GetByID(r.Context(), *assignedTo); err != nil {
+						if err == store.ErrUserNotFound {
+							http.Error(w, "assigned user not found", http.StatusBadRequest)
+							return
+						}
+						http.Error(w, "failed to validate assigned user", http.StatusInternalServerError)
+						return
+					}
+				}
+				incident, err := incidents.Create(r.Context(), store.CreateIncidentInput{
+					Title: body.Title, Description: body.Description, Severity: body.Severity, SourceType: "manual",
+					SatelliteID: satelliteID, AgentID: body.AgentID, AssignedTo: assignedTo, CreatedBy: &claims.UserID,
+				})
+				if err != nil {
+					http.Error(w, "failed to create incident", http.StatusInternalServerError)
+					return
+				}
+				logAudit(r.Context(), auditLog, audit.ActorUser, claims.UserID.String(), audit.ActionIncidentCreated, clientIP(r), map[string]interface{}{"incident_id": incident.ID.String(), "reference": incident.Reference})
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusCreated)
+				json.NewEncoder(w).Encode(incident)
+			})
+
+			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer, isTokenRevoked)).Get("/{incidentID}", func(w http.ResponseWriter, r *http.Request) {
+				incidentID, err := uuid.Parse(chi.URLParam(r, "incidentID"))
+				if err != nil {
+					http.Error(w, "incidentID must be a valid UUID", http.StatusBadRequest)
+					return
+				}
+				detail, err := incidents.Get(r.Context(), incidentID)
+				if err != nil {
+					if err == store.ErrIncidentNotFound {
+						http.Error(w, "incident not found", http.StatusNotFound)
+						return
+					}
+					http.Error(w, "failed to fetch incident", http.StatusInternalServerError)
+					return
+				}
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(detail)
+			})
+
+			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleOperator, isTokenRevoked)).Patch("/{incidentID}", func(w http.ResponseWriter, r *http.Request) {
+				incidentID, err := uuid.Parse(chi.URLParam(r, "incidentID"))
+				if err != nil {
+					http.Error(w, "incidentID must be a valid UUID", http.StatusBadRequest)
+					return
+				}
+				var body struct {
+					Status     *string `json:"status"`
+					Severity   *string `json:"severity"`
+					AssignedTo *string `json:"assigned_to"`
+				}
+				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+					http.Error(w, "invalid JSON body", http.StatusBadRequest)
+					return
+				}
+				if body.Status == nil && body.Severity == nil && body.AssignedTo == nil {
+					http.Error(w, "at least one field is required", http.StatusBadRequest)
+					return
+				}
+
+				input := store.UpdateIncidentInput{}
+				if body.Status != nil {
+					input.Status = strings.ToLower(strings.TrimSpace(*body.Status))
+					if err := validate.IncidentStatus(input.Status); err != nil {
+						http.Error(w, err.Error(), http.StatusBadRequest)
+						return
+					}
+				}
+				if body.Severity != nil {
+					input.Severity = strings.ToLower(strings.TrimSpace(*body.Severity))
+					if err := validate.IncidentSeverity(input.Severity); err != nil {
+						http.Error(w, err.Error(), http.StatusBadRequest)
+						return
+					}
+				}
+				if body.AssignedTo != nil {
+					input.UpdateAssignment = true
+					assignedTo, err := optionalUUID(*body.AssignedTo, "assigned_to")
+					if err != nil {
+						http.Error(w, err.Error(), http.StatusBadRequest)
+						return
+					}
+					input.AssignedTo = assignedTo
+				}
+				claims, ok := auth.FromContext(r.Context())
+				if !ok {
+					http.Error(w, "unauthorized", http.StatusUnauthorized)
+					return
+				}
+				if input.UpdateAssignment && claims.Role != auth.RoleAdmin {
+					http.Error(w, "only admins can assign incidents", http.StatusForbidden)
+					return
+				}
+				if input.AssignedTo != nil {
+					if _, err := users.GetByID(r.Context(), *input.AssignedTo); err != nil {
+						if err == store.ErrUserNotFound {
+							http.Error(w, "assigned user not found", http.StatusBadRequest)
+							return
+						}
+						http.Error(w, "failed to validate assigned user", http.StatusInternalServerError)
+						return
+					}
+				}
+				input.ActorID = claims.UserID
+				incident, err := incidents.Update(r.Context(), incidentID, input)
+				if err != nil {
+					if err == store.ErrIncidentNotFound {
+						http.Error(w, "incident not found", http.StatusNotFound)
+						return
+					}
+					http.Error(w, "failed to update incident", http.StatusInternalServerError)
+					return
+				}
+				logAudit(r.Context(), auditLog, audit.ActorUser, claims.UserID.String(), audit.ActionIncidentUpdated, clientIP(r), map[string]interface{}{"incident_id": incident.ID.String(), "reference": incident.Reference})
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(incident)
+			})
+
+			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleOperator, isTokenRevoked)).Post("/{incidentID}/notes", func(w http.ResponseWriter, r *http.Request) {
+				incidentID, err := uuid.Parse(chi.URLParam(r, "incidentID"))
+				if err != nil {
+					http.Error(w, "incidentID must be a valid UUID", http.StatusBadRequest)
+					return
+				}
+				var body struct {
+					Message string `json:"message"`
+				}
+				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+					http.Error(w, "invalid JSON body", http.StatusBadRequest)
+					return
+				}
+				body.Message = strings.TrimSpace(body.Message)
+				if err := validate.IncidentNote(body.Message); err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+				claims, ok := auth.FromContext(r.Context())
+				if !ok {
+					http.Error(w, "unauthorized", http.StatusUnauthorized)
+					return
+				}
+				if err := incidents.AddNote(r.Context(), incidentID, claims.UserID, body.Message); err != nil {
+					if err == store.ErrIncidentNotFound {
+						http.Error(w, "incident not found", http.StatusNotFound)
+						return
+					}
+					http.Error(w, "failed to add note", http.StatusInternalServerError)
+					return
+				}
+				logAudit(r.Context(), auditLog, audit.ActorUser, claims.UserID.String(), audit.ActionIncidentNoteAdded, clientIP(r), map[string]interface{}{"incident_id": incidentID.String()})
+				w.WriteHeader(http.StatusNoContent)
+			})
+		})
+
 		r.Route("/asset-alerts", func(r chi.Router) {
 			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer, isTokenRevoked)).Get("/", func(w http.ResponseWriter, r *http.Request) {
 				limit, offset := pageParams(r)
@@ -1175,6 +1461,53 @@ func pageParams(r *http.Request) (int, int) {
 	return limit, offset
 }
 
+func optionalUUID(value, field string) (*uuid.UUID, error) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return nil, nil
+	}
+	id, err := uuid.Parse(value)
+	if err != nil {
+		return nil, fmt.Errorf("%s must be a valid UUID", field)
+	}
+	return &id, nil
+}
+
+func parseIncidentFilter(r *http.Request) (store.IncidentFilter, error) {
+	q := r.URL.Query()
+	filter := store.IncidentFilter{
+		Status:   strings.ToLower(strings.TrimSpace(q.Get("status"))),
+		Severity: strings.ToLower(strings.TrimSpace(q.Get("severity"))),
+		AgentID:  strings.TrimSpace(q.Get("agent_id")),
+	}
+	if filter.Status != "" {
+		if err := validate.IncidentStatus(filter.Status); err != nil {
+			return store.IncidentFilter{}, err
+		}
+	}
+	if filter.Severity != "" {
+		if err := validate.IncidentSeverity(filter.Severity); err != nil {
+			return store.IncidentFilter{}, err
+		}
+	}
+	if filter.AgentID != "" {
+		if err := validate.AgentID(filter.AgentID); err != nil {
+			return store.IncidentFilter{}, err
+		}
+	}
+	assignedTo, err := optionalUUID(q.Get("assigned_to"), "assigned_to")
+	if err != nil {
+		return store.IncidentFilter{}, err
+	}
+	filter.AssignedTo = assignedTo
+	satelliteID, err := optionalUUID(q.Get("satellite_id"), "satellite_id")
+	if err != nil {
+		return store.IncidentFilter{}, err
+	}
+	filter.SatelliteID = satelliteID
+	return filter, nil
+}
+
 func parseSpaceCVEFilter(r *http.Request) store.SpaceCVEFilter {
 	q := r.URL.Query()
 	filter := store.SpaceCVEFilter{
@@ -1239,7 +1572,7 @@ func syncTLEs(ctx context.Context, groups []string, satellites *store.SatelliteS
 
 const anomalyHistoryWindow = 20
 
-func detectRFAnomalies(ctx context.Context, anomalies *store.AnomalyStore, reading store.RFReading, history []store.RFReading) {
+func detectRFAnomalies(ctx context.Context, anomalies *store.AnomalyStore, incidents *store.IncidentStore, reading store.RFReading, history []store.RFReading) {
 	powerHistory := make([]float64, len(history))
 	freqHistory := make([]float64, len(history))
 	for i, h := range history {
@@ -1267,8 +1600,28 @@ func detectRFAnomalies(ctx context.Context, anomalies *store.AnomalyStore, readi
 			BaselineStddev: result.StdDev,
 			ZScore:         result.ZScore,
 		}
-		if err := anomalies.Insert(ctx, a); err != nil {
+		created, err := anomalies.InsertReturning(ctx, a)
+		if err != nil {
 			log.Printf("anomaly: failed to record %s anomaly for agent %s: %v", result.Metric, reading.AgentID, err)
+			continue
+		}
+		if result.ZScore < 6 && result.ZScore > -6 {
+			continue
+		}
+		severity := "high"
+		if result.ZScore >= 8 || result.ZScore <= -8 {
+			severity = "critical"
+		}
+		_, err = incidents.Create(ctx, store.CreateIncidentInput{
+			Title:           fmt.Sprintf("High-confidence RF anomaly on %s", reading.AgentID),
+			Description:     fmt.Sprintf("%s deviated from its baseline with a z-score of %.2f.", result.Metric, result.ZScore),
+			Severity:        severity,
+			SourceType:      "rf_anomaly",
+			AgentID:         reading.AgentID,
+			SourceAnomalyID: &created.ID,
+		})
+		if err != nil {
+			log.Printf("incident: failed to create incident for anomaly %s: %v", created.ID, err)
 		}
 	}
 }

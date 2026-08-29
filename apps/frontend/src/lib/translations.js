@@ -1025,4 +1025,58 @@ export const translations = {
   },
 }
 
+
+const incidentTranslations = {
+  en: {
+    tabs: { incidents: 'Incidents' },
+    panels: { incidentResponse: 'Incident Response', securityIncidents: 'Security incidents' },
+    incidents: {
+      reference: 'Reference', title: 'Title', severity: 'Severity', status: 'Status', source: 'Source', updated: 'Updated', agent: 'Agent', satellite: 'Satellite', allSatellites: 'All satellites',
+      allStatuses: 'All statuses', allSeverities: 'All severities', create: 'Create incident', empty: 'No incidents match these filters.',
+      titlePlaceholder: 'Incident title', descriptionPlaceholder: 'Investigation context and evidence', agentPlaceholder: 'Optional agent ID',
+      noSatellite: 'No satellite', unassigned: 'Unassigned', timeline: 'Timeline', notePlaceholder: 'Add investigation note', addNote: 'Add note',
+      statuses: { new: 'New', investigating: 'Investigating', contained: 'Contained', resolved: 'Resolved', false_positive: 'False positive' },
+    },
+  },
+  es: {
+    tabs: { incidents: 'Incidentes' },
+    panels: { incidentResponse: 'Respuesta a Incidentes', securityIncidents: 'Incidentes de seguridad' },
+    incidents: {
+      reference: 'Referencia', title: 'Título', severity: 'Severidad', status: 'Estado', source: 'Origen', updated: 'Actualizado', agent: 'Agente', satellite: 'Satélite', allSatellites: 'Todos los satélites',
+      allStatuses: 'Todos los estados', allSeverities: 'Todas las severidades', create: 'Crear incidente', empty: 'Ningún incidente coincide con estos filtros.',
+      titlePlaceholder: 'Título del incidente', descriptionPlaceholder: 'Contexto y evidencias de la investigación', agentPlaceholder: 'ID de agente opcional',
+      noSatellite: 'Sin satélite', unassigned: 'Sin asignar', timeline: 'Cronología', notePlaceholder: 'Añadir nota de investigación', addNote: 'Añadir nota',
+      statuses: { new: 'Nuevo', investigating: 'Investigando', contained: 'Contenido', resolved: 'Resuelto', false_positive: 'Falso positivo' },
+    },
+  },
+  fr: {
+    tabs: { incidents: 'Incidents' },
+    panels: { incidentResponse: 'Réponse aux incidents', securityIncidents: 'Incidents de sécurité' },
+    incidents: {
+      reference: 'Référence', title: 'Titre', severity: 'Gravité', status: 'Statut', source: 'Source', updated: 'Mis à jour', agent: 'Agent', satellite: 'Satellite', allSatellites: 'Tous les satellites',
+      allStatuses: 'Tous les statuts', allSeverities: 'Toutes les gravités', create: 'Créer un incident', empty: 'Aucun incident ne correspond à ces filtres.',
+      titlePlaceholder: "Titre de l’incident", descriptionPlaceholder: "Contexte et preuves de l’enquête", agentPlaceholder: "ID d’agent facultatif",
+      noSatellite: 'Aucun satellite', unassigned: 'Non attribué', timeline: 'Chronologie', notePlaceholder: "Ajouter une note d’enquête", addNote: 'Ajouter une note',
+      statuses: { new: 'Nouveau', investigating: 'Enquête', contained: 'Confiné', resolved: 'Résolu', false_positive: 'Faux positif' },
+    },
+  },
+  de: {
+    tabs: { incidents: 'Vorfälle' },
+    panels: { incidentResponse: 'Incident Response', securityIncidents: 'Sicherheitsvorfälle' },
+    incidents: {
+      reference: 'Referenz', title: 'Titel', severity: 'Schweregrad', status: 'Status', source: 'Quelle', updated: 'Aktualisiert', agent: 'Agent', satellite: 'Satellit', allSatellites: 'Alle Satelliten',
+      allStatuses: 'Alle Status', allSeverities: 'Alle Schweregrade', create: 'Vorfall erstellen', empty: 'Keine Vorfälle entsprechen diesen Filtern.',
+      titlePlaceholder: 'Vorfalltitel', descriptionPlaceholder: 'Untersuchungskontext und Beweise', agentPlaceholder: 'Optionale Agent-ID',
+      noSatellite: 'Kein Satellit', unassigned: 'Nicht zugewiesen', timeline: 'Zeitleiste', notePlaceholder: 'Untersuchungsnotiz hinzufügen', addNote: 'Notiz hinzufügen',
+      statuses: { new: 'Neu', investigating: 'In Untersuchung', contained: 'Eingedämmt', resolved: 'Gelöst', false_positive: 'Fehlalarm' },
+    },
+  },
+}
+
+for (const [language, extra] of Object.entries(incidentTranslations)) {
+  Object.assign(translations[language].tabs, extra.tabs)
+  Object.assign(translations[language].panels, extra.panels)
+  translations[language].incidents = extra.incidents
+}
+
 export const supportedLanguages = Object.keys(translations)

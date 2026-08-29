@@ -418,3 +418,65 @@ func TestAuditStorePagination(t *testing.T) {
 		t.Errorf("Offset = %d, want clamped to 0", clamped.Offset)
 	}
 }
+
+func TestIncidentStoreLifecycle(t *testing.T) {
+	pool := testPool(t)
+	ctx := context.Background()
+	users := NewUserStore(pool)
+	incidents := NewIncidentStore(pool)
+
+	actor, err := users.Create(ctx, "incident-admin@example.com", "test-password-hash", "admin")
+	if err != nil {
+		t.Fatalf("Create user returned error: %v", err)
+	}
+
+	incident, err := incidents.Create(ctx, CreateIncidentInput{
+		Title:       "Unexpected RF behavior",
+		Description: "Investigate the signal deviation.",
+		Severity:    "high",
+		SourceType:  "manual",
+		AgentID:     "sdr-store-test",
+		AssignedTo:  &actor.ID,
+		CreatedBy:   &actor.ID,
+	})
+	if err != nil {
+		t.Fatalf("Create incident returned error: %v", err)
+	}
+	if incident.ID == uuid.Nil || incident.Reference == "" {
+		t.Fatalf("created incident missing identity: %+v", incident)
+	}
+
+	page, err := incidents.List(ctx, 50, 0, IncidentFilter{Severity: "high", AgentID: "sdr-store-test"})
+	if err != nil {
+		t.Fatalf("List incidents returned error: %v", err)
+	}
+	if page.Total != 1 || len(page.Items) != 1 {
+		t.Fatalf("incident page = total %d, items %d; want 1, 1", page.Total, len(page.Items))
+	}
+
+	updated, err := incidents.Update(ctx, incident.ID, UpdateIncidentInput{
+		Status:  "investigating",
+		ActorID: actor.ID,
+	})
+	if err != nil {
+		t.Fatalf("Update incident returned error: %v", err)
+	}
+	if updated.Status != "investigating" {
+		t.Fatalf("updated status = %q, want investigating", updated.Status)
+	}
+
+	if err := incidents.AddNote(ctx, incident.ID, actor.ID, "Validated against the RF baseline."); err != nil {
+		t.Fatalf("AddNote returned error: %v", err)
+	}
+
+	detail, err := incidents.Get(ctx, incident.ID)
+	if err != nil {
+		t.Fatalf("Get incident returned error: %v", err)
+	}
+	if len(detail.Events) != 3 {
+		t.Fatalf("timeline has %d events, want 3", len(detail.Events))
+	}
+	if detail.Events[0].EventType != "created" || detail.Events[1].EventType != "status_changed" || detail.Events[2].EventType != "note" {
+		t.Fatalf("unexpected event sequence: %+v", detail.Events)
+	}
+}

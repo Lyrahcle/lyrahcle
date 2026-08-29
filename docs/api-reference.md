@@ -90,6 +90,12 @@ Every backend response includes `X-Request-ID`. A safe incoming `X-Request-ID` m
 | `POST` | `/api/v1/rf/ingest` | Agent key or Operator | Ingest RF reading |
 | `GET` | `/api/v1/rf/readings` | Viewer | Recent RF readings |
 | `GET` | `/api/v1/rf/anomalies` | Viewer | Recent RF anomalies |
+| `GET` | `/api/v1/incidents/` | Viewer | Filtered/paginated security incidents |
+| `POST` | `/api/v1/incidents/` | Operator | Create incident; assignment is admin-only |
+| `GET` | `/api/v1/incidents/stream` | Viewer | Live incident SSE snapshots |
+| `GET` | `/api/v1/incidents/{incidentID}` | Viewer | Incident detail and timeline |
+| `PATCH` | `/api/v1/incidents/{incidentID}` | Operator | Update workflow fields; assignment is admin-only |
+| `POST` | `/api/v1/incidents/{incidentID}/notes` | Operator | Add investigation note |
 | `POST` | `/api/v1/tmtc/decode/ax25` | Viewer | Decode AX.25 |
 | `POST` | `/api/v1/tmtc/decode/ccsds` | Viewer | Decode CCSDS Space Packet |
 | `POST` | `/api/v1/tmtc/decode/pus` | Viewer | Decode PUS |
@@ -120,3 +126,9 @@ Paginated endpoints accept `limit` and `offset`; `limit` defaults to 50 and is c
 ## Redis-dependent behavior
 
 Redis enables distributed rate limiting, JWT revocation, response caching, and the CVE event queue. The backend degrades gracefully if Redis is unavailable, but immediate JWT revocation and shared multi-replica rate-limit state are then unavailable.
+
+## Incident response
+
+Incidents support filters for status, severity, agent, and satellite, and use validated workflow values for severity and status. Viewers have read-only access, operators can create incidents, change status/severity, and add timeline notes, while assignment changes are restricted to admins. High-confidence RF anomalies with an absolute z-score of at least 6 create a deduplicated incident automatically; absolute z-scores of at least 8 are marked critical.
+
+The `source_anomaly_id` uniqueness constraint prevents one RF anomaly from generating duplicate incidents. Workflow changes and operator notes are recorded in the incident timeline, and security-relevant mutations are also written to the audit log.

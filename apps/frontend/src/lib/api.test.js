@@ -2,15 +2,20 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   createAgentKey,
   createAsset,
+  createIncident,
   createProgram,
   createSatellite,
   fetchAgentKeys,
   fetchAssets,
+  fetchIncident,
+  fetchIncidents,
   fetchAuditLog,
   fetchPing,
   fetchPrograms,
   fetchRfReadings,
   fetchSatellites,
+  updateIncident,
+  addIncidentNote,
   revokeAgentKey,
   UnauthorizedError,
 } from './api.js'
@@ -153,4 +158,35 @@ describe('api client', () => {
     await fetchAuditLog()
     expect(fetch).toHaveBeenCalledWith('/api/v1/audit-log?limit=50&offset=0', { headers: {} })
   })
+  it('incident client uses validated API shapes', async () => {
+    mockFetchOnce(true, { items: [], total: 0, limit: 50, offset: 0 })
+    await fetchIncidents(50, 0, { status: 'new', severity: 'high', agentId: 'sdr-1', satelliteId: 'sat-1' })
+    expect(fetch).toHaveBeenCalledWith('/api/v1/incidents/?limit=50&offset=0&status=new&severity=high&agent_id=sdr-1&satellite_id=sat-1', { headers: {} })
+
+    mockFetchOnce(true, { incident: { id: 'i1' }, events: [] })
+    await fetchIncident('i1')
+    expect(fetch).toHaveBeenCalledWith('/api/v1/incidents/i1', { headers: {} })
+
+    mockFetchOnce(true, { id: 'i1' }, 201)
+    await createIncident({ title: 'RF anomaly', description: 'Review signal', severity: 'high', satelliteId: '', agentId: 'sdr-1', assignedTo: '' })
+    expect(fetch).toHaveBeenCalledWith('/api/v1/incidents/', expect.objectContaining({
+      method: 'POST',
+      body: JSON.stringify({ title: 'RF anomaly', description: 'Review signal', severity: 'high', satellite_id: '', agent_id: 'sdr-1', assigned_to: '' }),
+    }))
+
+    mockFetchOnce(true, { id: 'i1', status: 'investigating' })
+    await updateIncident('i1', { status: 'investigating' })
+    expect(fetch).toHaveBeenCalledWith('/api/v1/incidents/i1', expect.objectContaining({
+      method: 'PATCH',
+      body: JSON.stringify({ status: 'investigating' }),
+    }))
+
+    mockFetchOnce(true, null, 204)
+    await addIncidentNote('i1', 'Reviewed')
+    expect(fetch).toHaveBeenCalledWith('/api/v1/incidents/i1/notes', expect.objectContaining({
+      method: 'POST',
+      body: JSON.stringify({ message: 'Reviewed' }),
+    }))
+  })
+
 })

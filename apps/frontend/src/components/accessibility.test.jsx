@@ -8,6 +8,7 @@ import NewSatelliteForm from './NewSatelliteForm.jsx'
 import ChangePasswordModal from './ChangePasswordModal.jsx'
 import SettingsPanel from './SettingsPanel.jsx'
 import Login from './Login.jsx'
+import IncidentsPanel from './IncidentsPanel.jsx'
 
 vi.mock('../lib/api.js', () => ({
   fetchPrograms: vi.fn().mockResolvedValue([]),
@@ -15,6 +16,10 @@ vi.mock('../lib/api.js', () => ({
   createAsset: vi.fn(),
   createSatellite: vi.fn(),
   changePassword: vi.fn(),
+  fetchIncident: vi.fn().mockResolvedValue({ incident: null, events: [] }),
+  createIncident: vi.fn(),
+  updateIncident: vi.fn(),
+  addIncidentNote: vi.fn(),
   fetchSystemInfo: vi.fn().mockResolvedValue({
     environment: 'test',
     license: 'AGPLv3 (core)',
@@ -119,6 +124,21 @@ describe('automated accessibility audit (axe)', () => {
 
   test('SettingsPanel has no detectable WCAG violations', async () => {
     const { container } = render(withI18n(<SettingsPanel />))
+    const results = await axe(container)
+    expect(results).toHaveNoViolations()
+  })
+
+  test('IncidentsPanel empty state has no detectable WCAG violations', async () => {
+    const { container } = render(withI18n(
+      <IncidentsPanel
+        page={{ items: [], total: 0, limit: 50, offset: 0 }}
+        filters={{ status: '', severity: '', agentId: '' }}
+        onFiltersChange={() => {}}
+        onPrev={() => {}}
+        onNext={() => {}}
+        onChanged={() => {}}
+      />,
+    ))
     const results = await axe(container)
     expect(results).toHaveNoViolations()
   })

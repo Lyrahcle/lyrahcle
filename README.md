@@ -10,7 +10,7 @@ Lyrahcle combines orbital awareness, RF telemetry, TM/TC decoding, threat intell
 ## What it includes
 
 - Live satellite tracking with TLE synchronization and SSE updates.
-- RF ingestion, anomaly detection, agent connectivity, and IQ forensic replay.
+- RF ingestion, anomaly detection, incident response, agent connectivity, and IQ forensic replay.
 - AX.25, CCSDS, PUS, and CSP decoding.
 - NVD-backed space CVE intelligence with filtering and asset alerts.
 - JWT authentication, TOTP, RBAC, revocable agent keys, audit logging, and request IDs.

@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/mlko01/lyrahcle/apps/backend/internal/auth"
@@ -58,8 +59,9 @@ func testRouter(t *testing.T) (http.Handler, *pgxpool.Pool, *store.UserStore) {
 	auditLog := store.NewAuditStore(pool)
 	spaceCVEs := store.NewSpaceCVEStore(pool)
 	assetAlerts := store.NewAssetAlertStore(pool)
+	incidents := store.NewIncidentStore(pool)
 
-	router := newRouter(cfg, assets, programs, rf, rfAnomalies, satellites, users, agentKeys, auditLog, spaceCVEs, assetAlerts, nil)
+	router := newRouter(cfg, assets, programs, rf, rfAnomalies, satellites, users, agentKeys, auditLog, spaceCVEs, assetAlerts, incidents, nil)
 	return router, pool, users
 }
 
@@ -359,6 +361,25 @@ func TestRFIngestFlagsAnomaly(t *testing.T) {
 	}
 	if len(anomalies) == 0 {
 		t.Fatal("expected at least one anomaly to be flagged for the -10 dBm outlier, got none")
+	}
+
+	rec = doJSON(t, router, http.MethodGet, "/api/v1/incidents/?agent_id=sdr-http-test", token, nil)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GET /incidents after RF anomaly: status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	var incidentPage store.Page[store.Incident]
+	if err := json.Unmarshal(rec.Body.Bytes(), &incidentPage); err != nil {
+		t.Fatalf("failed to unmarshal incident response: %v", err)
+	}
+	foundAutoIncident := false
+	for _, incident := range incidentPage.Items {
+		if incident.SourceType == "rf_anomaly" && incident.AgentID == "sdr-http-test" {
+			foundAutoIncident = true
+			break
+		}
+	}
+	if !foundAutoIncident {
+		t.Fatal("expected a high-confidence RF anomaly to create an incident")
 	}
 }
 
@@ -727,5 +748,106 @@ func TestAuthenticatedAuthTrafficDoesNotConsumeLoginLimit(t *testing.T) {
 	})
 	if rec.Code != http.StatusOK {
 		t.Fatalf("re-login after authenticated auth traffic: status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestIncidentRBACAndTimeline(t *testing.T) {
+	router, _, users := testRouter(t)
+	operatorToken := seedUserAndLogin(t, router, users, "incident-operator@example.com", "operator-pass", string(auth.RoleOperator))
+	viewerToken := seedUserAndLogin(t, router, users, "incident-viewer@example.com", "viewer-pass", string(auth.RoleViewer))
+
+	viewerCreate := doJSON(t, router, http.MethodPost, "/api/v1/incidents/", viewerToken, map[string]string{
+		"title":    "Unauthorized incident",
+		"severity": "high",
+	})
+	if viewerCreate.Code != http.StatusForbidden {
+		t.Fatalf("viewer create: status = %d, body = %s", viewerCreate.Code, viewerCreate.Body.String())
+	}
+
+	viewerUser, err := users.GetByEmail(context.Background(), "incident-viewer@example.com")
+	if err != nil {
+		t.Fatalf("get viewer: %v", err)
+	}
+	operatorAssignedCreate := doJSON(t, router, http.MethodPost, "/api/v1/incidents/", operatorToken, map[string]string{
+		"title":       "Assignment should be denied",
+		"severity":    "medium",
+		"assigned_to": viewerUser.ID.String(),
+	})
+	if operatorAssignedCreate.Code != http.StatusForbidden {
+		t.Fatalf("operator assignment on create: status = %d, body = %s", operatorAssignedCreate.Code, operatorAssignedCreate.Body.String())
+	}
+
+	created := doJSON(t, router, http.MethodPost, "/api/v1/incidents/", operatorToken, map[string]string{
+		"title":       "Unexpected RF behavior",
+		"description": "Frequency behavior requires investigation.",
+		"severity":    "high",
+		"agent_id":    "sdr-incident-01",
+	})
+	if created.Code != http.StatusCreated {
+		t.Fatalf("operator create: status = %d, body = %s", created.Code, created.Body.String())
+	}
+	var incident store.Incident
+	if err := json.Unmarshal(created.Body.Bytes(), &incident); err != nil {
+		t.Fatalf("decode incident: %v", err)
+	}
+	if incident.ID == uuid.Nil || incident.Reference == "" {
+		t.Fatalf("created incident missing identity: %+v", incident)
+	}
+
+	listed := doJSON(t, router, http.MethodGet, "/api/v1/incidents/?severity=high", viewerToken, nil)
+	if listed.Code != http.StatusOK {
+		t.Fatalf("viewer list: status = %d, body = %s", listed.Code, listed.Body.String())
+	}
+
+	updated := doJSON(t, router, http.MethodPatch, "/api/v1/incidents/"+incident.ID.String(), operatorToken, map[string]string{
+		"status": "investigating",
+	})
+	if updated.Code != http.StatusOK {
+		t.Fatalf("operator update: status = %d, body = %s", updated.Code, updated.Body.String())
+	}
+
+	note := doJSON(t, router, http.MethodPost, "/api/v1/incidents/"+incident.ID.String()+"/notes", operatorToken, map[string]string{
+		"message": "Signal source is under review.",
+	})
+	if note.Code != http.StatusNoContent {
+		t.Fatalf("operator note: status = %d, body = %s", note.Code, note.Body.String())
+	}
+
+	detail := doJSON(t, router, http.MethodGet, "/api/v1/incidents/"+incident.ID.String(), viewerToken, nil)
+	if detail.Code != http.StatusOK {
+		t.Fatalf("viewer detail: status = %d, body = %s", detail.Code, detail.Body.String())
+	}
+	var decoded store.IncidentDetail
+	if err := json.Unmarshal(detail.Body.Bytes(), &decoded); err != nil {
+		t.Fatalf("decode detail: %v", err)
+	}
+	if decoded.Incident.Status != "investigating" {
+		t.Fatalf("status = %q, want investigating", decoded.Incident.Status)
+	}
+	if len(decoded.Events) < 3 {
+		t.Fatalf("events = %d, want at least 3", len(decoded.Events))
+	}
+}
+
+func TestIncidentInputValidation(t *testing.T) {
+	router, _, users := testRouter(t)
+	operatorToken := seedUserAndLogin(t, router, users, "incident-validator@example.com", "operator-pass", string(auth.RoleOperator))
+
+	cases := []struct {
+		name string
+		body map[string]string
+	}{
+		{name: "empty title", body: map[string]string{"title": "", "severity": "high"}},
+		{name: "invalid severity", body: map[string]string{"title": "Test", "severity": "root"}},
+		{name: "invalid agent", body: map[string]string{"title": "Test", "severity": "high", "agent_id": strings.Repeat("x", 129)}},
+		{name: "invalid satellite", body: map[string]string{"title": "Test", "severity": "high", "satellite_id": "not-a-uuid"}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			rec := doJSON(t, router, http.MethodPost, "/api/v1/incidents/", operatorToken, tc.body)
+			if rec.Code != http.StatusBadRequest {
+				t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+			}
+		})
 	}
 }

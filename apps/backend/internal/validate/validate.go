@@ -175,3 +175,54 @@ func HexFrame(value string, maxLen int) error {
 	}
 	return nil
 }
+
+var incidentSeverities = map[string]bool{
+	"critical": true, "high": true, "medium": true, "low": true, "info": true,
+}
+
+var incidentStatuses = map[string]bool{
+	"new": true, "investigating": true, "contained": true, "resolved": true, "false_positive": true,
+}
+
+func IncidentTitle(value string) error {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return fmt.Errorf("title is required")
+	}
+	if len(value) > 160 {
+		return fmt.Errorf("title is too long (max 160 characters)")
+	}
+	return nil
+}
+
+func IncidentDescription(value string) error {
+	if len(value) > 4000 {
+		return fmt.Errorf("description is too long (max 4000 characters)")
+	}
+	return nil
+}
+
+func IncidentSeverity(value string) error {
+	if !incidentSeverities[value] {
+		return fmt.Errorf("severity must be one of: critical, high, medium, low, info")
+	}
+	return nil
+}
+
+func IncidentStatus(value string) error {
+	if !incidentStatuses[value] {
+		return fmt.Errorf("status must be one of: new, investigating, contained, resolved, false_positive")
+	}
+	return nil
+}
+
+func IncidentNote(value string) error {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return fmt.Errorf("message is required")
+	}
+	if len(value) > 2000 {
+		return fmt.Errorf("message is too long (max 2000 characters)")
+	}
+	return nil
+}

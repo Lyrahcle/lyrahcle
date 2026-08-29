@@ -29,11 +29,17 @@ func NewAnomalyStore(pool *pgxpool.Pool) *AnomalyStore {
 }
 
 func (s *AnomalyStore) Insert(ctx context.Context, a RFAnomaly) error {
-	_, err := s.pool.Exec(ctx, `
+	_, err := s.InsertReturning(ctx, a)
+	return err
+}
+
+func (s *AnomalyStore) InsertReturning(ctx context.Context, a RFAnomaly) (RFAnomaly, error) {
+	err := s.pool.QueryRow(ctx, `
 		INSERT INTO rf_anomalies (reading_id, agent_id, metric, value, baseline_mean, baseline_stddev, z_score)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
-	`, a.ReadingID, a.AgentID, a.Metric, a.Value, a.BaselineMean, a.BaselineStddev, a.ZScore)
-	return err
+		RETURNING id, detected_at
+	`, a.ReadingID, a.AgentID, a.Metric, a.Value, a.BaselineMean, a.BaselineStddev, a.ZScore).Scan(&a.ID, &a.DetectedAt)
+	return a, err
 }
 
 func (s *AnomalyStore) Recent(ctx context.Context, limit int) ([]RFAnomaly, error) {

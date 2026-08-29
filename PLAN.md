@@ -11,16 +11,17 @@ Lyrahcle is moving from a collection of space-security capabilities toward a coh
 - Space CVE intelligence and asset alerts
 - JWT, TOTP, RBAC, audit logging, Redis-backed revocation and rate limiting
 - EN/ES/FR/DE dashboard localization
+- Incident response with timelines, workflow states, and high-confidence RF anomaly escalation
 
 ## Next priorities
 
-### 1. Incidents and correlation
+### 1. Correlation and detection engineering
 
-Create a first-class incident model that correlates RF anomalies, asset alerts, orbital events, agents, and audit evidence into a single timeline.
+Expand the incident foundation into deterministic correlation across RF anomalies, asset alerts, orbital events, agents, and audit evidence. Add reusable detection rules and deduplication windows.
 
-### 2. RF detection engineering
+### 2. RF signal assurance
 
-Add reusable detection rules, per-satellite or per-link baselines, replay/spoofing indicators, and stronger signal fingerprints.
+Add per-satellite or per-link baselines, replay/spoofing indicators, expected Doppler windows, and stronger signal fingerprints.
 
 ### 3. Agent identity hardening
 

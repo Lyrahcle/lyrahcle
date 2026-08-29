@@ -290,3 +290,102 @@ export async function decodeFrame(protocol, hex) {
 }
 
 export { UnauthorizedError }
+
+export async function fetchIncidents(limit = 50, offset = 0, filters = {}) {
+  const params = new URLSearchParams({ limit, offset })
+  if (filters.status) params.set('status', filters.status)
+  if (filters.severity) params.set('severity', filters.severity)
+  if (filters.agentId) params.set('agent_id', filters.agentId)
+  if (filters.satelliteId) params.set('satellite_id', filters.satelliteId)
+  if (filters.assignedTo) params.set('assigned_to', filters.assignedTo)
+  const res = await authedFetch(`/api/v1/incidents/?${params.toString()}`)
+  if (!res.ok) throw new Error(await readErrorText(res, 'failed to fetch incidents'))
+  return res.json()
+}
+
+export async function fetchIncident(incidentId) {
+  const res = await authedFetch(`/api/v1/incidents/${encodeURIComponent(incidentId)}`)
+  if (!res.ok) throw new Error(await readErrorText(res, 'failed to fetch incident'))
+  return res.json()
+}
+
+export async function createIncident({ title, description, severity, satelliteId, agentId, assignedTo }) {
+  const res = await authedFetch('/api/v1/incidents/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      title,
+      description,
+      severity,
+      satellite_id: satelliteId || '',
+      agent_id: agentId || '',
+      assigned_to: assignedTo || '',
+    }),
+  })
+  if (!res.ok) throw new Error(await readErrorText(res, 'failed to create incident'))
+  return res.json()
+}
+
+export async function updateIncident(incidentId, fields) {
+  const body = {}
+  if (fields.status !== undefined) body.status = fields.status
+  if (fields.severity !== undefined) body.severity = fields.severity
+  if (fields.assignedTo !== undefined) body.assigned_to = fields.assignedTo
+  const res = await authedFetch(`/api/v1/incidents/${encodeURIComponent(incidentId)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) throw new Error(await readErrorText(res, 'failed to update incident'))
+  return res.json()
+}
+
+export async function addIncidentNote(incidentId, message) {
+  const res = await authedFetch(`/api/v1/incidents/${encodeURIComponent(incidentId)}/notes`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message }),
+  })
+  if (!res.ok) throw new Error(await readErrorText(res, 'failed to add incident note'))
+}
+
+export function subscribeIncidents({ onData, onError }) {
+  const controller = new AbortController()
+  async function run() {
+    let res
+    try {
+      res = await fetch('/api/v1/incidents/stream', { headers: authHeaders(), signal: controller.signal })
+    } catch (err) {
+      if (err.name !== 'AbortError') onError?.(err)
+      return
+    }
+    if (!res.ok || !res.body) {
+      onError?.(new Error(`incident stream failed with status ${res.status}`))
+      return
+    }
+    const reader = res.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+    try {
+      while (true) {
+        const { value, done } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        let boundary
+        while ((boundary = buffer.indexOf('\n\n')) !== -1) {
+          const chunk = buffer.slice(0, boundary)
+          buffer = buffer.slice(boundary + 2)
+          const dataLine = chunk.split('\n').find((line) => line.startsWith('data: '))
+          if (!dataLine) continue
+          try {
+            onData?.(JSON.parse(dataLine.slice('data: '.length)))
+          } catch {}
+        }
+      }
+    } catch (err) {
+      if (err.name !== 'AbortError') onError?.(err)
+    }
+  }
+  run()
+  return () => controller.abort()
+}
