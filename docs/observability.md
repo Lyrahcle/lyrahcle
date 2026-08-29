@@ -32,3 +32,7 @@ Prometheus loads `deploy/prometheus/alerts.yml`. Initial alerts cover elevated s
 Every backend response carries `X-Request-ID`. Backend request logs use the same identifier, allowing an operator to correlate application errors with HTTP metrics and audit events without logging sensitive payloads.
 
 Distributed tracing remains a pre-v1 follow-up. Request IDs are the current cross-layer correlation primitive.
+
+## OpenTelemetry tracing
+
+Set `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` to an OTLP/HTTP collector endpoint to enable backend tracing. Incoming W3C trace context is extracted, backend spans are created per HTTP request, and `X-Trace-ID` is returned for correlation. Production configuration requires an HTTPS collector endpoint. Do not attach credentials, tokens, reset links, TOTP secrets, or RF payloads as span attributes.

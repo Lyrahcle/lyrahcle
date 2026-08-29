@@ -4,6 +4,16 @@ Notable changes are tracked here until versioned release notes take over.
 
 ## Unreleased
 
+### v8.4 WebAuthn, recovery, tracing, and performance
+
+- Added password-plus-WebAuthn authentication for cross-platform USB/NFC security keys with user verification and Redis-backed one-time ceremonies.
+- Added password re-authentication for security-key enrollment/removal, atomic authorization-version changes, and session revocation after key-management changes.
+- Added opt-in TLS SMTP password recovery with hashed 15-minute single-use tokens, Google Authenticator verification when enabled, and administrator-assisted recovery for WebAuthn-only accounts.
+- Added optional OTLP/HTTP OpenTelemetry tracing with W3C trace propagation and response trace IDs.
+- Added authenticated global search across satellites, assets, CVEs, and incidents plus targeted search indexes.
+- Bounded satellite position calculation with a fixed worker pool and added an authorization-gated load-test helper.
+- Added database integration coverage for WebAuthn handles, single-use recovery tokens, and global search.
+
 ### v8.3.1 smoke-test compatibility
 
 - Updated the authentication smoke test to exercise the mandatory bootstrap password-change flow before accessing protected session endpoints.

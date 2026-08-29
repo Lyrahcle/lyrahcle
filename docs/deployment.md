@@ -86,3 +86,11 @@ For production, prefer immutable release tags/images rather than deploying an ar
 ## Kubernetes
 
 The repository contains deployment scaffolding, but the Kubernetes/Helm path is not yet the canonical production deployment. Treat those files as evolving until a tested HA deployment is documented.
+
+## WebAuthn and recovery deployment
+
+For security-key authentication, set `WEBAUTHN_RP_ID` to the frontend domain and `WEBAUTHN_ORIGINS` to the exact HTTPS origins users access. WebAuthn should not be deployed behind origin-rewriting proxies unless the browser-visible origin remains stable.
+
+Password recovery remains disabled until `PASSWORD_RECOVERY_ENABLED=true` and the TLS SMTP variables are configured. Use a dedicated SMTP credential with the minimum permissions required for recovery mail. Do not place SMTP passwords in source control; inject them through the deployment secret store.
+
+If `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` is configured in production it must use HTTPS. Treat the collector as security-sensitive infrastructure and keep authentication secrets and reset links out of span attributes.

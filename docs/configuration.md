@@ -16,6 +16,17 @@
 | `SEED_ADMIN_EMAIL` | `admin` | Set before first boot |
 | `SEED_ADMIN_PASSWORD` | `admin` | Set before first boot; production requires the normal strong-password policy |
 | `ENV` | `development` | Set to `production` to enable startup safety checks |
+| `WEBAUTHN_RP_ID` | `localhost` | Relying-party domain; use the production application domain |
+| `WEBAUTHN_ORIGINS` | `http://localhost:5173` | Exact comma-separated frontend origins; HTTPS is required in production |
+| `PASSWORD_RECOVERY_ENABLED` | `false` | Enables self-service password recovery only when SMTP is configured |
+| `PASSWORD_RESET_BASE_URL` | `http://localhost:5173/` | Frontend URL that receives the temporary `token` query parameter |
+| `SMTP_HOST` | unset | Password-recovery SMTP host |
+| `SMTP_PORT` | `465` | Implicit-TLS SMTP port |
+| `SMTP_USER` | unset | SMTP username |
+| `SMTP_PASSWORD` | unset | SMTP password |
+| `SMTP_FROM` | unset | Recovery-email sender |
+| `SMTP_SERVER_NAME` | unset | TLS server name used to verify the SMTP certificate |
+| `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` | unset | Optional OTLP/HTTP traces endpoint; HTTPS is required in production |
 
 The bootstrap admin is created only when the users table is empty and is marked for mandatory password change. Changing `SEED_ADMIN_PASSWORD` later does not reset an existing account. Passwords are validated at 12-72 bytes and must include uppercase, lowercase, a number, and a symbol.
 

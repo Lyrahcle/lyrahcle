@@ -3,7 +3,7 @@ info:
   title: Lyrahcle API
   description: Space cybersecurity operations API for assets, orbital tracking, RF telemetry, incident response, TM/TC decoding,
     threat intelligence, and security administration.
-  version: 0.11.0
+  version: 0.12.0
   contact:
     name: Lyrahcle
   license:
@@ -366,6 +366,98 @@ paths:
                 type: string
         '401':
           $ref: '#/components/responses/Unauthorized'
+  /api/v1/auth/webauthn/login/start:
+    post:
+      tags: [Auth]
+      summary: Start password plus WebAuthn security-key login
+      security: []
+      responses:
+        '200': {description: WebAuthn assertion options}
+        '401': {description: Invalid credentials}
+        '409': {description: Security key not configured}
+        '429': {description: Too many authentication attempts}
+  /api/v1/auth/webauthn/login/finish:
+    post:
+      tags: [Auth]
+      summary: Finish WebAuthn security-key login
+      security: []
+      responses:
+        '200': {description: Authenticated}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {description: Invalid or expired security-key ceremony}
+  /api/v1/auth/webauthn/credentials/:
+    get:
+      tags: [Auth]
+      summary: List security keys owned by the current user
+      responses:
+        '200': {description: Security-key metadata}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+  /api/v1/auth/webauthn/credentials/register/start:
+    post:
+      tags: [Auth]
+      summary: Start security-key enrollment
+      description: Requires the current password and a viewer-or-higher bearer session. Only cross-platform authenticators with user verification are accepted.
+      responses:
+        '200': {description: WebAuthn creation options}
+        '401': {description: Current password verification failed}
+  /api/v1/auth/webauthn/credentials/register/finish:
+    post:
+      tags: [Auth]
+      summary: Finish security-key enrollment
+      description: Consumes a short-lived one-time ceremony and invalidates existing user sessions after enrollment.
+      responses:
+        '204': {description: Security key enrolled}
+        '401': {description: Invalid or expired ceremony}
+        '409': {description: Credential already registered}
+  /api/v1/auth/webauthn/credentials/{credentialID}:
+    delete:
+      tags: [Auth]
+      summary: Remove one security key owned by the current user
+      description: Requires the current password and invalidates existing sessions after removal.
+      parameters:
+      - name: credentialID
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      responses:
+        '204': {description: Security key removed}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {description: Current password verification failed}
+        '404': {description: Security key not found}
+  /api/v1/auth/password-reset/request:
+    post:
+      tags: [Auth]
+      summary: Request a password reset link
+      description: Feature-flagged. Always returns an accepted response to reduce account enumeration. Tokens are random, hashed at rest, single-use, and expire after 15 minutes.
+      security: []
+      responses:
+        '202': {description: Request accepted}
+        '429': {description: Too many recovery attempts}
+  /api/v1/auth/password-reset/complete:
+    post:
+      tags: [Auth]
+      summary: Complete password recovery
+      description: Requires Google Authenticator when TOTP is enabled. Accounts protected by a WebAuthn security key require administrator-assisted recovery instead of bypassing the key.
+      security: []
+      responses:
+        '204': {description: Password reset completed}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {description: Invalid token or second-factor verification}
+        '409': {description: Administrator-assisted recovery required}
+  /api/v1/search:
+    get:
+      tags: [System]
+      summary: Search satellites, assets, CVEs, and incidents
+      description: Requires role viewer or higher. Query length is limited and SQL is parameterized.
+      parameters:
+      - name: q
+        in: query
+        required: true
+        schema: {type: string, minLength: 2, maxLength: 96}
+      responses:
+        '200': {description: Search results}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
   /api/v1/users/:
     get:
       tags:

@@ -23,6 +23,17 @@ services:
       # admin/admin is a well-known default.
       - SEED_ADMIN_EMAIL=${SEED_ADMIN_EMAIL:-admin}
       - SEED_ADMIN_PASSWORD=${SEED_ADMIN_PASSWORD:-admin}
+      - WEBAUTHN_RP_ID=${WEBAUTHN_RP_ID:-localhost}
+      - WEBAUTHN_ORIGINS=${WEBAUTHN_ORIGINS:-http://localhost:5173}
+      - PASSWORD_RECOVERY_ENABLED=${PASSWORD_RECOVERY_ENABLED:-false}
+      - PASSWORD_RESET_BASE_URL=${PASSWORD_RESET_BASE_URL:-http://localhost:5173/}
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-465}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - SMTP_FROM=${SMTP_FROM:-}
+      - SMTP_SERVER_NAME=${SMTP_SERVER_NAME:-}
+      - OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=${OTEL_EXPORTER_OTLP_TRACES_ENDPOINT:-}
       # To enable HTTPS: run scripts/generate-dev-certs.sh, then uncomment below
       # and change the port mapping to "8443:8443" with PORT=8443.
       # - TLS_CERT_FILE=/certs/dev.crt

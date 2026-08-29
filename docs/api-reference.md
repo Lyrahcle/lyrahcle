@@ -153,3 +153,18 @@ Admin-only endpoints:
 - `DELETE /api/v1/users/{userID}` performs privacy-preserving soft deletion.
 
 `auditor` can read `/api/v1/audit-log` without user-management privileges. `analyst` can update incident workflow state, add notes, and attach evidence without gaining operator-level RF or asset mutation permissions.
+
+## WebAuthn and recovery
+
+- `POST /api/v1/auth/webauthn/login/start` starts password + security-key authentication.
+- `POST /api/v1/auth/webauthn/login/finish` validates the one-time WebAuthn assertion and issues the session.
+- `GET /api/v1/auth/webauthn/credentials/` lists the current user's keys.
+- `POST /api/v1/auth/webauthn/credentials/register/start` requires the current password and starts enrollment.
+- `POST /api/v1/auth/webauthn/credentials/register/finish` completes enrollment and revokes prior sessions.
+- `DELETE /api/v1/auth/webauthn/credentials/{credentialID}` requires the current password and removes one owned key.
+- `POST /api/v1/auth/password-reset/request` requests a generic, non-enumerating temporary-link recovery flow when enabled.
+- `POST /api/v1/auth/password-reset/complete` consumes the single-use token and enforces the account's recovery-factor policy.
+
+## Global search
+
+`GET /api/v1/search?q=...` searches satellites, assets, CVEs, and incidents for authenticated users. Queries are length-limited and parameterized; results are capped by the backend.

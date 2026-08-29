@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { authHeaders, decodeToken, getRole, getToken, isAuthenticated, login, LoginRateLimitedError, logout } from './auth.js'
+import { authHeaders, decodeToken, getRole, getToken, isAuthenticated, login, LoginRateLimitedError, logout, prepareCreationOptions, prepareRequestOptions, WebAuthnRequiredError } from './auth.js'
 
 function makeToken(payload) {
   const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }))
@@ -62,6 +62,27 @@ describe('auth client', () => {
     global.fetch.mockResolvedValue({ ok: false, status: 429 })
     await expect(login('admin', 'admin')).rejects.toBeInstanceOf(LoginRateLimitedError)
     expect(getToken()).toBeNull()
+  })
+
+  it('login requires WebAuthn when the account has a security key', async () => {
+    global.fetch.mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: () => Promise.resolve({ error: 'webauthn_required' }),
+    })
+    await expect(login('admin', 'correct')).rejects.toBeInstanceOf(WebAuthnRequiredError)
+    expect(getToken()).toBeNull()
+  })
+
+  it('prepares WebAuthn creation and request binary fields', () => {
+    const creation = prepareCreationOptions({ publicKey: { challenge: 'AQI', user: { id: 'AwQ' }, excludeCredentials: [{ id: 'BQY', type: 'public-key' }] } })
+    expect(Array.from(creation.challenge)).toEqual([1, 2])
+    expect(Array.from(creation.user.id)).toEqual([3, 4])
+    expect(Array.from(creation.excludeCredentials[0].id)).toEqual([5, 6])
+
+    const request = prepareRequestOptions({ publicKey: { challenge: 'Bwg', allowCredentials: [{ id: 'CQo', type: 'public-key' }] } })
+    expect(Array.from(request.challenge)).toEqual([7, 8])
+    expect(Array.from(request.allowCredentials[0].id)).toEqual([9, 10])
   })
 
   it('login throws TotpRequiredError when the account has 2FA enabled', async () => {

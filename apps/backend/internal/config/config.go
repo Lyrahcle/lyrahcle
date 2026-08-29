@@ -10,18 +10,29 @@ import (
 )
 
 type Config struct {
-	DatabaseURL       string
-	RedisURL          string
-	Port              string
-	CelestrakGroups   []string
-	JWTSecret         []byte
-	JWTPreviousSecret []byte
-	JWTAccessTTL      time.Duration
-	TLSCertFile       string
-	TLSKeyFile        string
-	SeedAdminEmail    string
-	SeedAdminPass     string
-	Environment       string
+	DatabaseURL             string
+	RedisURL                string
+	Port                    string
+	CelestrakGroups         []string
+	JWTSecret               []byte
+	JWTPreviousSecret       []byte
+	JWTAccessTTL            time.Duration
+	TLSCertFile             string
+	TLSKeyFile              string
+	SeedAdminEmail          string
+	SeedAdminPass           string
+	Environment             string
+	WebAuthnRPID            string
+	WebAuthnOrigins         []string
+	PasswordRecoveryEnabled bool
+	PasswordResetBaseURL    string
+	SMTPHost                string
+	SMTPPort                string
+	SMTPUser                string
+	SMTPPassword            string
+	SMTPFrom                string
+	SMTPServerName          string
+	OTLPTraceEndpoint       string
 }
 
 func Load() Config {
@@ -39,18 +50,29 @@ func Load() Config {
 	}
 
 	cfg := Config{
-		DatabaseURL:       getEnv("DATABASE_URL", "postgres://lyrahcle:lyrahcle@localhost:5432/lyrahcle?sslmode=disable"),
-		RedisURL:          getEnv("REDIS_URL", "localhost:6379"),
-		Port:              getEnv("PORT", "8080"),
-		CelestrakGroups:   strings.Split(getEnv("CELESTRAK_GROUPS", "stations"), ","),
-		JWTSecret:         []byte(secret),
-		JWTPreviousSecret: []byte(getEnv("JWT_SECRET_PREVIOUS", "")),
-		JWTAccessTTL:      ttl,
-		TLSCertFile:       getEnv("TLS_CERT_FILE", ""),
-		TLSKeyFile:        getEnv("TLS_KEY_FILE", ""),
-		SeedAdminEmail:    getEnv("SEED_ADMIN_EMAIL", "admin"),
-		SeedAdminPass:     getEnv("SEED_ADMIN_PASSWORD", "admin"),
-		Environment:       getEnv("ENV", "development"),
+		DatabaseURL:             getEnv("DATABASE_URL", "postgres://lyrahcle:lyrahcle@localhost:5432/lyrahcle?sslmode=disable"),
+		RedisURL:                getEnv("REDIS_URL", "localhost:6379"),
+		Port:                    getEnv("PORT", "8080"),
+		CelestrakGroups:         strings.Split(getEnv("CELESTRAK_GROUPS", "stations"), ","),
+		JWTSecret:               []byte(secret),
+		JWTPreviousSecret:       []byte(getEnv("JWT_SECRET_PREVIOUS", "")),
+		JWTAccessTTL:            ttl,
+		TLSCertFile:             getEnv("TLS_CERT_FILE", ""),
+		TLSKeyFile:              getEnv("TLS_KEY_FILE", ""),
+		SeedAdminEmail:          getEnv("SEED_ADMIN_EMAIL", "admin"),
+		SeedAdminPass:           getEnv("SEED_ADMIN_PASSWORD", "admin"),
+		Environment:             getEnv("ENV", "development"),
+		WebAuthnRPID:            getEnv("WEBAUTHN_RP_ID", "localhost"),
+		WebAuthnOrigins:         splitCSV(getEnv("WEBAUTHN_ORIGINS", "http://localhost:5173")),
+		PasswordRecoveryEnabled: strings.EqualFold(getEnv("PASSWORD_RECOVERY_ENABLED", "false"), "true"),
+		PasswordResetBaseURL:    getEnv("PASSWORD_RESET_BASE_URL", "http://localhost:5173/"),
+		SMTPHost:                getEnv("SMTP_HOST", ""),
+		SMTPPort:                getEnv("SMTP_PORT", "465"),
+		SMTPUser:                getEnv("SMTP_USER", ""),
+		SMTPPassword:            getEnv("SMTP_PASSWORD", ""),
+		SMTPFrom:                getEnv("SMTP_FROM", ""),
+		SMTPServerName:          getEnv("SMTP_SERVER_NAME", ""),
+		OTLPTraceEndpoint:       getEnv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", ""),
 	}
 
 	production := cfg.IsProduction()
@@ -96,11 +118,45 @@ func Load() Config {
 		log.Println("WARNING: TLS_CERT_FILE/TLS_KEY_FILE not set; serving plain HTTP. Set both to enable HTTPS (see scripts/generate-dev-certs.sh).")
 	}
 
+	if cfg.WebAuthnRPID == "" || len(cfg.WebAuthnOrigins) == 0 {
+		log.Fatal("FATAL: WEBAUTHN_RP_ID and WEBAUTHN_ORIGINS must be configured")
+	}
+	if production {
+		for _, origin := range cfg.WebAuthnOrigins {
+			if !strings.HasPrefix(strings.ToLower(origin), "https://") {
+				log.Fatal("FATAL: WEBAUTHN_ORIGINS must use HTTPS in production")
+			}
+		}
+	}
+	if cfg.PasswordRecoveryEnabled {
+		if cfg.SMTPHost == "" || cfg.SMTPFrom == "" || cfg.SMTPServerName == "" || cfg.PasswordResetBaseURL == "" {
+			log.Fatal("FATAL: password recovery requires SMTP_HOST, SMTP_FROM, SMTP_SERVER_NAME, and PASSWORD_RESET_BASE_URL")
+		}
+		if production && !strings.HasPrefix(strings.ToLower(cfg.PasswordResetBaseURL), "https://") {
+			log.Fatal("FATAL: PASSWORD_RESET_BASE_URL must use HTTPS in production")
+		}
+	}
+	if production && cfg.OTLPTraceEndpoint != "" && !strings.HasPrefix(strings.ToLower(cfg.OTLPTraceEndpoint), "https://") {
+		log.Fatal("FATAL: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT must use HTTPS in production")
+	}
+
 	return cfg
 }
 
 func (c Config) IsProduction() bool {
 	return strings.EqualFold(c.Environment, "production") || strings.EqualFold(c.Environment, "prod")
+}
+
+func splitCSV(value string) []string {
+	parts := strings.Split(value, ",")
+	out := make([]string, 0, len(parts))
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part != "" {
+			out = append(out, part)
+		}
+	}
+	return out
 }
 
 func getEnv(key, fallback string) string {

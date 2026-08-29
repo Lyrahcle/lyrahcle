@@ -49,6 +49,7 @@ export async function login(identifier, password, totpCode) {
     if (res.status === 401) {
       const body = typeof res.json === 'function' ? await res.json().catch(() => null) : null
       if (body?.error === 'totp_required') throw new TotpRequiredError()
+      if (body?.error === 'webauthn_required') throw new WebAuthnRequiredError()
       throw new Error(totpCode ? 'Invalid two-factor code' : 'Invalid email/username or password')
     }
     throw new Error('Login failed')
@@ -99,4 +100,89 @@ export function isAdmin() {
 
 export function passwordChangeRequired() {
   return Boolean(decodeToken(getToken())?.password_change_required)
+}
+
+export class WebAuthnRequiredError extends Error {
+  constructor() {
+    super('webauthn_required')
+  }
+}
+
+function decodeBase64Url(value) {
+  const padding = '='.repeat((4 - (value.length % 4)) % 4)
+  const base64 = (value + padding).replace(/-/g, '+').replace(/_/g, '/')
+  const binary = atob(base64)
+  return Uint8Array.from(binary, (char) => char.charCodeAt(0))
+}
+
+function encodeBase64Url(value) {
+  const bytes = new Uint8Array(value)
+  let binary = ''
+  for (const byte of bytes) binary += String.fromCharCode(byte)
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '')
+}
+
+export function prepareCreationOptions(payload) {
+  const source = payload.publicKey ?? payload
+  return {
+    ...source,
+    challenge: decodeBase64Url(source.challenge),
+    user: { ...source.user, id: decodeBase64Url(source.user.id) },
+    excludeCredentials: (source.excludeCredentials ?? []).map((item) => ({ ...item, id: decodeBase64Url(item.id) })),
+  }
+}
+
+export function prepareRequestOptions(payload) {
+  const source = payload.publicKey ?? payload
+  return {
+    ...source,
+    challenge: decodeBase64Url(source.challenge),
+    allowCredentials: (source.allowCredentials ?? []).map((item) => ({ ...item, id: decodeBase64Url(item.id) })),
+  }
+}
+
+export function serializeCredential(credential) {
+  const response = credential.response
+  const serialized = {
+    id: credential.id,
+    rawId: encodeBase64Url(credential.rawId),
+    type: credential.type,
+    authenticatorAttachment: credential.authenticatorAttachment ?? undefined,
+    clientExtensionResults: credential.getClientExtensionResults(),
+    response: {
+      clientDataJSON: encodeBase64Url(response.clientDataJSON),
+    },
+  }
+  if ('attestationObject' in response) serialized.response.attestationObject = encodeBase64Url(response.attestationObject)
+  if ('authenticatorData' in response) serialized.response.authenticatorData = encodeBase64Url(response.authenticatorData)
+  if ('signature' in response) serialized.response.signature = encodeBase64Url(response.signature)
+  if ('userHandle' in response && response.userHandle) serialized.response.userHandle = encodeBase64Url(response.userHandle)
+  if ('getTransports' in response) serialized.response.transports = response.getTransports()
+  return serialized
+}
+
+export async function loginWithSecurityKey(identifier, password) {
+  if (!window.PublicKeyCredential || !navigator.credentials) throw new Error('Security keys are not supported by this browser')
+  const start = await fetch('/api/v1/auth/webauthn/login/start', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ identifier, password }),
+  })
+  if (!start.ok) {
+    if (start.status === 429) throw new LoginRateLimitedError()
+    throw new Error('Unable to start security-key authentication')
+  }
+  const flow = await start.json()
+  const credential = await navigator.credentials.get({ publicKey: prepareRequestOptions(flow.options) })
+  if (!credential) throw new Error('Security-key authentication was cancelled')
+  const finish = await fetch('/api/v1/auth/webauthn/login/finish', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ flow_id: flow.flow_id, credential: serializeCredential(credential) }),
+  })
+  if (!finish.ok) throw new Error('Security-key verification failed')
+  const data = await finish.json()
+  localStorage.setItem(TOKEN_KEY, data.token)
+  localStorage.setItem(ROLE_KEY, data.role)
+  return data
 }

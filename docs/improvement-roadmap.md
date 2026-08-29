@@ -1,6 +1,6 @@
 # Improvement Roadmap
 
-This roadmap tracks the current product and security backlog after v8.2.
+This roadmap tracks the current product and security backlog after v8.4.
 
 Status values: **Shipped**, **Partial**, **Next**, and **Later**.
 
@@ -13,8 +13,8 @@ Status values: **Shipped**, **Partial**, **Next**, and **Later**.
 | Login-specific Redis rate limiting | Shipped | Current |
 | Strict input validation | Shipped | Current |
 | JWT signing-key rotation overlap and user-wide revocation | Shipped | Current |
-| WebAuthn security-key second factor | Next | v8.4-v9 |
-| Password recovery with 2FA and temporary link | Next | v8.4-v9 |
+| WebAuthn security-key second factor | Shipped | v8.4 |
+| Password recovery with TOTP and temporary link | Shipped | v8.4 |
 | Force password change on first default-admin login | Shipped | Current |
 | Stronger password policy | Shipped | Current |
 | Enforce TLS for all production authentication traffic | Shipped | Current |
@@ -50,10 +50,10 @@ Status values: **Shipped**, **Partial**, **Next**, and **Later**.
 |---|---|---|
 | CVE filter indexes | Shipped | Current |
 | Response/orbital/CVE caching | Partial | v8.3-v9 |
-| Satellite-load optimization | Next | v8.3 |
-| Index review for all filtered searches | Next | v8.3 |
-| SQL query optimization | Next | v8.3 |
-| Load tests with large satellite/user counts | Next | v8.3-v9 |
+| Satellite-load optimization | Partial | v8.4 |
+| Index review for all filtered searches | Partial | v8.4-v9 |
+| SQL query optimization | Partial | v8.4-v9 |
+| Load-test tooling | Shipped | v8.4 |
 | Station federation | Later | v9+ |
 | Multi-tenant architecture | Later | Enterprise |
 
@@ -81,7 +81,7 @@ Status values: **Shipped**, **Partial**, **Next**, and **Later**.
 | Provisioned Grafana dashboard | Shipped | Current |
 | Prometheus alert rules | Shipped | Current |
 | Request correlation IDs | Shipped | Current |
-| OpenTelemetry distributed tracing | Next | v8.3 |
+| OpenTelemetry distributed tracing | Shipped | v8.4 |
 | Automated staging/production CD | Later | v9 |
 | Container image scanning | Shipped | Current |
 | Remote SDR configuration | Later | v9 |
@@ -94,8 +94,8 @@ Status values: **Shipped**, **Partial**, **Next**, and **Later**.
 | EN/ES/FR/DE i18n | Shipped | Current |
 | Light/dark mode | Shipped | Current |
 | Accessibility work | Partial | Before v1.0 |
-| Header search | Partial | v8.3 |
-| Search across additional sections | Next | v8.3 |
+| Header search | Shipped | v8.4 |
+| Search across satellites/assets/CVEs/incidents | Shipped | v8.4 |
 | OpenAPI and Swagger | Shipped | Current |
 | Refactored technical documentation | Shipped | Current |
 | Updated README for auth, realtime, and languages | Shipped | Current |

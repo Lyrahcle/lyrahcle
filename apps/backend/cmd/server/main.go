@@ -12,6 +12,7 @@ import (
 	"os/signal"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -31,7 +32,9 @@ import (
 	"github.com/mlko01/lyrahcle/apps/backend/internal/config"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/db"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/detection"
+	"github.com/mlko01/lyrahcle/apps/backend/internal/mailer"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/metrics"
+	"github.com/mlko01/lyrahcle/apps/backend/internal/observability"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/orbit"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/ratelimit"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/redisclient"
@@ -42,11 +45,17 @@ import (
 	"github.com/mlko01/lyrahcle/apps/backend/internal/tmtc"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/tokenblocklist"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/validate"
+	"github.com/mlko01/lyrahcle/apps/backend/internal/webauthnflow"
 )
 
 func main() {
 	ctx := context.Background()
 	cfg := config.Load()
+	shutdownTracing, err := observability.Init(ctx, cfg.OTLPTraceEndpoint)
+	if err != nil {
+		log.Fatalf("tracing init: %v", err)
+	}
+	defer shutdownTracing(context.Background())
 
 	pool, err := db.Connect(ctx, cfg.DatabaseURL)
 	if err != nil {
@@ -170,6 +179,12 @@ func newRouter(
 	blocklist := tokenblocklist.New(redisClient)
 	sessions := sessionstore.New(redisClient)
 	cache := respcache.New(redisClient)
+	webAuthnCredentials := store.NewWebAuthnStore(pool)
+	passwordResets := store.NewPasswordResetStore(pool)
+	searchStore := store.NewSearchStore(pool)
+	webAuthnFlows := webauthnflow.New(redisClient)
+	webAuthnHandler := buildWebAuthnHandler(cfg)
+	mailClient := mailer.New(mailer.Config{Host: cfg.SMTPHost, Port: cfg.SMTPPort, Username: cfg.SMTPUser, Password: cfg.SMTPPassword, From: cfg.SMTPFrom, ServerName: cfg.SMTPServerName})
 	isTokenRevoked := func(ctx context.Context, claims *auth.Claims) (bool, error) {
 		user, err := users.GetByID(ctx, claims.UserID)
 		if err != nil {
@@ -200,6 +215,7 @@ func newRouter(
 	r.Use(middleware.RequestID)
 	r.Use(requestIDResponseHeader)
 	r.Use(structuredRequestLogger)
+	r.Use(observability.Middleware)
 	r.Use(middleware.Recoverer)
 	r.Use(securityHeaders(cfg.TLSCertFile != "" && cfg.TLSKeyFile != ""))
 	r.Use(metrics.Middleware)
@@ -236,6 +252,21 @@ func newRouter(
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Get("/ping", func(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte(`{"message":"pong from lyrahcle"}`))
+		})
+
+		r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)).Get("/search", func(w http.ResponseWriter, r *http.Request) {
+			query := strings.TrimSpace(r.URL.Query().Get("q"))
+			if len(query) < 2 || len(query) > 96 {
+				http.Error(w, "q must contain 2-96 characters", http.StatusBadRequest)
+				return
+			}
+			results, err := searchStore.Search(r.Context(), query, 12)
+			if err != nil {
+				http.Error(w, "search failed", http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(results)
 		})
 
 		r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)).Get("/system-info", func(w http.ResponseWriter, r *http.Request) {
@@ -356,6 +387,19 @@ func newRouter(
 					return
 				}
 
+				webAuthnCount, err := webAuthnCredentialCount(r.Context(), webAuthnCredentials, user.ID)
+				if err != nil {
+					http.Error(w, "authentication state unavailable", http.StatusServiceUnavailable)
+					return
+				}
+				if webAuthnCount > 0 {
+					metrics.AuthLoginsTotal.WithLabelValues("webauthn_required").Inc()
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(http.StatusUnauthorized)
+					json.NewEncoder(w).Encode(map[string]string{"error": "webauthn_required"})
+					return
+				}
+
 				if user.TOTPEnabled {
 					if body.TOTPCode == "" {
 						metrics.AuthLoginsTotal.WithLabelValues("totp_required").Inc()
@@ -397,6 +441,9 @@ func newRouter(
 				w.Header().Set("Content-Type", "application/json")
 				json.NewEncoder(w).Encode(map[string]interface{}{"token": token, "role": user.Role, "must_change_password": user.MustChangePassword})
 			})
+
+			registerWebAuthnRoutes(r, cfg, webAuthnHandler, webAuthnFlows, webAuthnCredentials, users, sessions, blocklist, auditLog, redisClient, isTokenRevoked, loginLimiter)
+			registerPasswordRecoveryRoutes(r, cfg, users, passwordResets, webAuthnCredentials, sessions, blocklist, auditLog, mailClient, redisClient, loginLimiter)
 
 			r.Route("/totp", func(r chi.Router) {
 				r.Use(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked))
@@ -2308,13 +2355,33 @@ func satellitesWithPositions(ctx context.Context, satellites *store.SatelliteSto
 		return nil, err
 	}
 
-	out = make([]satWithPos, 0, len(list))
-	for _, sat := range list {
-		entry := satWithPos{Satellite: sat}
-		if pos, err := orbit.CurrentPosition(sat.TLELine1, sat.TLELine2); err == nil {
-			entry.Position = &pos
+	out = make([]satWithPos, len(list))
+	workers := 8
+	if len(list) < workers {
+		workers = len(list)
+	}
+	if workers > 0 {
+		jobs := make(chan int)
+		var wg sync.WaitGroup
+		for worker := 0; worker < workers; worker++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				for index := range jobs {
+					sat := list[index]
+					entry := satWithPos{Satellite: sat}
+					if pos, err := orbit.CurrentPosition(sat.TLELine1, sat.TLELine2); err == nil {
+						entry.Position = &pos
+					}
+					out[index] = entry
+				}
+			}()
 		}
-		out = append(out, entry)
+		for index := range list {
+			jobs <- index
+		}
+		close(jobs)
+		wg.Wait()
 	}
 
 	cache.Set(ctx, cacheKey, out, 5*time.Second)

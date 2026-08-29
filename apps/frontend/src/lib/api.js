@@ -471,3 +471,63 @@ export async function updateDetectionRule(ruleId, fields) {
   return res.json()
 }
 
+
+export async function globalSearch(query, signal) {
+  const res = await authedFetch(`/api/v1/search?q=${encodeURIComponent(query)}`, { signal })
+  if (!res.ok) throw new Error(await readErrorText(res, 'search failed'))
+  return res.json()
+}
+
+export async function fetchSecurityKeys() {
+  const res = await authedFetch('/api/v1/auth/webauthn/credentials/')
+  if (!res.ok) throw new Error(await readErrorText(res, 'failed to fetch security keys'))
+  return res.json()
+}
+
+export async function registerSecurityKey(label, password) {
+  if (!window.PublicKeyCredential || !navigator.credentials) throw new Error('Security keys are not supported by this browser')
+  const start = await authedFetch('/api/v1/auth/webauthn/credentials/register/start', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ label, password }),
+  })
+  if (!start.ok) throw new Error(await readErrorText(start, 'failed to start security-key registration'))
+  const flow = await start.json()
+  const { prepareCreationOptions, serializeCredential } = await import('./auth.js')
+  const credential = await navigator.credentials.create({ publicKey: prepareCreationOptions(flow.options) })
+  if (!credential) throw new Error('Security-key registration was cancelled')
+  const finish = await authedFetch('/api/v1/auth/webauthn/credentials/register/finish', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ flow_id: flow.flow_id, credential: serializeCredential(credential) }),
+  })
+  if (!finish.ok) throw new Error(await readErrorText(finish, 'failed to register security key'))
+}
+
+export async function removeSecurityKey(credentialId, password) {
+  const res = await authedFetch(`/api/v1/auth/webauthn/credentials/${encodeURIComponent(credentialId)}`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password }),
+  })
+  if (!res.ok) throw new Error(await readErrorText(res, 'failed to remove security key'))
+}
+
+export async function requestPasswordReset(identifier) {
+  const res = await fetch('/api/v1/auth/password-reset/request', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ identifier }),
+  })
+  if (!res.ok) throw new Error('password recovery request failed')
+  return res.json()
+}
+
+export async function completePasswordReset(token, newPassword, totpCode) {
+  const res = await fetch('/api/v1/auth/password-reset/complete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, new_password: newPassword, totp_code: totpCode }),
+  })
+  if (!res.ok) throw new Error(await readErrorText(res, 'password reset failed'))
+}

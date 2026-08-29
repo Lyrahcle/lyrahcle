@@ -43,3 +43,11 @@ Role, account-status, and deletion actions are written to the audit log. Role an
 ## Two-factor authentication
 
 The supported user-facing second factor is Google Authenticator using standard TOTP. Enabling or disabling TOTP revokes existing sessions. WebAuthn security keys are intentionally tracked separately as a future identity release.
+
+## Hardware security keys
+
+Users can enroll cross-platform WebAuthn security keys from Settings. Enrollment and removal require the current password and revoke existing sessions. Once a key is present, password login must be completed with the registered key. See [Security keys and recovery](./security-keys-and-recovery.md).
+
+## Recovery
+
+Self-service password recovery is disabled unless SMTP recovery is explicitly configured. Google Authenticator remains required during recovery when enabled. WebAuthn-only protected accounts use administrator-assisted recovery rather than allowing an email link to bypass the hardware factor.

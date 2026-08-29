@@ -584,3 +584,101 @@ func TestUserStoreLifecycle(t *testing.T) {
 		t.Fatalf("GetByID after delete: err = %v, want ErrUserNotFound", err)
 	}
 }
+
+func TestWebAuthnHandleAndCredentialCount(t *testing.T) {
+	pool := testPool(t)
+	ctx := context.Background()
+	users := NewUserStore(pool)
+	credentials := NewWebAuthnStore(pool)
+
+	user, err := users.Create(ctx, "webauthn@example.com", "hash", "viewer")
+	if err != nil {
+		t.Fatalf("Create returned error: %v", err)
+	}
+	handle, err := credentials.Handle(ctx, user.ID)
+	if err != nil {
+		t.Fatalf("Handle returned error: %v", err)
+	}
+	if len(handle) != 32 {
+		t.Fatalf("handle length = %d, want 32", len(handle))
+	}
+	count, err := credentials.Count(ctx, user.ID)
+	if err != nil {
+		t.Fatalf("Count returned error: %v", err)
+	}
+	if count != 0 {
+		t.Fatalf("credential count = %d, want 0", count)
+	}
+}
+
+func TestPasswordResetTokenIsSingleUse(t *testing.T) {
+	pool := testPool(t)
+	ctx := context.Background()
+	users := NewUserStore(pool)
+	resets := NewPasswordResetStore(pool)
+
+	user, err := users.Create(ctx, "reset@example.com", "old-hash", "viewer")
+	if err != nil {
+		t.Fatalf("Create returned error: %v", err)
+	}
+	tokenHash := []byte("01234567890123456789012345678901")
+	if err := resets.Create(ctx, user.ID, tokenHash, time.Now().Add(time.Minute)); err != nil {
+		t.Fatalf("Create reset token returned error: %v", err)
+	}
+	resolved, err := resets.Lookup(ctx, tokenHash)
+	if err != nil || resolved != user.ID {
+		t.Fatalf("Lookup = %v, %v", resolved, err)
+	}
+	if _, err := resets.ConsumeAndUpdatePassword(ctx, tokenHash, "new-hash"); err != nil {
+		t.Fatalf("ConsumeAndUpdatePassword returned error: %v", err)
+	}
+	if _, err := resets.Lookup(ctx, tokenHash); err == nil {
+		t.Fatal("used reset token remained valid")
+	}
+	updated, err := users.GetByID(ctx, user.ID)
+	if err != nil {
+		t.Fatalf("GetByID returned error: %v", err)
+	}
+	if updated.PasswordHash != "new-hash" {
+		t.Fatalf("password hash = %q, want new-hash", updated.PasswordHash)
+	}
+	if updated.AuthVersion <= user.AuthVersion {
+		t.Fatalf("auth version = %d, want > %d", updated.AuthVersion, user.AuthVersion)
+	}
+}
+
+func TestGlobalSearchFindsSatelliteAndCVE(t *testing.T) {
+	pool := testPool(t)
+	ctx := context.Background()
+	search := NewSearchStore(pool)
+
+	if _, err := pool.Exec(ctx, `INSERT INTO satellites (norad_id, name, tle_line1, tle_line2) VALUES (25544, 'ISS SEARCH', 'L1', 'L2')`); err != nil {
+		t.Fatalf("insert satellite: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO space_cves (cve_id, description, severity, keyword) VALUES ('CVE-2099-1234', 'satellite search test', 'high', 'satellite')`); err != nil {
+		t.Fatalf("insert CVE: %v", err)
+	}
+
+	satResults, err := search.Search(ctx, "ISS SEARCH", 12)
+	if err != nil {
+		t.Fatalf("satellite Search returned error: %v", err)
+	}
+	if len(satResults) == 0 || satResults[0].Type != "satellites" {
+		t.Fatalf("satellite results = %#v", satResults)
+	}
+
+	cveResults, err := search.Search(ctx, "CVE-2099-1234", 12)
+	if err != nil {
+		t.Fatalf("CVE Search returned error: %v", err)
+	}
+	found := false
+	for _, result := range cveResults {
+		if result.Type == "cves" && result.ID == "CVE-2099-1234" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("CVE result not found: %#v", cveResults)
+	}
+}

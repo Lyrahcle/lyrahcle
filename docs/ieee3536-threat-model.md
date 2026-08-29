@@ -235,3 +235,11 @@ Update this threat model when any of the following changes:
 - new persistent data category
 - new third-party threat-intelligence source
 - production deployment topology
+
+## v8.4 identity boundary update
+
+WebAuthn ceremonies are short-lived, single-use state stored in Redis and bound to the authenticated user. Cross-platform authenticators require user verification, and key enrollment/removal requires the current password. Existing sessions are invalidated when security keys change.
+
+Password recovery is a separate trust boundary. The public request endpoint is non-enumerating; reset secrets are random, hashed at rest, single-use, and short-lived. TOTP-protected accounts require a current TOTP during recovery. WebAuthn-only accounts cannot downgrade through email recovery and require administrator-assisted restoration.
+
+OTLP tracing must never carry bearer tokens, WebAuthn responses, TOTP secrets, password-reset URLs, passwords, agent keys, or raw RF evidence as attributes.

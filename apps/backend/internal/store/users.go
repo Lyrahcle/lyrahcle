@@ -226,6 +226,17 @@ func (s *UserStore) SetEnabled(ctx context.Context, id uuid.UUID, enabled bool) 
 	return u, err
 }
 
+func (s *UserStore) BumpAuthVersion(ctx context.Context, id uuid.UUID) error {
+	tag, err := s.pool.Exec(ctx, `UPDATE users SET auth_version = auth_version + 1 WHERE id = $1 AND deleted_at IS NULL`, id)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrUserNotFound
+	}
+	return nil
+}
+
 func (s *UserStore) SoftDelete(ctx context.Context, id uuid.UUID) error {
 	tag, err := s.pool.Exec(ctx, `UPDATE users SET enabled = false, deleted_at = now(), email = 'deleted-' || id::text || '@invalid.local', username = 'deleted-' || substr(id::text, 1, 12), password_hash = '!deleted!', totp_secret = NULL, totp_enabled = false, must_change_password = false, auth_version = auth_version + 1 WHERE id = $1 AND deleted_at IS NULL`, id)
 	if err != nil {

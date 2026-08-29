@@ -54,4 +54,10 @@ v1.0 should require green CI, production-safe defaults, tested recovery procedur
 
 ## Identity and authorization hardening
 
-Delivered in v8.3: bootstrap password rotation, stronger password policy, analyst/auditor roles, account disable/delete, and a documented permission matrix. Password recovery and WebAuthn remain isolated follow-up work.
+Delivered in v8.3: bootstrap password rotation, stronger password policy, analyst/auditor roles, account disable/delete, and a documented permission matrix. WebAuthn security-key authentication and opt-in password recovery are delivered in v8.4. Hardware-backed account recovery remains deliberately administrator-assisted when no TOTP factor exists.
+
+## v8.4 identity and performance milestone
+
+Delivered: cross-platform WebAuthn security keys, opt-in TLS SMTP password recovery, OTLP tracing export, authenticated global search, targeted search indexes, bounded orbital-position workers, and a controlled load-test helper.
+
+Next: broader endpoint audit coverage, database query plans under production-like data, richer operational charts, connectivity/CVE operator guides, restore drills, and agent certificate enrollment.

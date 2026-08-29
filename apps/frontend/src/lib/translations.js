@@ -1272,4 +1272,114 @@ for (const [language, extra] of Object.entries(detectionTranslations)) {
   translations[language].detections = extra.detections
 }
 
+
+const v84Translations = {
+  en: {
+    header: { searchType: { incidents: 'Incidents' } },
+    auth: {
+      securityKeyRequired: 'Security key required',
+      securityKeyHint: 'Insert or tap your registered USB/NFC security key, then continue.',
+      useSecurityKey: 'Use security key',
+      forgotPassword: 'Forgot password?',
+      recoveryTitle: 'Password recovery',
+      recoveryHint: 'If recovery is enabled and the account exists, a single-use link will be sent.',
+      recoverySent: 'If the account is eligible, a recovery link has been sent.',
+      sendRecoveryLink: 'Send recovery link',
+      resetPassword: 'Reset password',
+      resetPasswordHint: 'Choose a new strong password. Enter your Google Authenticator code if 2FA is enabled.',
+      totpCodeOptional: 'Google Authenticator code (if enabled)',
+    },
+    settings: {
+      securityKeys: 'Security keys',
+      securityKeysHint: 'Register roaming WebAuthn/FIDO2 keys. Once a key is registered, sign-in requires a registered security key after the password.',
+      securityKeyLabel: 'Key label',
+      securityKeyDefaultLabel: 'Security key',
+      addSecurityKey: 'Add key',
+      removeSecurityKey: 'Remove security key',
+      noSecurityKeys: 'No security keys registered.',
+    },
+  },
+  es: {
+    header: { searchType: { incidents: 'Incidentes' } },
+    auth: {
+      securityKeyRequired: 'Se requiere llave de seguridad',
+      securityKeyHint: 'Inserta o acerca tu llave USB/NFC registrada y continúa.',
+      useSecurityKey: 'Usar llave de seguridad',
+      forgotPassword: '¿Olvidaste la contraseña?',
+      recoveryTitle: 'Recuperación de contraseña',
+      recoveryHint: 'Si la recuperación está habilitada y la cuenta existe, se enviará un enlace de un solo uso.',
+      recoverySent: 'Si la cuenta es elegible, se ha enviado un enlace de recuperación.',
+      sendRecoveryLink: 'Enviar enlace de recuperación',
+      resetPassword: 'Restablecer contraseña',
+      resetPasswordHint: 'Elige una contraseña fuerte. Introduce el código de Google Authenticator si el 2FA está activo.',
+      totpCodeOptional: 'Código de Google Authenticator (si está activo)',
+    },
+    settings: {
+      securityKeys: 'Llaves de seguridad',
+      securityKeysHint: 'Registra llaves WebAuthn/FIDO2 externas. Al registrar una, el inicio de sesión exigirá una llave después de la contraseña.',
+      securityKeyLabel: 'Etiqueta de la llave',
+      securityKeyDefaultLabel: 'Llave de seguridad',
+      addSecurityKey: 'Añadir llave',
+      removeSecurityKey: 'Eliminar llave de seguridad',
+      noSecurityKeys: 'No hay llaves de seguridad registradas.',
+    },
+  },
+  fr: {
+    header: { searchType: { incidents: 'Incidents' } },
+    auth: {
+      securityKeyRequired: 'Clé de sécurité requise',
+      securityKeyHint: 'Insérez ou touchez votre clé USB/NFC enregistrée, puis continuez.',
+      useSecurityKey: 'Utiliser la clé de sécurité',
+      forgotPassword: 'Mot de passe oublié ?',
+      recoveryTitle: 'Récupération du mot de passe',
+      recoveryHint: 'Si la récupération est activée et que le compte existe, un lien à usage unique sera envoyé.',
+      recoverySent: 'Si le compte est éligible, un lien de récupération a été envoyé.',
+      sendRecoveryLink: 'Envoyer le lien',
+      resetPassword: 'Réinitialiser le mot de passe',
+      resetPasswordHint: 'Choisissez un mot de passe fort. Saisissez le code Google Authenticator si le 2FA est activé.',
+      totpCodeOptional: 'Code Google Authenticator (si activé)',
+    },
+    settings: {
+      securityKeys: 'Clés de sécurité',
+      securityKeysHint: 'Enregistrez des clés WebAuthn/FIDO2 amovibles. Après enregistrement, la connexion exige une clé après le mot de passe.',
+      securityKeyLabel: 'Libellé de la clé',
+      securityKeyDefaultLabel: 'Clé de sécurité',
+      addSecurityKey: 'Ajouter une clé',
+      removeSecurityKey: 'Supprimer la clé',
+      noSecurityKeys: 'Aucune clé de sécurité enregistrée.',
+    },
+  },
+  de: {
+    header: { searchType: { incidents: 'Vorfälle' } },
+    auth: {
+      securityKeyRequired: 'Sicherheitsschlüssel erforderlich',
+      securityKeyHint: 'Stecke deinen registrierten USB/NFC-Sicherheitsschlüssel ein oder berühre ihn und fahre fort.',
+      useSecurityKey: 'Sicherheitsschlüssel verwenden',
+      forgotPassword: 'Passwort vergessen?',
+      recoveryTitle: 'Passwortwiederherstellung',
+      recoveryHint: 'Wenn die Wiederherstellung aktiviert ist und das Konto existiert, wird ein Einmal-Link gesendet.',
+      recoverySent: 'Wenn das Konto berechtigt ist, wurde ein Wiederherstellungslink gesendet.',
+      sendRecoveryLink: 'Wiederherstellungslink senden',
+      resetPassword: 'Passwort zurücksetzen',
+      resetPasswordHint: 'Wähle ein starkes Passwort. Gib den Google-Authenticator-Code ein, wenn 2FA aktiviert ist.',
+      totpCodeOptional: 'Google-Authenticator-Code (falls aktiviert)',
+    },
+    settings: {
+      securityKeys: 'Sicherheitsschlüssel',
+      securityKeysHint: 'Registriere mobile WebAuthn/FIDO2-Schlüssel. Danach ist nach dem Passwort ein registrierter Sicherheitsschlüssel erforderlich.',
+      securityKeyLabel: 'Schlüsselbezeichnung',
+      securityKeyDefaultLabel: 'Sicherheitsschlüssel',
+      addSecurityKey: 'Schlüssel hinzufügen',
+      removeSecurityKey: 'Sicherheitsschlüssel entfernen',
+      noSecurityKeys: 'Keine Sicherheitsschlüssel registriert.',
+    },
+  },
+}
+
+for (const [language, extra] of Object.entries(v84Translations)) {
+  Object.assign(translations[language].header.searchType, extra.header.searchType)
+  Object.assign(translations[language].auth, extra.auth)
+  Object.assign(translations[language].settings, extra.settings)
+}
+
 export const supportedLanguages = Object.keys(translations)

@@ -90,15 +90,15 @@
 - [x] Keyless Cosign signatures for tagged container images
 - [x] GitHub build-provenance attestations bound to immutable image digests
 - [x] Authentication E2E coverage for Google Authenticator enable/disable and session invalidation
-- [ ] Distributed tracing with OpenTelemetry
+- [x] Optional distributed tracing with OpenTelemetry OTLP/HTTP export
 
 ## Next identity and authorization review
 
-- [ ] Force password change for the default seeded administrator on first successful login
-- [ ] Strengthen password policy and compromised-password guidance
-- [ ] Add WebAuthn security-key support as an isolated authentication milestone
-- [ ] Add password recovery with short-lived links and second-factor verification
+- [x] Force password change for the default seeded administrator on first successful login
+- [x] Enforce the strong password policy; compromised-password feed checks remain future work
+- [x] Add cross-platform WebAuthn security-key support with user verification and password re-authentication for key management
+- [x] Add opt-in password recovery with hashed short-lived links, TLS SMTP, TOTP verification, and no WebAuthn bypass
 - [x] Define an explicit permission matrix for current roles; administrator subroles remain future work
-- [ ] Add user disable/edit/delete lifecycle with full audit coverage
+- [x] Add user disable/enable and soft-delete lifecycle with audit coverage
 - [ ] Review every sensitive endpoint against the permission matrix
 - [ ] Add automatic SDR agent credential rotation before mTLS enrollment

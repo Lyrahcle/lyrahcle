@@ -6,6 +6,7 @@ import { getPreferredTheme, setTheme } from '../lib/theme.js'
 import { getNotificationsEnabled, isNotificationSupported, setNotificationsEnabled } from '../lib/notifications.js'
 import { fetchSystemInfo } from '../lib/api.js'
 import ChangePasswordModal from './ChangePasswordModal.jsx'
+import SecurityKeysPanel from './SecurityKeysPanel.jsx'
 import Skeleton from './Skeleton.jsx'
 import pkg from '../../package.json'
 
@@ -163,6 +164,7 @@ export default function SettingsPanel({ admin, onNavigateToConnectivity, onSecur
 
       <SettingsCard heading={t('settings.security')} hint={t('settings.securityHint')} className="sm:col-span-2">
         <p className="text-sm text-lyra-muted">{t('settings.passwordPolicy')}</p>
+        <SecurityKeysPanel onSecurityChange={onSecurityChange} />
 
         {admin && (
           <div className="mt-5">
