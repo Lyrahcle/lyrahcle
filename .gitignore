@@ -36,3 +36,6 @@ enterprise/**/*.ts
 
 # Backups
 backups/
+
+# Generated security artifacts
+artifacts/

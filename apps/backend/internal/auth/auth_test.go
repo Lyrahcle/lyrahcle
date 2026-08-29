@@ -101,3 +101,35 @@ func TestValidRole(t *testing.T) {
 		}
 	}
 }
+
+func TestParseTokenWithFallbackAcceptsPreviousKey(t *testing.T) {
+	previous := []byte("previous-secret-previous-secret-1234")
+	current := []byte("current-secret-current-secret-123456")
+	userID := uuid.New()
+
+	token, err := IssueToken(previous, userID, RoleViewer, time.Hour)
+	if err != nil {
+		t.Fatalf("IssueToken returned error: %v", err)
+	}
+	claims, err := ParseTokenWithFallback(current, previous, token)
+	if err != nil {
+		t.Fatalf("ParseTokenWithFallback returned error: %v", err)
+	}
+	if claims.UserID != userID {
+		t.Fatalf("UserID = %v, want %v", claims.UserID, userID)
+	}
+}
+
+func TestParseTokenWithFallbackRejectsUnknownKey(t *testing.T) {
+	token, err := IssueToken([]byte("unknown-secret-unknown-secret-1234"), uuid.New(), RoleViewer, time.Hour)
+	if err != nil {
+		t.Fatalf("IssueToken returned error: %v", err)
+	}
+	if _, err := ParseTokenWithFallback(
+		[]byte("current-secret-current-secret-123456"),
+		[]byte("previous-secret-previous-secret-1234"),
+		token,
+	); err == nil {
+		t.Fatal("ParseTokenWithFallback should reject a token signed with an unknown key")
+	}
+}

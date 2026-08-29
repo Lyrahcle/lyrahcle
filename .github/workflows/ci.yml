@@ -27,6 +27,15 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
@@ -35,6 +44,8 @@ jobs:
       - name: Build
         run: go build ./...
       - name: Unit tests
+        env:
+          TEST_REDIS_ADDR: localhost:6379
         run: go test ./...
       - name: Race detector
         run: go test -race ./...
@@ -52,7 +63,7 @@ jobs:
           gosec -severity high -confidence high -exclude=G505 ./...
       - name: Vulnerability scan (govulncheck)
         run: |
-          go install golang.org/x/vuln/cmd/govulncheck@latest
+          go install golang.org/x/vuln/cmd/govulncheck@v1.7.0
           govulncheck ./...
 
   other-go-modules:
@@ -75,6 +86,16 @@ jobs:
         run: go test ./...
       - name: Race detector
         run: go test -race ./...
+      - name: Critical SDR coverage gate
+        if: matrix.module == 'sdr-agent'
+        run: |
+          go test ./internal/forensics ./internal/replay ./internal/streaming ./internal/uplink -coverprofile=coverage-critical.out
+          ../../scripts/check-go-coverage.sh coverage-critical.out 80
+      - name: SDR fuzzing
+        if: matrix.module == 'sdr-agent'
+        run: |
+          go test ./internal/forensics -run=^$ -fuzz=FuzzCaptureRoundTrip -fuzztime=10s
+          go test ./internal/replay -run=^$ -fuzz=FuzzPowerWindows -fuzztime=10s
       - name: Vet
         run: go vet ./...
       - name: Static security scan (gosec)
@@ -83,7 +104,7 @@ jobs:
           gosec -severity high -confidence high -exclude=G505 ./...
       - name: Vulnerability scan (govulncheck)
         run: |
-          go install golang.org/x/vuln/cmd/govulncheck@latest
+          go install golang.org/x/vuln/cmd/govulncheck@v1.7.0
           govulncheck ./...
 
   frontend:
@@ -110,7 +131,7 @@ jobs:
     name: Docker build check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Lint Dockerfiles (hadolint)
         uses: hadolint/hadolint-action@v3.1.0
         continue-on-error: true
@@ -121,9 +142,33 @@ jobs:
     name: Full-stack smoke test (docker compose)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Run smoke test
         run: ./scripts/smoke-test.sh
       - name: Dump logs on failure
         if: failure()
         run: docker compose logs
+  sbom:
+    name: SBOM (CycloneDX)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v7
+        with:
+          go-version: 'stable'
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - name: Generate CycloneDX SBOMs
+        run: ./scripts/generate-sbom.sh
+      - name: Upload SBOMs
+        uses: actions/upload-artifact@v7
+        with:
+          name: cyclonedx-sboms
+          path: artifacts/sbom/
+          if-no-files-found: error
+

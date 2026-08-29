@@ -45,12 +45,21 @@ func meanPowerDbm(window []complex64) float64 {
 	}
 
 	var sumSq float64
+	valid := 0
 	for _, s := range window {
 		re, im := float64(real(s)), float64(imag(s))
-		sumSq += re*re + im*im
+		power := re*re + im*im
+		if math.IsNaN(power) || math.IsInf(power, 0) {
+			continue
+		}
+		sumSq += power
+		valid++
 	}
-	meanSq := sumSq / float64(len(window))
-	if meanSq <= 0 {
+	if valid == 0 {
+		return noiseFloorDbm
+	}
+	meanSq := sumSq / float64(valid)
+	if meanSq <= 0 || math.IsNaN(meanSq) || math.IsInf(meanSq, 0) {
 		return noiseFloorDbm
 	}
 	return 10 * math.Log10(meanSq)

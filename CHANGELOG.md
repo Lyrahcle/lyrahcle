@@ -4,6 +4,16 @@ Notable changes are tracked here until versioned release notes take over.
 
 ## Unreleased
 
+### v8.1 pre-v1 security baseline
+
+- Added CycloneDX SBOM generation for all Go modules and the frontend in CI and tagged releases.
+- Added dependency review, critical SDR coverage gating, and active SDR fuzzing to CI.
+- Added an authentication E2E smoke flow covering login, `/auth/me`, logout revocation, and relogin.
+- Added JWT issuer/audience/subject validation, configurable short access-token TTL, and previous-key overlap for controlled signing-key rotation.
+- Added user-wide session revocation after password, TOTP, and role changes and fail-closed production Redis startup.
+- Added a formal STRIDE threat model, compliance readiness checklist, and software supply-chain guide.
+- Hardened forensic replay after fuzzing found non-finite IQ propagation and unbounded capture filenames; forensic files now use restrictive permissions.
+
 ### v8 detection engineering
 
 - Added typed RF detection rules with admin-only mutation and viewer-readable configuration.

@@ -5,10 +5,12 @@
 | Variable | Default | Production guidance |
 |---|---|---|
 | `DATABASE_URL` | local Lyrahcle Postgres URL | Required; use protected credentials and TLS where applicable |
-| `REDIS_URL` | `localhost:6379` | Recommended for distributed rate limiting, JWT revocation, caching, and queue-backed features |
+| `REDIS_URL` | `localhost:6379` | Required in production for revocation, authorization-state checks, rate limiting, and caching |
 | `PORT` | `8080` | API listen port |
 | `CELESTRAK_GROUPS` | `stations` | Comma-separated Celestrak groups |
-| `JWT_SECRET` | insecure development value | Required and strong; production refuses the default |
+| `JWT_SECRET` | insecure development value | Current signing key; production requires at least 32 bytes |
+| `JWT_SECRET_PREVIOUS` | unset | Previous signing key during a controlled rotation window |
+| `JWT_ACCESS_TTL` | `30m` | Access-token lifetime; production refuses values above `2h` |
 | `TLS_CERT_FILE` | unset | Required in `ENV=production` by the backend's current safety policy |
 | `TLS_KEY_FILE` | unset | Required with `TLS_CERT_FILE` |
 | `SEED_ADMIN_EMAIL` | `admin` | Set before first boot |
@@ -16,6 +18,8 @@
 | `ENV` | `development` | Set to `production` to enable startup safety checks |
 
 The bootstrap admin is created only when the users table is empty. Changing `SEED_ADMIN_PASSWORD` later does not reset an existing account.
+
+JWT rotation uses an overlap window: deploy the new value as `JWT_SECRET`, keep the old value temporarily in `JWT_SECRET_PREVIOUS`, wait longer than `JWT_ACCESS_TTL`, then remove the previous key. Password, TOTP, and role changes invalidate all older sessions for the affected user.
 
 ## Frontend
 

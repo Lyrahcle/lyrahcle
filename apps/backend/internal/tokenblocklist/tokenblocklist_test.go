@@ -95,3 +95,49 @@ func TestNewWithNilClientIsSafe(t *testing.T) {
 		t.Fatal("IsRevoked with a nil client should always return false")
 	}
 }
+
+func TestRevokeUserInvalidatesExistingTokens(t *testing.T) {
+	b := New(testClient(t))
+	ctx := context.Background()
+	userID := "user-" + t.Name()
+	issuedAt := time.Now().Add(-time.Minute).UTC()
+
+	revoked, err := b.Check(ctx, "jti-"+t.Name(), userID, issuedAt)
+	if err != nil {
+		t.Fatalf("Check before revocation: %v", err)
+	}
+	if revoked {
+		t.Fatal("token should not be revoked before user revocation")
+	}
+
+	if err := b.RevokeUser(ctx, userID, time.Now().UTC(), time.Minute); err != nil {
+		t.Fatalf("RevokeUser: %v", err)
+	}
+
+	revoked, err = b.Check(ctx, "jti-"+t.Name(), userID, issuedAt)
+	if err != nil {
+		t.Fatalf("Check after revocation: %v", err)
+	}
+	if !revoked {
+		t.Fatal("token issued before the user cutoff should be revoked")
+	}
+}
+
+func TestRevokeUserKeepsNewerTokensValid(t *testing.T) {
+	b := New(testClient(t))
+	ctx := context.Background()
+	userID := "user-new-" + t.Name()
+	cutoff := time.Now().UTC()
+
+	if err := b.RevokeUser(ctx, userID, cutoff, time.Minute); err != nil {
+		t.Fatalf("RevokeUser: %v", err)
+	}
+
+	revoked, err := b.Check(ctx, "new-jti-"+t.Name(), userID, cutoff.Add(time.Second))
+	if err != nil {
+		t.Fatalf("Check: %v", err)
+	}
+	if revoked {
+		t.Fatal("token issued after the user cutoff should remain valid")
+	}
+}

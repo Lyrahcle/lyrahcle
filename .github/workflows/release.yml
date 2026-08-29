@@ -25,7 +25,7 @@ jobs:
           - image: sdr-agent
             dockerfile: deploy/docker/Dockerfile.sdr-agent
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Extract version
         id: version
@@ -66,17 +66,33 @@ jobs:
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v7
+        with:
+          go-version: 'stable'
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - name: Extract version
+        id: version
+        run: echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+      - name: Generate release SBOMs
+        run: ./scripts/generate-sbom.sh
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
+          files: |
+            artifacts/sbom/*.cdx.json
+            artifacts/sbom/SHA256SUMS
           body: |
             Images published to GHCR for this release:
 
-            - `ghcr.io/${{ github.repository_owner }}/lyrahcle-backend:${{ github.ref_name }}`
-            - `ghcr.io/${{ github.repository_owner }}/lyrahcle-frontend:${{ github.ref_name }}`
-            - `ghcr.io/${{ github.repository_owner }}/lyrahcle-cve-sync:${{ github.ref_name }}`
-            - `ghcr.io/${{ github.repository_owner }}/lyrahcle-sdr-agent:${{ github.ref_name }}`
+            - `ghcr.io/${{ github.repository_owner }}/lyrahcle-backend:${{ steps.version.outputs.value }}`
+            - `ghcr.io/${{ github.repository_owner }}/lyrahcle-frontend:${{ steps.version.outputs.value }}`
+            - `ghcr.io/${{ github.repository_owner }}/lyrahcle-cve-sync:${{ steps.version.outputs.value }}`
+            - `ghcr.io/${{ github.repository_owner }}/lyrahcle-sdr-agent:${{ steps.version.outputs.value }}`
 
             See [CHANGELOG.md](./CHANGELOG.md) for what changed.

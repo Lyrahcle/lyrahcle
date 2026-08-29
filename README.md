@@ -50,6 +50,9 @@ Start with [`docs/README.md`](./docs/README.md).
 - [Configuration](./docs/configuration.md)
 - [Deployment](./docs/deployment.md)
 - [IQ forensics](./docs/forensics.md)
+- [STRIDE threat model](./docs/ieee3536-threat-model.md)
+- [Compliance checklist](./docs/compliance-checklist.md)
+- [Software supply chain](./docs/supply-chain.md)
 - [Security policy](./SECURITY.md)
 - [Security roadmap](./SECURITY_ROADMAP.md)
 - [Contributing](./CONTRIBUTING.md)
@@ -64,7 +67,7 @@ cd apps/backend && go test ./... && go vet ./...
 cd ../frontend && npm test && npm run build
 ```
 
-CI also runs integration tests, vulnerability checks, frontend audits, image scanning, and smoke tests.
+CI also runs integration tests, dependency review, vulnerability checks, SDR fuzzing, an >80% critical-package coverage gate, authentication E2E checks, image scanning, and CycloneDX SBOM generation.
 
 ## Status
 

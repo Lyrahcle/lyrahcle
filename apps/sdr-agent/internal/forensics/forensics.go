@@ -31,7 +31,7 @@ func Save(dir, agentID string, data *streaming.IQData) (dataPath, metaPath strin
 	if data == nil || len(data.Samples) == 0 {
 		return "", "", fmt.Errorf("forensics: capture has no samples")
 	}
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return "", "", fmt.Errorf("forensics: create dir: %w", err)
 	}
 
@@ -44,7 +44,7 @@ func Save(dir, agentID string, data *streaming.IQData) (dataPath, metaPath strin
 		buf = binary.LittleEndian.AppendUint32(buf, math.Float32bits(real(s)))
 		buf = binary.LittleEndian.AppendUint32(buf, math.Float32bits(imag(s)))
 	}
-	if err := os.WriteFile(dataPath, buf, 0o644); err != nil {
+	if err := os.WriteFile(dataPath, buf, 0o600); err != nil {
 		return "", "", fmt.Errorf("forensics: write samples: %w", err)
 	}
 
@@ -63,7 +63,7 @@ func Save(dir, agentID string, data *streaming.IQData) (dataPath, metaPath strin
 		os.Remove(dataPath)
 		return "", "", fmt.Errorf("forensics: marshal metadata: %w", err)
 	}
-	if err := os.WriteFile(metaPath, metaBytes, 0o644); err != nil {
+	if err := os.WriteFile(metaPath, metaBytes, 0o600); err != nil {
 		os.Remove(dataPath)
 		return "", "", fmt.Errorf("forensics: write metadata: %w", err)
 	}
@@ -143,8 +143,12 @@ func readMetadata(metaPath string) (Metadata, error) {
 }
 
 func sanitize(s string) string {
+	const maxLen = 64
 	var b strings.Builder
 	for _, r := range s {
+		if b.Len() >= maxLen {
+			break
+		}
 		switch {
 		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9', r == '-', r == '_':
 			b.WriteRune(r)

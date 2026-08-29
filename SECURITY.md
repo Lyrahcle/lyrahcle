@@ -12,6 +12,6 @@ This policy covers the open-core repository, including `apps/`, `packages/`, dep
 
 ## Security expectations
 
-Production deployments must use a strong `JWT_SECRET`, non-default bootstrap credentials, TLS, protected PostgreSQL/Redis access, individual SDR agent credentials, and current dependencies. The backend refuses several insecure defaults when `ENV=production`.
+Production deployments must use a `JWT_SECRET` of at least 32 bytes, a short `JWT_ACCESS_TTL`, non-default bootstrap credentials, TLS, protected PostgreSQL/Redis access, individual SDR agent credentials, and current dependencies. The backend refuses several insecure defaults when `ENV=production`.
 
-See [SECURITY_ROADMAP.md](./SECURITY_ROADMAP.md) for implementation status and [docs/deployment.md](./docs/deployment.md) for deployment requirements.
+See [docs/ieee3536-threat-model.md](./docs/ieee3536-threat-model.md) for the current STRIDE model, [docs/compliance-checklist.md](./docs/compliance-checklist.md) for readiness evidence, [SECURITY_ROADMAP.md](./SECURITY_ROADMAP.md) for implementation status and [docs/deployment.md](./docs/deployment.md) for deployment requirements.

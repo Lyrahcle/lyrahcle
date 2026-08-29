@@ -139,3 +139,45 @@ func TestRequireAgentKeyOrRoleNoCredentials(t *testing.T) {
 		t.Errorf("status = %d, want %d", rec.Code, http.StatusUnauthorized)
 	}
 }
+
+func TestRequireRoleReturnsServiceUnavailableWhenRevocationCheckFails(t *testing.T) {
+	secret := []byte("secret")
+	token, err := IssueToken(secret, uuid.New(), RoleAdmin, time.Hour)
+	if err != nil {
+		t.Fatalf("IssueToken: %v", err)
+	}
+	check := func(ctx context.Context, claims *Claims) (bool, error) {
+		return false, errors.New("redis unavailable")
+	}
+
+	handler := RequireRole(secret, RoleViewer, check)(newTestHandler())
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusServiceUnavailable)
+	}
+}
+
+func TestRequireRoleWithFallbackAcceptsPreviousKey(t *testing.T) {
+	current := []byte("current-secret-current-secret-123456")
+	previous := []byte("previous-secret-previous-secret-1234")
+	token, err := IssueToken(previous, uuid.New(), RoleOperator, time.Hour)
+	if err != nil {
+		t.Fatalf("IssueToken: %v", err)
+	}
+
+	handler := RequireRoleWithFallback(current, previous, RoleViewer)(newTestHandler())
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
+	}
+}

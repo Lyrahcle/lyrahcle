@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -131,5 +132,35 @@ func TestLoadRejectsSampleCountMismatch(t *testing.T) {
 
 	if _, _, err := Load(metaPath); err == nil {
 		t.Fatal("expected a sample-count mismatch error, got nil")
+	}
+}
+
+func TestSaveUsesPrivatePermissionsAndBoundsFilename(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "captures")
+	agentID := strings.Repeat("agent/../", 100)
+	dataPath, metaPath, err := Save(dir, agentID, sampleData(time.Now()))
+	if err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	dirInfo, err := os.Stat(dir)
+	if err != nil {
+		t.Fatalf("stat dir: %v", err)
+	}
+	if dirInfo.Mode().Perm() != 0o700 {
+		t.Fatalf("dir permissions = %o, want 700", dirInfo.Mode().Perm())
+	}
+
+	for _, path := range []string{dataPath, metaPath} {
+		info, err := os.Stat(path)
+		if err != nil {
+			t.Fatalf("stat %s: %v", path, err)
+		}
+		if info.Mode().Perm() != 0o600 {
+			t.Fatalf("%s permissions = %o, want 600", path, info.Mode().Perm())
+		}
+		if len(filepath.Base(path)) > 128 {
+			t.Fatalf("filename length = %d, want <= 128", len(filepath.Base(path)))
+		}
 	}
 }

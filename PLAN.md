@@ -46,7 +46,7 @@ Model relationships between programs, satellites, ground stations, radios, firmw
 
 ### 6. Production hardening
 
-Complete real SDR hardware validation, high-availability deployment guidance, stronger observability, signed artifacts, SBOM/provenance, backup/restore drills, and operational runbooks.
+Complete real SDR hardware validation, high-availability deployment guidance, stronger observability, signed provenance/artifacts, backup/restore drills, and operational runbooks. CycloneDX SBOM generation, dependency review, SDR fuzzing, and JWT rotation overlap are now part of the pre-v1 baseline.
 
 ## v1.0 gate
 

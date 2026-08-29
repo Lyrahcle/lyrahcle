@@ -23,7 +23,7 @@ curl -X POST http://localhost:8080/api/v1/auth/login \
   -d '{"identifier":"admin","password":"admin"}'
 ```
 
-Use the returned token as `Authorization: Bearer <token>`.
+Use the returned token as `Authorization: Bearer <token>`. Access tokens default to a 30-minute lifetime, carry fixed Lyrahcle issuer/audience claims, and are invalidated when the user changes password/TOTP state or an administrator changes the user role.
 
 Roles are ordered `viewer < operator < admin`. Admins create users through `POST /api/v1/users/` or the dashboard.
 
@@ -69,8 +69,8 @@ Every backend response includes `X-Request-ID`. A safe incoming `X-Request-ID` m
 | `GET` | `/api/v1/system-info` | Viewer | Runtime/system information |
 | `POST` | `/api/v1/auth/login` | Public | Login; rate limited independently from normal API traffic |
 | `GET` | `/api/v1/auth/me` | Viewer | Current account and TOTP state |
-| `POST` | `/api/v1/auth/logout` | Viewer | Revoke current JWT when Redis is available |
-| `POST` | `/api/v1/auth/change-password` | Viewer | Change password and revoke current JWT |
+| `POST` | `/api/v1/auth/logout` | Viewer | Revoke the current JWT |
+| `POST` | `/api/v1/auth/change-password` | Viewer | Change password and invalidate all older sessions for the user |
 | `POST` | `/api/v1/auth/totp/setup` | Viewer | Generate pending TOTP secret |
 | `POST` | `/api/v1/auth/totp/enable` | Viewer | Enable TOTP |
 | `POST` | `/api/v1/auth/totp/disable` | Viewer | Disable TOTP after password verification |
@@ -130,7 +130,7 @@ Paginated endpoints accept `limit` and `offset`; `limit` defaults to 25 and is c
 
 ## Redis-dependent behavior
 
-Redis enables distributed rate limiting, JWT revocation, response caching, and the CVE event queue. The backend degrades gracefully if Redis is unavailable, but immediate JWT revocation and shared multi-replica rate-limit state are then unavailable.
+Redis enables distributed rate limiting, JWT revocation, response caching, and the CVE event queue. Development can fall back for selected non-authorization features, but production startup fails when Redis is unavailable so revocation guarantees are not silently lost.
 
 ## Incident response
 

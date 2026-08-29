@@ -76,7 +76,10 @@ func main() {
 
 	redisClient, err := redisclient.Connect(cfg.RedisURL, 5*time.Second)
 	if err != nil {
-		log.Printf("WARNING: Redis not available at %s (%v). Rate limiting will use an in-memory counter (does not survive a restart or work correctly with multiple replicas), and logout/password-change token revocation and response caching will be disabled.", cfg.RedisURL, err)
+		if cfg.IsProduction() {
+			log.Fatalf("redis connect: %v", err)
+		}
+		log.Printf("WARNING: Redis not available at %s (%v). Rate limiting will use an in-memory counter, and token revocation and response caching will be disabled.", cfg.RedisURL, err)
 	} else {
 		log.Printf("connected to Redis at %s", cfg.RedisURL)
 		defer redisClient.Close()
@@ -165,7 +168,10 @@ func newRouter(
 	detectionRules := store.NewDetectionRuleStore(pool)
 	blocklist := tokenblocklist.New(redisClient)
 	cache := respcache.New(redisClient)
-	isTokenRevoked := blocklist.IsRevoked
+	isTokenRevoked := func(ctx context.Context, claims *auth.Claims) (bool, error) {
+		issuedAt := time.Unix(0, claims.SessionIssuedAt).UTC()
+		return blocklist.Check(ctx, claims.ID, claims.UserID.String(), issuedAt)
+	}
 
 	globalLimiter := httprate.Limit(120, time.Minute, httprate.WithKeyByIP())
 	loginLimiter := httprate.Limit(10, time.Minute, httprate.WithKeyByIP())
@@ -217,7 +223,7 @@ func newRouter(
 			w.Write([]byte(`{"message":"pong from lyrahcle"}`))
 		})
 
-		r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer, isTokenRevoked)).Get("/system-info", func(w http.ResponseWriter, r *http.Request) {
+		r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)).Get("/system-info", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(w).Encode(map[string]interface{}{
 				"environment":             cfg.Environment,
@@ -229,7 +235,7 @@ func newRouter(
 		})
 
 		r.Route("/assets", func(r chi.Router) {
-			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer, isTokenRevoked)).Get("/", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)).Get("/", func(w http.ResponseWriter, r *http.Request) {
 				limit, offset := pageParams(r)
 				page, err := assets.List(r.Context(), limit, offset)
 				if err != nil {
@@ -240,7 +246,7 @@ func newRouter(
 				json.NewEncoder(w).Encode(page)
 			})
 
-			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleOperator, isTokenRevoked)).Post("/", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleOperator, isTokenRevoked)).Post("/", func(w http.ResponseWriter, r *http.Request) {
 				var body struct {
 					ProgramID string `json:"program_id"`
 					Kind      string `json:"kind"`
@@ -275,7 +281,7 @@ func newRouter(
 		})
 
 		r.Route("/programs", func(r chi.Router) {
-			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer, isTokenRevoked)).Get("/", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)).Get("/", func(w http.ResponseWriter, r *http.Request) {
 				list, err := programs.List(r.Context())
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -285,7 +291,7 @@ func newRouter(
 				json.NewEncoder(w).Encode(list)
 			})
 
-			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleOperator, isTokenRevoked)).Post("/", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleOperator, isTokenRevoked)).Post("/", func(w http.ResponseWriter, r *http.Request) {
 				var body struct {
 					Name string `json:"name"`
 				}
@@ -348,7 +354,7 @@ func newRouter(
 					}
 				}
 
-				token, err := auth.IssueToken(cfg.JWTSecret, user.ID, auth.Role(user.Role), 24*time.Hour)
+				token, err := auth.IssueToken(cfg.JWTSecret, user.ID, auth.Role(user.Role), cfg.JWTAccessTTL)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
@@ -361,7 +367,7 @@ func newRouter(
 			})
 
 			r.Route("/totp", func(r chi.Router) {
-				r.Use(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer, isTokenRevoked))
+				r.Use(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked))
 
 				r.Post("/setup", func(w http.ResponseWriter, r *http.Request) {
 					claims, ok := auth.FromContext(r.Context())
@@ -420,6 +426,10 @@ func newRouter(
 						http.Error(w, "invalid two-factor code", http.StatusUnauthorized)
 						return
 					}
+					if err := blocklist.RevokeUser(r.Context(), user.ID.String(), time.Now(), cfg.JWTAccessTTL+time.Minute); err != nil {
+						http.Error(w, "authorization state update failed", http.StatusServiceUnavailable)
+						return
+					}
 					if err := users.EnableTOTP(r.Context(), user.ID); err != nil {
 						http.Error(w, err.Error(), http.StatusInternalServerError)
 						return
@@ -451,6 +461,10 @@ func newRouter(
 						http.Error(w, "invalid password", http.StatusUnauthorized)
 						return
 					}
+					if err := blocklist.RevokeUser(r.Context(), user.ID.String(), time.Now(), cfg.JWTAccessTTL+time.Minute); err != nil {
+						http.Error(w, "authorization state update failed", http.StatusServiceUnavailable)
+						return
+					}
 					if err := users.DisableTOTP(r.Context(), user.ID); err != nil {
 						http.Error(w, err.Error(), http.StatusInternalServerError)
 						return
@@ -461,7 +475,7 @@ func newRouter(
 				})
 			})
 
-			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer, isTokenRevoked)).Get("/me", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)).Get("/me", func(w http.ResponseWriter, r *http.Request) {
 				claims, ok := auth.FromContext(r.Context())
 				if !ok {
 					http.Error(w, "unauthorized", http.StatusUnauthorized)
@@ -482,7 +496,7 @@ func newRouter(
 				})
 			})
 
-			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer, isTokenRevoked)).Post("/logout", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)).Post("/logout", func(w http.ResponseWriter, r *http.Request) {
 				claims, ok := auth.FromContext(r.Context())
 				if !ok {
 					http.Error(w, "unauthorized", http.StatusUnauthorized)
@@ -491,14 +505,15 @@ func newRouter(
 
 				remaining := time.Until(claims.ExpiresAt.Time)
 				if err := blocklist.Revoke(r.Context(), claims.ID, remaining); err != nil {
-					log.Printf("logout: failed to revoke token for user %s: %v", claims.UserID, err)
+					http.Error(w, "logout could not revoke the session", http.StatusServiceUnavailable)
+					return
 				}
 
 				logAudit(r.Context(), auditLog, audit.ActorUser, claims.UserID.String(), audit.ActionLogout, clientIP(r), nil)
 				w.WriteHeader(http.StatusNoContent)
 			})
 
-			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer, isTokenRevoked)).Post("/change-password", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)).Post("/change-password", func(w http.ResponseWriter, r *http.Request) {
 				var body struct {
 					CurrentPassword string `json:"current_password"`
 					NewPassword     string `json:"new_password"`
@@ -533,16 +548,13 @@ func newRouter(
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
 				}
+				if err := blocklist.RevokeUser(r.Context(), user.ID.String(), time.Now(), cfg.JWTAccessTTL+time.Minute); err != nil {
+					http.Error(w, "authorization state update failed", http.StatusServiceUnavailable)
+					return
+				}
 				if err := users.UpdatePassword(r.Context(), user.ID, newHash); err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
-				}
-
-				if claims, ok := auth.FromContext(r.Context()); ok {
-					remaining := time.Until(claims.ExpiresAt.Time)
-					if err := blocklist.Revoke(r.Context(), claims.ID, remaining); err != nil {
-						log.Printf("change-password: failed to revoke token for user %s: %v", user.ID, err)
-					}
 				}
 
 				logAudit(r.Context(), auditLog, audit.ActorUser, user.ID.String(), audit.ActionPasswordChanged, clientIP(r), map[string]interface{}{"email": user.Email})
@@ -552,7 +564,7 @@ func newRouter(
 		})
 
 		r.Route("/users", func(r chi.Router) {
-			r.Use(auth.RequireRole(cfg.JWTSecret, auth.RoleAdmin, isTokenRevoked))
+			r.Use(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleAdmin, isTokenRevoked))
 
 			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 				list, err := users.List(r.Context())
@@ -657,6 +669,11 @@ func newRouter(
 					}
 				}
 
+				if err := blocklist.RevokeUser(r.Context(), userID.String(), time.Now(), cfg.JWTAccessTTL+time.Minute); err != nil {
+					http.Error(w, "authorization state update failed", http.StatusServiceUnavailable)
+					return
+				}
+
 				updated, err := users.UpdateRole(r.Context(), userID, body.Role)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -673,7 +690,7 @@ func newRouter(
 		})
 
 		r.Route("/agent-keys", func(r chi.Router) {
-			r.Use(auth.RequireRole(cfg.JWTSecret, auth.RoleAdmin, isTokenRevoked))
+			r.Use(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleAdmin, isTokenRevoked))
 
 			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 				list, err := agentKeys.List(r.Context())
@@ -753,7 +770,7 @@ func newRouter(
 				}
 				return agentID, err
 			}
-			meAgentAuth := auth.RequireAgentKeyOrRole(cfg.JWTSecret, auth.RoleOperator, auditedAgentLookup, isTokenRevoked)
+			meAgentAuth := auth.RequireAgentKeyOrRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleOperator, auditedAgentLookup, isTokenRevoked)
 
 			r.With(meAgentAuth).Post("/device", func(w http.ResponseWriter, r *http.Request) {
 				agentID, ok := auth.AgentIDFromContext(r.Context())
@@ -782,7 +799,7 @@ func newRouter(
 		})
 
 		r.Route("/detection-rules", func(r chi.Router) {
-			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer, isTokenRevoked)).Get("/", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)).Get("/", func(w http.ResponseWriter, r *http.Request) {
 				limit, offset := pageParams(r)
 				page, err := detectionRules.List(r.Context(), limit, offset)
 				if err != nil {
@@ -793,7 +810,7 @@ func newRouter(
 				json.NewEncoder(w).Encode(page)
 			})
 
-			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleAdmin, isTokenRevoked)).Post("/", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleAdmin, isTokenRevoked)).Post("/", func(w http.ResponseWriter, r *http.Request) {
 				var body struct {
 					Name            string  `json:"name"`
 					Description     string  `json:"description"`
@@ -857,7 +874,7 @@ func newRouter(
 				json.NewEncoder(w).Encode(rule)
 			})
 
-			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleAdmin, isTokenRevoked)).Patch("/{ruleID}", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleAdmin, isTokenRevoked)).Patch("/{ruleID}", func(w http.ResponseWriter, r *http.Request) {
 				ruleID, err := uuid.Parse(chi.URLParam(r, "ruleID"))
 				if err != nil {
 					http.Error(w, "ruleID must be a valid UUID", http.StatusBadRequest)
@@ -954,7 +971,7 @@ func newRouter(
 				}
 				return agentID, err
 			}
-			agentAuth := auth.RequireAgentKeyOrRole(cfg.JWTSecret, auth.RoleOperator, auditedLookup, isTokenRevoked)
+			agentAuth := auth.RequireAgentKeyOrRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleOperator, auditedLookup, isTokenRevoked)
 			r.With(agentAuth).Post("/ingest", func(w http.ResponseWriter, r *http.Request) {
 				var reading store.RFReading
 				if err := json.NewDecoder(r.Body).Decode(&reading); err != nil {
@@ -1003,7 +1020,7 @@ func newRouter(
 				w.WriteHeader(http.StatusCreated)
 			})
 
-			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer, isTokenRevoked)).Get("/readings", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)).Get("/readings", func(w http.ResponseWriter, r *http.Request) {
 				list, err := rf.Recent(r.Context(), 100)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -1013,7 +1030,7 @@ func newRouter(
 				json.NewEncoder(w).Encode(list)
 			})
 
-			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer, isTokenRevoked)).Get("/anomalies", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)).Get("/anomalies", func(w http.ResponseWriter, r *http.Request) {
 				list, err := rfAnomalies.Recent(r.Context(), 100)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -1025,7 +1042,7 @@ func newRouter(
 		})
 
 		r.Route("/satellites", func(r chi.Router) {
-			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer, isTokenRevoked)).Get("/", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)).Get("/", func(w http.ResponseWriter, r *http.Request) {
 				out, err := satellitesWithPositions(r.Context(), satellites, cache)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -1035,7 +1052,7 @@ func newRouter(
 				json.NewEncoder(w).Encode(out)
 			})
 
-			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer, isTokenRevoked)).Get("/stream", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)).Get("/stream", func(w http.ResponseWriter, r *http.Request) {
 				flusher, ok := w.(http.Flusher)
 				if !ok {
 					http.Error(w, "streaming unsupported", http.StatusInternalServerError)
@@ -1083,7 +1100,7 @@ func newRouter(
 				}
 			})
 
-			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleOperator, isTokenRevoked)).Post("/", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleOperator, isTokenRevoked)).Post("/", func(w http.ResponseWriter, r *http.Request) {
 				var body struct {
 					NoradID int    `json:"norad_id"`
 					Name    string `json:"name"`
@@ -1126,7 +1143,7 @@ func newRouter(
 		})
 
 		r.Route("/tmtc", func(r chi.Router) {
-			r.Use(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer, isTokenRevoked))
+			r.Use(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked))
 
 			r.Post("/decode/ax25", func(w http.ResponseWriter, r *http.Request) {
 				var body struct {
@@ -1213,7 +1230,7 @@ func newRouter(
 			})
 		})
 
-		r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleAdmin, isTokenRevoked)).Get("/audit-log", func(w http.ResponseWriter, r *http.Request) {
+		r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleAdmin, isTokenRevoked)).Get("/audit-log", func(w http.ResponseWriter, r *http.Request) {
 			limit, offset := pageParams(r)
 			page, err := auditLog.List(r.Context(), limit, offset)
 			if err != nil {
@@ -1224,7 +1241,7 @@ func newRouter(
 			json.NewEncoder(w).Encode(page)
 		})
 
-		r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer, isTokenRevoked)).Get("/threat-intel/space-cves", func(w http.ResponseWriter, r *http.Request) {
+		r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)).Get("/threat-intel/space-cves", func(w http.ResponseWriter, r *http.Request) {
 			limit, offset := pageParams(r)
 			filter := parseSpaceCVEFilter(r)
 
@@ -1249,7 +1266,7 @@ func newRouter(
 			json.NewEncoder(w).Encode(page)
 		})
 
-		r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer, isTokenRevoked)).Get("/threat-intel/space-cves/keywords", func(w http.ResponseWriter, r *http.Request) {
+		r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)).Get("/threat-intel/space-cves/keywords", func(w http.ResponseWriter, r *http.Request) {
 			const cacheKey = "lyrahcle:cache:space-cves:keywords"
 			var keywords []string
 			if hit, _ := cache.Get(r.Context(), cacheKey, &keywords); hit {
@@ -1269,7 +1286,7 @@ func newRouter(
 		})
 
 		r.Route("/incidents", func(r chi.Router) {
-			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer, isTokenRevoked)).Get("/", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)).Get("/", func(w http.ResponseWriter, r *http.Request) {
 				limit, offset := pageParams(r)
 				filter, err := parseIncidentFilter(r)
 				if err != nil {
@@ -1285,7 +1302,7 @@ func newRouter(
 				json.NewEncoder(w).Encode(page)
 			})
 
-			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer, isTokenRevoked)).Get("/stream", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)).Get("/stream", func(w http.ResponseWriter, r *http.Request) {
 				flusher, ok := w.(http.Flusher)
 				if !ok {
 					http.Error(w, "streaming unsupported", http.StatusInternalServerError)
@@ -1329,7 +1346,7 @@ func newRouter(
 				}
 			})
 
-			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleOperator, isTokenRevoked)).Post("/", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleOperator, isTokenRevoked)).Post("/", func(w http.ResponseWriter, r *http.Request) {
 				var body struct {
 					Title       string `json:"title"`
 					Description string `json:"description"`
@@ -1424,7 +1441,7 @@ func newRouter(
 				json.NewEncoder(w).Encode(incident)
 			})
 
-			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer, isTokenRevoked)).Get("/{incidentID}", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)).Get("/{incidentID}", func(w http.ResponseWriter, r *http.Request) {
 				incidentID, err := uuid.Parse(chi.URLParam(r, "incidentID"))
 				if err != nil {
 					http.Error(w, "incidentID must be a valid UUID", http.StatusBadRequest)
@@ -1443,7 +1460,7 @@ func newRouter(
 				json.NewEncoder(w).Encode(detail)
 			})
 
-			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleOperator, isTokenRevoked)).Patch("/{incidentID}", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleOperator, isTokenRevoked)).Patch("/{incidentID}", func(w http.ResponseWriter, r *http.Request) {
 				incidentID, err := uuid.Parse(chi.URLParam(r, "incidentID"))
 				if err != nil {
 					http.Error(w, "incidentID must be a valid UUID", http.StatusBadRequest)
@@ -1525,7 +1542,7 @@ func newRouter(
 				json.NewEncoder(w).Encode(incident)
 			})
 
-			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleOperator, isTokenRevoked)).Post("/{incidentID}/notes", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleOperator, isTokenRevoked)).Post("/{incidentID}/notes", func(w http.ResponseWriter, r *http.Request) {
 				incidentID, err := uuid.Parse(chi.URLParam(r, "incidentID"))
 				if err != nil {
 					http.Error(w, "incidentID must be a valid UUID", http.StatusBadRequest)
@@ -1560,7 +1577,7 @@ func newRouter(
 				w.WriteHeader(http.StatusNoContent)
 			})
 
-			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleOperator, isTokenRevoked)).Post("/{incidentID}/evidence", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleOperator, isTokenRevoked)).Post("/{incidentID}/evidence", func(w http.ResponseWriter, r *http.Request) {
 				incidentID, err := uuid.Parse(chi.URLParam(r, "incidentID"))
 				if err != nil {
 					http.Error(w, "incidentID must be a valid UUID", http.StatusBadRequest)
@@ -1614,7 +1631,7 @@ func newRouter(
 		})
 
 		r.Route("/asset-alerts", func(r chi.Router) {
-			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer, isTokenRevoked)).Get("/", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)).Get("/", func(w http.ResponseWriter, r *http.Request) {
 				limit, offset := pageParams(r)
 				page, err := assetAlerts.List(r.Context(), limit, offset)
 				if err != nil {
@@ -1625,7 +1642,7 @@ func newRouter(
 				json.NewEncoder(w).Encode(page)
 			})
 
-			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleOperator, isTokenRevoked)).Post("/{alertID}/acknowledge", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleOperator, isTokenRevoked)).Post("/{alertID}/acknowledge", func(w http.ResponseWriter, r *http.Request) {
 				alertID, err := uuid.Parse(chi.URLParam(r, "alertID"))
 				if err != nil {
 					http.Error(w, "alertID must be a valid UUID", http.StatusBadRequest)

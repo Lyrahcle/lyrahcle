@@ -5,14 +5,14 @@
 Before exposing Lyrahcle outside a trusted development environment:
 
 - Set `ENV=production`.
-- Use a strong random `JWT_SECRET`.
+- Use a random `JWT_SECRET` of at least 32 bytes and keep `JWT_ACCESS_TTL` short.
 - Set non-default `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` before first boot.
 - Enable TLS and keep private keys outside the repository.
 - Replace the default PostgreSQL credentials and do not expose PostgreSQL publicly.
-- Restrict Redis to trusted networks and authentication controls appropriate to your environment.
+- Restrict Redis to trusted networks and authentication controls appropriate to your environment; production startup fails when Redis is unavailable because session revocation is security-critical.
 - Issue one `AGENT_API_KEY` per SDR agent; do not reuse human JWTs for long-running agents.
 - Configure durable PostgreSQL backups and test restoration.
-- Review CI/security scan results before deploying a release.
+- Review CI/security scan results and the release SBOM before deploying a release.
 
 There is no public self-registration. New users are created by an admin.
 
@@ -31,6 +31,18 @@ For development the frontend is exposed on `5173` and backend on `8080`. Product
 The backend can terminate TLS directly through `TLS_CERT_FILE` and `TLS_KEY_FILE`. A reverse proxy such as Caddy, Traefik, nginx, or a managed ingress can also terminate TLS in front of the application.
 
 `scripts/generate-dev-certs.sh` is for local testing only. Configure `AGENT_CA_CERT` with the trusted development CA instead of disabling certificate verification.
+
+## JWT signing-key rotation
+
+For a rotation without intentionally accepting long-lived tokens:
+
+1. Keep the existing key as `JWT_SECRET_PREVIOUS`.
+2. Generate a new random key of at least 32 bytes and set it as `JWT_SECRET`.
+3. Deploy the backend. New tokens use only the new key; existing v8.1+ tokens can continue through the previous-key fallback.
+4. Wait longer than `JWT_ACCESS_TTL`.
+5. Remove `JWT_SECRET_PREVIOUS` and deploy again.
+
+A deployment from a pre-v8.1 build invalidates existing JWTs because older tokens do not contain the stricter issuer/audience/session claims. Plan one user re-authentication during that upgrade.
 
 ## Database migrations
 

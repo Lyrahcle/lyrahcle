@@ -55,6 +55,27 @@ wait_for frontend "curl -fsS http://localhost:5173/" || FAILURES=$((FAILURES + 1
 wait_for cve-sync "curl -fsS http://localhost:9091/metrics" || FAILURES=$((FAILURES + 1))
 wait_for prometheus "curl -fsS http://localhost:9090/-/healthy" || FAILURES=$((FAILURES + 1))
 
+run_auth_e2e() {
+  local login_response token status relogin_response
+  login_response="$(curl -fsS -H 'Content-Type: application/json' -d '{"identifier":"admin","password":"admin"}' http://localhost:8080/api/v1/auth/login)" || return 1
+  token="$(printf '%s' "$login_response" | python3 -c 'import json,sys; print(json.load(sys.stdin)["token"])')" || return 1
+  [[ -n "$token" ]] || return 1
+  curl -fsS -H "Authorization: Bearer $token" http://localhost:8080/api/v1/auth/me >/dev/null || return 1
+  curl -fsS -X POST -H "Authorization: Bearer $token" http://localhost:8080/api/v1/auth/logout >/dev/null || return 1
+  status="$(curl -sS -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $token" http://localhost:8080/api/v1/auth/me)" || return 1
+  [[ "$status" == "401" ]] || return 1
+  relogin_response="$(curl -fsS -H 'Content-Type: application/json' -d '{"identifier":"admin","password":"admin"}' http://localhost:8080/api/v1/auth/login)" || return 1
+  printf '%s' "$relogin_response" | python3 -c 'import json,sys; data=json.load(sys.stdin); assert data.get("token")' >/dev/null || return 1
+}
+
+echo -n "==> Running authentication E2E"
+if run_auth_e2e; then
+  echo " ok"
+else
+  echo " FAILED"
+  FAILURES=$((FAILURES + 1))
+fi
+
 if [[ "$WITH_SDR" == true ]]; then
   wait_for sdr-agent "docker compose ps sdr-agent | grep -q Up" || FAILURES=$((FAILURES + 1))
 fi
