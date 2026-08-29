@@ -378,7 +378,7 @@ paths:
     post:
       tags: [TM/TC]
       summary: Decode a hex-encoded AX.25 UI frame
-      security: []
+      description: "Requires role: viewer or higher."
       requestBody:
         required: true
         content:
@@ -400,7 +400,7 @@ paths:
     post:
       tags: [TM/TC]
       summary: Decode a hex-encoded CCSDS Space Packet
-      security: []
+      description: "Requires role: viewer or higher."
       requestBody:
         required: true
         content:
@@ -422,8 +422,7 @@ paths:
     post:
       tags: [TM/TC]
       summary: Decode a hex-encoded PUS packet
-      description: Built on the CCSDS Space Packet header.
-      security: []
+      description: "Built on the CCSDS Space Packet header. Requires role: viewer or higher."
       requestBody:
         required: true
         content:
@@ -445,7 +444,7 @@ paths:
     post:
       tags: [TM/TC]
       summary: Decode a hex-encoded CubeSat Space Protocol (CSP v1) packet
-      security: []
+      description: "Requires role: viewer or higher."
       requestBody:
         required: true
         content:
@@ -479,6 +478,46 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/SpaceCVEPage" }
+
+  /api/v1/asset-alerts/:
+    get:
+      tags: [Threat Intel]
+      summary: List CVE-to-asset alerts
+      description: >
+        Requires role: viewer or higher. Raised automatically by a
+        background worker when a synced CVE's search keyword is relevant
+        to a tracked asset's kind (e.g. a "satellite"-keyword CVE against
+        every satellite asset). Sorted unacknowledged-first, then most
+        recent.
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: Paginated list of alerts
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AssetCVEAlertPage" }
+
+  /api/v1/asset-alerts/{alertID}/acknowledge:
+    post:
+      tags: [Threat Intel]
+      summary: Mark an alert as reviewed
+      description: >
+        Requires role: operator or higher. Idempotent — acknowledging an
+        already-acknowledged alert succeeds and just overwrites who/when.
+      parameters:
+        - name: alertID
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204": { description: Acknowledged }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404":
+          description: No alert with that ID
+          content:
+            text/plain: {}
 
   /api/v1/audit-log:
     get:
@@ -779,6 +818,32 @@ components:
             items:
               type: array
               items: { $ref: "#/components/schemas/SpaceCVE" }
+
+    AssetCVEAlert:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        asset_id: { type: string, format: uuid }
+        asset_kind: { type: string, example: satellite }
+        asset_value: { type: string, example: "NORAD-25544" }
+        cve_id: { type: string, example: "CVE-2026-77777" }
+        cve_description: { type: string }
+        cve_score: { type: number, format: double }
+        matched_keyword: { type: string, example: satellite }
+        severity: { type: string, enum: [LOW, MEDIUM, HIGH, CRITICAL, unknown] }
+        acknowledged: { type: boolean }
+        acknowledged_by: { type: string, format: uuid, nullable: true }
+        acknowledged_at: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+
+    AssetCVEAlertPage:
+      allOf:
+        - $ref: "#/components/schemas/Page"
+        - type: object
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/AssetCVEAlert" }
 
     AuditEntry:
       type: object

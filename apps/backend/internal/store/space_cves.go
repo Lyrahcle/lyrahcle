@@ -76,3 +76,27 @@ func (s *SpaceCVEStore) List(ctx context.Context, limit, offset int) (Page[Space
 
 	return Page[SpaceCVE]{Items: items, Total: total, Limit: limit, Offset: offset}, nil
 }
+
+// GetByID looks up a single CVE by ID. Used by the CVE-to-asset alert
+// matcher (internal/alerts) after popping a cve_id off the Redis event
+// queue that cve-sync publishes on each successful upsert.
+func (s *SpaceCVEStore) GetByID(ctx context.Context, cveID string) (SpaceCVE, error) {
+	var c SpaceCVE
+	var published *time.Time
+	var score *float64
+
+	err := s.pool.QueryRow(ctx, `
+		SELECT cve_id, description, published, severity, score, keyword, synced_at
+		FROM space_cves WHERE cve_id = $1
+	`, cveID).Scan(&c.CVEID, &c.Description, &published, &c.Severity, &score, &c.Keyword, &c.SyncedAt)
+	if err != nil {
+		return SpaceCVE{}, err
+	}
+	if published != nil {
+		c.Published = *published
+	}
+	if score != nil {
+		c.Score = *score
+	}
+	return c, nil
+}

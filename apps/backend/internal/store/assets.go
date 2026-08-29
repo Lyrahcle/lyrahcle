@@ -64,3 +64,32 @@ func (s *AssetStore) Upsert(ctx context.Context, programID uuid.UUID, kind, valu
 	`, programID, kind, value)
 	return err
 }
+
+// ListByKinds returns every asset whose kind is in kinds. Used by the
+// CVE-to-asset alert matcher (internal/alerts) to find which assets a
+// newly synced CVE's search keyword is relevant to.
+func (s *AssetStore) ListByKinds(ctx context.Context, kinds []string) ([]Asset, error) {
+	if len(kinds) == 0 {
+		return nil, nil
+	}
+
+	rows, err := s.pool.Query(ctx, `
+		SELECT id, program_id, kind, value FROM assets
+		WHERE kind = ANY($1)
+		ORDER BY last_seen DESC
+	`, kinds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	items := []Asset{}
+	for rows.Next() {
+		var a Asset
+		if err := rows.Scan(&a.ID, &a.ProgramID, &a.Kind, &a.Value); err != nil {
+			return nil, err
+		}
+		items = append(items, a)
+	}
+	return items, rows.Err()
+}

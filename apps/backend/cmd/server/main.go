@@ -21,6 +21,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/redis/go-redis/v9"
 
+	"github.com/mlko01/lyrahcle/apps/backend/internal/alerts"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/anomaly"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/audit"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/auth"
@@ -63,6 +64,7 @@ func main() {
 	agentKeys := store.NewAgentKeyStore(pool)
 	auditLog := store.NewAuditStore(pool)
 	spaceCVEs := store.NewSpaceCVEStore(pool)
+	assetAlerts := store.NewAssetAlertStore(pool)
 
 	if err := seedAdmin(ctx, users, cfg); err != nil {
 		log.Printf("seed admin: %v", err)
@@ -76,6 +78,10 @@ func main() {
 		defer redisClient.Close()
 	}
 
+	alertsCtx, stopAlertsWorker := context.WithCancel(context.Background())
+	defer stopAlertsWorker()
+	go alerts.NewWorker(redisClient, spaceCVEs, assets, assetAlerts, auditLog).Run(alertsCtx)
+
 	sched := scheduler.New()
 	_ = sched.Every("0 */6 * * *", "recon-sweep", func() {
 		log.Println("recon sweep tick (not yet implemented)")
@@ -88,7 +94,7 @@ func main() {
 
 	go syncTLEs(ctx, cfg.CelestrakGroups, satellites)
 
-	r := newRouter(cfg, assets, programs, rf, rfAnomalies, satellites, users, agentKeys, auditLog, spaceCVEs, redisClient)
+	r := newRouter(cfg, assets, programs, rf, rfAnomalies, satellites, users, agentKeys, auditLog, spaceCVEs, assetAlerts, redisClient)
 
 	srv := &http.Server{
 		Addr:         ":" + cfg.Port,
@@ -122,6 +128,8 @@ func main() {
 	case sig := <-stop:
 		log.Printf("received %s, shutting down gracefully (draining in-flight requests)...", sig)
 
+		stopAlertsWorker()
+
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 		defer cancel()
 
@@ -145,6 +153,7 @@ func newRouter(
 	agentKeys *store.AgentKeyStore,
 	auditLog *store.AuditStore,
 	spaceCVEs *store.SpaceCVEStore,
+	assetAlerts *store.AssetAlertStore,
 	redisClient *redis.Client,
 ) http.Handler {
 	blocklist := tokenblocklist.New(redisClient)
@@ -727,6 +736,8 @@ func newRouter(
 		})
 
 		r.Route("/tmtc", func(r chi.Router) {
+			r.Use(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer, isTokenRevoked))
+
 			r.Post("/decode/ax25", func(w http.ResponseWriter, r *http.Request) {
 				var body struct {
 					FrameHex string `json:"frame_hex"`
@@ -844,6 +855,46 @@ func newRouter(
 			cache.Set(r.Context(), cacheKey, page, 30*time.Second)
 			w.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(w).Encode(page)
+		})
+
+		r.Route("/asset-alerts", func(r chi.Router) {
+			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer, isTokenRevoked)).Get("/", func(w http.ResponseWriter, r *http.Request) {
+				limit, offset := pageParams(r)
+				page, err := assetAlerts.List(r.Context(), limit, offset)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(page)
+			})
+
+			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleOperator, isTokenRevoked)).Post("/{alertID}/acknowledge", func(w http.ResponseWriter, r *http.Request) {
+				alertID, err := uuid.Parse(chi.URLParam(r, "alertID"))
+				if err != nil {
+					http.Error(w, "alertID must be a valid UUID", http.StatusBadRequest)
+					return
+				}
+
+				claims, ok := auth.FromContext(r.Context())
+				if !ok {
+					http.Error(w, "unauthorized", http.StatusUnauthorized)
+					return
+				}
+
+				found, err := assetAlerts.Acknowledge(r.Context(), alertID, claims.UserID)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+				if !found {
+					http.Error(w, "alert not found", http.StatusNotFound)
+					return
+				}
+
+				logAudit(r.Context(), auditLog, audit.ActorUser, claims.UserID.String(), audit.ActionAssetAlertAcked, clientIP(r), map[string]interface{}{"alert_id": alertID.String()})
+				w.WriteHeader(http.StatusNoContent)
+			})
 		})
 	})
 

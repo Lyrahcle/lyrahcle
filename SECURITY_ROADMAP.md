@@ -28,5 +28,6 @@ are in [CHANGELOG.md](./CHANGELOG.md); this page tracks status only.
 - [x] Dashboard UX polish — light/dark theme, English/Spanish i18n, Settings tab, user search
 - [x] Accessibility pass — WCAG AA contrast audit and fixes, focus-trapped modal dialog, keyboard-operable map markers, form label associations, live regions, axe-core test coverage
 - [x] Redis-backed rate limiting, JWT revocation (logout, password change), and response caching — degrades gracefully if Redis is unreachable
+- [x] CVE-to-asset alerting via a Redis queue + background matching worker; fixed a critical pre-existing bug where cve-sync had never successfully persisted a CVE against the real schema
 - [ ] Real SDR hardware integration (RTL-SDR, HackRF) to validate capture
       beyond the mock source
