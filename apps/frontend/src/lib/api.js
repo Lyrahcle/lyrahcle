@@ -105,6 +105,17 @@ export async function fetchSpaceCVEs(limit = 50, offset = 0) {
   return res.json()
 }
 
+export async function fetchAssetAlerts(limit = 50, offset = 0) {
+  const res = await authedFetch(`/api/v1/asset-alerts/?limit=${limit}&offset=${offset}`)
+  if (!res.ok) throw new Error('failed to fetch asset alerts')
+  return res.json()
+}
+
+export async function acknowledgeAssetAlert(alertId) {
+  const res = await authedFetch(`/api/v1/asset-alerts/${alertId}/acknowledge`, { method: 'POST' })
+  if (!res.ok) throw new Error(await readErrorText(res, 'failed to acknowledge alert'))
+}
+
 export async function fetchAgentKeys() {
   const res = await authedFetch('/api/v1/agent-keys/')
   if (!res.ok) throw new Error('failed to fetch agent keys')

@@ -10,6 +10,7 @@ import AnomaliesPanel from './AnomaliesPanel.jsx'
 import SatellitesPanel from './SatellitesPanel.jsx'
 import WorldMap from './WorldMap.jsx'
 import ThreatIntelPanel from './ThreatIntelPanel.jsx'
+import AssetAlertsPanel from './AssetAlertsPanel.jsx'
 import Decoder from './Decoder.jsx'
 import NewAssetForm from './NewAssetForm.jsx'
 import NewSatelliteForm from './NewSatelliteForm.jsx'
@@ -23,6 +24,7 @@ import { useI18n } from '../lib/I18nContext.jsx'
 import {
   fetchAgentKeys,
   fetchAssets,
+  fetchAssetAlerts,
   fetchAuditLog,
   fetchPing,
   fetchRfAnomalies,
@@ -43,6 +45,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
   const [rfAnomalies, setRfAnomalies] = useState(null)
   const [satellites, setSatellites] = useState(null)
   const [spaceCVEs, setSpaceCVEs] = useState(null)
+  const [assetAlerts, setAssetAlerts] = useState(null)
   const [agentKeys, setAgentKeys] = useState(null)
   const [auditEntries, setAuditEntries] = useState(null)
   const [users, setUsers] = useState(null)
@@ -51,9 +54,11 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
 
   const [assetsOffset, setAssetsOffset] = useState(0)
   const [cvesOffset, setCvesOffset] = useState(0)
+  const [alertsOffset, setAlertsOffset] = useState(0)
   const [auditOffset, setAuditOffset] = useState(0)
   const assetsOffsetRef = useRef(0)
   const cvesOffsetRef = useRef(0)
+  const alertsOffsetRef = useRef(0)
   const auditOffsetRef = useRef(0)
   useEffect(() => {
     assetsOffsetRef.current = assetsOffset
@@ -61,6 +66,9 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
   useEffect(() => {
     cvesOffsetRef.current = cvesOffset
   }, [cvesOffset])
+  useEffect(() => {
+    alertsOffsetRef.current = alertsOffset
+  }, [alertsOffset])
   useEffect(() => {
     auditOffsetRef.current = auditOffset
   }, [auditOffset])
@@ -125,6 +133,11 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
         setSpaceCVEs,
         { items: [], total: 0, limit: PAGE_LIMIT, offset: 0 },
       )
+      await safeFetch(
+        () => fetchAssetAlerts(PAGE_LIMIT, alertsOffsetRef.current),
+        setAssetAlerts,
+        { items: [], total: 0, limit: PAGE_LIMIT, offset: 0 },
+      )
 
       if (admin) {
         await safeFetch(fetchAgentKeys, setAgentKeys)
@@ -161,6 +174,9 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
   }
   function reloadUsers() {
     fetchUsers().then(setUsers).catch(() => {})
+  }
+  function reloadAssetAlerts() {
+    fetchAssetAlerts(PAGE_LIMIT, alertsOffsetRef.current).then(setAssetAlerts).catch(() => {})
   }
 
   return (
@@ -218,17 +234,31 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
         )}
 
         {activeTab === 'intel' && (
-          <Panel eyebrow={t('panels.threatIntelligence')} title={t('panels.spaceCves')}>
-            {spaceCVEs === null ? (
-              <Skeleton />
-            ) : (
-              <ThreatIntelPanel
-                page={spaceCVEs}
-                onPrev={() => setCvesOffset((o) => Math.max(0, o - PAGE_LIMIT))}
-                onNext={() => setCvesOffset((o) => o + PAGE_LIMIT)}
-              />
-            )}
-          </Panel>
+          <div className="grid gap-6">
+            <Panel eyebrow={t('panels.threatIntelligence')} title={t('panels.spaceCves')}>
+              {spaceCVEs === null ? (
+                <Skeleton />
+              ) : (
+                <ThreatIntelPanel
+                  page={spaceCVEs}
+                  onPrev={() => setCvesOffset((o) => Math.max(0, o - PAGE_LIMIT))}
+                  onNext={() => setCvesOffset((o) => o + PAGE_LIMIT)}
+                />
+              )}
+            </Panel>
+            <Panel eyebrow={t('panels.assetAlerts')} title={t('panels.matchedVulnerabilities')}>
+              {assetAlerts === null ? (
+                <Skeleton />
+              ) : (
+                <AssetAlertsPanel
+                  page={assetAlerts}
+                  onPrev={() => setAlertsOffset((o) => Math.max(0, o - PAGE_LIMIT))}
+                  onNext={() => setAlertsOffset((o) => o + PAGE_LIMIT)}
+                  onChanged={reloadAssetAlerts}
+                />
+              )}
+            </Panel>
+          </div>
         )}
 
         {activeTab === 'decoder' && (

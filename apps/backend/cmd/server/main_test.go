@@ -74,8 +74,9 @@ func testRouter(t *testing.T) (http.Handler, *pgxpool.Pool) {
 	agentKeys := store.NewAgentKeyStore(pool)
 	auditLog := store.NewAuditStore(pool)
 	spaceCVEs := store.NewSpaceCVEStore(pool)
+	assetAlerts := store.NewAssetAlertStore(pool)
 
-	router := newRouter(cfg, assets, programs, rf, rfAnomalies, satellites, users, agentKeys, auditLog, spaceCVEs, nil)
+	router := newRouter(cfg, assets, programs, rf, rfAnomalies, satellites, users, agentKeys, auditLog, spaceCVEs, assetAlerts, nil)
 	return router, pool
 }
 
@@ -294,6 +295,23 @@ func TestDecodeCSPEndpoint(t *testing.T) {
 	}
 	if decoded["payload"] != "TEMP=21.4" {
 		t.Errorf("decoded payload = %v, want %q", decoded["payload"], "TEMP=21.4")
+	}
+}
+
+func TestDecodeEndpointsRequireAuth(t *testing.T) {
+	router, _ := testRouter(t)
+
+	paths := []string{
+		"/api/v1/tmtc/decode/ax25",
+		"/api/v1/tmtc/decode/ccsds",
+		"/api/v1/tmtc/decode/pus",
+		"/api/v1/tmtc/decode/csp",
+	}
+	for _, path := range paths {
+		rec := doJSON(t, router, http.MethodPost, path, "", map[string]string{"frame_hex": "00", "packet_hex": "00"})
+		if rec.Code != http.StatusUnauthorized {
+			t.Errorf("POST %s without a token: status = %d, want 401", path, rec.Code)
+		}
 	}
 }
 

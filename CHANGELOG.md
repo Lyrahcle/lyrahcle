@@ -29,6 +29,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/), using
 - Users & roles panel gained a search-by-email filter and a match count
 - Accessibility pass across the dashboard: fixed unassociated form labels (3 forms), added `scope="col"` to every data table, `role="alert"` on form errors, a proper focus-trapped `role="dialog"` for the change-password modal (Tab cycling, Escape-to-close, focus restored on close), keyboard-focusable world-map markers, live-region status/loading announcements, and a dynamic `<html lang>`. Also found and fixed two WCAG AA contrast failures in the new light/dark theme's dimmest text color (was 2.8–3.6:1, now 4.7–5.0:1 in both themes). 12 new tests, including an automated axe-core audit
 - Redis integration, all optional and gracefully degrading if Redis isn't reachable: rate limiting is now backed by Redis (survives restarts, correct across multiple replicas, replacing the previous in-memory counter); a new `POST /auth/logout` and password changes both revoke the JWT used to make the request immediately instead of leaving it valid until its natural expiry; `GET /satellites/` and `GET /threat-intel/space-cves` are now response-cached (5s and 30s TTL respectively)
+- CVE-to-asset alerting: `cve-sync` now publishes each newly synced CVE to a Redis queue; a background worker in the backend matches it against tracked assets by kind (satellite/ground_station/firmware CVE keywords → matching asset kinds) and raises an alert an operator can acknowledge — `GET /asset-alerts/`, `POST /asset-alerts/{id}/acknowledge`, and a new "Asset Alerts" panel in the dashboard's Intel tab
 
 ### Changed
 - `apps/cve-sync` is now the sole writer of `space_cves`; the backend only reads it, removing a duplicate in-process sync that raced on the same table
@@ -40,6 +41,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/), using
 - Docker Compose startup race: `postgres`/`redis` now have real healthchecks, dependent services wait on `service_healthy`, and every long-running service restarts automatically
 - Test isolation bug where `audit_log`/`space_cves` weren't reset between test runs
 - Frontend pagination not refetching immediately on Next/Prev
+- `cve-sync` had never successfully written a single CVE to the real database: `UpsertCVEs` referenced columns (`id`, `has_score`, `references`) that don't exist in the migrated `space_cves` schema (`cve_id`, no `has_score`, `references_urls`) — `references` is also a reserved SQL keyword, so every write failed with a syntax error. The sync loop only logs the error and continues, so it looked healthy in logs the whole time. Fixed and covered by regression tests against the real schema
 
 ### Security
 - Backend and frontend security response headers (`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, `Content-Security-Policy`, `Strict-Transport-Security`)
@@ -47,3 +49,4 @@ Format based on [Keep a Changelog](https://keepachangelog.com/), using
 - Graceful shutdown on `SIGINT`/`SIGTERM`, draining in-flight requests
 - Versioned, idempotent database migrations (`schema_migrations` tracking table)
 - Production safety check: the backend refuses to start with insecure defaults when `ENV=production`
+- The four `POST /tmtc/decode/*` endpoints didn't require authentication, contradicting the documented "every endpoint except healthz/ping/register/login requires login" policy — the frontend already sent its auth token to them regardless, so this closes the gap with no frontend change needed. Covered by a new regression test

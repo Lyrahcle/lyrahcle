@@ -88,13 +88,15 @@ the `Authorization: Bearer` header used by human sessions.
 | `GET` | `/api/v1/rf/anomalies` | viewer+ | List recent RF anomalies (statistical outliers in power or frequency vs. that agent's baseline) |
 | `GET` | `/api/v1/satellites/` | viewer+ | List tracked satellites with live computed position |
 | `POST` | `/api/v1/satellites/` | operator+ | Register a satellite by NORAD ID + TLE |
-| `POST` | `/api/v1/tmtc/decode/ax25` | — | Decode a hex-encoded AX.25 UI frame (destination/source callsign+SSID, control, PID, payload) |
-| `POST` | `/api/v1/tmtc/decode/ccsds` | — | Decode a hex-encoded CCSDS Space Packet (version, TM/TC type, secondary header flag, APID, sequence flags/count, payload) |
-| `POST` | `/api/v1/tmtc/decode/pus` | — | Decode a hex-encoded PUS packet (CCSDS header fields + PUS version, service type/subtype, message counter, destination ID, payload) |
-| `POST` | `/api/v1/tmtc/decode/csp` | — | Decode a hex-encoded CubeSat Space Protocol (CSP v1) packet (priority, source/destination, source/destination port, HMAC/XTEA/RDP/CRC flags, payload) |
+| `POST` | `/api/v1/tmtc/decode/ax25` | viewer+ | Decode a hex-encoded AX.25 UI frame (destination/source callsign+SSID, control, PID, payload) |
+| `POST` | `/api/v1/tmtc/decode/ccsds` | viewer+ | Decode a hex-encoded CCSDS Space Packet (version, TM/TC type, secondary header flag, APID, sequence flags/count, payload) |
+| `POST` | `/api/v1/tmtc/decode/pus` | viewer+ | Decode a hex-encoded PUS packet (CCSDS header fields + PUS version, service type/subtype, message counter, destination ID, payload) |
+| `POST` | `/api/v1/tmtc/decode/csp` | viewer+ | Decode a hex-encoded CubeSat Space Protocol (CSP v1) packet (priority, source/destination, source/destination port, HMAC/XTEA/RDP/CRC flags, payload) |
 | `GET` | `/api/v1/threat-intel/space-cves` | viewer+ | List space-related CVEs synced from the NVD (auto-updates daily, paginated) |
+| `GET` | `/api/v1/asset-alerts/` | viewer+ | List CVE-to-asset alerts, raised automatically when a synced CVE is relevant to a tracked asset's kind (paginated) |
+| `POST` | `/api/v1/asset-alerts/{alertID}/acknowledge` | operator+ | Mark an alert as reviewed |
 
-`/assets`, `/audit-log`, and `/threat-intel/space-cves` accept `?limit=` (default
+`/assets`, `/audit-log`, `/threat-intel/space-cves`, and `/asset-alerts` accept `?limit=` (default
 50, max 200) and `?offset=` query params, and respond with
 `{"items": [...], "total": N, "limit": L, "offset": O}` instead of a bare
 array.

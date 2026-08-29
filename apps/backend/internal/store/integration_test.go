@@ -125,6 +125,20 @@ func testPool(t *testing.T) *pgxpool.Pool {
 			keyword TEXT NOT NULL DEFAULT '',
 			synced_at TIMESTAMPTZ NOT NULL DEFAULT now()
 		);
+
+		DROP TABLE IF EXISTS asset_cve_alerts CASCADE;
+		CREATE TABLE asset_cve_alerts (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			asset_id UUID NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
+			cve_id TEXT NOT NULL REFERENCES space_cves(cve_id) ON DELETE CASCADE,
+			matched_keyword TEXT NOT NULL,
+			severity TEXT NOT NULL,
+			acknowledged BOOLEAN NOT NULL DEFAULT false,
+			acknowledged_by UUID REFERENCES users(id) ON DELETE SET NULL,
+			acknowledged_at TIMESTAMPTZ,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+			UNIQUE (asset_id, cve_id)
+		);
 	`
 	if _, err := pool.Exec(ctx, schema); err != nil {
 		t.Fatalf("failed to set up test schema: %v", err)
