@@ -149,6 +149,7 @@ export const translations = {
       showPassword: 'Show password',
       hidePassword: 'Hide password',
       totpCode: 'Two-factor code',
+      tooManyAttempts: 'Too many sign-in attempts. Try again shortly.',
     },
     changePasswordModal: {
       title: 'Change password',
@@ -404,6 +405,7 @@ export const translations = {
       showPassword: 'Mostrar contraseña',
       hidePassword: 'Ocultar contraseña',
       totpCode: 'Código de dos factores',
+      tooManyAttempts: 'Demasiados intentos de inicio de sesión. Inténtalo de nuevo en breve.',
     },
     changePasswordModal: {
       title: 'Cambiar contraseña',
@@ -659,6 +661,7 @@ export const translations = {
       showPassword: 'Afficher le mot de passe',
       hidePassword: 'Masquer le mot de passe',
       totpCode: 'Code à deux facteurs',
+      tooManyAttempts: 'Trop de tentatives de connexion. Réessayez dans quelques instants.',
     },
     changePasswordModal: {
       title: 'Changer le mot de passe',
@@ -914,6 +917,7 @@ export const translations = {
       showPassword: 'Passwort anzeigen',
       hidePassword: 'Passwort verbergen',
       totpCode: 'Zwei-Faktor-Code',
+      tooManyAttempts: 'Zu viele Anmeldeversuche. Versuchen Sie es in Kürze erneut.',
     },
     changePasswordModal: {
       title: 'Passwort ändern',

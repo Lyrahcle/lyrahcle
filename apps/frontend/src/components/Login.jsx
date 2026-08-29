@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Eye, EyeOff } from 'lucide-react'
 import LogoMark from './LogoMark.jsx'
 import LoginConstellation from './LoginConstellation.jsx'
-import { login, TotpRequiredError } from '../lib/auth.js'
+import { login, LoginRateLimitedError, TotpRequiredError } from '../lib/auth.js'
 import { useI18n } from '../lib/I18nContext.jsx'
 import pkg from '../../package.json'
 
@@ -28,6 +28,8 @@ export default function Login({ onSuccess }) {
     } catch (err) {
       if (err instanceof TotpRequiredError) {
         setNeedsTotp(true)
+      } else if (err instanceof LoginRateLimitedError) {
+        setError(t('auth.tooManyAttempts'))
       } else {
         setError(err.message)
       }

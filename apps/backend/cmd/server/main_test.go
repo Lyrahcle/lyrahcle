@@ -669,3 +669,63 @@ func TestSpaceCVEsFilterAndSort(t *testing.T) {
 		t.Errorf("keywords = %v, want 2 distinct values", keywords)
 	}
 }
+
+func TestRequestIDMiddleware(t *testing.T) {
+	router, _, _ := testRouter(t)
+
+	t.Run("generated", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+		if requestID := rec.Header().Get("X-Request-ID"); requestID == "" {
+			t.Fatal("X-Request-ID response header is empty")
+		}
+	})
+
+	t.Run("preserved", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
+		req.Header.Set("X-Request-ID", "mission-ops:1234")
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+		if got := rec.Header().Get("X-Request-ID"); got != "mission-ops:1234" {
+			t.Fatalf("X-Request-ID = %q, want %q", got, "mission-ops:1234")
+		}
+	})
+
+	t.Run("unsafe-replaced", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
+		req.Header.Set("X-Request-ID", "unsafe request id")
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+		got := rec.Header().Get("X-Request-ID")
+		if got == "" || got == "unsafe request id" {
+			t.Fatalf("X-Request-ID = %q, want a generated safe identifier", got)
+		}
+	})
+}
+
+func TestAuthenticatedAuthTrafficDoesNotConsumeLoginLimit(t *testing.T) {
+	router, _, users := testRouter(t)
+	password := "correct-horse-battery"
+	token := seedUserAndLogin(t, router, users, "relogin@example.com", password, string(auth.RoleAdmin))
+
+	for i := 0; i < 20; i++ {
+		rec := doJSON(t, router, http.MethodGet, "/api/v1/auth/me", token, nil)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("GET /auth/me attempt %d: status = %d, body = %s", i+1, rec.Code, rec.Body.String())
+		}
+	}
+
+	logoutRec := doJSON(t, router, http.MethodPost, "/api/v1/auth/logout", token, nil)
+	if logoutRec.Code != http.StatusNoContent {
+		t.Fatalf("logout: status = %d, body = %s", logoutRec.Code, logoutRec.Body.String())
+	}
+
+	rec := doJSON(t, router, http.MethodPost, "/api/v1/auth/login", "", map[string]string{
+		"identifier": "relogin@example.com",
+		"password":   password,
+	})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("re-login after authenticated auth traffic: status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+}

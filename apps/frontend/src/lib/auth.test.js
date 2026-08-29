@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { authHeaders, decodeToken, getRole, getToken, isAuthenticated, login, logout } from './auth.js'
+import { authHeaders, decodeToken, getRole, getToken, isAuthenticated, login, LoginRateLimitedError, logout } from './auth.js'
 
 function makeToken(payload) {
   const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }))
@@ -55,6 +55,12 @@ describe('auth client', () => {
   it('login throws on invalid credentials without storing anything', async () => {
     global.fetch.mockResolvedValue({ ok: false, status: 401 })
     await expect(login('admin', 'wrong')).rejects.toThrow('Invalid email/username or password')
+    expect(getToken()).toBeNull()
+  })
+
+  it('login throws LoginRateLimitedError when the backend throttles sign-in', async () => {
+    global.fetch.mockResolvedValue({ ok: false, status: 429 })
+    await expect(login('admin', 'admin')).rejects.toBeInstanceOf(LoginRateLimitedError)
     expect(getToken()).toBeNull()
   })
 

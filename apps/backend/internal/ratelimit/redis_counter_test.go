@@ -24,7 +24,7 @@ func testClient(t *testing.T) *redis.Client {
 }
 
 func TestIncrementThenGetReflectsCount(t *testing.T) {
-	c := NewRedisCounter(testClient(t))
+	c := NewRedisCounter(testClient(t), "test")
 	c.Config(100, time.Minute)
 
 	window := time.Now()
@@ -49,7 +49,7 @@ func TestIncrementThenGetReflectsCount(t *testing.T) {
 }
 
 func TestIncrementByAddsTheGivenAmount(t *testing.T) {
-	c := NewRedisCounter(testClient(t))
+	c := NewRedisCounter(testClient(t), "test")
 	c.Config(100, time.Minute)
 
 	window := time.Now()
@@ -72,7 +72,7 @@ func TestIncrementByAddsTheGivenAmount(t *testing.T) {
 }
 
 func TestGetOnNeverIncrementedKeyIsZero(t *testing.T) {
-	c := NewRedisCounter(testClient(t))
+	c := NewRedisCounter(testClient(t), "test")
 	c.Config(100, time.Minute)
 
 	window := time.Now()
@@ -86,7 +86,7 @@ func TestGetOnNeverIncrementedKeyIsZero(t *testing.T) {
 }
 
 func TestDifferentWindowsAreIndependent(t *testing.T) {
-	c := NewRedisCounter(testClient(t))
+	c := NewRedisCounter(testClient(t), "test")
 	c.Config(100, time.Minute)
 
 	key := "test-key-windows-" + t.Name()
@@ -103,5 +103,51 @@ func TestDifferentWindowsAreIndependent(t *testing.T) {
 	}
 	if currB != 0 {
 		t.Errorf("windowB count = %d, want 0 (independent from windowA)", currB)
+	}
+}
+
+func TestNamespacesAreIndependent(t *testing.T) {
+	client := testClient(t)
+	global := NewRedisCounter(client, "global-test-"+t.Name())
+	login := NewRedisCounter(client, "login-test-"+t.Name())
+	global.Config(120, time.Minute)
+	login.Config(10, time.Minute)
+
+	window := time.Now()
+	key := "shared-ip"
+
+	for i := 0; i < 20; i++ {
+		if err := global.Increment(key, window); err != nil {
+			t.Fatalf("global Increment: %v", err)
+		}
+	}
+	if err := login.Increment(key, window); err != nil {
+		t.Fatalf("login Increment: %v", err)
+	}
+
+	globalCount, _, err := global.Get(key, window, window.Add(-time.Minute))
+	if err != nil {
+		t.Fatalf("global Get: %v", err)
+	}
+	loginCount, _, err := login.Get(key, window, window.Add(-time.Minute))
+	if err != nil {
+		t.Fatalf("login Get: %v", err)
+	}
+	if globalCount != 20 {
+		t.Fatalf("global count = %d, want 20", globalCount)
+	}
+	if loginCount != 1 {
+		t.Fatalf("login count = %d, want 1", loginCount)
+	}
+}
+
+func TestBucketKeysIncludeNamespace(t *testing.T) {
+	window := time.Unix(1_700_000_000, 0)
+	global := NewRedisCounter(nil, "global")
+	login := NewRedisCounter(nil, "login")
+	globalKey := global.bucketKey("192.0.2.10", window)
+	loginKey := login.bucketKey("192.0.2.10", window)
+	if globalKey == loginKey {
+		t.Fatalf("global and login bucket keys collide: %q", globalKey)
 	}
 }

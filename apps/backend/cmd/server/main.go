@@ -161,13 +161,16 @@ func newRouter(
 	isTokenRevoked := blocklist.IsRevoked
 
 	globalLimiter := httprate.Limit(120, time.Minute, httprate.WithKeyByIP())
-	authLimiter := httprate.Limit(10, time.Minute, httprate.WithKeyByIP())
+	loginLimiter := httprate.Limit(10, time.Minute, httprate.WithKeyByIP())
 	if redisClient != nil {
-		globalLimiter = httprate.Limit(120, time.Minute, httprate.WithKeyByIP(), httprate.WithLimitCounter(ratelimit.NewRedisCounter(redisClient)))
-		authLimiter = httprate.Limit(10, time.Minute, httprate.WithKeyByIP(), httprate.WithLimitCounter(ratelimit.NewRedisCounter(redisClient)))
+		globalLimiter = httprate.Limit(120, time.Minute, httprate.WithKeyByIP(), httprate.WithLimitCounter(ratelimit.NewRedisCounter(redisClient, "global")))
+		loginLimiter = httprate.Limit(10, time.Minute, httprate.WithKeyByIP(), httprate.WithLimitCounter(ratelimit.NewRedisCounter(redisClient, "login")))
 	}
 
 	r := chi.NewRouter()
+	r.Use(sanitizeRequestID)
+	r.Use(middleware.RequestID)
+	r.Use(requestIDResponseHeader)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(securityHeaders(cfg.TLSCertFile != "" && cfg.TLSKeyFile != ""))
@@ -284,9 +287,7 @@ func newRouter(
 		})
 
 		r.Route("/auth", func(r chi.Router) {
-			r.Use(authLimiter)
-
-			r.Post("/login", func(w http.ResponseWriter, r *http.Request) {
+			r.With(loginLimiter).Post("/login", func(w http.ResponseWriter, r *http.Request) {
 				var body struct {
 					Identifier string `json:"identifier"`
 					Password   string `json:"password"`
@@ -1120,6 +1121,43 @@ func newRouter(
 	})
 
 	return r
+}
+
+func sanitizeRequestID(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestID := r.Header.Get("X-Request-ID")
+		if requestID != "" && !validRequestID(requestID) {
+			r.Header.Del("X-Request-ID")
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func validRequestID(value string) bool {
+	if len(value) == 0 || len(value) > 128 {
+		return false
+	}
+	for _, r := range value {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') {
+			continue
+		}
+		switch r {
+		case '-', '_', '.', ':':
+			continue
+		default:
+			return false
+		}
+	}
+	return true
+}
+
+func requestIDResponseHeader(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if requestID := middleware.GetReqID(r.Context()); requestID != "" {
+			w.Header().Set("X-Request-ID", requestID)
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 func maxBodySize(n int64) func(http.Handler) http.Handler {

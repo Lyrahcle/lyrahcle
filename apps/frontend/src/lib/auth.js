@@ -32,6 +32,12 @@ export class TotpRequiredError extends Error {
   }
 }
 
+export class LoginRateLimitedError extends Error {
+  constructor() {
+    super('login_rate_limited')
+  }
+}
+
 export async function login(identifier, password, totpCode) {
   const res = await fetch('/api/v1/auth/login', {
     method: 'POST',
@@ -39,6 +45,7 @@ export async function login(identifier, password, totpCode) {
     body: JSON.stringify({ identifier, password, totp_code: totpCode }),
   })
   if (!res.ok) {
+    if (res.status === 429) throw new LoginRateLimitedError()
     if (res.status === 401) {
       const body = typeof res.json === 'function' ? await res.json().catch(() => null) : null
       if (body?.error === 'totp_required') throw new TotpRequiredError()
@@ -57,19 +64,13 @@ export async function logout() {
   localStorage.removeItem(TOKEN_KEY)
   localStorage.removeItem(ROLE_KEY)
 
-  
-  
-  
-  
   if (token) {
     try {
       await fetch('/api/v1/auth/logout', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       })
-    } catch {
-      
-    }
+    } catch {}
   }
 }
 
