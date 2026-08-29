@@ -45,8 +45,13 @@ func CheckPassword(hash, password string) bool {
 }
 
 func IssueToken(secret []byte, userID uuid.UUID, role Role, ttl time.Duration) (string, error) {
+	token, _, err := IssueTokenWithClaims(secret, userID, role, ttl)
+	return token, err
+}
+
+func IssueTokenWithClaims(secret []byte, userID uuid.UUID, role Role, ttl time.Duration) (string, *Claims, error) {
 	now := time.Now()
-	claims := Claims{
+	claims := &Claims{
 		UserID:          userID,
 		Role:            role,
 		SessionIssuedAt: now.UnixNano(),
@@ -61,7 +66,11 @@ func IssueToken(secret []byte, userID uuid.UUID, role Role, ttl time.Duration) (
 		},
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(secret)
+	signed, err := token.SignedString(secret)
+	if err != nil {
+		return "", nil, err
+	}
+	return signed, claims, nil
 }
 
 func ParseToken(secret []byte, tokenString string) (*Claims, error) {

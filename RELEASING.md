@@ -9,6 +9,7 @@ Lyrahcle uses Semantic Versioning. Before v1.0, feature releases increment the m
 - Documentation matches the current API and configuration.
 - No known critical/high release-blocking vulnerabilities remain.
 - The CycloneDX SBOM job succeeds and its checksums are retained.
+- Release signing and provenance permissions are available to GitHub Actions.
 
 ## Create a release
 
@@ -20,7 +21,7 @@ git tag -a v0.9.0 -m "v0.9.0"
 git push origin v0.9.0
 ```
 
-A `v*.*.*` tag triggers `.github/workflows/release.yml`. The workflow builds, scans, and publishes four GHCR images, regenerates CycloneDX SBOMs for all application modules, and attaches the SBOM set plus `SHA256SUMS` to the GitHub Release.
+A `v*.*.*` tag triggers `.github/workflows/release.yml`. The workflow builds, scans, and publishes four GHCR images, signs each immutable image digest with keyless Sigstore Cosign, publishes GitHub build-provenance attestations, regenerates CycloneDX SBOMs for all application modules, and attaches the SBOM set plus `SHA256SUMS` to the GitHub Release.
 
 The registry owner is derived from the repository owner automatically:
 

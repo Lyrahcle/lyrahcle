@@ -5,16 +5,16 @@ This checklist is an engineering evidence tracker, not a certification claim. Ma
 ## Identity and access
 
 - [x] Server-side RBAC for all privileged API mutations
-- [x] TOTP available for human accounts
+- [x] Google Authenticator TOTP available for human accounts
 - [x] Public self-registration disabled
 - [x] Short-lived JWT access tokens with issuer/audience validation
-- [x] Logout and user-wide session revocation
+- [x] Logout, active-session inventory, per-session revocation, and user-wide session revocation
 - [x] Signing-key overlap for controlled JWT key rotation
 - [x] Per-agent revocable credentials
 - [ ] Automated agent credential rotation and enrollment
 - [ ] mTLS for production SDR agents
 
-- [ ] Complete browser session-storage and CSRF design review before v1.0
+- [ ] Complete browser token-storage and CSRF design review before v1.0
 
 ## Secure development lifecycle
 
@@ -27,7 +27,7 @@ This checklist is an engineering evidence tracker, not a certification claim. Ma
 - [x] Authentication E2E smoke flow
 - [x] CycloneDX SBOM generated in CI and release workflow
 - [ ] Repository-wide >80% statement coverage
-- [ ] Signed provenance and container signatures
+- [x] Signed build provenance and keyless container signatures
 
 ## Data protection
 
@@ -68,8 +68,9 @@ This checklist is an engineering evidence tracker, not a certification claim. Ma
 - [x] Dependency and vulnerability review gates
 - [x] Release image vulnerability scan
 - [ ] GitHub Actions pinned to immutable commit SHAs
-- [ ] SLSA-style build provenance
-- [ ] Cosign/container signature verification policy
+- [x] GitHub build-provenance attestations for release image digests
+- [x] Keyless Cosign signatures for release image digests
+- [ ] Enforced signature/provenance verification policy at deployment time
 
 ## Governance evidence
 

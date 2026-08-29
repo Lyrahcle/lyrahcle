@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: Lyrahcle
+    orgId: 1
+    folder: Lyrahcle
+    type: file
+    disableDeletion: true
+    editable: false
+    options:
+      path: /var/lib/grafana/dashboards

@@ -18,9 +18,13 @@ The generator versions are deliberately pinned in `scripts/generate-sbom.sh` def
 
 Pull requests run GitHub dependency review. Go modules additionally run `govulncheck` and `gosec`; the frontend runs `npm audit`; release container images are scanned with Trivy for high and critical vulnerabilities.
 
+## Signed releases and provenance
+
+Tagged release images are signed keylessly with Sigstore Cosign using the GitHub Actions OIDC identity. The workflow also publishes GitHub artifact attestations for each image digest. Verification should target immutable digests rather than mutable tags.
+
 ## Remaining pre-v1 work
 
 - pin third-party GitHub Actions to immutable commit SHAs
-- sign release containers and SBOMs
-- publish build provenance
+- sign standalone SBOM files in addition to container images
 - define an exception process for accepted vulnerabilities and licenses
+- enforce provenance at deployment admission time

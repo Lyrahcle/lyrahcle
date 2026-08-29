@@ -9,6 +9,8 @@ const (
 	ActionTOTPEnabled           = "auth.totp_enabled"
 	ActionTOTPDisabled          = "auth.totp_disabled"
 	ActionPasswordChanged       = "auth.password_changed"
+	ActionSessionRevoked        = "auth.session_revoked"
+	ActionSessionsRevoked       = "auth.sessions_revoked"
 	ActionAgentKeyCreated       = "agent_key.created"
 	ActionAgentKeyRevoked       = "agent_key.revoked"
 	ActionAgentKeyAuthFailed    = "agent_key.auth_failed"

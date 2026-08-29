@@ -132,6 +132,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - name: Validate compose and observability configuration
+        run: |
+          docker compose --profile observability config -q
+          python3 -m json.tool deploy/grafana/dashboards/lyrahcle-overview.json >/dev/null
       - name: Lint Dockerfiles (hadolint)
         uses: hadolint/hadolint-action@v3.1.0
         continue-on-error: true

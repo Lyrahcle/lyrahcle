@@ -1,0 +1,31 @@
+groups:
+  - name: lyrahcle
+    rules:
+      - alert: LyrahcleHighServerErrorRate
+        expr: sum(rate(lyrahcle_http_requests_total{status=~"5.."}[5m])) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Lyrahcle backend is returning elevated 5xx responses
+      - alert: LyrahcleHighP95Latency
+        expr: histogram_quantile(0.95, sum by (le) (rate(lyrahcle_http_request_duration_seconds_bucket[5m]))) > 1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Lyrahcle backend p95 latency is above one second
+      - alert: LyrahcleAuthenticationFailures
+        expr: sum(rate(lyrahcle_auth_logins_total{result!="success"}[5m])) > 0.2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Lyrahcle is seeing elevated authentication failures
+      - alert: LyrahcleExcessiveSSEConnections
+        expr: sum(lyrahcle_sse_connections) > 100
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Lyrahcle has an unusually high number of open SSE connections

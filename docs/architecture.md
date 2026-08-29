@@ -14,6 +14,8 @@ Frontend (React/nginx)
 Backend (Go/chi) <---- SDR Agent
   |      |               |
   |      +---- Redis ----+
+  |      |
+  |      +---- Prometheus ---- Grafana
   |
   +---- PostgreSQL <---- CVE Sync ---- NVD
   |
@@ -24,18 +26,18 @@ Backend (Go/chi) <---- SDR Agent
 
 | Component | Owns |
 |---|---|
-| Backend | API, authentication, RBAC, TOTP, orbital propagation, RF anomaly detection, detection-rule evaluation, incident correlation, audit log, asset alerts |
+| Backend | API, authentication, RBAC, Google Authenticator TOTP, session management, orbital propagation, RF anomaly detection, detection-rule evaluation, incident correlation, audit log, asset alerts |
 | Frontend | Operator UX and session state |
 | SDR agent | RF capture source, device self-report, IQ recording/replay, authenticated uplink |
 | CVE sync | Writes `space_cves`, publishes newly synchronized CVEs, exposes worker metrics |
 | PostgreSQL | Durable application state and migrations |
-| Redis | Distributed rate limiting, JWT revocation, response caching, CVE event queue |
+| Redis | Distributed rate limiting, JWT revocation, active-session metadata, response caching, CVE event queue |
 
 `apps/cve-sync` is the only writer of `space_cves`. The backend reads that data and correlates it with assets.
 
 ## Trust boundaries
 
-Human sessions use JWT bearer tokens. Roles are `viewer < operator < admin`. SDR agents should use individual `X-Agent-Key` credentials; the backend resolves the agent identity from the key and does not trust an arbitrary agent identity for device self-report.
+Human sessions use short-lived JWT bearer tokens. Redis stores active-session metadata and revocation state; users can revoke individual sessions or all sessions. Roles are `viewer < operator < admin`. SDR agents should use individual `X-Agent-Key` credentials; the backend resolves the agent identity from the key and does not trust an arbitrary agent identity for device self-report.
 
 The backend applies request-size limits, input validation, security headers, rate limiting, audit events, request correlation IDs, and authorization at route boundaries.
 

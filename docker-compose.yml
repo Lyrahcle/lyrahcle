@@ -96,16 +96,38 @@ services:
       - "9091:9091"
 
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:v3.14.0
+    profiles:
+      - observability
     ports:
       - "9090:9090"
     volumes:
       - ./deploy/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./deploy/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
       - prometheus_data:/prometheus
     restart: unless-stopped
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
+
+  grafana:
+    image: grafana/grafana:13.2.0
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-lyrahcle-dev}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+    volumes:
+      - ./deploy/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./deploy/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    profiles:
+      - observability
 
   sdr-agent:
     build:
@@ -136,3 +158,4 @@ services:
 volumes:
   pgdata:
   prometheus_data:
+  grafana_data:

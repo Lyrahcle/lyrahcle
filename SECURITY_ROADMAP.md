@@ -4,7 +4,7 @@
 
 - [x] JWT authentication with bcrypt password hashing
 - [x] `viewer`, `operator`, and `admin` RBAC
-- [x] TOTP two-factor authentication
+- [x] Google Authenticator TOTP two-factor authentication with session revocation after security-state changes
 - [x] Admin-managed user creation and role changes; public self-registration disabled
 - [x] Per-agent revocable API keys and authenticated device self-report
 - [x] Redis-backed JTI and user-wide JWT revocation, distributed rate limiting, and response caching
@@ -16,7 +16,7 @@
 - [x] Versioned, idempotent PostgreSQL migrations shared by production and integration tests
 - [x] Unit, integration, HTTP, SDR fuzz, accessibility, authentication E2E, and smoke testing in CI
 - [x] `govulncheck`, `npm audit`, Dependabot, dependency review, and Trivy scanning
-- [x] Prometheus metrics and graceful process shutdown
+- [x] Prometheus metrics, provisioned Grafana dashboard/alerts, and graceful process shutdown
 - [x] IQ capture and forensic replay
 - [x] Robust RF anomaly baselines using median/MAD and EWMA techniques
 - [x] CVE-to-asset alerting and operator acknowledgement
@@ -30,9 +30,9 @@
 - [ ] Validate real SDR hardware integrations such as RTL-SDR/HackRF
 - [ ] Add agent credential rotation and enrollment lifecycle
 - [ ] Evaluate mTLS for long-running SDR agents
-- [ ] Complete browser session-storage and CSRF design review
+- [ ] Complete browser token-storage and CSRF design review
 - [x] Generate CycloneDX SBOMs in CI and attach them to tagged releases
-- [ ] Produce signed provenance and signed release artifacts
+- [x] Sign tagged container images with keyless Cosign and publish GitHub build provenance attestations
 - [ ] Document and test backup restore and disaster recovery procedures
 - [ ] Add production deployment patterns for redundant backend/Redis/PostgreSQL infrastructure
 - [ ] Extend correlation beyond RF into asset alerts, orbital events, agent posture, and audit evidence
@@ -70,3 +70,27 @@
 - [x] Production fail-closed startup when Redis revocation state is unavailable
 - [x] Fuzz-driven hardening for non-finite IQ samples, bounded forensic filenames, and restrictive capture permissions
 
+
+## v8.2 observability and session hardening
+
+- [x] Redis-backed active-session inventory for each user
+- [x] Per-session revocation and sign-out-everywhere
+- [x] Session deletion after password, role, and Google Authenticator changes
+- [x] Google Authenticator-specific setup UX with first-code verification
+- [x] Prometheus authentication and SSE operational metrics
+- [x] Provisioned Grafana dashboard and Prometheus alert rules
+- [x] Keyless Cosign signatures for tagged container images
+- [x] GitHub build-provenance attestations bound to immutable image digests
+- [x] Authentication E2E coverage for Google Authenticator enable/disable and session invalidation
+- [ ] Distributed tracing with OpenTelemetry
+
+## Next identity and authorization review
+
+- [ ] Force password change for the default seeded administrator on first successful login
+- [ ] Strengthen password policy and compromised-password guidance
+- [ ] Add WebAuthn security-key support as an isolated authentication milestone
+- [ ] Add password recovery with short-lived links and second-factor verification
+- [ ] Define an explicit permission matrix before expanding roles and administrator subroles
+- [ ] Add user disable/edit/delete lifecycle with full audit coverage
+- [ ] Review every sensitive endpoint against the permission matrix
+- [ ] Add automatic SDR agent credential rotation before mTLS enrollment

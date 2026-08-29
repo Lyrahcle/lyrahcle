@@ -37,6 +37,7 @@ import (
 	"github.com/mlko01/lyrahcle/apps/backend/internal/redisclient"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/respcache"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/scheduler"
+	"github.com/mlko01/lyrahcle/apps/backend/internal/sessionstore"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/store"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/tmtc"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/tokenblocklist"
@@ -167,6 +168,7 @@ func newRouter(
 ) http.Handler {
 	detectionRules := store.NewDetectionRuleStore(pool)
 	blocklist := tokenblocklist.New(redisClient)
+	sessions := sessionstore.New(redisClient)
 	cache := respcache.New(redisClient)
 	isTokenRevoked := func(ctx context.Context, claims *auth.Claims) (bool, error) {
 		issuedAt := time.Unix(0, claims.SessionIssuedAt).UTC()
@@ -335,6 +337,7 @@ func newRouter(
 
 				user, err := users.GetByIdentifier(r.Context(), body.Identifier)
 				if err != nil || !auth.CheckPassword(user.PasswordHash, body.Password) {
+					metrics.AuthLoginsTotal.WithLabelValues("invalid_credentials").Inc()
 					logAudit(r.Context(), auditLog, audit.ActorAnonymous, body.Identifier, audit.ActionLoginFailed, clientIP(r), nil)
 					http.Error(w, "invalid credentials", http.StatusUnauthorized)
 					return
@@ -342,24 +345,40 @@ func newRouter(
 
 				if user.TOTPEnabled {
 					if body.TOTPCode == "" {
+						metrics.AuthLoginsTotal.WithLabelValues("totp_required").Inc()
 						w.Header().Set("Content-Type", "application/json")
 						w.WriteHeader(http.StatusUnauthorized)
 						json.NewEncoder(w).Encode(map[string]string{"error": "totp_required"})
 						return
 					}
 					if !auth.VerifyTOTP(user.TOTPSecret, body.TOTPCode) {
+						metrics.AuthLoginsTotal.WithLabelValues("invalid_totp").Inc()
 						logAudit(r.Context(), auditLog, audit.ActorAnonymous, body.Identifier, audit.ActionLoginFailed, clientIP(r), map[string]interface{}{"reason": "invalid_totp"})
 						http.Error(w, "invalid two-factor code", http.StatusUnauthorized)
 						return
 					}
 				}
 
-				token, err := auth.IssueToken(cfg.JWTSecret, user.ID, auth.Role(user.Role), cfg.JWTAccessTTL)
+				token, tokenClaims, err := auth.IssueTokenWithClaims(cfg.JWTSecret, user.ID, auth.Role(user.Role), cfg.JWTAccessTTL)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
 				}
+				if redisClient != nil {
+					if err := sessions.Register(r.Context(), sessionstore.Session{
+						ID:        tokenClaims.ID,
+						UserID:    user.ID.String(),
+						CreatedAt: tokenClaims.IssuedAt.Time.UTC(),
+						ExpiresAt: tokenClaims.ExpiresAt.Time.UTC(),
+						IP:        clientIP(r),
+						UserAgent: r.UserAgent(),
+					}); err != nil {
+						http.Error(w, "session registration failed", http.StatusServiceUnavailable)
+						return
+					}
+				}
 
+				metrics.AuthLoginsTotal.WithLabelValues("success").Inc()
 				logAudit(r.Context(), auditLog, audit.ActorUser, user.ID.String(), audit.ActionLogin, clientIP(r), map[string]interface{}{"email": user.Email})
 
 				w.Header().Set("Content-Type", "application/json")
@@ -397,7 +416,7 @@ func newRouter(
 
 					uri := auth.TOTPProvisioningURI("Lyrahcle", user.Email, secret)
 					w.Header().Set("Content-Type", "application/json")
-					json.NewEncoder(w).Encode(map[string]string{"secret": secret, "otpauth_url": uri})
+					json.NewEncoder(w).Encode(map[string]string{"provider": "google_authenticator", "issuer": "Lyrahcle", "account_name": user.Email, "secret": secret, "otpauth_url": uri})
 				})
 
 				r.Post("/enable", func(w http.ResponseWriter, r *http.Request) {
@@ -429,6 +448,12 @@ func newRouter(
 					if err := blocklist.RevokeUser(r.Context(), user.ID.String(), time.Now(), cfg.JWTAccessTTL+time.Minute); err != nil {
 						http.Error(w, "authorization state update failed", http.StatusServiceUnavailable)
 						return
+					}
+					if redisClient != nil {
+						if err := sessions.DeleteUser(r.Context(), user.ID.String()); err != nil {
+							http.Error(w, "session revocation failed", http.StatusServiceUnavailable)
+							return
+						}
 					}
 					if err := users.EnableTOTP(r.Context(), user.ID); err != nil {
 						http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -465,12 +490,110 @@ func newRouter(
 						http.Error(w, "authorization state update failed", http.StatusServiceUnavailable)
 						return
 					}
+					if redisClient != nil {
+						if err := sessions.DeleteUser(r.Context(), user.ID.String()); err != nil {
+							http.Error(w, "session revocation failed", http.StatusServiceUnavailable)
+							return
+						}
+					}
 					if err := users.DisableTOTP(r.Context(), user.ID); err != nil {
 						http.Error(w, err.Error(), http.StatusInternalServerError)
 						return
 					}
 
 					logAudit(r.Context(), auditLog, audit.ActorUser, user.ID.String(), audit.ActionTOTPDisabled, clientIP(r), nil)
+					w.WriteHeader(http.StatusNoContent)
+				})
+			})
+
+			r.Route("/sessions", func(r chi.Router) {
+				r.Use(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked))
+
+				r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+					claims, ok := auth.FromContext(r.Context())
+					if !ok {
+						http.Error(w, "unauthorized", http.StatusUnauthorized)
+						return
+					}
+					if redisClient == nil {
+						http.Error(w, "session management unavailable", http.StatusServiceUnavailable)
+						return
+					}
+					list, err := sessions.List(r.Context(), claims.UserID.String())
+					if err != nil {
+						http.Error(w, "session management unavailable", http.StatusServiceUnavailable)
+						return
+					}
+					type sessionResponse struct {
+						ID        string    `json:"id"`
+						CreatedAt time.Time `json:"created_at"`
+						ExpiresAt time.Time `json:"expires_at"`
+						IP        string    `json:"ip"`
+						UserAgent string    `json:"user_agent"`
+						Current   bool      `json:"current"`
+					}
+					out := make([]sessionResponse, 0, len(list))
+					for _, item := range list {
+						out = append(out, sessionResponse{ID: item.ID, CreatedAt: item.CreatedAt, ExpiresAt: item.ExpiresAt, IP: item.IP, UserAgent: item.UserAgent, Current: item.ID == claims.ID})
+					}
+					w.Header().Set("Content-Type", "application/json")
+					json.NewEncoder(w).Encode(out)
+				})
+
+				r.Delete("/{sessionID}", func(w http.ResponseWriter, r *http.Request) {
+					claims, ok := auth.FromContext(r.Context())
+					if !ok {
+						http.Error(w, "unauthorized", http.StatusUnauthorized)
+						return
+					}
+					if redisClient == nil {
+						http.Error(w, "session management unavailable", http.StatusServiceUnavailable)
+						return
+					}
+					sessionID := strings.TrimSpace(chi.URLParam(r, "sessionID"))
+					if _, err := uuid.Parse(sessionID); err != nil {
+						http.Error(w, "sessionID must be a valid UUID", http.StatusBadRequest)
+						return
+					}
+					item, err := sessions.Get(r.Context(), sessionID)
+					if err != nil || item.UserID != claims.UserID.String() {
+						http.Error(w, "session not found", http.StatusNotFound)
+						return
+					}
+					remaining := time.Until(item.ExpiresAt)
+					if remaining > 0 {
+						if err := blocklist.Revoke(r.Context(), item.ID, remaining); err != nil {
+							http.Error(w, "session revocation failed", http.StatusServiceUnavailable)
+							return
+						}
+					}
+					if err := sessions.Delete(r.Context(), claims.UserID.String(), item.ID); err != nil {
+						http.Error(w, "session revocation failed", http.StatusServiceUnavailable)
+						return
+					}
+					logAudit(r.Context(), auditLog, audit.ActorUser, claims.UserID.String(), audit.ActionSessionRevoked, clientIP(r), map[string]interface{}{"session_id": item.ID, "current": item.ID == claims.ID})
+					w.WriteHeader(http.StatusNoContent)
+				})
+
+				r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
+					claims, ok := auth.FromContext(r.Context())
+					if !ok {
+						http.Error(w, "unauthorized", http.StatusUnauthorized)
+						return
+					}
+					if redisClient == nil {
+						http.Error(w, "session management unavailable", http.StatusServiceUnavailable)
+						return
+					}
+					if err := blocklist.RevokeUser(r.Context(), claims.UserID.String(), time.Now(), cfg.JWTAccessTTL+time.Minute); err != nil {
+						http.Error(w, "session revocation failed", http.StatusServiceUnavailable)
+						return
+					}
+					if err := sessions.DeleteUser(r.Context(), claims.UserID.String()); err != nil {
+						http.Error(w, "session revocation failed", http.StatusServiceUnavailable)
+						return
+					}
+					logAudit(r.Context(), auditLog, audit.ActorUser, claims.UserID.String(), audit.ActionSessionsRevoked, clientIP(r), nil)
 					w.WriteHeader(http.StatusNoContent)
 				})
 			})
@@ -507,6 +630,12 @@ func newRouter(
 				if err := blocklist.Revoke(r.Context(), claims.ID, remaining); err != nil {
 					http.Error(w, "logout could not revoke the session", http.StatusServiceUnavailable)
 					return
+				}
+				if redisClient != nil {
+					if err := sessions.Delete(r.Context(), claims.UserID.String(), claims.ID); err != nil {
+						http.Error(w, "logout could not remove the session", http.StatusServiceUnavailable)
+						return
+					}
 				}
 
 				logAudit(r.Context(), auditLog, audit.ActorUser, claims.UserID.String(), audit.ActionLogout, clientIP(r), nil)
@@ -551,6 +680,12 @@ func newRouter(
 				if err := blocklist.RevokeUser(r.Context(), user.ID.String(), time.Now(), cfg.JWTAccessTTL+time.Minute); err != nil {
 					http.Error(w, "authorization state update failed", http.StatusServiceUnavailable)
 					return
+				}
+				if redisClient != nil {
+					if err := sessions.DeleteUser(r.Context(), user.ID.String()); err != nil {
+						http.Error(w, "session revocation failed", http.StatusServiceUnavailable)
+						return
+					}
 				}
 				if err := users.UpdatePassword(r.Context(), user.ID, newHash); err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -672,6 +807,12 @@ func newRouter(
 				if err := blocklist.RevokeUser(r.Context(), userID.String(), time.Now(), cfg.JWTAccessTTL+time.Minute); err != nil {
 					http.Error(w, "authorization state update failed", http.StatusServiceUnavailable)
 					return
+				}
+				if redisClient != nil {
+					if err := sessions.DeleteUser(r.Context(), userID.String()); err != nil {
+						http.Error(w, "session revocation failed", http.StatusServiceUnavailable)
+						return
+					}
 				}
 
 				updated, err := users.UpdateRole(r.Context(), userID, body.Role)
@@ -1064,6 +1205,8 @@ func newRouter(
 				w.Header().Set("Connection", "keep-alive")
 				w.Header().Set("X-Accel-Buffering", "no")
 				w.WriteHeader(http.StatusOK)
+				metrics.SSEConnections.WithLabelValues("satellites").Inc()
+				defer metrics.SSEConnections.WithLabelValues("satellites").Dec()
 
 				ticker := time.NewTicker(5 * time.Second)
 				defer ticker.Stop()
@@ -1313,6 +1456,8 @@ func newRouter(
 				w.Header().Set("Connection", "keep-alive")
 				w.Header().Set("X-Accel-Buffering", "no")
 				w.WriteHeader(http.StatusOK)
+				metrics.SSEConnections.WithLabelValues("incidents").Inc()
+				defer metrics.SSEConnections.WithLabelValues("incidents").Dec()
 
 				ticker := time.NewTicker(5 * time.Second)
 				defer ticker.Stop()

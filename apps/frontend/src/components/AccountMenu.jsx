@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import ChangePasswordModal from './ChangePasswordModal.jsx'
 import TwoFactorModal from './TwoFactorModal.jsx'
+import SessionsModal from './SessionsModal.jsx'
 import { getRole } from '../lib/auth.js'
 import { useI18n } from '../lib/I18nContext.jsx'
 
@@ -15,6 +16,7 @@ export default function AccountMenu({ onLogout }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [changingPassword, setChangingPassword] = useState(false)
   const [managingTwoFactor, setManagingTwoFactor] = useState(false)
+  const [managingSessions, setManagingSessions] = useState(false)
   const menuRef = useRef(null)
   const role = getRole()
 
@@ -69,6 +71,15 @@ export default function AccountMenu({ onLogout }) {
           </button>
           <button
             onClick={() => {
+              setManagingSessions(true)
+              setMenuOpen(false)
+            }}
+            className="block w-full border-t border-lyra-borderSoft px-4 py-2.5 text-left font-mono text-[11px] uppercase tracking-wider text-lyra-muted outline-none transition-colors hover:bg-lyra-bgSoft hover:text-lyra-goldBright"
+          >
+            {t('header.sessions')}
+          </button>
+          <button
+            onClick={() => {
               setMenuOpen(false)
               onLogout()
             }}
@@ -79,8 +90,9 @@ export default function AccountMenu({ onLogout }) {
         </div>
       )}
 
-      {changingPassword && <ChangePasswordModal onClose={() => setChangingPassword(false)} />}
-      {managingTwoFactor && <TwoFactorModal onClose={() => setManagingTwoFactor(false)} />}
+      {changingPassword && <ChangePasswordModal onClose={() => setChangingPassword(false)} onSecurityChange={onLogout} />}
+      {managingTwoFactor && <TwoFactorModal onClose={() => setManagingTwoFactor(false)} onSecurityChange={onLogout} />}
+      {managingSessions && <SessionsModal onClose={() => setManagingSessions(false)} onCurrentSessionRevoked={onLogout} />}
     </div>
   )
 }

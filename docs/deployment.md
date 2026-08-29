@@ -71,6 +71,8 @@ Backup files are created with restrictive permissions and the script does not pr
 
 Every backend response includes `X-Request-ID`. Preserve that value in reverse-proxy/application logs so operator reports can be correlated with backend activity.
 
+For local or single-host observability, run `docker compose --profile observability up -d`. This provisions Grafana on port `3000` with the Lyrahcle overview dashboard and loads Prometheus alert rules. Override the development Grafana administrator password before using the profile outside an isolated local environment.
+
 ## Updating
 
 ```bash

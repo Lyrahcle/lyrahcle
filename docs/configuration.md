@@ -19,7 +19,7 @@
 
 The bootstrap admin is created only when the users table is empty. Changing `SEED_ADMIN_PASSWORD` later does not reset an existing account.
 
-JWT rotation uses an overlap window: deploy the new value as `JWT_SECRET`, keep the old value temporarily in `JWT_SECRET_PREVIOUS`, wait longer than `JWT_ACCESS_TTL`, then remove the previous key. Password, TOTP, and role changes invalidate all older sessions for the affected user.
+JWT rotation uses an overlap window: deploy the new value as `JWT_SECRET`, keep the old value temporarily in `JWT_SECRET_PREVIOUS`, wait longer than `JWT_ACCESS_TTL`, then remove the previous key. Password, Google Authenticator, and role changes invalidate all sessions for the affected user. Active session metadata is tracked in Redis and exposed only to the owning user.
 
 ## Frontend
 
@@ -65,3 +65,15 @@ The sync keyword set is currently defined in code.
 `docker-compose.yml` currently consumes `JWT_SECRET`, `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`, `AGENT_API_KEY`, `AGENT_TOKEN`, and `AGENT_CA_CERT` from the host or root `.env` file where configured.
 
 Never commit a production `.env` file or private credentials.
+
+
+## Observability
+
+The `observability` Docker Compose profile provisions Grafana against the bundled Prometheus service.
+
+| Variable | Default | Description |
+|---|---|---|
+| `GRAFANA_ADMIN_USER` | `admin` | Local Grafana administrator username |
+| `GRAFANA_ADMIN_PASSWORD` | `lyrahcle-dev` | Local development password; override outside isolated development |
+
+Prometheus alert rules live in `deploy/prometheus/alerts.yml`; Grafana provisioning lives under `deploy/grafana/`.

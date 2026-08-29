@@ -13,6 +13,9 @@ import {
   fetchPing,
   fetchPrograms,
   fetchRfReadings,
+  fetchSessions,
+  revokeSession,
+  revokeAllSessions,
   fetchSatellites,
   updateIncident,
   addIncidentNote,
@@ -187,6 +190,22 @@ describe('api client', () => {
       method: 'POST',
       body: JSON.stringify({ message: 'Reviewed' }),
     }))
+  })
+
+  it('session client lists and revokes only through authenticated session endpoints', async () => {
+    localStorage.setItem('lyra_token', 'test-token')
+    mockFetchOnce(true, [{ id: '11111111-1111-1111-1111-111111111111', current: true }])
+    const sessions = await fetchSessions()
+    expect(sessions).toHaveLength(1)
+    expect(fetch).toHaveBeenCalledWith('/api/v1/auth/sessions/', { headers: { Authorization: 'Bearer test-token' } })
+
+    mockFetchOnce(true, null, 204)
+    await revokeSession('11111111-1111-1111-1111-111111111111')
+    expect(fetch).toHaveBeenCalledWith('/api/v1/auth/sessions/11111111-1111-1111-1111-111111111111', expect.objectContaining({ method: 'DELETE' }))
+
+    mockFetchOnce(true, null, 204)
+    await revokeAllSessions()
+    expect(fetch).toHaveBeenCalledWith('/api/v1/auth/sessions/', expect.objectContaining({ method: 'DELETE' }))
   })
 
 })

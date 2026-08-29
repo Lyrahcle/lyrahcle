@@ -13,8 +13,9 @@ Lyrahcle combines orbital awareness, RF telemetry, TM/TC decoding, threat intell
 - RF ingestion, statistical anomaly detection, typed detection rules, incident correlation, agent connectivity, and IQ forensic replay.
 - AX.25, CCSDS, PUS, and CSP decoding.
 - NVD-backed space CVE intelligence with filtering and asset alerts.
-- JWT authentication, TOTP, RBAC, revocable agent keys, audit logging, and request IDs.
+- JWT authentication, Google Authenticator TOTP, active-session revocation, RBAC, revocable agent keys, audit logging, and request IDs.
 - React dashboard with light/dark mode and EN/ES/FR/DE localization.
+- Prometheus metrics, provisioned Grafana dashboards, release signatures, SBOMs, and build provenance.
 
 ## Quick start
 
@@ -25,6 +26,12 @@ docker compose up --build
 ```
 
 Open `http://localhost:5173`. For local development only, the bootstrap login is `admin` / `admin` unless overridden with `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD`.
+
+To run the observability profile:
+
+```bash
+docker compose --profile observability up --build
+```
 
 To run the mock SDR agent too:
 
@@ -50,6 +57,7 @@ Start with [`docs/README.md`](./docs/README.md).
 - [Configuration](./docs/configuration.md)
 - [Deployment](./docs/deployment.md)
 - [IQ forensics](./docs/forensics.md)
+- [Observability](./docs/observability.md)
 - [STRIDE threat model](./docs/ieee3536-threat-model.md)
 - [Compliance checklist](./docs/compliance-checklist.md)
 - [Software supply chain](./docs/supply-chain.md)
@@ -67,7 +75,7 @@ cd apps/backend && go test ./... && go vet ./...
 cd ../frontend && npm test && npm run build
 ```
 
-CI also runs integration tests, dependency review, vulnerability checks, SDR fuzzing, an >80% critical-package coverage gate, authentication E2E checks, image scanning, and CycloneDX SBOM generation.
+CI also runs integration tests, dependency review, vulnerability checks, SDR fuzzing, an >80% critical-package coverage gate, authentication/Google Authenticator E2E checks, image scanning, and CycloneDX SBOM generation. Tagged releases sign images with Sigstore Cosign and publish GitHub build provenance.
 
 ## Status
 

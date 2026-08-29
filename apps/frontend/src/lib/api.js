@@ -102,6 +102,23 @@ export async function changePassword(currentPassword, newPassword) {
   if (!res.ok) throw new Error(await readErrorText(res, 'failed to change password'))
 }
 
+
+export async function fetchSessions() {
+  const res = await authedFetch('/api/v1/auth/sessions/')
+  if (!res.ok) throw new Error(await readErrorText(res, 'failed to fetch sessions'))
+  return res.json()
+}
+
+export async function revokeSession(sessionId) {
+  const res = await authedFetch(`/api/v1/auth/sessions/${encodeURIComponent(sessionId)}`, { method: 'DELETE' })
+  if (!res.ok) throw new Error(await readErrorText(res, 'failed to revoke session'))
+}
+
+export async function revokeAllSessions() {
+  const res = await authedFetch('/api/v1/auth/sessions/', { method: 'DELETE' })
+  if (!res.ok) throw new Error(await readErrorText(res, 'failed to revoke sessions'))
+}
+
 export async function fetchPing() {
   const res = await fetch('/api/v1/ping')
   if (!res.ok) throw new Error('backend unreachable')

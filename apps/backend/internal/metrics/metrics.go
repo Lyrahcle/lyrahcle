@@ -20,10 +20,20 @@ var (
 		Help:    "HTTP request duration in seconds, by method/route",
 		Buckets: prometheus.DefBuckets,
 	}, []string{"method", "route"})
+
+	AuthLoginsTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "lyrahcle_auth_logins_total",
+		Help: "Authentication attempts by result",
+	}, []string{"result"})
+
+	SSEConnections = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "lyrahcle_sse_connections",
+		Help: "Currently open SSE connections by stream",
+	}, []string{"stream"})
 )
 
 func init() {
-	prometheus.MustRegister(RequestsTotal, RequestDuration)
+	prometheus.MustRegister(RequestsTotal, RequestDuration, AuthLoginsTotal, SSEConnections)
 }
 
 type statusRecorder struct {

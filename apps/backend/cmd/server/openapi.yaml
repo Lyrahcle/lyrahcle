@@ -188,6 +188,59 @@ paths:
               schema:
                 type: string
       description: Rate limited independently from normal API traffic. If TOTP is enabled, include totp_code.
+  /api/v1/auth/sessions/:
+    get:
+      tags:
+      - Auth
+      summary: List active sessions for the current user
+      description: Requires Redis-backed session tracking and role viewer or higher.
+      responses:
+        '200':
+          description: Active sessions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SessionSummary'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          description: Session management unavailable
+    delete:
+      tags:
+      - Auth
+      summary: Revoke all sessions for the current user
+      responses:
+        '204':
+          description: All sessions revoked
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          description: Session management unavailable
+  /api/v1/auth/sessions/{sessionID}:
+    delete:
+      tags:
+      - Auth
+      summary: Revoke one session owned by the current user
+      parameters:
+      - name: sessionID
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '204':
+          description: Session revoked
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Session not found
+        '503':
+          description: Session management unavailable
   /api/v1/auth/me:
     get:
       tags:
@@ -251,7 +304,7 @@ paths:
     post:
       tags:
       - Auth
-      summary: Create a pending TOTP secret
+      summary: Create a pending Google Authenticator TOTP secret
       responses:
         '200':
           description: TOTP setup data
@@ -275,7 +328,7 @@ paths:
     post:
       tags:
       - Auth
-      summary: Enable TOTP
+      summary: Enable Google Authenticator TOTP
       requestBody:
         required: true
         content:
@@ -296,7 +349,7 @@ paths:
     post:
       tags:
       - Auth
-      summary: Disable TOTP
+      summary: Disable Google Authenticator TOTP
       requestBody:
         required: true
         content:
@@ -1920,10 +1973,36 @@ components:
     TOTPSetupResponse:
       type: object
       properties:
+        provider:
+          type: string
+          enum:
+          - google_authenticator
+        issuer:
+          type: string
+        account_name:
+          type: string
         secret:
           type: string
         otpauth_url:
           type: string
+    SessionSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+        ip:
+          type: string
+        user_agent:
+          type: string
+        current:
+          type: boolean
     TOTPCodeRequest:
       type: object
       required:

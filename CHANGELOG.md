@@ -4,6 +4,14 @@ Notable changes are tracked here until versioned release notes take over.
 
 ## Unreleased
 
+### v8.2 observability, sessions, and release integrity
+
+- Added Redis-backed active-session tracking with self-service session listing, per-session revocation, and sign-out-everywhere.
+- Added clean Google Authenticator-only 2FA UX, explicit session revocation after 2FA/password changes, and stronger authentication E2E coverage.
+- Added authentication outcome and SSE connection Prometheus metrics, provisioned Grafana dashboards, and Prometheus alert rules.
+- Added keyless Sigstore Cosign signing and GitHub build-provenance attestations for tagged container releases.
+- Updated OpenAPI and operational documentation for session management, Google Authenticator, observability, and signed releases.
+
 ### v8.1 pre-v1 security baseline
 
 - Added CycloneDX SBOM generation for all Go modules and the frontend in CI and tagged releases.

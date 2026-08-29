@@ -415,14 +415,16 @@ func TestTOTPSetupEnableAndLoginFlow(t *testing.T) {
 		t.Fatalf("POST /auth/totp/setup: status = %d, body = %s", rec.Code, rec.Body.String())
 	}
 	var setupResp struct {
+		Provider   string `json:"provider"`
+		Issuer     string `json:"issuer"`
 		Secret     string `json:"secret"`
 		OtpauthURL string `json:"otpauth_url"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &setupResp); err != nil {
 		t.Fatalf("failed to unmarshal setup response: %v", err)
 	}
-	if setupResp.Secret == "" || setupResp.OtpauthURL == "" {
-		t.Fatalf("setup response missing fields: %+v", setupResp)
+	if setupResp.Provider != "google_authenticator" || setupResp.Issuer != "Lyrahcle" || setupResp.Secret == "" || setupResp.OtpauthURL == "" {
+		t.Fatalf("setup response is invalid: %+v", setupResp)
 	}
 
 	badCode := "000000"

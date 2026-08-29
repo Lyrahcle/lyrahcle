@@ -27,15 +27,15 @@ Use the returned token as `Authorization: Bearer <token>`. Access tokens default
 
 Roles are ordered `viewer < operator < admin`. Admins create users through `POST /api/v1/users/` or the dashboard.
 
-## TOTP
+## Google Authenticator
 
-Authenticated users can configure TOTP through:
+The dashboard exposes one 2FA setup flow: Google Authenticator using standard TOTP.
 
-1. `POST /api/v1/auth/totp/setup`
-2. Verify the returned secret in an authenticator application.
-3. `POST /api/v1/auth/totp/enable` with `{"code":"123456"}`.
+1. `POST /api/v1/auth/totp/setup` returns a Google Authenticator setup key and provisioning URI.
+2. Add the key in Google Authenticator as a time-based key.
+3. `POST /api/v1/auth/totp/enable` with `{"code":"123456"}` verifies the first code and enables 2FA.
 
-When enabled, login without `totp_code` returns `401` with `{"error":"totp_required"}`. Disable TOTP with `POST /api/v1/auth/totp/disable` and the current password.
+When enabled, login without `totp_code` returns `401` with `{"error":"totp_required"}`. Enabling or disabling 2FA revokes all existing sessions and requires a fresh login. TOTP is an interoperable standard, so the server validates the code rather than the brand of client that generated it.
 
 ## Agent authentication
 
@@ -68,12 +68,15 @@ Every backend response includes `X-Request-ID`. A safe incoming `X-Request-ID` m
 | `GET` | `/api/v1/ping` | Public | API reachability |
 | `GET` | `/api/v1/system-info` | Viewer | Runtime/system information |
 | `POST` | `/api/v1/auth/login` | Public | Login; rate limited independently from normal API traffic |
-| `GET` | `/api/v1/auth/me` | Viewer | Current account and TOTP state |
+| `GET` | `/api/v1/auth/me` | Viewer | Current account and Google Authenticator state |
+| `GET` | `/api/v1/auth/sessions/` | Viewer | List active sessions owned by the current user |
+| `DELETE` | `/api/v1/auth/sessions/{sessionID}` | Viewer | Revoke one owned session |
+| `DELETE` | `/api/v1/auth/sessions/` | Viewer | Revoke all sessions for the current user |
 | `POST` | `/api/v1/auth/logout` | Viewer | Revoke the current JWT |
 | `POST` | `/api/v1/auth/change-password` | Viewer | Change password and invalidate all older sessions for the user |
-| `POST` | `/api/v1/auth/totp/setup` | Viewer | Generate pending TOTP secret |
-| `POST` | `/api/v1/auth/totp/enable` | Viewer | Enable TOTP |
-| `POST` | `/api/v1/auth/totp/disable` | Viewer | Disable TOTP after password verification |
+| `POST` | `/api/v1/auth/totp/setup` | Viewer | Generate pending Google Authenticator setup key |
+| `POST` | `/api/v1/auth/totp/enable` | Viewer | Verify and enable Google Authenticator |
+| `POST` | `/api/v1/auth/totp/disable` | Viewer | Disable Google Authenticator after password verification |
 | `GET` | `/api/v1/users/` | Admin | List users |
 | `POST` | `/api/v1/users/` | Admin | Create user with role |
 | `PATCH` | `/api/v1/users/{userID}/role` | Admin | Change role; last admin cannot be demoted |
@@ -130,7 +133,7 @@ Paginated endpoints accept `limit` and `offset`; `limit` defaults to 25 and is c
 
 ## Redis-dependent behavior
 
-Redis enables distributed rate limiting, JWT revocation, response caching, and the CVE event queue. Development can fall back for selected non-authorization features, but production startup fails when Redis is unavailable so revocation guarantees are not silently lost.
+Redis enables distributed rate limiting, JWT revocation, active-session tracking, response caching, and the CVE event queue. Development can fall back for selected non-authorization features, but production startup fails when Redis is unavailable so revocation guarantees are not silently lost.
 
 ## Incident response
 

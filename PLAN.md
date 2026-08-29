@@ -1,6 +1,6 @@
 # Development Plan
 
-Lyrahcle is moving from a collection of space-security capabilities toward a coherent Space Security Operations platform.
+Lyrahcle is moving from a collection of space-security capabilities toward a coherent Space Security Operations platform. The detailed shipped/next/later backlog is maintained in `docs/improvement-roadmap.md`.
 
 ## Current foundation
 
@@ -9,7 +9,7 @@ Lyrahcle is moving from a collection of space-security capabilities toward a coh
 - SDR agent identity and device self-report
 - TM/TC decoding
 - Space CVE intelligence and asset alerts
-- JWT, TOTP, RBAC, audit logging, Redis-backed revocation and rate limiting
+- JWT, Google Authenticator TOTP, active session management, RBAC, audit logging, Redis-backed revocation and rate limiting
 - EN/ES/FR/DE dashboard localization
 - Incident response with timelines, workflow states, typed RF detection rules, cooldown suppression, and deterministic anomaly correlation
 
@@ -46,7 +46,7 @@ Model relationships between programs, satellites, ground stations, radios, firmw
 
 ### 6. Production hardening
 
-Complete real SDR hardware validation, high-availability deployment guidance, stronger observability, signed provenance/artifacts, backup/restore drills, and operational runbooks. CycloneDX SBOM generation, dependency review, SDR fuzzing, and JWT rotation overlap are now part of the pre-v1 baseline.
+Complete real SDR hardware validation, high-availability deployment guidance, distributed tracing, backup/restore drills, and operational runbooks. Prometheus/Grafana observability, signed container images, build provenance, CycloneDX SBOM generation, dependency review, SDR fuzzing, and JWT rotation overlap are now part of the pre-v1 baseline.
 
 ## v1.0 gate
 

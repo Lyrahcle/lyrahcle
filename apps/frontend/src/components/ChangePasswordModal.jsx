@@ -3,7 +3,7 @@ import { changePassword } from '../lib/api.js'
 import { useI18n } from '../lib/I18nContext.jsx'
 import { useFocusTrap } from '../lib/useFocusTrap.js'
 
-export default function ChangePasswordModal({ onClose }) {
+export default function ChangePasswordModal({ onClose, onSecurityChange }) {
   const { t } = useI18n()
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -68,15 +68,16 @@ export default function ChangePasswordModal({ onClose }) {
 
         {success ? (
           <div>
-            <p role="status" className="mb-5 text-sm text-lyra-good">
+            <p role="status" className="mb-2 text-sm text-lyra-good">
               {t('changePasswordModal.success')}
             </p>
+            <p className="mb-5 text-xs text-lyra-muted">{t('changePasswordModal.sessionsRevoked')}</p>
             <button
               type="button"
-              onClick={onClose}
+              onClick={onSecurityChange}
               className="w-full rounded bg-lyra-gold px-4 py-2 text-sm font-medium text-lyra-bg outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-lyra-goldBright"
             >
-              {t('common.done')}
+              {t('changePasswordModal.signInAgain')}
             </button>
           </div>
         ) : (
