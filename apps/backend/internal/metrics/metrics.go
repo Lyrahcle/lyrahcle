@@ -45,6 +45,18 @@ func (r *flushableStatusRecorder) Flush() {
 	r.flusher.Flush()
 }
 
+func routePattern(r *http.Request) string {
+	routeContext := chi.RouteContext(r.Context())
+	if routeContext == nil {
+		return "unmatched"
+	}
+	route := routeContext.RoutePattern()
+	if route == "" {
+		return "unmatched"
+	}
+	return route
+}
+
 func Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
@@ -56,10 +68,7 @@ func Middleware(next http.Handler) http.Handler {
 
 		next.ServeHTTP(writer, r)
 
-		route := chi.RouteContext(r.Context()).RoutePattern()
-		if route == "" {
-			route = "unmatched"
-		}
+		route := routePattern(r)
 
 		RequestsTotal.WithLabelValues(r.Method, route, strconv.Itoa(recorder.status)).Inc()
 		RequestDuration.WithLabelValues(r.Method, route).Observe(time.Since(start).Seconds())
