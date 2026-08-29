@@ -8,6 +8,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/mlko01/lyrahcle/apps/backend/internal/testdb"
 )
 
 func testPool(t *testing.T) *pgxpool.Pool {
@@ -26,128 +28,15 @@ func testPool(t *testing.T) *pgxpool.Pool {
 		t.Fatalf("failed to connect to test database: %v", err)
 	}
 	if err := pool.Ping(ctx); err != nil {
+		pool.Close()
 		t.Fatalf("failed to ping test database: %v", err)
 	}
-
-	schema := `
-		CREATE EXTENSION IF NOT EXISTS pgcrypto;
-
-		DROP TABLE IF EXISTS agent_keys CASCADE;
-		DROP TABLE IF EXISTS users CASCADE;
-		DROP TABLE IF EXISTS satellites CASCADE;
-		DROP TABLE IF EXISTS assets CASCADE;
-		DROP TABLE IF EXISTS programs CASCADE;
-
-		CREATE TABLE programs (
-			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-			name TEXT NOT NULL
-		);
-
-		CREATE TABLE assets (
-			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-			program_id UUID REFERENCES programs(id) ON DELETE CASCADE,
-			kind TEXT NOT NULL,
-			value TEXT NOT NULL,
-			first_seen TIMESTAMPTZ NOT NULL DEFAULT now(),
-			last_seen TIMESTAMPTZ NOT NULL DEFAULT now(),
-			metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
-			UNIQUE (program_id, kind, value)
-		);
-
-		CREATE TABLE satellites (
-			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-			norad_id INTEGER NOT NULL UNIQUE,
-			name TEXT NOT NULL,
-			tle_line1 TEXT NOT NULL,
-			tle_line2 TEXT NOT NULL,
-			updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-		);
-
-		CREATE TABLE users (
-			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-			email TEXT NOT NULL UNIQUE,
-			password_hash TEXT NOT NULL,
-			role TEXT NOT NULL DEFAULT 'viewer',
-			created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-		);
-
-		DROP TABLE IF EXISTS agent_keys CASCADE;
-		CREATE TABLE agent_keys (
-			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-			agent_id TEXT NOT NULL UNIQUE,
-			key_hash TEXT NOT NULL UNIQUE,
-			created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-			last_used_at TIMESTAMPTZ,
-			revoked_at TIMESTAMPTZ
-		);
-
-		DROP TABLE IF EXISTS rf_anomalies CASCADE;
-		DROP TABLE IF EXISTS rf_readings CASCADE;
-		CREATE TABLE rf_readings (
-			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-			agent_id TEXT NOT NULL,
-			frequency_hz BIGINT NOT NULL,
-			power_dbm DOUBLE PRECISION NOT NULL,
-			captured_at TIMESTAMPTZ NOT NULL,
-			received_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-			metadata JSONB NOT NULL DEFAULT '{}'::jsonb
-		);
-		CREATE TABLE rf_anomalies (
-			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-			reading_id UUID NOT NULL REFERENCES rf_readings(id) ON DELETE CASCADE,
-			agent_id TEXT NOT NULL,
-			metric TEXT NOT NULL,
-			value DOUBLE PRECISION NOT NULL,
-			baseline_mean DOUBLE PRECISION NOT NULL,
-			baseline_stddev DOUBLE PRECISION NOT NULL,
-			z_score DOUBLE PRECISION NOT NULL,
-			detected_at TIMESTAMPTZ NOT NULL DEFAULT now()
-		);
-
-		DROP TABLE IF EXISTS audit_log CASCADE;
-		CREATE TABLE audit_log (
-			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-			occurred_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-			actor_type TEXT NOT NULL,
-			actor_id TEXT NOT NULL,
-			action TEXT NOT NULL,
-			ip TEXT NOT NULL DEFAULT '',
-			details JSONB NOT NULL DEFAULT '{}'::jsonb
-		);
-
-		DROP TABLE IF EXISTS space_cves CASCADE;
-		CREATE TABLE space_cves (
-			cve_id TEXT PRIMARY KEY,
-			description TEXT NOT NULL DEFAULT '',
-			published TIMESTAMPTZ,
-			severity TEXT NOT NULL DEFAULT 'unknown',
-			score DOUBLE PRECISION,
-			keyword TEXT NOT NULL DEFAULT '',
-			synced_at TIMESTAMPTZ NOT NULL DEFAULT now()
-		);
-
-		DROP TABLE IF EXISTS asset_cve_alerts CASCADE;
-		CREATE TABLE asset_cve_alerts (
-			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-			asset_id UUID NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
-			cve_id TEXT NOT NULL REFERENCES space_cves(cve_id) ON DELETE CASCADE,
-			matched_keyword TEXT NOT NULL,
-			severity TEXT NOT NULL,
-			acknowledged BOOLEAN NOT NULL DEFAULT false,
-			acknowledged_by UUID REFERENCES users(id) ON DELETE SET NULL,
-			acknowledged_at TIMESTAMPTZ,
-			created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-			UNIQUE (asset_id, cve_id)
-		);
-	`
-	if _, err := pool.Exec(ctx, schema); err != nil {
-		t.Fatalf("failed to set up test schema: %v", err)
+	if err := testdb.ResetAndMigrate(ctx, pool, "../../migrations"); err != nil {
+		pool.Close()
+		t.Fatalf("failed to prepare test database: %v", err)
 	}
 
-	t.Cleanup(func() {
-		pool.Close()
-	})
-
+	t.Cleanup(pool.Close)
 	return pool
 }
 

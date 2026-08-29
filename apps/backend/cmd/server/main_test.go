@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -17,6 +16,7 @@ import (
 	"github.com/mlko01/lyrahcle/apps/backend/internal/auth"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/config"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/store"
+	"github.com/mlko01/lyrahcle/apps/backend/internal/testdb"
 )
 
 func testRouter(t *testing.T) (http.Handler, *pgxpool.Pool, *store.UserStore) {
@@ -34,34 +34,15 @@ func testRouter(t *testing.T) (http.Handler, *pgxpool.Pool, *store.UserStore) {
 	if err != nil {
 		t.Fatalf("failed to connect to test database: %v", err)
 	}
+	if err := pool.Ping(ctx); err != nil {
+		pool.Close()
+		t.Fatalf("failed to ping test database: %v", err)
+	}
+	if err := testdb.ResetAndMigrate(ctx, pool, "../../migrations"); err != nil {
+		pool.Close()
+		t.Fatalf("failed to prepare test database: %v", err)
+	}
 	t.Cleanup(pool.Close)
-
-	tables := []string{
-		"rf_anomalies", "rf_readings", "audit_log", "agent_keys",
-		"space_cves", "satellites", "assets", "programs", "users",
-	}
-	for _, tbl := range tables {
-		if _, err := pool.Exec(ctx, fmt.Sprintf("DROP TABLE IF EXISTS %s CASCADE", tbl)); err != nil {
-			t.Fatalf("failed to drop table %s: %v", tbl, err)
-		}
-	}
-
-	entries, err := os.ReadDir("../../migrations")
-	if err != nil {
-		t.Fatalf("failed to read migrations dir: %v", err)
-	}
-	for _, e := range entries {
-		if e.IsDir() {
-			continue
-		}
-		sqlBytes, err := os.ReadFile("../../migrations/" + e.Name())
-		if err != nil {
-			t.Fatalf("failed to read migration %s: %v", e.Name(), err)
-		}
-		if _, err := pool.Exec(ctx, string(sqlBytes)); err != nil {
-			t.Fatalf("failed to apply migration %s: %v", e.Name(), err)
-		}
-	}
 
 	cfg := config.Config{
 		JWTSecret: []byte("test-jwt-secret-for-http-tests-only"),

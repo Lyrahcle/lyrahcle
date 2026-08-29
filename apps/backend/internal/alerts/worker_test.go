@@ -10,10 +10,12 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/mlko01/lyrahcle/apps/backend/internal/store"
+	"github.com/mlko01/lyrahcle/apps/backend/internal/testdb"
 )
 
 func testPool(t *testing.T) *pgxpool.Pool {
 	t.Helper()
+
 	dsn := os.Getenv("TEST_DATABASE_URL")
 	if dsn == "" {
 		t.Skip("TEST_DATABASE_URL not set, skipping integration test")
@@ -27,81 +29,15 @@ func testPool(t *testing.T) *pgxpool.Pool {
 		t.Fatalf("failed to connect to test database: %v", err)
 	}
 	if err := pool.Ping(ctx); err != nil {
+		pool.Close()
 		t.Fatalf("failed to ping test database: %v", err)
 	}
-
-	schema := `
-		DROP TABLE IF EXISTS asset_cve_alerts CASCADE;
-		DROP TABLE IF EXISTS audit_log CASCADE;
-		DROP TABLE IF EXISTS space_cves CASCADE;
-		DROP TABLE IF EXISTS assets CASCADE;
-		DROP TABLE IF EXISTS programs CASCADE;
-		DROP TABLE IF EXISTS users CASCADE;
-
-		CREATE EXTENSION IF NOT EXISTS pgcrypto;
-
-		CREATE TABLE programs (
-			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-			name TEXT NOT NULL
-		);
-
-		CREATE TABLE assets (
-			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-			program_id UUID REFERENCES programs(id) ON DELETE CASCADE,
-			kind TEXT NOT NULL,
-			value TEXT NOT NULL,
-			first_seen TIMESTAMPTZ NOT NULL DEFAULT now(),
-			last_seen TIMESTAMPTZ NOT NULL DEFAULT now(),
-			metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
-			UNIQUE (program_id, kind, value)
-		);
-
-		CREATE TABLE users (
-			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-			email TEXT NOT NULL UNIQUE,
-			password_hash TEXT NOT NULL,
-			role TEXT NOT NULL DEFAULT 'viewer',
-			created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-		);
-
-		CREATE TABLE space_cves (
-			cve_id TEXT PRIMARY KEY,
-			description TEXT NOT NULL DEFAULT '',
-			published TIMESTAMPTZ,
-			severity TEXT NOT NULL DEFAULT 'unknown',
-			score DOUBLE PRECISION,
-			keyword TEXT NOT NULL DEFAULT '',
-			synced_at TIMESTAMPTZ NOT NULL DEFAULT now()
-		);
-
-		CREATE TABLE asset_cve_alerts (
-			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-			asset_id UUID NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
-			cve_id TEXT NOT NULL REFERENCES space_cves(cve_id) ON DELETE CASCADE,
-			matched_keyword TEXT NOT NULL,
-			severity TEXT NOT NULL,
-			acknowledged BOOLEAN NOT NULL DEFAULT false,
-			acknowledged_by UUID REFERENCES users(id) ON DELETE SET NULL,
-			acknowledged_at TIMESTAMPTZ,
-			created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-			UNIQUE (asset_id, cve_id)
-		);
-
-		CREATE TABLE audit_log (
-			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-			occurred_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-			actor_type TEXT NOT NULL,
-			actor_id TEXT NOT NULL,
-			action TEXT NOT NULL,
-			ip TEXT NOT NULL DEFAULT '',
-			details JSONB NOT NULL DEFAULT '{}'::jsonb
-		);
-	`
-	if _, err := pool.Exec(ctx, schema); err != nil {
-		t.Fatalf("failed to set up test schema: %v", err)
+	if err := testdb.ResetAndMigrate(ctx, pool, "../../migrations"); err != nil {
+		pool.Close()
+		t.Fatalf("failed to prepare test database: %v", err)
 	}
 
-	t.Cleanup(func() { pool.Close() })
+	t.Cleanup(pool.Close)
 	return pool
 }
 
@@ -123,12 +59,12 @@ func insertProgram(t *testing.T, ctx context.Context, pool *pgxpool.Pool) uuid.U
 
 func insertUser(t *testing.T, ctx context.Context, pool *pgxpool.Pool) uuid.UUID {
 	t.Helper()
-	var id uuid.UUID
 	email := "test-" + uuid.NewString() + "@example.com"
-	if err := pool.QueryRow(ctx, `INSERT INTO users (email, password_hash) VALUES ($1, 'x') RETURNING id`, email).Scan(&id); err != nil {
+	user, err := store.NewUserStore(pool).Create(ctx, email, "x", "viewer")
+	if err != nil {
 		t.Fatalf("insert user: %v", err)
 	}
-	return id
+	return user.ID
 }
 
 func TestProcessCVECreatesAlertForMatchingAssetKind(t *testing.T) {
