@@ -1,0 +1,35 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Go
+bin/
+*.test
+*.out
+
+# Node
+node_modules/
+dist/
+build/
+.env
+.env.*
+
+# Docker
+*.pid
+
+# Go fuzz corpus (regenerated locally, can grow large)
+testdata/fuzz/
+
+# TLS certificates (never commit private keys)
+certs/
+*.pem
+*.key
+*.crt
+
+# IDE
+.vscode/
+.idea/
+
+# Enterprise (never publish)
+enterprise/**/*.go
+enterprise/**/*.ts

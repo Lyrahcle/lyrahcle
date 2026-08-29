@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Lyrahcle — Constellation Analytics</title>
+    <meta
+      name="description"
+      content="Lyrahcle is a mission-console platform for space infrastructure security: orbital tracking, RF signal intelligence, and asset monitoring for satellites and ground stations."
+    />
+    <meta name="theme-color" content="#0a0a0c" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta property="og:title" content="Lyrahcle — Constellation Analytics" />
+    <meta
+      property="og:description"
+      content="Mission-console platform for space infrastructure security: orbital tracking, RF signal intelligence, and asset monitoring."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="/favicon.png" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Lyrahcle — Constellation Analytics" />
+    <meta
+      name="twitter:description"
+      content="Mission-console platform for space infrastructure security."
+    />
+    <meta name="twitter:image" content="/favicon.png" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/favicon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <script>
+      // Applied before first paint to avoid a flash of the wrong theme.
+      try {
+        const stored = localStorage.getItem('lyra_theme')
+        const theme = stored === 'light' || stored === 'dark'
+          ? stored
+          : (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
+        if (theme === 'light') document.documentElement.classList.add('light')
+      } catch {}
+    </script>
+  </head>
+  <body class="font-body">
+    <a
+      href="#main-content"
+      class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded focus:border focus:border-lyra-border focus:bg-lyra-panel focus:px-4 focus:py-2 focus:text-sm focus:text-lyra-goldBright"
+    >
+      Skip to content
+    </a>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
