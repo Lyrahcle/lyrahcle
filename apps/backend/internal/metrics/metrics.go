@@ -36,19 +36,32 @@ func (r *statusRecorder) WriteHeader(status int) {
 	r.ResponseWriter.WriteHeader(status)
 }
 
+type flushableStatusRecorder struct {
+	*statusRecorder
+	flusher http.Flusher
+}
+
+func (r *flushableStatusRecorder) Flush() {
+	r.flusher.Flush()
+}
+
 func Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
-		rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
+		recorder := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
+		writer := http.ResponseWriter(recorder)
+		if flusher, ok := w.(http.Flusher); ok {
+			writer = &flushableStatusRecorder{statusRecorder: recorder, flusher: flusher}
+		}
 
-		next.ServeHTTP(rec, r)
+		next.ServeHTTP(writer, r)
 
 		route := chi.RouteContext(r.Context()).RoutePattern()
 		if route == "" {
 			route = "unmatched"
 		}
 
-		RequestsTotal.WithLabelValues(r.Method, route, strconv.Itoa(rec.status)).Inc()
+		RequestsTotal.WithLabelValues(r.Method, route, strconv.Itoa(recorder.status)).Inc()
 		RequestDuration.WithLabelValues(r.Method, route).Observe(time.Since(start).Seconds())
 	})
 }
