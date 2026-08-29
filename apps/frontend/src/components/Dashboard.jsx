@@ -133,53 +133,85 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
         if (!cancelled) setBackendStatus('offline')
       }
 
-      try {
-        const data = await fetchAssets(PAGE_LIMIT, assetsOffsetRef.current)
-        if (!cancelled) {
-          setAssets(data ?? { items: [], total: 0, limit: PAGE_LIMIT, offset: 0 })
-          setDbStatus('online')
-        }
-      } catch (err) {
-        if (err instanceof UnauthorizedError) {
-          onSessionExpired()
-          return
-        }
-        if (!cancelled) {
-          setAssets((prev) => prev ?? { items: [], total: 0, limit: PAGE_LIMIT, offset: 0 })
-          setDbStatus('offline')
-        }
+      if (activeTab === 'orbital') {
+        await safeFetch(fetchSatellites, setSatellites)
+        return
       }
 
-      await safeFetch(fetchRfReadings, setRfReadings)
-      await safeFetch(fetchRfAnomalies, setRfAnomalies)
-      await safeFetch(() => fetchDetectionRules(PAGE_LIMIT, 0), setDetectionRules, { items: [], total: 0, limit: PAGE_LIMIT, offset: 0 })
-      await safeFetch(fetchSatellites, setSatellites)
-      await safeFetch(
-        () => fetchSpaceCVEs(PAGE_LIMIT, cvesOffsetRef.current, cveFiltersRef.current),
-        setSpaceCVEs,
-        { items: [], total: 0, limit: PAGE_LIMIT, offset: 0 },
-      )
-      await safeFetch(
-        () => fetchAssetAlerts(PAGE_LIMIT, alertsOffsetRef.current),
-        setAssetAlerts,
-        { items: [], total: 0, limit: PAGE_LIMIT, offset: 0 },
-      )
-      await safeFetch(
-        () => fetchIncidents(PAGE_LIMIT, incidentsOffsetRef.current, incidentFiltersRef.current),
-        setIncidents,
-        { items: [], total: 0, limit: PAGE_LIMIT, offset: 0 },
-      )
+      if (activeTab === 'assets') {
+        try {
+          const data = await fetchAssets(PAGE_LIMIT, assetsOffsetRef.current)
+          if (!cancelled) {
+            setAssets(data ?? { items: [], total: 0, limit: PAGE_LIMIT, offset: 0 })
+            setDbStatus('online')
+          }
+        } catch (err) {
+          if (err instanceof UnauthorizedError) {
+            onSessionExpired()
+            return
+          }
+          if (!cancelled) {
+            setAssets((prev) => prev ?? { items: [], total: 0, limit: PAGE_LIMIT, offset: 0 })
+            setDbStatus('offline')
+          }
+        }
+        return
+      }
 
-      if (admin) {
+      if (activeTab === 'signal') {
+        await Promise.all([
+          safeFetch(fetchRfReadings, setRfReadings),
+          safeFetch(fetchRfAnomalies, setRfAnomalies),
+          safeFetch(() => fetchDetectionRules(PAGE_LIMIT, 0), setDetectionRules, { items: [], total: 0, limit: PAGE_LIMIT, offset: 0 }),
+        ])
+        return
+      }
+
+      if (activeTab === 'incidents') {
+        const requests = [
+          safeFetch(
+            () => fetchIncidents(PAGE_LIMIT, incidentsOffsetRef.current, incidentFiltersRef.current),
+            setIncidents,
+            { items: [], total: 0, limit: PAGE_LIMIT, offset: 0 },
+          ),
+          safeFetch(fetchSatellites, setSatellites),
+        ]
+        if (admin) requests.push(safeFetch(fetchUsers, setUsers))
+        await Promise.all(requests)
+        return
+      }
+
+      if (activeTab === 'intel') {
+        await Promise.all([
+          safeFetch(
+            () => fetchSpaceCVEs(PAGE_LIMIT, cvesOffsetRef.current, cveFiltersRef.current),
+            setSpaceCVEs,
+            { items: [], total: 0, limit: PAGE_LIMIT, offset: 0 },
+          ),
+          safeFetch(
+            () => fetchAssetAlerts(PAGE_LIMIT, alertsOffsetRef.current),
+            setAssetAlerts,
+            { items: [], total: 0, limit: PAGE_LIMIT, offset: 0 },
+          ),
+        ])
+        return
+      }
+
+      if (activeTab === 'connectivity' && admin) {
         await safeFetch(fetchAgentKeys, setAgentKeys)
-        await safeFetch(fetchUsers, setUsers)
+        return
       }
-      if (auditAccess) {
-        await safeFetch(
-          () => fetchAuditLog(PAGE_LIMIT, auditOffsetRef.current),
-          setAuditEntries,
-          { items: [], total: 0, limit: PAGE_LIMIT, offset: 0 },
-        )
+
+      if (activeTab === 'admin' && auditAccess) {
+        const requests = [
+          safeFetch(
+            () => fetchAuditLog(PAGE_LIMIT, auditOffsetRef.current),
+            setAuditEntries,
+            { items: [], total: 0, limit: PAGE_LIMIT, offset: 0 },
+          ),
+        ]
+        if (admin) requests.push(safeFetch(fetchUsers, setUsers))
+        await Promise.all(requests)
       }
     }
 
@@ -189,13 +221,13 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
       cancelled = true
       clearInterval(id)
     }
-  }, [onSessionExpired, admin, auditAccess, assetsOffset, cvesOffset, cveFilters, auditOffset, incidentsOffset, incidentFilters])
+  }, [onSessionExpired, activeTab, admin, auditAccess, assetsOffset, cvesOffset, cveFilters, auditOffset, incidentsOffset, incidentFilters])
 
-  
-  
-  
-  
   useEffect(() => {
+    if (activeTab !== 'orbital') {
+      setSatellitesLive(false)
+      return undefined
+    }
     const unsubscribe = subscribeSatellites({
       onData: (data) => {
         setSatellites(data)
@@ -204,9 +236,10 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
       onError: () => setSatellitesLive(false),
     })
     return unsubscribe
-  }, [])
+  }, [activeTab])
 
   useEffect(() => {
+    if (activeTab !== 'incidents') return undefined
     const unsubscribe = subscribeIncidents({
       onData: (data) => {
         if (incidentsOffsetRef.current === 0 && !incidentFiltersRef.current.status && !incidentFiltersRef.current.severity && !incidentFiltersRef.current.agentId && !incidentFiltersRef.current.satelliteId) {
@@ -216,7 +249,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
       onError: () => {},
     })
     return unsubscribe
-  }, [])
+  }, [activeTab])
 
   const lastRf = rfReadings?.[0]
   const sdrStatus =

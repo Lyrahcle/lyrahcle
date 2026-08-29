@@ -21,6 +21,7 @@ else
   pg_dump "$DATABASE_URL" | gzip > "$OUT_FILE"
 fi
 
+"$ROOT_DIR/scripts/verify-backup.sh" "$OUT_FILE"
 SIZE="$(du -h "$OUT_FILE" | cut -f1)"
 echo "==> Wrote $OUT_FILE ($SIZE)"
 

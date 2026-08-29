@@ -140,6 +140,30 @@ else
   FAILURES=$((FAILURES + 1))
 fi
 
+run_backup_restore_drill() {
+  local backup_dir backup_file restore_db
+  backup_dir="$(mktemp -d)"
+  restore_db="lyrahcle_restore_test"
+  BACKUP_DIR="$backup_dir" RETENTION_DAYS=1 ./scripts/backup-db.sh >/dev/null || return 1
+  backup_file="$(find "$backup_dir" -maxdepth 1 -name 'lyrahcle-*.sql.gz' -type f | head -1)"
+  [[ -n "$backup_file" ]] || return 1
+  ./scripts/verify-backup.sh "$backup_file" >/dev/null || return 1
+  docker compose exec -T postgres dropdb -U lyrahcle --if-exists "$restore_db" >/dev/null || return 1
+  docker compose exec -T postgres createdb -U lyrahcle "$restore_db" >/dev/null || return 1
+  RESTORE_ACK=1 RESTORE_DATABASE="$restore_db" ./scripts/restore-db.sh "$backup_file" >/dev/null || return 1
+  docker compose exec -T postgres psql -U lyrahcle -d "$restore_db" -Atc "SELECT count(*) FROM users" | grep -Eq '^[1-9][0-9]*$' || return 1
+  docker compose exec -T postgres dropdb -U lyrahcle "$restore_db" >/dev/null || return 1
+  rm -rf "$backup_dir"
+}
+
+echo -n "==> Running backup/restore drill"
+if run_backup_restore_drill; then
+  echo " ok"
+else
+  echo " FAILED"
+  FAILURES=$((FAILURES + 1))
+fi
+
 if [[ "$WITH_SDR" == true ]]; then
   wait_for sdr-agent "docker compose ps sdr-agent | grep -q Up" || FAILURES=$((FAILURES + 1))
 fi

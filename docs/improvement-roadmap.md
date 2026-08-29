@@ -1,6 +1,6 @@
 # Improvement Roadmap
 
-This roadmap tracks the current product and security backlog after v8.4.
+This roadmap tracks the current product and security backlog after v8.5.
 
 Status values: **Shipped**, **Partial**, **Next**, and **Later**.
 
@@ -50,9 +50,9 @@ Status values: **Shipped**, **Partial**, **Next**, and **Later**.
 |---|---|---|
 | CVE filter indexes | Shipped | Current |
 | Response/orbital/CVE caching | Partial | v8.3-v9 |
-| Satellite-load optimization | Partial | v8.4 |
-| Index review for all filtered searches | Partial | v8.4-v9 |
-| SQL query optimization | Partial | v8.4-v9 |
+| Satellite-load optimization | Shipped | v8.5 |
+| Index review for all filtered searches | Partial | v8.5-v9 |
+| SQL query optimization | Partial | v8.5-v9 |
 | Load-test tooling | Shipped | v8.4 |
 | Station federation | Later | v9+ |
 | Multi-tenant architecture | Later | Enterprise |
@@ -71,7 +71,7 @@ Status values: **Shipped**, **Partial**, **Next**, and **Later**.
 | Full >80% application coverage | Partial | Before v1.0 |
 | Security E2E coverage | Partial | Before v1.0 |
 | HashiCorp Vault integration | Later | v9 / production |
-| Automated backup and restore drills | Partial | Before v1.0 |
+| Automated backup and restore drills | Shipped | v8.5 |
 
 ## Observability and operations
 

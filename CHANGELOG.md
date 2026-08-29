@@ -4,6 +4,14 @@ Notable changes are tracked here until versioned release notes take over.
 
 ## Unreleased
 
+### v8.5 pre-v1 stabilization
+
+- Reduced dashboard backend load by polling only the active workspace and opening satellite/incident SSE streams only while those views are active.
+- Added composite PostgreSQL indexes for RF history/anomalies, audit actions, satellite freshness, password-reset expiry, and WebAuthn credential usage.
+- Added backup verification, guarded restore tooling, and a full-stack backup/restore drill against an isolated temporary database.
+- Expanded authorized load testing with duration mode, authenticated incident/search/satellite cases, and optional result capture.
+- Added a sensitive-endpoint audit inventory and dedicated backup/restore operations guide.
+
 ### v8.4 WebAuthn, recovery, tracing, and performance
 
 - Added password-plus-WebAuthn authentication for cross-platform USB/NFC security keys with user verification and Redis-backed one-time ceremonies.

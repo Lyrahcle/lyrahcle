@@ -23,3 +23,6 @@ This directory contains the technical documentation for Lyrahcle. The root READM
 The backend also embeds an OpenAPI specification at `/openapi.yaml` and Swagger UI at `/docs`.
 
 - [User administration and permissions](user-administration.md)
+- [Backup and restore](backup-and-restore.md)
+- [Sensitive endpoint audit](sensitive-endpoint-audit.md)
+
