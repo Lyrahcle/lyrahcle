@@ -125,7 +125,7 @@ services:
       - AGENT_TOKEN=${AGENT_TOKEN:-}
       # If BACKEND_URL uses https:// with the self-signed dev cert, set this to
       # "true" for local testing ONLY. Never set it against a production backend.
-      - AGENT_INSECURE_SKIP_VERIFY=${AGENT_INSECURE_SKIP_VERIFY:-false}
+      - AGENT_CA_CERT=${AGENT_CA_CERT:-}
       # Optional forensic IQ capture — off by default. See docs/forensics.md.
       #   - IQ_CAPTURE_DIR=/var/lib/lyrahcle/captures
       #   - IQ_CAPTURE_INTERVAL_SECONDS=60

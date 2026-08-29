@@ -3,7 +3,7 @@ info:
   title: Lyrahcle API
   description: Space cybersecurity operations API for assets, orbital tracking, RF telemetry, incident response, TM/TC decoding,
     threat intelligence, and security administration.
-  version: 0.10.0
+  version: 0.10.1
   contact:
     name: Lyrahcle
   license:
@@ -46,6 +46,26 @@ paths:
               description: Request correlation identifier
               schema:
                 type: string
+  /readyz:
+    get:
+      tags:
+      - System
+      summary: Readiness check
+      description: Verifies required runtime dependencies without exposing dependency details.
+      security: []
+      responses:
+        '200':
+          description: Service is ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadinessStatus'
+        '503':
+          description: Service is not ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadinessStatus'
   /metrics:
     get:
       tags:
@@ -1091,7 +1111,15 @@ paths:
       tags:
       - Incidents
       summary: Create a security incident
-      description: 'Requires role: operator or higher. Only admins may set assigned_to.'
+      description: 'Requires role: operator or higher. Only admins may set assigned_to. Reusing the same Idempotency-Key returns the original incident.'
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: false
+        schema:
+          type: string
+          maxLength: 128
+          pattern: '^[A-Za-z0-9_.:-]+$'
       requestBody:
         required: true
         content:
@@ -1179,6 +1207,8 @@ paths:
           description: Insufficient role
         '404':
           description: Incident not found
+        '409':
+          description: Invalid incident status transition
   /api/v1/incidents/{incidentID}/notes:
     post:
       tags:
@@ -1212,6 +1242,40 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '404':
           description: Incident not found
+  /api/v1/incidents/{incidentID}/evidence:
+    post:
+      tags:
+      - Incidents
+      summary: Add a typed evidence reference
+      description: 'Requires role: operator or higher. References are deduplicated per incident and evidence type.'
+      parameters:
+      - name: incidentID
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IncidentEvidenceCreateRequest'
+      responses:
+        '201':
+          description: Evidence reference stored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IncidentEvidence'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Insufficient role
+        '404':
+          description: Incident not found
 components:
   securitySchemes:
     bearerAuth:
@@ -1230,8 +1294,8 @@ components:
       in: query
       schema:
         type: integer
-        default: 50
-        maximum: 200
+        default: 25
+        maximum: 100
     Offset:
       name: offset
       in: query
@@ -1906,6 +1970,59 @@ components:
         created_at:
           type: string
           format: date-time
+    IncidentEvidence:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        incident_id:
+          type: string
+          format: uuid
+        evidence_type:
+          type: string
+          enum:
+          - rf_anomaly
+          - request
+          - cve
+          - agent
+          - satellite
+          - external
+        evidence_ref:
+          type: string
+          maxLength: 256
+        label:
+          type: string
+          maxLength: 160
+        created_by:
+          type: string
+          format: uuid
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+    IncidentEvidenceCreateRequest:
+      type: object
+      required:
+      - evidence_type
+      - evidence_ref
+      properties:
+        evidence_type:
+          type: string
+          enum:
+          - rf_anomaly
+          - request
+          - cve
+          - agent
+          - satellite
+          - external
+        evidence_ref:
+          type: string
+          minLength: 1
+          maxLength: 256
+        label:
+          type: string
+          maxLength: 160
     IncidentDetail:
       type: object
       properties:
@@ -1915,6 +2032,10 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/IncidentEvent'
+        evidence:
+          type: array
+          items:
+            $ref: '#/components/schemas/IncidentEvidence'
     IncidentPage:
       type: object
       properties:

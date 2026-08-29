@@ -34,7 +34,7 @@ func main() {
 	agentID := getEnv("AGENT_ID", "sdr-agent-dev")
 	apiKey := getEnv("AGENT_API_KEY", "")
 	authToken := getEnv("AGENT_TOKEN", "")
-	insecureSkipVerify := getEnv("AGENT_INSECURE_SKIP_VERIFY", "false") == "true"
+	caCertPath := getEnv("AGENT_CA_CERT", "")
 	freqHz, _ := strconv.ParseInt(getEnv("FREQUENCY_HZ", "437500000"), 10, 64)
 	intervalSec := getEnvInt("CAPTURE_INTERVAL_SECONDS", 10)
 
@@ -43,11 +43,10 @@ func main() {
 	} else if apiKey == "" {
 		log.Println("NOTICE: using AGENT_TOKEN (a shared operator JWT). AGENT_API_KEY is preferred: it's scoped to this agent_id alone and can be revoked independently.")
 	}
-	if insecureSkipVerify {
-		log.Println("WARNING: AGENT_INSECURE_SKIP_VERIFY is enabled; TLS certificate verification is OFF. Use only against known self-signed dev certs, never in production.")
+	client, err := uplink.New(backendURL, agentID, apiKey, authToken, caCertPath)
+	if err != nil {
+		log.Fatalf("uplink client: %v", err)
 	}
-
-	client := uplink.New(backendURL, agentID, apiKey, authToken, insecureSkipVerify)
 
 	if replayFile := getEnv("REPLAY_FILE", ""); replayFile != "" {
 		runReplay(replayFile, client)

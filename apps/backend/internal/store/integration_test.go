@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"errors"
 	"os"
 	"testing"
 	"time"
@@ -478,5 +479,33 @@ func TestIncidentStoreLifecycle(t *testing.T) {
 	}
 	if detail.Events[0].EventType != "created" || detail.Events[1].EventType != "status_changed" || detail.Events[2].EventType != "note" {
 		t.Fatalf("unexpected event sequence: %+v", detail.Events)
+	}
+}
+
+func TestIncidentStoreRejectsInvalidStatusTransition(t *testing.T) {
+	pool := testPool(t)
+	ctx := context.Background()
+	users := NewUserStore(pool)
+	incidents := NewIncidentStore(pool)
+	actor, err := users.Create(ctx, "incident-state@example.com", "hash", "operator")
+	if err != nil {
+		t.Fatal(err)
+	}
+	incident, err := incidents.Create(ctx, CreateIncidentInput{Title: "State", Severity: "high", SourceType: "manual", CreatedBy: &actor.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, status := range []string{"investigating", "resolved"} {
+		incident, err = incidents.Update(ctx, incident.ID, UpdateIncidentInput{Status: status, ActorID: actor.ID})
+		if err != nil {
+			t.Fatalf("transition to %s: %v", status, err)
+		}
+	}
+	_, err = incidents.Update(ctx, incident.ID, UpdateIncidentInput{Status: "new", ActorID: actor.ID})
+	if !errors.Is(err, ErrInvalidIncidentTransition) {
+		t.Fatalf("err = %v, want ErrInvalidIncidentTransition", err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE incidents SET status = 'new' WHERE id = $1`, incident.ID); err == nil {
+		t.Fatal("database accepted invalid resolved -> new transition")
 	}
 }

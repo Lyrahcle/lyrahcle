@@ -33,3 +33,14 @@
 - [ ] Document and test backup restore and disaster recovery procedures
 - [ ] Add production deployment patterns for redundant backend/Redis/PostgreSQL infrastructure
 - [ ] Add multi-signal incident correlation, suppression windows, and reusable detection rules
+
+## v7.1 hardening
+
+- [x] Strict incident status transitions
+- [x] Idempotent incident creation
+- [x] Typed incident evidence references
+- [x] Readiness checks for database and Redis
+- [x] Structured request logs without request bodies or credentials
+- [x] Pagination defaults capped at 25/100
+- [x] Race detector and gosec CI gates
+- [x] SDR TLS verification through trusted CA bundles without verification bypass

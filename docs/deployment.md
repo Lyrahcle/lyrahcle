@@ -30,7 +30,7 @@ For development the frontend is exposed on `5173` and backend on `8080`. Product
 
 The backend can terminate TLS directly through `TLS_CERT_FILE` and `TLS_KEY_FILE`. A reverse proxy such as Caddy, Traefik, nginx, or a managed ingress can also terminate TLS in front of the application.
 
-`scripts/generate-dev-certs.sh` is for local testing only. `AGENT_INSECURE_SKIP_VERIFY=true` must never be used against production.
+`scripts/generate-dev-certs.sh` is for local testing only. Configure `AGENT_CA_CERT` with the trusted development CA instead of disabling certificate verification.
 
 ## Database migrations
 
@@ -45,13 +45,14 @@ Use the included backup script:
 BACKUP_DIR=/mnt/backups RETENTION_DAYS=30 ./scripts/backup-db.sh
 ```
 
-A backup is not complete until restoration has been tested in a separate database.
+Backup files are created with restrictive permissions and the script does not print `DATABASE_URL`. A backup is not complete until restoration has been tested in a separate database.
 
 ## Monitoring
 
 | Endpoint | Purpose |
 |---|---|
 | `GET /healthz` | Process liveness |
+| `GET /readyz` | Database/cache readiness without dependency details |
 | `GET /api/v1/ping` | API reachability |
 | `GET /metrics` | Backend Prometheus metrics |
 | CVE worker `:9091/metrics` | CVE synchronization metrics |

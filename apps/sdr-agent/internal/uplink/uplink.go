@@ -3,9 +3,11 @@ package uplink
 import (
 	"bytes"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/mlko01/lyrahcle/apps/sdr-agent/internal/capture"
@@ -30,19 +32,31 @@ type deviceReport struct {
 	TX           bool   `json:"tx"`
 }
 
-func New(backendURL, agentID, apiKey, authToken string, insecureSkipVerify bool) *Client {
-	transport := &http.Transport{}
-	if insecureSkipVerify {
-		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+func New(backendURL, agentID, apiKey, authToken, caCertPath string) (*Client, error) {
+	tlsConfig := &tls.Config{MinVersion: tls.VersionTLS12}
+	if caCertPath != "" {
+		certPEM, err := os.ReadFile(caCertPath)
+		if err != nil {
+			return nil, fmt.Errorf("uplink: read CA certificate: %w", err)
+		}
+		roots, err := x509.SystemCertPool()
+		if err != nil || roots == nil {
+			roots = x509.NewCertPool()
+		}
+		if !roots.AppendCertsFromPEM(certPEM) {
+			return nil, fmt.Errorf("uplink: CA certificate is not valid PEM")
+		}
+		tlsConfig.RootCAs = roots
 	}
 
+	transport := &http.Transport{TLSClientConfig: tlsConfig}
 	return &Client{
 		BackendURL: backendURL,
 		AgentID:    agentID,
 		APIKey:     apiKey,
 		AuthToken:  authToken,
 		http:       &http.Client{Timeout: 5 * time.Second, Transport: transport},
-	}
+	}, nil
 }
 
 func (c *Client) Send(reading capture.Reading) error {

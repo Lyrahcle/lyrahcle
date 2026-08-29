@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -18,6 +19,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/httprate"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/redis/go-redis/v9"
 
@@ -95,7 +97,7 @@ func main() {
 
 	go syncTLEs(ctx, cfg.CelestrakGroups, satellites)
 
-	r := newRouter(cfg, assets, programs, rf, rfAnomalies, satellites, users, agentKeys, auditLog, spaceCVEs, assetAlerts, incidents, redisClient)
+	r := newRouter(cfg, pool, assets, programs, rf, rfAnomalies, satellites, users, agentKeys, auditLog, spaceCVEs, assetAlerts, incidents, redisClient)
 
 	srv := &http.Server{
 		Addr:         ":" + cfg.Port,
@@ -145,6 +147,7 @@ func main() {
 
 func newRouter(
 	cfg config.Config,
+	pool *pgxpool.Pool,
 	assets *store.AssetStore,
 	programs *store.ProgramStore,
 	rf *store.RFStore,
@@ -173,7 +176,7 @@ func newRouter(
 	r.Use(sanitizeRequestID)
 	r.Use(middleware.RequestID)
 	r.Use(requestIDResponseHeader)
-	r.Use(middleware.Logger)
+	r.Use(structuredRequestLogger)
 	r.Use(middleware.Recoverer)
 	r.Use(securityHeaders(cfg.TLSCertFile != "" && cfg.TLSKeyFile != ""))
 	r.Use(metrics.Middleware)
@@ -183,6 +186,23 @@ func newRouter(
 	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"status":"ok","service":"lyrahcle-backend"}`))
+	})
+
+	r.Get("/readyz", func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+		defer cancel()
+		ready := pool != nil && pool.Ping(ctx) == nil
+		if ready && redisClient != nil {
+			ready = redisClient.Ping(ctx).Err() == nil
+		}
+		w.Header().Set("Content-Type", "application/json")
+		if !ready {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			w.Write([]byte(`{"status":"not_ready"}`))
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status":"ready"}`))
 	})
 
 	r.Get("/openapi.yaml", serveOpenAPISpec)
@@ -1218,9 +1238,14 @@ func newRouter(
 						return
 					}
 				}
+				idempotencyKey := strings.TrimSpace(r.Header.Get("Idempotency-Key"))
+				if idempotencyKey != "" && !validRequestID(idempotencyKey) {
+					http.Error(w, "Idempotency-Key must contain only safe identifier characters and be at most 128 characters", http.StatusBadRequest)
+					return
+				}
 				incident, err := incidents.Create(r.Context(), store.CreateIncidentInput{
 					Title: body.Title, Description: body.Description, Severity: body.Severity, SourceType: "manual",
-					SatelliteID: satelliteID, AgentID: body.AgentID, AssignedTo: assignedTo, CreatedBy: &claims.UserID,
+					SatelliteID: satelliteID, AgentID: body.AgentID, AssignedTo: assignedTo, CreatedBy: &claims.UserID, IdempotencyKey: idempotencyKey,
 				})
 				if err != nil {
 					http.Error(w, "failed to create incident", http.StatusInternalServerError)
@@ -1317,6 +1342,10 @@ func newRouter(
 				input.ActorID = claims.UserID
 				incident, err := incidents.Update(r.Context(), incidentID, input)
 				if err != nil {
+					if errors.Is(err, store.ErrInvalidIncidentTransition) {
+						http.Error(w, "invalid incident status transition", http.StatusConflict)
+						return
+					}
 					if err == store.ErrIncidentNotFound {
 						http.Error(w, "incident not found", http.StatusNotFound)
 						return
@@ -1363,6 +1392,58 @@ func newRouter(
 				logAudit(r.Context(), auditLog, audit.ActorUser, claims.UserID.String(), audit.ActionIncidentNoteAdded, clientIP(r), map[string]interface{}{"incident_id": incidentID.String()})
 				w.WriteHeader(http.StatusNoContent)
 			})
+
+			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleOperator, isTokenRevoked)).Post("/{incidentID}/evidence", func(w http.ResponseWriter, r *http.Request) {
+				incidentID, err := uuid.Parse(chi.URLParam(r, "incidentID"))
+				if err != nil {
+					http.Error(w, "incidentID must be a valid UUID", http.StatusBadRequest)
+					return
+				}
+				var body struct {
+					EvidenceType string `json:"evidence_type"`
+					EvidenceRef  string `json:"evidence_ref"`
+					Label        string `json:"label"`
+				}
+				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+					http.Error(w, "invalid JSON body", http.StatusBadRequest)
+					return
+				}
+				body.EvidenceType = strings.ToLower(strings.TrimSpace(body.EvidenceType))
+				body.EvidenceRef = strings.TrimSpace(body.EvidenceRef)
+				body.Label = strings.TrimSpace(body.Label)
+				if err := validate.IncidentEvidenceType(body.EvidenceType); err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+				if err := validate.IncidentEvidenceRef(body.EvidenceRef); err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+				if err := validate.IncidentEvidenceLabel(body.Label); err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+				claims, ok := auth.FromContext(r.Context())
+				if !ok {
+					http.Error(w, "unauthorized", http.StatusUnauthorized)
+					return
+				}
+				evidence, err := incidents.AddEvidence(r.Context(), incidentID, store.CreateIncidentEvidenceInput{
+					EvidenceType: body.EvidenceType, EvidenceRef: body.EvidenceRef, Label: body.Label, CreatedBy: &claims.UserID,
+				})
+				if err != nil {
+					if errors.Is(err, store.ErrIncidentNotFound) {
+						http.Error(w, "incident not found", http.StatusNotFound)
+						return
+					}
+					http.Error(w, "failed to add incident evidence", http.StatusInternalServerError)
+					return
+				}
+				logAudit(r.Context(), auditLog, audit.ActorUser, claims.UserID.String(), audit.ActionIncidentEvidenceAdded, clientIP(r), map[string]interface{}{"incident_id": incidentID.String(), "evidence_type": body.EvidenceType})
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusCreated)
+				json.NewEncoder(w).Encode(evidence)
+			})
 		})
 
 		r.Route("/asset-alerts", func(r chi.Router) {
@@ -1407,6 +1488,24 @@ func newRouter(
 	})
 
 	return r
+}
+
+func structuredRequestLogger(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		next.ServeHTTP(w, r)
+		event := map[string]interface{}{
+			"event":       "http_request",
+			"method":      r.Method,
+			"path":        r.URL.Path,
+			"request_id":  middleware.GetReqID(r.Context()),
+			"remote_ip":   clientIP(r),
+			"duration_ms": time.Since(start).Milliseconds(),
+		}
+		if encoded, err := json.Marshal(event); err == nil {
+			log.Print(string(encoded))
+		}
+	})
 }
 
 func sanitizeRequestID(next http.Handler) http.Handler {
@@ -1633,14 +1732,6 @@ func logAudit(ctx context.Context, auditLog *store.AuditStore, actorType, actorI
 }
 
 func clientIP(r *http.Request) string {
-	if real := strings.TrimSpace(r.Header.Get("X-Real-IP")); real != "" {
-		return real
-	}
-	if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
-		if first := strings.TrimSpace(strings.Split(forwarded, ",")[0]); first != "" {
-			return first
-		}
-	}
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		return r.RemoteAddr

@@ -49,7 +49,7 @@ FAILURES=0
 
 wait_for postgres "docker compose exec -T postgres pg_isready -U lyrahcle" || FAILURES=$((FAILURES + 1))
 wait_for redis "docker compose exec -T redis redis-cli ping | grep -q PONG" || FAILURES=$((FAILURES + 1))
-wait_for backend "curl -fsS http://localhost:8080/healthz" || FAILURES=$((FAILURES + 1))
+wait_for backend "curl -fsS http://localhost:8080/readyz" || FAILURES=$((FAILURES + 1))
 wait_for backend-api "curl -fsS http://localhost:8080/api/v1/ping" || FAILURES=$((FAILURES + 1))
 wait_for frontend "curl -fsS http://localhost:5173/" || FAILURES=$((FAILURES + 1))
 wait_for cve-sync "curl -fsS http://localhost:9091/metrics" || FAILURES=$((FAILURES + 1))

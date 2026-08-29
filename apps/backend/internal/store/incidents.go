@@ -8,10 +8,14 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-var ErrIncidentNotFound = errors.New("store: incident not found")
+var (
+	ErrIncidentNotFound          = errors.New("store: incident not found")
+	ErrInvalidIncidentTransition = errors.New("store: invalid incident status transition")
+)
 
 type Incident struct {
 	ID               uuid.UUID  `json:"id"`
@@ -44,9 +48,21 @@ type IncidentEvent struct {
 	CreatedAt     time.Time              `json:"created_at"`
 }
 
+type IncidentEvidence struct {
+	ID           uuid.UUID              `json:"id"`
+	IncidentID   uuid.UUID              `json:"incident_id"`
+	EvidenceType string                 `json:"evidence_type"`
+	EvidenceRef  string                 `json:"evidence_ref"`
+	Label        string                 `json:"label"`
+	Metadata     map[string]interface{} `json:"metadata"`
+	CreatedBy    *uuid.UUID             `json:"created_by,omitempty"`
+	CreatedAt    time.Time              `json:"created_at"`
+}
+
 type IncidentDetail struct {
-	Incident Incident        `json:"incident"`
-	Events   []IncidentEvent `json:"events"`
+	Incident Incident           `json:"incident"`
+	Events   []IncidentEvent    `json:"events"`
+	Evidence []IncidentEvidence `json:"evidence"`
 }
 
 type IncidentFilter struct {
@@ -67,6 +83,15 @@ type CreateIncidentInput struct {
 	SourceAnomalyID *uuid.UUID
 	AssignedTo      *uuid.UUID
 	CreatedBy       *uuid.UUID
+	IdempotencyKey  string
+}
+
+type CreateIncidentEvidenceInput struct {
+	EvidenceType string
+	EvidenceRef  string
+	Label        string
+	Metadata     map[string]interface{}
+	CreatedBy    *uuid.UUID
 }
 
 type UpdateIncidentInput struct {
@@ -156,19 +181,23 @@ func (s *IncidentStore) Create(ctx context.Context, input CreateIncidentInput) (
 	err = tx.QueryRow(ctx, `
 		INSERT INTO incidents (
 			reference, title, description, severity, source_type, satellite_id, agent_id,
-			source_anomaly_id, assigned_to, created_by
+			source_anomaly_id, assigned_to, created_by, idempotency_key
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, nullif($7, ''), $8, $9, $10)
+		VALUES ($1, $2, $3, $4, $5, $6, nullif($7, ''), $8, $9, $10, nullif($11, ''))
 		RETURNING id, reference, title, description, severity, status, source_type, satellite_id,
 		          coalesce(agent_id, ''), source_anomaly_id, assigned_to, created_by, created_at, updated_at, resolved_at
 	`, reference, input.Title, input.Description, input.Severity, input.SourceType, input.SatelliteID,
-		input.AgentID, input.SourceAnomalyID, input.AssignedTo, input.CreatedBy).Scan(
+		input.AgentID, input.SourceAnomalyID, input.AssignedTo, input.CreatedBy, input.IdempotencyKey).Scan(
 		&incident.ID, &incident.Reference, &incident.Title, &incident.Description, &incident.Severity,
 		&incident.Status, &incident.SourceType, &incident.SatelliteID, &incident.AgentID,
 		&incident.SourceAnomalyID, &incident.AssignedTo, &incident.CreatedBy, &incident.CreatedAt,
 		&incident.UpdatedAt, &incident.ResolvedAt,
 	)
 	if err != nil {
+		_ = tx.Rollback(ctx)
+		if existing, ok := s.existingForDuplicate(ctx, input, err); ok {
+			return existing, nil
+		}
 		return Incident{}, err
 	}
 
@@ -233,7 +262,29 @@ func (s *IncidentStore) Get(ctx context.Context, id uuid.UUID) (IncidentDetail, 
 	if err := rows.Err(); err != nil {
 		return IncidentDetail{}, err
 	}
-	return IncidentDetail{Incident: incident, Events: events}, nil
+
+	evidenceRows, err := s.pool.Query(ctx, `
+		SELECT id, incident_id, evidence_type, evidence_ref, label, metadata, created_by, created_at
+		FROM incident_evidence
+		WHERE incident_id = $1
+		ORDER BY created_at ASC, id ASC
+	`, id)
+	if err != nil {
+		return IncidentDetail{}, err
+	}
+	defer evidenceRows.Close()
+	evidence := []IncidentEvidence{}
+	for evidenceRows.Next() {
+		var item IncidentEvidence
+		if err := evidenceRows.Scan(&item.ID, &item.IncidentID, &item.EvidenceType, &item.EvidenceRef, &item.Label, &item.Metadata, &item.CreatedBy, &item.CreatedAt); err != nil {
+			return IncidentDetail{}, err
+		}
+		evidence = append(evidence, item)
+	}
+	if err := evidenceRows.Err(); err != nil {
+		return IncidentDetail{}, err
+	}
+	return IncidentDetail{Incident: incident, Events: events, Evidence: evidence}, nil
 }
 
 func (s *IncidentStore) Update(ctx context.Context, id uuid.UUID, input UpdateIncidentInput) (Incident, error) {
@@ -258,6 +309,9 @@ func (s *IncidentStore) Update(ctx context.Context, id uuid.UUID, input UpdateIn
 			return Incident{}, ErrIncidentNotFound
 		}
 		return Incident{}, err
+	}
+	if input.Status != "" && input.Status != before.Status && !allowedIncidentTransition(before.Status, input.Status) {
+		return Incident{}, fmt.Errorf("%w: %s -> %s", ErrInvalidIncidentTransition, before.Status, input.Status)
 	}
 
 	var updated Incident
@@ -319,6 +373,120 @@ func (s *IncidentStore) AddNote(ctx context.Context, id, actorID uuid.UUID, mess
 		VALUES ($1, 'note', $2, $3)
 	`, id, actorID, message)
 	return err
+}
+
+func (s *IncidentStore) AddEvidence(ctx context.Context, incidentID uuid.UUID, input CreateIncidentEvidenceInput) (IncidentEvidence, error) {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return IncidentEvidence{}, err
+	}
+	defer tx.Rollback(ctx)
+
+	var exists bool
+	if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM incidents WHERE id = $1)`, incidentID).Scan(&exists); err != nil {
+		return IncidentEvidence{}, err
+	}
+	if !exists {
+		return IncidentEvidence{}, ErrIncidentNotFound
+	}
+
+	if input.Metadata == nil {
+		input.Metadata = map[string]interface{}{}
+	}
+	var evidence IncidentEvidence
+	err = tx.QueryRow(ctx, `
+		INSERT INTO incident_evidence (incident_id, evidence_type, evidence_ref, label, metadata, created_by)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		ON CONFLICT (incident_id, evidence_type, evidence_ref) DO NOTHING
+		RETURNING id, incident_id, evidence_type, evidence_ref, label, metadata, created_by, created_at
+	`, incidentID, input.EvidenceType, input.EvidenceRef, input.Label, input.Metadata, input.CreatedBy).Scan(
+		&evidence.ID, &evidence.IncidentID, &evidence.EvidenceType, &evidence.EvidenceRef, &evidence.Label, &evidence.Metadata, &evidence.CreatedBy, &evidence.CreatedAt,
+	)
+	created := err == nil
+	if errors.Is(err, pgx.ErrNoRows) {
+		err = tx.QueryRow(ctx, `
+			SELECT id, incident_id, evidence_type, evidence_ref, label, metadata, created_by, created_at
+			FROM incident_evidence
+			WHERE incident_id = $1 AND evidence_type = $2 AND evidence_ref = $3
+		`, incidentID, input.EvidenceType, input.EvidenceRef).Scan(
+			&evidence.ID, &evidence.IncidentID, &evidence.EvidenceType, &evidence.EvidenceRef, &evidence.Label, &evidence.Metadata, &evidence.CreatedBy, &evidence.CreatedAt,
+		)
+	}
+	if err != nil {
+		return IncidentEvidence{}, err
+	}
+	if created {
+		if err := insertIncidentEvent(ctx, tx, incidentID, "evidence_added", input.CreatedBy, "", map[string]interface{}{
+			"evidence_id": evidence.ID.String(),
+			"type":        evidence.EvidenceType,
+		}); err != nil {
+			return IncidentEvidence{}, err
+		}
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return IncidentEvidence{}, err
+	}
+	return evidence, nil
+}
+
+func (s *IncidentStore) existingForDuplicate(ctx context.Context, input CreateIncidentInput, createErr error) (Incident, bool) {
+	var pgErr *pgconn.PgError
+	if !errors.As(createErr, &pgErr) || pgErr.Code != "23505" {
+		return Incident{}, false
+	}
+	switch pgErr.ConstraintName {
+	case "idx_incidents_idempotency_key":
+		if input.IdempotencyKey == "" {
+			return Incident{}, false
+		}
+		incident, err := s.getByIdempotencyKey(ctx, input.IdempotencyKey)
+		return incident, err == nil
+	case "incidents_source_anomaly_id_key":
+		if input.SourceAnomalyID == nil {
+			return Incident{}, false
+		}
+		incident, err := s.getBySourceAnomalyID(ctx, *input.SourceAnomalyID)
+		return incident, err == nil
+	default:
+		return Incident{}, false
+	}
+}
+
+func (s *IncidentStore) getByIdempotencyKey(ctx context.Context, key string) (Incident, error) {
+	row := s.pool.QueryRow(ctx, `
+		SELECT i.id, i.reference, i.title, i.description, i.severity, i.status, i.source_type,
+		       i.satellite_id, coalesce(s.name, ''), coalesce(i.agent_id, ''), i.source_anomaly_id,
+		       i.assigned_to, coalesce(u.username, ''), i.created_by, i.created_at, i.updated_at, i.resolved_at
+		FROM incidents i
+		LEFT JOIN satellites s ON s.id = i.satellite_id
+		LEFT JOIN users u ON u.id = i.assigned_to
+		WHERE i.idempotency_key = $1
+	`, key)
+	return scanIncident(row)
+}
+
+func (s *IncidentStore) getBySourceAnomalyID(ctx context.Context, anomalyID uuid.UUID) (Incident, error) {
+	row := s.pool.QueryRow(ctx, `
+		SELECT i.id, i.reference, i.title, i.description, i.severity, i.status, i.source_type,
+		       i.satellite_id, coalesce(s.name, ''), coalesce(i.agent_id, ''), i.source_anomaly_id,
+		       i.assigned_to, coalesce(u.username, ''), i.created_by, i.created_at, i.updated_at, i.resolved_at
+		FROM incidents i
+		LEFT JOIN satellites s ON s.id = i.satellite_id
+		LEFT JOIN users u ON u.id = i.assigned_to
+		WHERE i.source_anomaly_id = $1
+	`, anomalyID)
+	return scanIncident(row)
+}
+
+func allowedIncidentTransition(from, to string) bool {
+	transitions := map[string]map[string]bool{
+		"new":            {"investigating": true, "false_positive": true},
+		"investigating":  {"contained": true, "resolved": true, "false_positive": true},
+		"contained":      {"investigating": true, "resolved": true},
+		"resolved":       {},
+		"false_positive": {},
+	}
+	return transitions[from][to]
 }
 
 type incidentScanner interface {

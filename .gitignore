@@ -33,3 +33,6 @@ certs/
 # Enterprise (never publish)
 enterprise/**/*.go
 enterprise/**/*.ts
+
+# Backups
+backups/

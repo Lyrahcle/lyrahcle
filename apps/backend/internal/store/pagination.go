@@ -1,8 +1,8 @@
 package store
 
 const (
-	DefaultPageLimit = 50
-	MaxPageLimit     = 200
+	DefaultPageLimit = 25
+	MaxPageLimit     = 100
 )
 
 type Page[T any] struct {

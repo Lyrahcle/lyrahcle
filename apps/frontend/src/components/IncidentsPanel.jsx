@@ -2,12 +2,20 @@ import { useEffect, useMemo, useState } from 'react'
 import Pagination from './Pagination.jsx'
 import SeverityBadge from './SeverityBadge.jsx'
 import TableScroll from './TableScroll.jsx'
-import { addIncidentNote, createIncident, fetchIncident, updateIncident } from '../lib/api.js'
+import { addIncidentEvidence, addIncidentNote, createIncident, fetchIncident, updateIncident } from '../lib/api.js'
 import { canWrite, isAdmin } from '../lib/auth.js'
 import { useI18n } from '../lib/I18nContext.jsx'
 
 const STATUSES = ['new', 'investigating', 'contained', 'resolved', 'false_positive']
 const SEVERITIES = ['critical', 'high', 'medium', 'low', 'info']
+const EVIDENCE_TYPES = ['rf_anomaly', 'request', 'cve', 'agent', 'satellite', 'external']
+const NEXT_STATUSES = {
+  new: ['new', 'investigating', 'false_positive'],
+  investigating: ['investigating', 'contained', 'resolved', 'false_positive'],
+  contained: ['contained', 'investigating', 'resolved'],
+  resolved: ['resolved'],
+  false_positive: ['false_positive'],
+}
 
 export default function IncidentsPanel({ page, filters, onFiltersChange, onPrev, onNext, onChanged, satellites = [], users = [] }) {
   const { t } = useI18n()
@@ -16,6 +24,7 @@ export default function IncidentsPanel({ page, filters, onFiltersChange, onPrev,
   const [error, setError] = useState(null)
   const [saving, setSaving] = useState(false)
   const [note, setNote] = useState('')
+  const [evidence, setEvidence] = useState({ type: 'request', reference: '', label: '' })
   const [form, setForm] = useState({ title: '', description: '', severity: 'medium', satelliteId: '', agentId: '', assignedTo: '' })
   const incidents = page?.items ?? []
   const admin = isAdmin()
@@ -87,6 +96,24 @@ export default function IncidentsPanel({ page, filters, onFiltersChange, onPrev,
     try {
       await addIncidentNote(selected.id, note.trim())
       setNote('')
+      const next = await fetchIncident(selected.id)
+      setDetail(next)
+      onChanged()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleEvidence(event) {
+    event.preventDefault()
+    if (!selected || !evidence.reference.trim()) return
+    setError(null)
+    setSaving(true)
+    try {
+      await addIncidentEvidence(selected.id, { ...evidence, reference: evidence.reference.trim(), label: evidence.label.trim() })
+      setEvidence({ type: 'request', reference: '', label: '' })
       const next = await fetchIncident(selected.id)
       setDetail(next)
       onChanged()
@@ -198,7 +225,7 @@ export default function IncidentsPanel({ page, filters, onFiltersChange, onPrev,
           {canWrite() && (
             <div className="grid gap-3 sm:grid-cols-3">
               <select aria-label={t('incidents.status')} value={selected.status} disabled={saving} onChange={(e) => applyUpdate({ status: e.target.value })} className="rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 text-sm text-lyra-text">
-                {STATUSES.map((status) => <option key={status} value={status}>{t(`incidents.statuses.${status}`)}</option>)}
+                {(NEXT_STATUSES[selected.status] || [selected.status]).map((status) => <option key={status} value={status}>{t(`incidents.statuses.${status}`)}</option>)}
               </select>
               <select aria-label={t('incidents.severity')} value={selected.severity} disabled={saving} onChange={(e) => applyUpdate({ severity: e.target.value })} className="rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 text-sm text-lyra-text">
                 {SEVERITIES.map((severity) => <option key={severity} value={severity}>{severity}</option>)}
@@ -227,6 +254,33 @@ export default function IncidentsPanel({ page, filters, onFiltersChange, onPrev,
               ))}
             </div>
           </div>
+
+          <div>
+            <h4 className="mb-2 font-mono text-xs uppercase tracking-wider text-lyra-muted">{t('incidents.evidence')}</h4>
+            <div className="grid gap-2">
+              {(detail.evidence || []).map((item) => (
+                <div key={item.id} className="rounded border border-lyra-borderSoft px-3 py-2">
+                  <div className="flex flex-wrap justify-between gap-2">
+                    <span className="font-mono text-[11px] uppercase text-lyra-goldBright">{item.evidence_type}</span>
+                    <span className="font-mono text-[11px] text-lyra-mutedDim">{new Date(item.created_at).toLocaleString()}</span>
+                  </div>
+                  <p className="mt-1 break-all font-mono text-xs text-lyra-text">{item.evidence_ref}</p>
+                  {item.label && <p className="mt-1 text-xs text-lyra-muted">{item.label}</p>}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {canWrite() && (
+            <form onSubmit={handleEvidence} className="grid gap-2 sm:grid-cols-[160px_1fr_1fr_auto]">
+              <select value={evidence.type} onChange={(e) => setEvidence({ ...evidence, type: e.target.value })} className="rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 text-sm text-lyra-text">
+                {EVIDENCE_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
+              </select>
+              <input required maxLength={256} value={evidence.reference} onChange={(e) => setEvidence({ ...evidence, reference: e.target.value })} placeholder={t('incidents.evidenceReference')} className="rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 text-sm text-lyra-text" />
+              <input maxLength={160} value={evidence.label} onChange={(e) => setEvidence({ ...evidence, label: e.target.value })} placeholder={t('incidents.evidenceLabel')} className="rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 text-sm text-lyra-text" />
+              <button disabled={saving || !evidence.reference.trim()} className="rounded border border-lyra-border px-3 py-2 font-mono text-xs uppercase text-lyra-goldBright disabled:opacity-50">{t('incidents.addEvidence')}</button>
+            </form>
+          )}
 
           {canWrite() && (
             <form onSubmit={handleNote} className="flex gap-2">

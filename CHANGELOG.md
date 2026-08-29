@@ -4,6 +4,16 @@ Notable changes are tracked here until versioned release notes take over.
 
 ## Unreleased
 
+### v7.1 hardening
+
+- Enforced incident lifecycle transitions in Go and PostgreSQL.
+- Added idempotent incident creation and immutable typed evidence references.
+- Added readiness checks and structured request correlation logs without request payloads.
+- Reduced default/max pagination to 25/100.
+- Replaced SDR TLS verification bypass with optional trusted CA configuration.
+- Hardened database backups to avoid credential echoing and use restrictive file permissions.
+- Added race detector and pinned gosec security gates to CI.
+
 ### Platform
 
 - Go/chi backend with PostgreSQL migrations, Redis integration, Prometheus metrics, graceful shutdown, and request correlation IDs.

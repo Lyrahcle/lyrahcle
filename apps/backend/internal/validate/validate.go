@@ -226,3 +226,27 @@ func IncidentNote(value string) error {
 	}
 	return nil
 }
+
+func IncidentEvidenceType(value string) error {
+	switch value {
+	case "rf_anomaly", "request", "cve", "agent", "satellite", "external":
+		return nil
+	default:
+		return fmt.Errorf("evidence_type must be one of: rf_anomaly, request, cve, agent, satellite, external")
+	}
+}
+
+func IncidentEvidenceRef(value string) error {
+	value = strings.TrimSpace(value)
+	if value == "" || len(value) > 256 {
+		return fmt.Errorf("evidence_ref must be between 1 and 256 characters")
+	}
+	return nil
+}
+
+func IncidentEvidenceLabel(value string) error {
+	if len(strings.TrimSpace(value)) > 160 {
+		return fmt.Errorf("label must be at most 160 characters")
+	}
+	return nil
+}

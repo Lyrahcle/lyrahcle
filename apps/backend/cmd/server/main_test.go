@@ -61,7 +61,7 @@ func testRouter(t *testing.T) (http.Handler, *pgxpool.Pool, *store.UserStore) {
 	assetAlerts := store.NewAssetAlertStore(pool)
 	incidents := store.NewIncidentStore(pool)
 
-	router := newRouter(cfg, assets, programs, rf, rfAnomalies, satellites, users, agentKeys, auditLog, spaceCVEs, assetAlerts, incidents, nil)
+	router := newRouter(cfg, pool, assets, programs, rf, rfAnomalies, satellites, users, agentKeys, auditLog, spaceCVEs, assetAlerts, incidents, nil)
 	return router, pool, users
 }
 
@@ -132,6 +132,14 @@ func TestHealthzIsPublic(t *testing.T) {
 	rec := doJSON(t, router, http.MethodGet, "/healthz", "", nil)
 	if rec.Code != http.StatusOK {
 		t.Errorf("GET /healthz: status = %d, want %d", rec.Code, http.StatusOK)
+	}
+}
+
+func TestReadyzChecksDatabase(t *testing.T) {
+	router, _, _ := testRouter(t)
+	rec := doJSON(t, router, http.MethodGet, "/readyz", "", nil)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GET /readyz: status = %d, body = %s", rec.Code, rec.Body.String())
 	}
 }
 
@@ -849,5 +857,85 @@ func TestIncidentInputValidation(t *testing.T) {
 				t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
 			}
 		})
+	}
+}
+
+func TestIncidentStateMachineRejectsTerminalTransition(t *testing.T) {
+	router, _, users := testRouter(t)
+	operatorToken := seedUserAndLogin(t, router, users, "state-operator@example.com", "operator-pass", string(auth.RoleOperator))
+	created := doJSON(t, router, http.MethodPost, "/api/v1/incidents/", operatorToken, map[string]string{"title": "State machine", "severity": "high"})
+	if created.Code != http.StatusCreated {
+		t.Fatalf("create: status = %d, body = %s", created.Code, created.Body.String())
+	}
+	var incident store.Incident
+	if err := json.Unmarshal(created.Body.Bytes(), &incident); err != nil {
+		t.Fatal(err)
+	}
+	for _, status := range []string{"investigating", "resolved"} {
+		rec := doJSON(t, router, http.MethodPatch, "/api/v1/incidents/"+incident.ID.String(), operatorToken, map[string]string{"status": status})
+		if rec.Code != http.StatusOK {
+			t.Fatalf("transition to %s: status = %d, body = %s", status, rec.Code, rec.Body.String())
+		}
+	}
+	rec := doJSON(t, router, http.MethodPatch, "/api/v1/incidents/"+incident.ID.String(), operatorToken, map[string]string{"status": "new"})
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("resolved -> new: status = %d, want %d, body = %s", rec.Code, http.StatusConflict, rec.Body.String())
+	}
+}
+
+func TestIncidentCreateIsIdempotent(t *testing.T) {
+	router, _, users := testRouter(t)
+	operatorToken := seedUserAndLogin(t, router, users, "idempotent-operator@example.com", "operator-pass", string(auth.RoleOperator))
+	body := map[string]string{"title": "Idempotent incident", "severity": "medium"}
+	request := func() *httptest.ResponseRecorder {
+		b, _ := json.Marshal(body)
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/incidents/", bytes.NewReader(b))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+operatorToken)
+		req.Header.Set("Idempotency-Key", "incident-test-key-001")
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+		return rec
+	}
+	first := request()
+	second := request()
+	if first.Code != http.StatusCreated || second.Code != http.StatusCreated {
+		t.Fatalf("statuses = %d, %d", first.Code, second.Code)
+	}
+	var a, b store.Incident
+	_ = json.Unmarshal(first.Body.Bytes(), &a)
+	_ = json.Unmarshal(second.Body.Bytes(), &b)
+	if a.ID == uuid.Nil || a.ID != b.ID {
+		t.Fatalf("idempotent create returned different incidents: %s != %s", a.ID, b.ID)
+	}
+}
+
+func TestIncidentEvidenceRequiresOperator(t *testing.T) {
+	router, _, users := testRouter(t)
+	operatorToken := seedUserAndLogin(t, router, users, "evidence-operator@example.com", "operator-pass", string(auth.RoleOperator))
+	viewerToken := seedUserAndLogin(t, router, users, "evidence-viewer@example.com", "viewer-pass", string(auth.RoleViewer))
+	created := doJSON(t, router, http.MethodPost, "/api/v1/incidents/", operatorToken, map[string]string{"title": "Evidence incident", "severity": "medium"})
+	var incident store.Incident
+	_ = json.Unmarshal(created.Body.Bytes(), &incident)
+	viewer := doJSON(t, router, http.MethodPost, "/api/v1/incidents/"+incident.ID.String()+"/evidence", viewerToken, map[string]interface{}{"evidence_type": "request", "evidence_ref": "req-001"})
+	if viewer.Code != http.StatusForbidden {
+		t.Fatalf("viewer evidence: status = %d", viewer.Code)
+	}
+	operator := doJSON(t, router, http.MethodPost, "/api/v1/incidents/"+incident.ID.String()+"/evidence", operatorToken, map[string]interface{}{"evidence_type": "request", "evidence_ref": "req-001", "label": "Detection request"})
+	if operator.Code != http.StatusCreated {
+		t.Fatalf("operator evidence: status = %d, body = %s", operator.Code, operator.Body.String())
+	}
+	duplicate := doJSON(t, router, http.MethodPost, "/api/v1/incidents/"+incident.ID.String()+"/evidence", operatorToken, map[string]interface{}{"evidence_type": "request", "evidence_ref": "req-001", "label": "Changed label"})
+	if duplicate.Code != http.StatusCreated {
+		t.Fatalf("duplicate evidence: status = %d, body = %s", duplicate.Code, duplicate.Body.String())
+	}
+	detail := doJSON(t, router, http.MethodGet, "/api/v1/incidents/"+incident.ID.String(), viewerToken, nil)
+	var decoded store.IncidentDetail
+	_ = json.Unmarshal(detail.Body.Bytes(), &decoded)
+	if len(decoded.Evidence) != 1 || decoded.Evidence[0].EvidenceRef != "req-001" {
+		t.Fatalf("unexpected evidence: %+v", decoded.Evidence)
+	}
+	if decoded.Evidence[0].Label != "Detection request" {
+		t.Fatalf("evidence label was mutated: %q", decoded.Evidence[0].Label)
 	}
 }

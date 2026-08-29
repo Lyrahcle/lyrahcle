@@ -61,6 +61,7 @@ Every backend response includes `X-Request-ID`. A safe incoming `X-Request-ID` m
 | Method | Path | Minimum access | Purpose |
 |---|---|---|---|
 | `GET` | `/healthz` | Public | Liveness |
+| `GET` | `/readyz` | Public | Dependency readiness without dependency details |
 | `GET` | `/metrics` | Public | Prometheus metrics |
 | `GET` | `/openapi.yaml` | Public | OpenAPI document |
 | `GET` | `/docs` | Public | Swagger UI |
@@ -96,6 +97,7 @@ Every backend response includes `X-Request-ID`. A safe incoming `X-Request-ID` m
 | `GET` | `/api/v1/incidents/{incidentID}` | Viewer | Incident detail and timeline |
 | `PATCH` | `/api/v1/incidents/{incidentID}` | Operator | Update workflow fields; assignment is admin-only |
 | `POST` | `/api/v1/incidents/{incidentID}/notes` | Operator | Add investigation note |
+| `POST` | `/api/v1/incidents/{incidentID}/evidence` | Operator | Add immutable typed evidence reference |
 | `POST` | `/api/v1/tmtc/decode/ax25` | Viewer | Decode AX.25 |
 | `POST` | `/api/v1/tmtc/decode/ccsds` | Viewer | Decode CCSDS Space Packet |
 | `POST` | `/api/v1/tmtc/decode/pus` | Viewer | Decode PUS |
@@ -129,6 +131,6 @@ Redis enables distributed rate limiting, JWT revocation, response caching, and t
 
 ## Incident response
 
-Incidents support filters for status, severity, agent, and satellite, and use validated workflow values for severity and status. Viewers have read-only access, operators can create incidents, change status/severity, and add timeline notes, while assignment changes are restricted to admins. High-confidence RF anomalies with an absolute z-score of at least 6 create a deduplicated incident automatically; absolute z-scores of at least 8 are marked critical.
+Incidents support filters for status, severity, agent, and satellite, and use validated workflow values for severity and status. Incident creation accepts an optional `Idempotency-Key`, and duplicate keys return the original incident instead of creating a second record. Viewers have read-only access, operators can create incidents, change status/severity, and add timeline notes, while assignment changes are restricted to admins. High-confidence RF anomalies with an absolute z-score of at least 6 create a deduplicated incident automatically; absolute z-scores of at least 8 are marked critical.
 
-The `source_anomaly_id` uniqueness constraint prevents one RF anomaly from generating duplicate incidents. Workflow changes and operator notes are recorded in the incident timeline, and security-relevant mutations are also written to the audit log.
+The `source_anomaly_id` uniqueness constraint prevents one RF anomaly from generating duplicate incidents. Workflow transitions are enforced in both Go and PostgreSQL. Operator notes and immutable evidence references are recorded in the incident timeline, and security-relevant mutations are also written to the audit log.

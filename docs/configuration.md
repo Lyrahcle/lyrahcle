@@ -29,7 +29,7 @@ The frontend is a static Vite build served by nginx. Runtime API routing is cont
 | `AGENT_ID` | `sdr-agent-dev` | Agent identity used for RF readings |
 | `AGENT_API_KEY` | unset | Preferred per-agent credential |
 | `AGENT_TOKEN` | unset | Legacy/fallback human operator JWT |
-| `AGENT_INSECURE_SKIP_VERIFY` | `false` | Disables TLS verification; development only |
+| `AGENT_CA_CERT` | empty | Optional PEM CA bundle for private or development PKI |
 | `FREQUENCY_HZ` | `437500000` | Center frequency |
 | `CAPTURE_INTERVAL_SECONDS` | `10` | RF reading interval |
 | `IQ_CAPTURE_DIR` | unset | Enables IQ recording |
@@ -58,6 +58,6 @@ The sync keyword set is currently defined in code.
 
 ## Docker Compose host variables
 
-`docker-compose.yml` currently consumes `JWT_SECRET`, `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`, `AGENT_API_KEY`, `AGENT_TOKEN`, and `AGENT_INSECURE_SKIP_VERIFY` from the host or root `.env` file where configured.
+`docker-compose.yml` currently consumes `JWT_SECRET`, `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`, `AGENT_API_KEY`, `AGENT_TOKEN`, and `AGENT_CA_CERT` from the host or root `.env` file where configured.
 
 Never commit a production `.env` file or private credentials.

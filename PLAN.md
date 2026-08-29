@@ -13,6 +13,15 @@ Lyrahcle is moving from a collection of space-security capabilities toward a coh
 - EN/ES/FR/DE dashboard localization
 - Incident response with timelines, workflow states, and high-confidence RF anomaly escalation
 
+## v7.1 hardening baseline
+
+- Strict incident state machine enforced in application and database layers
+- Idempotent incident creation and immutable typed evidence references
+- Readiness probes and structured request correlation logs
+- Safer pagination defaults and CI race/security gates
+- SDR TLS verification with optional private CA trust instead of verification bypasses
+- Backup output with restrictive permissions and no credential echoing
+
 ## Next priorities
 
 ### 1. Correlation and detection engineering

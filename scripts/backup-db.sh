@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+umask 077
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BACKUP_DIR="${BACKUP_DIR:-$ROOT_DIR/backups}"
@@ -12,7 +13,7 @@ mkdir -p "$BACKUP_DIR"
 
 OUT_FILE="$BACKUP_DIR/lyrahcle-$TIMESTAMP.sql.gz"
 
-echo "==> Backing up $DATABASE_URL to $OUT_FILE"
+echo "==> Backing up PostgreSQL to $OUT_FILE"
 
 if command -v docker >/dev/null 2>&1 && docker compose ps postgres >/dev/null 2>&1; then
   docker compose exec -T postgres pg_dump -U lyrahcle lyrahcle | gzip > "$OUT_FILE"

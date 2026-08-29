@@ -312,7 +312,7 @@ export async function fetchIncident(incidentId) {
 export async function createIncident({ title, description, severity, satelliteId, agentId, assignedTo }) {
   const res = await authedFetch('/api/v1/incidents/', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'Idempotency-Key': crypto.randomUUID() },
     body: JSON.stringify({
       title,
       description,
@@ -347,6 +347,20 @@ export async function addIncidentNote(incidentId, message) {
     body: JSON.stringify({ message }),
   })
   if (!res.ok) throw new Error(await readErrorText(res, 'failed to add incident note'))
+}
+
+export async function addIncidentEvidence(incidentId, evidence) {
+  const res = await authedFetch(`/api/v1/incidents/${encodeURIComponent(incidentId)}/evidence`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      evidence_type: evidence.type,
+      evidence_ref: evidence.reference,
+      label: evidence.label,
+    }),
+  })
+  if (!res.ok) throw new Error(await readErrorText(res, 'failed to add incident evidence'))
+  return res.json()
 }
 
 export function subscribeIncidents({ onData, onError }) {
