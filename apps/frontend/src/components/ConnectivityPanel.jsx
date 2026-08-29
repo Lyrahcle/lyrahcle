@@ -4,6 +4,7 @@ import { useI18n } from '../lib/I18nContext.jsx'
 import Panel from './Panel.jsx'
 import Skeleton from './Skeleton.jsx'
 import AgentKeysPanel from './AgentKeysPanel.jsx'
+import AgentIdentityPanel from './AgentIdentityPanel.jsx'
 import TableScroll from './TableScroll.jsx'
 
 const SDR_DEVICES = [
@@ -89,7 +90,7 @@ function DeviceCard({ device, detectedOn, t }) {
   )
 }
 
-export default function ConnectivityPanel({ admin, agentKeys, onAgentKeysChanged }) {
+export default function ConnectivityPanel({ admin, agentKeys, agentIdentities, onAgentKeysChanged, onAgentIdentitiesChanged }) {
   const { t } = useI18n()
 
   const detectionByDevice = useMemo(() => {
@@ -143,6 +144,12 @@ export default function ConnectivityPanel({ admin, agentKeys, onAgentKeysChanged
           <ExternalLink className="h-3 w-3" strokeWidth={1.75} />
         </a>
       </Panel>
+
+      {admin && (
+        <Panel eyebrow={t('panels.connectivity')} title={t('connectivity.mtlsIdentities')} uppercase>
+          {agentIdentities === null ? <Skeleton /> : <AgentIdentityPanel agents={agentIdentities} onChanged={onAgentIdentitiesChanged} />}
+        </Panel>
+      )}
 
       {admin && (
         <Panel eyebrow={t('panels.connectivity')} title={t('connectivity.connectedAgents')} uppercase>

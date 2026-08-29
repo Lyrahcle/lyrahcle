@@ -2,6 +2,10 @@ package auth
 
 import (
 	"context"
+	"crypto/sha256"
+	"crypto/tls"
+	"crypto/x509"
+	"encoding/hex"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -179,5 +183,54 @@ func TestRequireRoleWithFallbackAcceptsPreviousKey(t *testing.T) {
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
+	}
+}
+
+func TestRequireAgentCredentialAcceptsMTLSCertificate(t *testing.T) {
+	raw := []byte("certificate-der")
+	hash := sha256.Sum256(raw)
+	fingerprint := hex.EncodeToString(hash[:])
+	certLookup := func(ctx context.Context, got string) (string, error) {
+		if got != fingerprint {
+			t.Fatalf("fingerprint = %q, want %q", got, fingerprint)
+		}
+		return "sdr-agent-mtls", nil
+	}
+	keyLookup := fakeLookup(map[string]string{})
+
+	var captured string
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captured, _ = AgentIDFromContext(r.Context())
+		w.WriteHeader(http.StatusOK)
+	})
+	handler := RequireAgentCredentialOrRoleWithFallback([]byte("secret"), nil, RoleOperator, keyLookup, certLookup)(inner)
+	req := httptest.NewRequest(http.MethodPost, "/", nil)
+	req.TLS = &tls.ConnectionState{PeerCertificates: []*x509.Certificate{{Raw: raw}}}
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
+	}
+	if captured != "sdr-agent-mtls" {
+		t.Fatalf("agent ID = %q", captured)
+	}
+}
+
+func TestRequireAgentCredentialDoesNotDowngradeInvalidCertificateToAPIKey(t *testing.T) {
+	plainKey := "lyr_agent_valid"
+	keyLookup := fakeLookup(map[string]string{HashAgentKey(plainKey): "legacy-agent"})
+	certLookup := func(ctx context.Context, fingerprint string) (string, error) {
+		return "", errors.New("revoked")
+	}
+	handler := RequireAgentCredentialOrRoleWithFallback([]byte("secret"), nil, RoleOperator, keyLookup, certLookup)(newTestHandler())
+	req := httptest.NewRequest(http.MethodPost, "/", nil)
+	req.TLS = &tls.ConnectionState{PeerCertificates: []*x509.Certificate{{Raw: []byte("revoked-cert")}}}
+	req.Header.Set("X-Agent-Key", plainKey)
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusUnauthorized)
 	}
 }

@@ -36,8 +36,8 @@
 ## Before v1.0
 
 - [ ] Validate real SDR hardware integrations such as RTL-SDR/HackRF
-- [ ] Add agent credential rotation and enrollment lifecycle
-- [ ] Evaluate mTLS for long-running SDR agents
+- [x] Add agent credential rotation and enrollment lifecycle
+- [x] Deploy certificate-backed mTLS for long-running SDR agents
 - [ ] Complete browser token-storage and CSRF design review
 - [x] Generate CycloneDX SBOMs in CI and attach them to tagged releases
 - [x] Sign tagged container images with keyless Cosign and publish GitHub build provenance attestations
@@ -102,3 +102,15 @@
 - [x] Add user disable/enable and soft-delete lifecycle with audit coverage
 - [ ] Review every sensitive endpoint against the permission matrix
 - [ ] Add automatic SDR agent credential rotation before mTLS enrollment
+
+## v9.0 SDR agent trust
+
+- [x] Single-use, hashed enrollment tokens with bounded lifetime
+- [x] Agent-local ECDSA private keys and CSR-based enrollment
+- [x] Dedicated client-auth certificates and SPIFFE-style agent identity URI
+- [x] Optional client-certificate verification at the Go TLS server
+- [x] Certificate lookup bound to active database identity state
+- [x] Automatic certificate rotation before expiry
+- [x] Agent quarantine and irreversible revocation
+- [x] Device, agent-version, certificate fingerprint, and last-seen posture
+- [x] Legacy API-key compatibility without sending the key when mTLS is active

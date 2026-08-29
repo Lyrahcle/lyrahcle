@@ -94,3 +94,11 @@ For security-key authentication, set `WEBAUTHN_RP_ID` to the frontend domain and
 Password recovery remains disabled until `PASSWORD_RECOVERY_ENABLED=true` and the TLS SMTP variables are configured. Use a dedicated SMTP credential with the minimum permissions required for recovery mail. Do not place SMTP passwords in source control; inject them through the deployment secret store.
 
 If `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` is configured in production it must use HTTPS. Treat the collector as security-sensitive infrastructure and keep authentication secrets and reset links out of span attributes.
+
+## SDR agent mTLS
+
+Production SDR agents should use the v9.0 enrollment flow instead of static API keys. Configure a dedicated SDR Agent CA with `AGENT_CA_CERT_FILE` and `AGENT_CA_KEY_FILE`, keep the backend on HTTPS, and mount the CA signing key from a protected secret store. The Go TLS server validates optional client certificates directly; agent endpoints then require the certificate to map to an `active` database identity.
+
+Do not forward client-certificate identity through an untrusted HTTP header. If TLS is terminated before the Go backend, preserve end-to-end mTLS or deploy a separately authenticated proxy integration rather than trusting arbitrary forwarded certificate metadata.
+
+See [`agent-enrollment.md`](./agent-enrollment.md).

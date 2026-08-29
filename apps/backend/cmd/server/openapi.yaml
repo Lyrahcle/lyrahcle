@@ -1555,6 +1555,181 @@ paths:
           description: Admin role required
         '404':
           description: Detection rule not found
+  /api/v1/agents/:
+    get:
+      tags:
+      - Agents
+      summary: List mTLS agent identities
+      description: 'Requires role: admin. Returns lifecycle state, certificate metadata, versions, and device reports.'
+      responses:
+        '200':
+          description: Agent identities
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [agent_id, status]
+                  properties:
+                    agent_id:
+                      type: string
+                    status:
+                      type: string
+                      enum: [pending, active, quarantined, revoked, offline]
+                    first_seen_at:
+                      type: string
+                      format: date-time
+                      nullable: true
+                    last_seen_at:
+                      type: string
+                      format: date-time
+                      nullable: true
+                    agent_version:
+                      type: string
+                    firmware_version:
+                      type: string
+                    certificate:
+                      type: object
+                      nullable: true
+                      properties:
+                        fingerprint_sha256:
+                          type: string
+                        serial_number:
+                          type: string
+                        not_before:
+                          type: string
+                          format: date-time
+                        not_after:
+                          type: string
+                          format: date-time
+                        status:
+                          type: string
+  /api/v1/agents/enrollment-tokens:
+    post:
+      tags:
+      - Agents
+      summary: Issue a one-time SDR agent enrollment token
+      description: 'Requires role: admin. The plaintext token is returned once and only its SHA-256 hash is stored.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [agent_id]
+              properties:
+                agent_id:
+                  type: string
+      responses:
+        '201':
+          description: Enrollment token created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [agent_id, token, expires_at]
+                properties:
+                  agent_id:
+                    type: string
+                  token:
+                    type: string
+                  expires_at:
+                    type: string
+                    format: date-time
+        '409':
+          description: Agent is already enrolled or inactive
+  /api/v1/agents/enroll:
+    post:
+      tags:
+      - Agents
+      summary: Enroll an SDR agent certificate
+      description: Exchanges a one-time enrollment token and agent-generated CSR for a short-lived client certificate. TLS is mandatory in production.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, csr_pem]
+              properties:
+                token:
+                  type: string
+                csr_pem:
+                  type: string
+                agent_version:
+                  type: string
+                firmware_version:
+                  type: string
+      responses:
+        '200':
+          description: Client certificate issued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  agent_id:
+                    type: string
+                  certificate_pem:
+                    type: string
+                  ca_pem:
+                    type: string
+                  expires_at:
+                    type: string
+                    format: date-time
+        '401':
+          description: Invalid or expired enrollment token
+  /api/v1/agents/me/certificate/rotate:
+    post:
+      tags:
+      - Agents
+      summary: Rotate the authenticated SDR agent client certificate
+      description: Requires a currently valid mTLS client certificate. The agent generates a new private key and submits only the CSR.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [csr_pem]
+              properties:
+                csr_pem:
+                  type: string
+      responses:
+        '200':
+          description: Replacement client certificate
+        '401':
+          description: Client certificate required or inactive
+  /api/v1/agents/{agentID}/status:
+    patch:
+      tags:
+      - Agents
+      summary: Quarantine, reactivate, or permanently revoke an SDR agent
+      description: 'Requires role: admin. Revocation is irreversible and revokes the active certificate.'
+      parameters:
+      - name: agentID
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [active, quarantined, revoked]
+      responses:
+        '204':
+          description: Agent status updated
+        '404':
+          description: Agent not found
 components:
   securitySchemes:
     bearerAuth:

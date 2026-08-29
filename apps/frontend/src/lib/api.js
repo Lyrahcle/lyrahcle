@@ -531,3 +531,28 @@ export async function completePasswordReset(token, newPassword, totpCode) {
   })
   if (!res.ok) throw new Error(await readErrorText(res, 'password reset failed'))
 }
+
+export async function fetchAgentIdentities() {
+  const res = await authedFetch('/api/v1/agents/')
+  if (!res.ok) throw new Error('failed to fetch agent identities')
+  return res.json()
+}
+
+export async function createAgentEnrollmentToken(agentId) {
+  const res = await authedFetch('/api/v1/agents/enrollment-tokens', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ agent_id: agentId }),
+  })
+  if (!res.ok) throw new Error(await readErrorText(res, 'failed to create enrollment token'))
+  return res.json()
+}
+
+export async function updateAgentIdentityStatus(agentId, status) {
+  const res = await authedFetch(`/api/v1/agents/${encodeURIComponent(agentId)}/status`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status }),
+  })
+  if (!res.ok) throw new Error(await readErrorText(res, 'failed to update agent status'))
+}

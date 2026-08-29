@@ -2,6 +2,8 @@ package auth
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"net/http"
 	"strings"
 )
@@ -101,6 +103,36 @@ func passwordChangePathAllowed(path string) bool {
 }
 
 type AgentKeyLookup func(ctx context.Context, keyHash string) (agentID string, err error)
+type AgentCertificateLookup func(ctx context.Context, fingerprint string) (agentID string, err error)
+
+func RequireAgentCredentialOrRoleWithFallback(current, previous []byte, minimum Role, keyLookup AgentKeyLookup, certificateLookup AgentCertificateLookup, isRevoked ...RevocationCheck) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.TLS != nil && len(r.TLS.PeerCertificates) > 0 {
+				fingerprint := sha256.Sum256(r.TLS.PeerCertificates[0].Raw)
+				agentID, err := certificateLookup(r.Context(), hex.EncodeToString(fingerprint[:]))
+				if err != nil {
+					http.Error(w, "invalid or inactive agent certificate", http.StatusUnauthorized)
+					return
+				}
+				ctx := context.WithValue(r.Context(), agentIDContextKey, agentID)
+				next.ServeHTTP(w, r.WithContext(ctx))
+				return
+			}
+			if agentKey := r.Header.Get("X-Agent-Key"); agentKey != "" {
+				agentID, err := keyLookup(r.Context(), HashAgentKey(agentKey))
+				if err != nil {
+					http.Error(w, "invalid or revoked agent key", http.StatusUnauthorized)
+					return
+				}
+				ctx := context.WithValue(r.Context(), agentIDContextKey, agentID)
+				next.ServeHTTP(w, r.WithContext(ctx))
+				return
+			}
+			requireRole(current, previous, minimum, isRevoked...)(next).ServeHTTP(w, r)
+		})
+	}
+}
 
 func RequireAgentKeyOrRole(secret []byte, minimum Role, lookup AgentKeyLookup, isRevoked ...RevocationCheck) func(http.Handler) http.Handler {
 	return requireAgentKeyOrRole(secret, nil, minimum, lookup, isRevoked...)

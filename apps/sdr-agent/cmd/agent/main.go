@@ -8,6 +8,7 @@ import (
 
 	"github.com/mlko01/lyrahcle/apps/sdr-agent/internal/capture"
 	"github.com/mlko01/lyrahcle/apps/sdr-agent/internal/forensics"
+	"github.com/mlko01/lyrahcle/apps/sdr-agent/internal/identity"
 	"github.com/mlko01/lyrahcle/apps/sdr-agent/internal/replay"
 	"github.com/mlko01/lyrahcle/apps/sdr-agent/internal/soapy"
 	"github.com/mlko01/lyrahcle/apps/sdr-agent/internal/streaming"
@@ -35,17 +36,49 @@ func main() {
 	apiKey := getEnv("AGENT_API_KEY", "")
 	authToken := getEnv("AGENT_TOKEN", "")
 	caCertPath := getEnv("AGENT_CA_CERT", "")
+	clientCertPath := getEnv("AGENT_CERT_FILE", "")
+	clientKeyPath := getEnv("AGENT_KEY_FILE", "")
+	enrollmentToken := getEnv("AGENT_ENROLLMENT_TOKEN", "")
+	agentVersion := getEnv("AGENT_VERSION", "v9.0")
+	firmwareVersion := getEnv("AGENT_FIRMWARE_VERSION", "")
+	rotateBefore, err := time.ParseDuration(getEnv("AGENT_ROTATE_BEFORE", "24h"))
+	if err != nil || rotateBefore < time.Hour {
+		log.Fatal("AGENT_ROTATE_BEFORE must be a duration of at least 1h")
+	}
+	if enrollmentToken != "" && (clientCertPath == "" || clientKeyPath == "") {
+		log.Fatal("AGENT_CERT_FILE and AGENT_KEY_FILE are required when AGENT_ENROLLMENT_TOKEN is set")
+	}
+	identityCfg := identity.Config{
+		BackendURL: backendURL, AgentID: agentID, EnrollmentToken: enrollmentToken,
+		ServerCAPath: caCertPath, CertificatePath: clientCertPath, PrivateKeyPath: clientKeyPath,
+		AgentVersion: agentVersion, FirmwareVersion: firmwareVersion, RotateBefore: rotateBefore,
+	}
+	if clientCertPath != "" || clientKeyPath != "" {
+		if clientCertPath == "" || clientKeyPath == "" {
+			log.Fatal("AGENT_CERT_FILE and AGENT_KEY_FILE must be configured together")
+		}
+		if err := identity.Ensure(identityCfg); err != nil {
+			log.Fatalf("agent identity: %v", err)
+		}
+	}
 	freqHz, _ := strconv.ParseInt(getEnv("FREQUENCY_HZ", "437500000"), 10, 64)
 	intervalSec := getEnvInt("CAPTURE_INTERVAL_SECONDS", 10)
 
-	if apiKey == "" && authToken == "" {
-		log.Println("WARNING: neither AGENT_API_KEY nor AGENT_TOKEN is set; the backend will reject RF ingestion. AGENT_API_KEY (from POST /api/v1/agent-keys) is the recommended, agent-scoped credential.")
+	if clientCertPath != "" {
+		log.Println("agent authentication: mTLS client certificate")
+	} else if apiKey == "" && authToken == "" {
+		log.Println("WARNING: no agent credential is configured; the backend will reject authenticated agent requests")
 	} else if apiKey == "" {
-		log.Println("NOTICE: using AGENT_TOKEN (a shared operator JWT). AGENT_API_KEY is preferred: it's scoped to this agent_id alone and can be revoked independently.")
+		log.Println("NOTICE: using a shared operator JWT; migrate the agent to mTLS enrollment")
+	} else {
+		log.Println("NOTICE: using a legacy agent API key; migrate the agent to mTLS enrollment")
 	}
-	client, err := uplink.New(backendURL, agentID, apiKey, authToken, caCertPath)
+	client, err := uplink.NewWithIdentity(backendURL, agentID, apiKey, authToken, caCertPath, clientCertPath, clientKeyPath)
 	if err != nil {
 		log.Fatalf("uplink client: %v", err)
+	}
+	if clientCertPath != "" {
+		go runIdentityMaintenance(identityCfg, client)
 	}
 
 	if replayFile := getEnv("REPLAY_FILE", ""); replayFile != "" {
@@ -148,4 +181,24 @@ func runReplay(replayFile string, client *uplink.Client) {
 	}
 
 	log.Printf("replay: done — sent %d/%d readings", sent, len(readings))
+}
+
+func runIdentityMaintenance(cfg identity.Config, client *uplink.Client) {
+	interval, err := time.ParseDuration(getEnv("AGENT_IDENTITY_CHECK_INTERVAL", "10m"))
+	if err != nil || interval < time.Minute {
+		interval = 10 * time.Minute
+	}
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for range ticker.C {
+		changed, err := identity.Maintain(cfg)
+		if err != nil {
+			log.Printf("agent identity maintenance failed: %v", err)
+			continue
+		}
+		if changed {
+			client.ReloadIdentity()
+			log.Println("agent identity rotated and TLS connections reloaded")
+		}
+	}
 }

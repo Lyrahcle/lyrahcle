@@ -13,7 +13,7 @@ Lyrahcle combines orbital awareness, RF telemetry, TM/TC decoding, threat intell
 - RF ingestion, statistical anomaly detection, typed detection rules, incident correlation, agent connectivity, and IQ forensic replay.
 - AX.25, CCSDS, PUS, and CSP decoding.
 - NVD-backed space CVE intelligence with filtering and asset alerts.
-- JWT authentication, Google Authenticator TOTP, WebAuthn security keys, active-session revocation, RBAC, revocable agent keys, audit logging, and request/trace IDs.
+- JWT authentication, Google Authenticator TOTP, WebAuthn security keys, active-session revocation, RBAC, SDR agent mTLS enrollment and certificate lifecycle, audit logging, and request/trace IDs.
 - React dashboard with light/dark mode and EN/ES/FR/DE localization.
 - Prometheus metrics, provisioned Grafana dashboards, optional OpenTelemetry export, release signatures, SBOMs, and build provenance.
 
@@ -55,6 +55,7 @@ Start with [`docs/README.md`](./docs/README.md).
 - [Architecture](./docs/architecture.md)
 - [API reference](./docs/api-reference.md)
 - [Configuration](./docs/configuration.md)
+- [SDR agent enrollment and mTLS](./docs/agent-enrollment.md)
 - [User administration](./docs/user-administration.md)
 - [Security keys and recovery](./docs/security-keys-and-recovery.md)
 - [Performance testing](./docs/performance-testing.md)

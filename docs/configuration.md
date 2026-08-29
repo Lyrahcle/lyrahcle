@@ -88,3 +88,21 @@ The `observability` Docker Compose profile provisions Grafana against the bundle
 | `GRAFANA_ADMIN_PASSWORD` | `lyrahcle-dev` | Local development password; override outside isolated development |
 
 Prometheus alert rules live in `deploy/prometheus/alerts.yml`; Grafana provisioning lives under `deploy/grafana/`.
+
+## SDR agent mTLS
+
+| Variable | Purpose | Default |
+|---|---|---|
+| `AGENT_CA_CERT_FILE` | Backend-side SDR Agent CA certificate | disabled |
+| `AGENT_CA_KEY_FILE` | Backend-side SDR Agent CA signing key | disabled |
+| `AGENT_CERTIFICATE_TTL` | Issued client-certificate lifetime | `168h` |
+| `AGENT_ENROLLMENT_TTL` | One-time enrollment-token lifetime | `15m` |
+| `AGENT_CERT_FILE` | SDR agent client-certificate path | disabled |
+| `AGENT_KEY_FILE` | SDR agent private-key path | disabled |
+| `AGENT_ENROLLMENT_TOKEN` | One-time bootstrap token | unset |
+| `AGENT_ROTATE_BEFORE` | Rotate certificate before expiry | `24h` |
+| `AGENT_IDENTITY_CHECK_INTERVAL` | Runtime certificate-maintenance interval | `10m` |
+| `AGENT_VERSION` | Agent software version reported at enrollment | `v9.0` |
+| `AGENT_FIRMWARE_VERSION` | Optional connected-device firmware version | unset |
+
+See `docs/agent-enrollment.md` for the complete trust and rotation flow.

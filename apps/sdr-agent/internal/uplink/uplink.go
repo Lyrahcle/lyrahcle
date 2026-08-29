@@ -20,6 +20,8 @@ type Client struct {
 	APIKey     string
 	AuthToken  string
 	http       *http.Client
+	transport  *http.Transport
+	mtls       bool
 }
 
 type deviceReport struct {
@@ -33,6 +35,10 @@ type deviceReport struct {
 }
 
 func New(backendURL, agentID, apiKey, authToken, caCertPath string) (*Client, error) {
+	return NewWithIdentity(backendURL, agentID, apiKey, authToken, caCertPath, "", "")
+}
+
+func NewWithIdentity(backendURL, agentID, apiKey, authToken, caCertPath, clientCertPath, clientKeyPath string) (*Client, error) {
 	tlsConfig := &tls.Config{MinVersion: tls.VersionTLS12}
 	if caCertPath != "" {
 		certPEM, err := os.ReadFile(caCertPath)
@@ -49,6 +55,24 @@ func New(backendURL, agentID, apiKey, authToken, caCertPath string) (*Client, er
 		tlsConfig.RootCAs = roots
 	}
 
+	mtls := false
+	if clientCertPath != "" || clientKeyPath != "" {
+		if clientCertPath == "" || clientKeyPath == "" {
+			return nil, fmt.Errorf("uplink: client certificate and key must be configured together")
+		}
+		if _, err := tls.LoadX509KeyPair(clientCertPath, clientKeyPath); err != nil {
+			return nil, fmt.Errorf("uplink: load client identity: %w", err)
+		}
+		tlsConfig.GetClientCertificate = func(*tls.CertificateRequestInfo) (*tls.Certificate, error) {
+			certificate, err := tls.LoadX509KeyPair(clientCertPath, clientKeyPath)
+			if err != nil {
+				return nil, err
+			}
+			return &certificate, nil
+		}
+		mtls = true
+	}
+
 	transport := &http.Transport{TLSClientConfig: tlsConfig}
 	return &Client{
 		BackendURL: backendURL,
@@ -56,6 +80,8 @@ func New(backendURL, agentID, apiKey, authToken, caCertPath string) (*Client, er
 		APIKey:     apiKey,
 		AuthToken:  authToken,
 		http:       &http.Client{Timeout: 5 * time.Second, Transport: transport},
+		transport:  transport,
+		mtls:       mtls,
 	}, nil
 }
 
@@ -117,11 +143,20 @@ func (c *Client) postJSON(path string, payload any) error {
 }
 
 func (c *Client) applyAuth(req *http.Request) {
+	if c.mtls {
+		return
+	}
 	if c.APIKey != "" {
 		req.Header.Set("X-Agent-Key", c.APIKey)
 		return
 	}
 	if c.AuthToken != "" {
 		req.Header.Set("Authorization", "Bearer "+c.AuthToken)
+	}
+}
+
+func (c *Client) ReloadIdentity() {
+	if c.transport != nil {
+		c.transport.CloseIdleConnections()
 	}
 }

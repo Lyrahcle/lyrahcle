@@ -120,6 +120,9 @@ func main() {
 		WriteTimeout: 30 * time.Second,
 		IdleTimeout:  60 * time.Second,
 	}
+	if err := configureAgentClientTLS(srv, cfg); err != nil {
+		log.Fatalf("agent mTLS configuration: %v", err)
+	}
 
 	serveErr := make(chan error, 1)
 	if cfg.TLSCertFile != "" && cfg.TLSKeyFile != "" {
@@ -182,6 +185,11 @@ func newRouter(
 	webAuthnCredentials := store.NewWebAuthnStore(pool)
 	passwordResets := store.NewPasswordResetStore(pool)
 	searchStore := store.NewSearchStore(pool)
+	agentIdentities := store.NewAgentIdentityStore(pool)
+	agentCA, err := buildAgentCA(cfg)
+	if err != nil {
+		panic(fmt.Sprintf("agent CA configuration: %v", err))
+	}
 	webAuthnFlows := webauthnflow.New(redisClient)
 	webAuthnHandler := buildWebAuthnHandler(cfg)
 	mailClient := mailer.New(mailer.Config{Host: cfg.SMTPHost, Port: cfg.SMTPPort, Username: cfg.SMTPUser, Password: cfg.SMTPPassword, From: cfg.SMTPFrom, ServerName: cfg.SMTPServerName})
@@ -253,6 +261,8 @@ func newRouter(
 		r.Get("/ping", func(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte(`{"message":"pong from lyrahcle"}`))
 		})
+
+		registerAgentIdentityRoutes(r, cfg, agentCA, agentIdentities, agentKeys, auditLog, isTokenRevoked)
 
 		r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)).Get("/search", func(w http.ResponseWriter, r *http.Request) {
 			query := strings.TrimSpace(r.URL.Query().Get("q"))
@@ -1078,40 +1088,48 @@ func newRouter(
 			})
 		})
 
-		r.Route("/agents/me", func(r chi.Router) {
-			auditedAgentLookup := func(ctx context.Context, keyHash string) (string, error) {
-				agentID, err := agentKeys.AgentIDForHash(ctx, keyHash)
-				if err != nil {
-					logAudit(ctx, auditLog, audit.ActorAnonymous, "unknown", audit.ActionAgentKeyAuthFailed, "", nil)
-				}
-				return agentID, err
+		auditedAgentLookup := func(ctx context.Context, keyHash string) (string, error) {
+			agentID, err := agentKeys.AgentIDForHash(ctx, keyHash)
+			if err != nil {
+				logAudit(ctx, auditLog, audit.ActorAnonymous, "unknown", audit.ActionAgentKeyAuthFailed, "", nil)
 			}
-			meAgentAuth := auth.RequireAgentKeyOrRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleOperator, auditedAgentLookup, isTokenRevoked)
+			return agentID, err
+		}
+		auditedCertificateLookup := func(ctx context.Context, fingerprint string) (string, error) {
+			agentID, err := agentIdentities.AgentIDForCertificate(ctx, fingerprint)
+			if err != nil {
+				logAudit(ctx, auditLog, audit.ActorAnonymous, "unknown", audit.ActionAgentCertificateAuthFailed, "", nil)
+			}
+			return agentID, err
+		}
+		meAgentAuth := auth.RequireAgentCredentialOrRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleOperator, auditedAgentLookup, auditedCertificateLookup, isTokenRevoked)
 
-			r.With(meAgentAuth).Post("/device", func(w http.ResponseWriter, r *http.Request) {
-				agentID, ok := auth.AgentIDFromContext(r.Context())
-				if !ok {
-					http.Error(w, "this endpoint requires agent key authentication", http.StatusUnauthorized)
-					return
-				}
+		r.With(meAgentAuth).Post("/agents/me/device", func(w http.ResponseWriter, r *http.Request) {
+			agentID, ok := auth.AgentIDFromContext(r.Context())
+			if !ok {
+				http.Error(w, "this endpoint requires agent key authentication", http.StatusUnauthorized)
+				return
+			}
 
-				var body store.AgentDeviceInfo
-				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-					http.Error(w, "invalid JSON body", http.StatusBadRequest)
-					return
-				}
+			var body store.AgentDeviceInfo
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				http.Error(w, "invalid JSON body", http.StatusBadRequest)
+				return
+			}
 
-				if err := agentKeys.ReportDevice(r.Context(), agentID, body); err != nil {
-					if err == store.ErrAgentKeyNotFound {
-						http.Error(w, "unknown or revoked agent", http.StatusUnauthorized)
+			if err := agentIdentities.ReportDevice(r.Context(), agentID, body); err != nil {
+				if errors.Is(err, store.ErrAgentIdentityNotFound) {
+					if err := agentKeys.ReportDevice(r.Context(), agentID, body); err != nil {
+						http.Error(w, "unknown or inactive agent", http.StatusUnauthorized)
 						return
 					}
+				} else {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
 				}
+			}
 
-				w.WriteHeader(http.StatusNoContent)
-			})
+			w.WriteHeader(http.StatusNoContent)
 		})
 
 		r.Route("/detection-rules", func(r chi.Router) {
@@ -1287,7 +1305,14 @@ func newRouter(
 				}
 				return agentID, err
 			}
-			agentAuth := auth.RequireAgentKeyOrRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleOperator, auditedLookup, isTokenRevoked)
+			auditedCertificateLookup := func(ctx context.Context, fingerprint string) (string, error) {
+				agentID, err := agentIdentities.AgentIDForCertificate(ctx, fingerprint)
+				if err != nil {
+					logAudit(ctx, auditLog, audit.ActorAnonymous, "unknown", audit.ActionAgentCertificateAuthFailed, "", nil)
+				}
+				return agentID, err
+			}
+			agentAuth := auth.RequireAgentCredentialOrRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleOperator, auditedLookup, auditedCertificateLookup, isTokenRevoked)
 			r.With(agentAuth).Post("/ingest", func(w http.ResponseWriter, r *http.Request) {
 				var reading store.RFReading
 				if err := json.NewDecoder(r.Body).Decode(&reading); err != nil {

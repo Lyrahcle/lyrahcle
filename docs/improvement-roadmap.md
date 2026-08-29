@@ -19,8 +19,8 @@ Status values: **Shipped**, **Partial**, **Next**, and **Later**.
 | Stronger password policy | Shipped | Current |
 | Enforce TLS for all production authentication traffic | Shipped | Current |
 | CSRF protection if cookie-based authentication is introduced | Partial | Before v1.0 |
-| Automatic agent API-key rotation | Next | v9 |
-| Agent enrollment and mTLS | Later | v9 |
+| Automatic agent certificate rotation | Shipped | v9.0 |
+| Agent enrollment and mTLS | Shipped | v9.0 |
 | Additional roles such as analyst and auditor | Shipped | Current |
 | Administrator subroles | Later | v9 |
 | Explicit permission matrix | Shipped | Current |
@@ -117,3 +117,7 @@ Status values: **Shipped**, **Partial**, **Next**, and **Later**.
 | Shared `rf-lib` | Later | Post-v1 |
 | Shared `tle-lib` | Later | Post-v1 |
 | Shared UI component library | Later | Post-v1 |
+
+| Agent quarantine and irreversible certificate revocation | Shipped | v9.0 |
+| Signed remote SDR configuration | Next | v9.1 |
+| Orbital-aware RF correlation | Next | v9.2 |

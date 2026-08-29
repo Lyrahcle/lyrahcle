@@ -682,3 +682,86 @@ func TestGlobalSearchFindsSatelliteAndCVE(t *testing.T) {
 		t.Fatalf("CVE result not found: %#v", cveResults)
 	}
 }
+
+func TestAgentIdentityEnrollmentAndQuarantine(t *testing.T) {
+	pool := testPool(t)
+	ctx := context.Background()
+	identities := NewAgentIdentityStore(pool)
+
+	expiresAt := time.Now().UTC().Add(15 * time.Minute)
+	if err := identities.CreateEnrollmentToken(ctx, "sdr-agent-secure", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", expiresAt); err != nil {
+		t.Fatalf("CreateEnrollmentToken returned error: %v", err)
+	}
+
+	agentID, err := identities.AgentIDForEnrollmentToken(ctx, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+	if err != nil {
+		t.Fatalf("AgentIDForEnrollmentToken returned error: %v", err)
+	}
+	if agentID != "sdr-agent-secure" {
+		t.Fatalf("agent id = %q, want sdr-agent-secure", agentID)
+	}
+
+	cert := AgentCertificate{
+		SerialNumber:      "deadbeef",
+		FingerprintSHA256: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+		CertificatePEM:    "test-certificate",
+		NotBefore:         time.Now().UTC().Add(-time.Minute),
+		NotAfter:          time.Now().UTC().Add(time.Hour),
+	}
+	consumedAgentID, err := identities.ConsumeEnrollmentToken(ctx, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", cert, "v9.0", "fw-1")
+	if err != nil {
+		t.Fatalf("ConsumeEnrollmentToken returned error: %v", err)
+	}
+	if consumedAgentID != "sdr-agent-secure" {
+		t.Fatalf("consumed agent id = %q", consumedAgentID)
+	}
+	if _, err := identities.AgentIDForEnrollmentToken(ctx, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"); !errors.Is(err, ErrAgentEnrollmentInvalid) {
+		t.Fatalf("reused enrollment token err = %v, want ErrAgentEnrollmentInvalid", err)
+	}
+
+	resolved, err := identities.AgentIDForCertificate(ctx, cert.FingerprintSHA256)
+	if err != nil {
+		t.Fatalf("AgentIDForCertificate returned error: %v", err)
+	}
+	if resolved != "sdr-agent-secure" {
+		t.Fatalf("resolved agent id = %q", resolved)
+	}
+
+	if err := identities.SetStatus(ctx, "sdr-agent-secure", "quarantined"); err != nil {
+		t.Fatalf("SetStatus quarantined returned error: %v", err)
+	}
+	if _, err := identities.AgentIDForCertificate(ctx, cert.FingerprintSHA256); !errors.Is(err, ErrAgentCertificateNotFound) {
+		t.Fatalf("quarantined certificate err = %v, want ErrAgentCertificateNotFound", err)
+	}
+	if err := identities.SetStatus(ctx, "sdr-agent-secure", "active"); err != nil {
+		t.Fatalf("SetStatus active returned error: %v", err)
+	}
+	if _, err := identities.AgentIDForCertificate(ctx, cert.FingerprintSHA256); err != nil {
+		t.Fatalf("reactivated certificate returned error: %v", err)
+	}
+}
+
+func TestAgentIdentityRevocationIsIrreversible(t *testing.T) {
+	pool := testPool(t)
+	ctx := context.Background()
+	identities := NewAgentIdentityStore(pool)
+	if err := identities.CreateEnrollmentToken(ctx, "sdr-agent-revoked", "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", time.Now().Add(15*time.Minute)); err != nil {
+		t.Fatal(err)
+	}
+	cert := AgentCertificate{
+		SerialNumber:      "cafebabe",
+		FingerprintSHA256: "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+		CertificatePEM:    "test-certificate",
+		NotBefore:         time.Now().Add(-time.Minute),
+		NotAfter:          time.Now().Add(time.Hour),
+	}
+	if _, err := identities.ConsumeEnrollmentToken(ctx, "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", cert, "v9.0", ""); err != nil {
+		t.Fatal(err)
+	}
+	if err := identities.SetStatus(ctx, "sdr-agent-revoked", "revoked"); err != nil {
+		t.Fatal(err)
+	}
+	if err := identities.SetStatus(ctx, "sdr-agent-revoked", "active"); !errors.Is(err, ErrAgentStatusTransition) {
+		t.Fatalf("reactivating revoked agent err = %v, want ErrAgentStatusTransition", err)
+	}
+}

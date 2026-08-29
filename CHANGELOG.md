@@ -105,3 +105,11 @@ Notable changes are tracked here until versioned release notes take over.
 - Shortened the root README and moved operational detail into focused documents.
 - Added architecture and documentation indexes.
 - Synchronized API/OpenAPI, deployment, configuration, security, and release documentation with current behavior.
+
+## v9.0
+
+- Added one-time SDR agent enrollment with hashed, expiring tokens.
+- Added agent-generated ECDSA keys, CSR signing, client certificates, and mTLS authentication.
+- Added automatic certificate rotation, quarantine, irreversible revocation, certificate fingerprints, versions, and last-seen posture.
+- Added mTLS identity management to Connectivity while retaining legacy API keys only for migration.
+- Added migration `0021_agent_identity_mtls.sql` and SDR Agent CA generation tooling.

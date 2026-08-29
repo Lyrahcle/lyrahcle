@@ -1,11 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   createAgentKey,
+  createAgentEnrollmentToken,
   createAsset,
   createIncident,
   createProgram,
   createSatellite,
   fetchAgentKeys,
+  fetchAgentIdentities,
   fetchAssets,
   fetchIncident,
   fetchIncidents,
@@ -20,6 +22,7 @@ import {
   updateIncident,
   addIncidentNote,
   revokeAgentKey,
+  updateAgentIdentityStatus,
   UnauthorizedError,
 } from './api.js'
 
@@ -154,6 +157,26 @@ describe('api client', () => {
     mockFetchOnce(true, null)
     await revokeAgentKey('sdr-1')
     expect(fetch).toHaveBeenCalledWith('/api/v1/agent-keys/sdr-1', expect.objectContaining({ method: 'DELETE' }))
+  })
+
+  it('agent identity client uses enrollment and lifecycle endpoints', async () => {
+    mockFetchOnce(true, [])
+    await fetchAgentIdentities()
+    expect(fetch).toHaveBeenCalledWith('/api/v1/agents/', { headers: {} })
+
+    mockFetchOnce(true, { agent_id: 'sdr-1', token: 'one-time', expires_at: '2026-08-30T00:00:00Z' }, 201)
+    await createAgentEnrollmentToken('sdr-1')
+    expect(fetch).toHaveBeenCalledWith('/api/v1/agents/enrollment-tokens', expect.objectContaining({
+      method: 'POST',
+      body: JSON.stringify({ agent_id: 'sdr-1' }),
+    }))
+
+    mockFetchOnce(true, null, 204)
+    await updateAgentIdentityStatus('sdr-1', 'quarantined')
+    expect(fetch).toHaveBeenCalledWith('/api/v1/agents/sdr-1/status', expect.objectContaining({
+      method: 'PATCH',
+      body: JSON.stringify({ status: 'quarantined' }),
+    }))
   })
 
   it('fetchAuditLog calls the audit-log endpoint with pagination params', async () => {

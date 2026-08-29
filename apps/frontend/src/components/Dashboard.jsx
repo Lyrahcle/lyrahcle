@@ -24,6 +24,7 @@ import { canAudit, canWrite, isAdmin } from '../lib/auth.js'
 import { useI18n } from '../lib/I18nContext.jsx'
 import {
   fetchAgentKeys,
+  fetchAgentIdentities,
   fetchIncidents,
   fetchAssets,
   fetchAssetAlerts,
@@ -55,6 +56,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
   const [assetAlerts, setAssetAlerts] = useState(null)
   const [incidents, setIncidents] = useState(null)
   const [agentKeys, setAgentKeys] = useState(null)
+  const [agentIdentities, setAgentIdentities] = useState(null)
   const [auditEntries, setAuditEntries] = useState(null)
   const [users, setUsers] = useState(null)
   const [backendStatus, setBackendStatus] = useState('checking')
@@ -198,7 +200,10 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
       }
 
       if (activeTab === 'connectivity' && admin) {
-        await safeFetch(fetchAgentKeys, setAgentKeys)
+        await Promise.all([
+          safeFetch(fetchAgentKeys, setAgentKeys),
+          safeFetch(fetchAgentIdentities, setAgentIdentities),
+        ])
         return
       }
 
@@ -271,6 +276,9 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
   }
   function reloadAgentKeys() {
     fetchAgentKeys().then(setAgentKeys).catch(() => {})
+  }
+  function reloadAgentIdentities() {
+    fetchAgentIdentities().then(setAgentIdentities).catch(() => {})
   }
   function reloadUsers() {
     fetchUsers().then(setUsers).catch(() => {})
@@ -422,7 +430,9 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
           <ConnectivityPanel
             admin={admin}
             agentKeys={agentKeys}
+            agentIdentities={agentIdentities}
             onAgentKeysChanged={reloadAgentKeys}
+            onAgentIdentitiesChanged={reloadAgentIdentities}
           />
         )}
 

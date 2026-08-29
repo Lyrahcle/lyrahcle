@@ -26,3 +26,5 @@ The backend also embeds an OpenAPI specification at `/openapi.yaml` and Swagger 
 - [Backup and restore](backup-and-restore.md)
 - [Sensitive endpoint audit](sensitive-endpoint-audit.md)
 
+
+- [SDR agent enrollment and mTLS](./agent-enrollment.md)

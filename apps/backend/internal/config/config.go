@@ -33,6 +33,10 @@ type Config struct {
 	SMTPFrom                string
 	SMTPServerName          string
 	OTLPTraceEndpoint       string
+	AgentCACertFile         string
+	AgentCAKeyFile          string
+	AgentCertificateTTL     time.Duration
+	AgentEnrollmentTTL      time.Duration
 }
 
 func Load() Config {
@@ -47,6 +51,14 @@ func Load() Config {
 	ttl, err := time.ParseDuration(ttlRaw)
 	if err != nil || ttl < 5*time.Minute || ttl > 24*time.Hour {
 		log.Fatalf("FATAL: JWT_ACCESS_TTL must be a duration between 5m and 24h")
+	}
+	agentCertTTL, err := time.ParseDuration(getEnv("AGENT_CERTIFICATE_TTL", "168h"))
+	if err != nil || agentCertTTL < time.Hour || agentCertTTL > 2160*time.Hour {
+		log.Fatal("FATAL: AGENT_CERTIFICATE_TTL must be between 1h and 2160h")
+	}
+	agentEnrollmentTTL, err := time.ParseDuration(getEnv("AGENT_ENROLLMENT_TTL", "15m"))
+	if err != nil || agentEnrollmentTTL < 5*time.Minute || agentEnrollmentTTL > time.Hour {
+		log.Fatal("FATAL: AGENT_ENROLLMENT_TTL must be between 5m and 1h")
 	}
 
 	cfg := Config{
@@ -73,6 +85,10 @@ func Load() Config {
 		SMTPFrom:                getEnv("SMTP_FROM", ""),
 		SMTPServerName:          getEnv("SMTP_SERVER_NAME", ""),
 		OTLPTraceEndpoint:       getEnv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", ""),
+		AgentCACertFile:         getEnv("AGENT_CA_CERT_FILE", ""),
+		AgentCAKeyFile:          getEnv("AGENT_CA_KEY_FILE", ""),
+		AgentCertificateTTL:     agentCertTTL,
+		AgentEnrollmentTTL:      agentEnrollmentTTL,
 	}
 
 	production := cfg.IsProduction()
@@ -138,6 +154,16 @@ func Load() Config {
 	}
 	if production && cfg.OTLPTraceEndpoint != "" && !strings.HasPrefix(strings.ToLower(cfg.OTLPTraceEndpoint), "https://") {
 		log.Fatal("FATAL: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT must use HTTPS in production")
+	}
+
+	if (cfg.AgentCACertFile == "") != (cfg.AgentCAKeyFile == "") {
+		log.Fatal("FATAL: AGENT_CA_CERT_FILE and AGENT_CA_KEY_FILE must be configured together")
+	}
+	if cfg.AgentCACertFile != "" && (cfg.TLSCertFile == "" || cfg.TLSKeyFile == "") {
+		log.Fatal("FATAL: SDR agent mTLS requires TLS_CERT_FILE and TLS_KEY_FILE")
+	}
+	if production && (cfg.AgentCACertFile == "" || cfg.AgentCAKeyFile == "") {
+		log.Println("WARNING: agent mTLS enrollment is disabled because AGENT_CA_CERT_FILE/AGENT_CA_KEY_FILE are not configured")
 	}
 
 	return cfg

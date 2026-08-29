@@ -68,3 +68,7 @@ NVD -> cve-sync -> PostgreSQL + Redis event -> backend matcher -> asset alert ->
 ## Database changes
 
 Backend migrations in `apps/backend/migrations` are ordered, forward-only, and tracked in `schema_migrations`. Tests use the same migration chain rather than maintaining a separate schema.
+
+## SDR agent trust boundary
+
+v9.0 separates user identity from machine identity. SDR agents bootstrap with a single-use enrollment token, generate their private keys locally, and authenticate subsequent RF/device traffic with a short-lived TLS client certificate. The certificate fingerprint must resolve to an `active` agent identity in PostgreSQL on every authenticated request. Quarantine therefore takes effect without waiting for certificate expiry, and an invalid presented certificate never falls back to a legacy API key.

@@ -39,18 +39,13 @@ When enabled, login without `totp_code` returns `401` with `{"error":"totp_requi
 
 ## Agent authentication
 
-Long-running SDR agents should use individual API keys created by an admin:
+Long-running SDR agents should use v9.0 certificate enrollment and mTLS. An administrator creates a single-use enrollment token, the agent generates its private key and CSR locally, and the backend returns a short-lived client certificate. The private key never leaves the agent.
 
-```bash
-curl -X POST http://localhost:8080/api/v1/agent-keys/ \
-  -H 'Authorization: Bearer <admin-token>' \
-  -H 'Content-Type: application/json' \
-  -d '{"agent_id":"sdr-agent-madrid"}'
-```
+Legacy `X-Agent-Key` credentials remain available only for migration. When a client certificate is configured, the SDR agent does not send its API key.
 
-The plaintext key is returned once and is then stored only as a hash. Agents send it as `X-Agent-Key`.
+`POST /api/v1/agents/me/device` and `POST /api/v1/rf/ingest` derive the agent identity from the validated client certificate or legacy agent key. A request cannot select a different authenticated agent.
 
-`POST /api/v1/agents/me/device` requires agent-key identity. The backend derives the agent from the credential; the request body cannot select a different agent.
+See `docs/agent-enrollment.md` for certificate setup, rotation, quarantine, and revocation.
 
 ## Request IDs
 
@@ -89,11 +84,16 @@ Every backend response includes `X-Request-ID`. A safe incoming `X-Request-ID` m
 | `GET` | `/api/v1/satellites/` | Viewer | Satellites with propagated position |
 | `GET` | `/api/v1/satellites/stream` | Viewer | Live satellite SSE stream |
 | `POST` | `/api/v1/satellites/` | Operator | Register/update satellite TLE |
-| `GET` | `/api/v1/agent-keys/` | Admin | List agent key/device state |
+| `GET` | `/api/v1/agents/` | Admin | List mTLS agent identity, certificate, version, and device posture |
+| `POST` | `/api/v1/agents/enrollment-tokens` | Admin | Issue single-use agent enrollment token |
+| `POST` | `/api/v1/agents/enroll` | Enrollment token | Exchange CSR for client certificate |
+| `PATCH` | `/api/v1/agents/{agentID}/status` | Admin | Quarantine, activate, or permanently revoke an agent |
+| `POST` | `/api/v1/agents/me/certificate/rotate` | mTLS agent | Rotate the current client certificate |
+| `GET` | `/api/v1/agent-keys/` | Admin | List legacy agent key/device state |
 | `POST` | `/api/v1/agent-keys/` | Admin | Issue agent key |
 | `DELETE` | `/api/v1/agent-keys/{agentID}` | Admin | Revoke agent key |
-| `POST` | `/api/v1/agents/me/device` | Agent key | Report authenticated SDR device metadata |
-| `POST` | `/api/v1/rf/ingest` | Agent key or Operator | Ingest RF reading |
+| `POST` | `/api/v1/agents/me/device` | mTLS agent or legacy agent key | Report authenticated SDR device metadata |
+| `POST` | `/api/v1/rf/ingest` | mTLS agent, legacy agent key, or Operator | Ingest RF reading |
 | `GET` | `/api/v1/rf/readings` | Viewer | Recent RF readings |
 | `GET` | `/api/v1/rf/anomalies` | Viewer | Recent RF anomalies |
 | `GET` | `/api/v1/detection-rules/` | Viewer | List typed RF detection rules |

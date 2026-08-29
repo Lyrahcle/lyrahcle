@@ -32,9 +32,9 @@ Extend the shipped RF detection-rule engine across asset alerts, orbital events,
 
 Add per-satellite or per-link baselines, replay/spoofing indicators, expected Doppler windows, and stronger signal fingerprints.
 
-### 3. Agent identity hardening
+### 3. Agent fleet security
 
-Move from long-lived API keys toward enrollment, short-lived credentials or certificates, rotation, revocation, and eventually mTLS.
+v9.0 delivers one-time enrollment, locally generated agent keys, short-lived client certificates, automatic rotation, quarantine, revocation, and direct mTLS authentication. Next work is signed remote configuration and fleet policy.
 
 ### 4. Orbital security context
 
@@ -61,3 +61,7 @@ Delivered in v8.3: bootstrap password rotation, stronger password policy, analys
 Delivered: cross-platform WebAuthn security keys, opt-in TLS SMTP password recovery, OTLP tracing export, authenticated global search, targeted search indexes, bounded orbital-position workers, and a controlled load-test helper.
 
 Next: broader endpoint audit coverage, database query plans under production-like data, richer operational charts, connectivity/CVE operator guides, restore drills, and agent certificate enrollment.
+
+## v9.0 agent trust milestone
+
+Delivered: dedicated SDR Agent CA support, one-time enrollment tokens, CSR signing, certificate-backed identity, automatic pre-expiry rotation, quarantine, irreversible revocation, version posture, and Connectivity UI lifecycle controls. Legacy API keys remain as a migration path only.
