@@ -1,0 +1,82 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  build-and-push:
+    name: Build & push ${{ matrix.image }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - image: backend
+            dockerfile: deploy/docker/Dockerfile.backend
+          - image: frontend
+            dockerfile: deploy/docker/Dockerfile.frontend
+          - image: cve-sync
+            dockerfile: deploy/docker/Dockerfile.cve-sync
+          - image: sdr-agent
+            dockerfile: deploy/docker/Dockerfile.sdr-agent
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version
+        id: version
+        run: echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/lyrahcle-${{ matrix.image }}:${{ steps.version.outputs.value }}
+            ghcr.io/${{ github.repository_owner }}/lyrahcle-${{ matrix.image }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Scan image for vulnerabilities (Trivy)
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: ghcr.io/${{ github.repository_owner }}/lyrahcle-${{ matrix.image }}:${{ steps.version.outputs.value }}
+          format: table
+          severity: CRITICAL,HIGH
+          exit-code: 1
+
+  github-release:
+    name: Create GitHub release
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          body: |
+            Images published to GHCR for this release:
+
+            - `ghcr.io/${{ github.repository_owner }}/lyrahcle-backend:${{ github.ref_name }}`
+            - `ghcr.io/${{ github.repository_owner }}/lyrahcle-frontend:${{ github.ref_name }}`
+            - `ghcr.io/${{ github.repository_owner }}/lyrahcle-cve-sync:${{ github.ref_name }}`
+            - `ghcr.io/${{ github.repository_owner }}/lyrahcle-sdr-agent:${{ github.ref_name }}`
+
+            See [CHANGELOG.md](./CHANGELOG.md) for what changed.

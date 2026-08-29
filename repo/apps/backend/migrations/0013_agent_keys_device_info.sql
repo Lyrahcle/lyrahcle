@@ -1,0 +1,8 @@
+ALTER TABLE agent_keys ADD COLUMN IF NOT EXISTS device_driver TEXT;
+ALTER TABLE agent_keys ADD COLUMN IF NOT EXISTS device_hardware TEXT;
+ALTER TABLE agent_keys ADD COLUMN IF NOT EXISTS device_manufacturer TEXT;
+ALTER TABLE agent_keys ADD COLUMN IF NOT EXISTS device_product TEXT;
+ALTER TABLE agent_keys ADD COLUMN IF NOT EXISTS device_serial TEXT;
+ALTER TABLE agent_keys ADD COLUMN IF NOT EXISTS device_rx BOOLEAN;
+ALTER TABLE agent_keys ADD COLUMN IF NOT EXISTS device_tx BOOLEAN;
+ALTER TABLE agent_keys ADD COLUMN IF NOT EXISTS device_reported_at TIMESTAMPTZ;
