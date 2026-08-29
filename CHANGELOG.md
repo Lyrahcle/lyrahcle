@@ -4,6 +4,12 @@ Notable changes are tracked here until versioned release notes take over.
 
 ## Unreleased
 
+### v8.3.1 smoke-test compatibility
+
+- Updated the authentication smoke test to exercise the mandatory bootstrap password-change flow before accessing protected session endpoints.
+- Kept the production `must_change_password` restriction intact and verified that the bootstrap token is rejected from non-password-management endpoints.
+- Continued the Google Authenticator E2E flow with the rotated smoke-test password instead of the insecure bootstrap credential.
+
 ### v8.3 identity and authorization hardening
 
 - Added mandatory first-login password change for the bootstrap administrator and database-backed authorization-version enforcement for stale JWTs and role/status changes.

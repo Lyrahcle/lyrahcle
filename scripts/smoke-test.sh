@@ -57,7 +57,11 @@ wait_for prometheus "curl -fsS http://localhost:9090/-/healthy" || FAILURES=$((F
 wait_for grafana "curl -fsS http://localhost:3000/api/health" || FAILURES=$((FAILURES + 1))
 
 run_auth_e2e() {
-  local login_response token status relogin_response sessions setup_response secret provider totp_code totp_login_response totp_token
+  local bootstrap_password new_password login_response token must_change_password status relogin_response sessions setup_response secret provider totp_code totp_login_response totp_token
+
+  bootstrap_password="${SEED_ADMIN_PASSWORD:-admin}"
+  new_password="${SMOKE_ADMIN_NEW_PASSWORD:-Lyrahcle-Smoke-2026!}"
+  [[ "$bootstrap_password" != "$new_password" ]] || new_password="Lyrahcle-Smoke-2026!x"
 
   totp_now() {
     python3 - "$1" <<'PYCODE'
@@ -73,8 +77,20 @@ print(f'{value % 1000000:06d}')
 PYCODE
   }
 
-  login_response="$(curl -fsS -H 'Content-Type: application/json' -d '{"identifier":"admin","password":"admin"}' http://localhost:8080/api/v1/auth/login)" || return 1
+  login_response="$(curl -fsS -H 'Content-Type: application/json' -d "{\"identifier\":\"admin\",\"password\":\"$bootstrap_password\"}" http://localhost:8080/api/v1/auth/login)" || return 1
   token="$(printf '%s' "$login_response" | python3 -c 'import json,sys; print(json.load(sys.stdin)["token"])')" || return 1
+  must_change_password="$(printf '%s' "$login_response" | python3 -c 'import json,sys; print(str(json.load(sys.stdin).get("must_change_password", False)).lower())')" || return 1
+  [[ -n "$token" && "$must_change_password" == "true" ]] || return 1
+
+  status="$(curl -sS -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $token" http://localhost:8080/api/v1/auth/sessions/)" || return 1
+  [[ "$status" == "403" ]] || return 1
+  status="$(curl -sS -o /dev/null -w '%{http_code}' -X POST -H "Authorization: Bearer $token" -H 'Content-Type: application/json' -d "{\"current_password\":\"$bootstrap_password\",\"new_password\":\"$new_password\"}" http://localhost:8080/api/v1/auth/change-password)" || return 1
+  [[ "$status" == "204" ]] || return 1
+  status="$(curl -sS -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $token" http://localhost:8080/api/v1/auth/me)" || return 1
+  [[ "$status" == "401" ]] || return 1
+
+  relogin_response="$(curl -fsS -H 'Content-Type: application/json' -d "{\"identifier\":\"admin\",\"password\":\"$new_password\"}" http://localhost:8080/api/v1/auth/login)" || return 1
+  token="$(printf '%s' "$relogin_response" | python3 -c 'import json,sys; print(json.load(sys.stdin)["token"])')" || return 1
   [[ -n "$token" ]] || return 1
 
   sessions="$(curl -fsS -H "Authorization: Bearer $token" http://localhost:8080/api/v1/auth/sessions/)" || return 1
@@ -85,7 +101,7 @@ PYCODE
   status="$(curl -sS -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $token" http://localhost:8080/api/v1/auth/me)" || return 1
   [[ "$status" == "401" ]] || return 1
 
-  relogin_response="$(curl -fsS -H 'Content-Type: application/json' -d '{"identifier":"admin","password":"admin"}' http://localhost:8080/api/v1/auth/login)" || return 1
+  relogin_response="$(curl -fsS -H 'Content-Type: application/json' -d "{\"identifier\":\"admin\",\"password\":\"$new_password\"}" http://localhost:8080/api/v1/auth/login)" || return 1
   token="$(printf '%s' "$relogin_response" | python3 -c 'import json,sys; print(json.load(sys.stdin)["token"])')" || return 1
 
   setup_response="$(curl -fsS -X POST -H "Authorization: Bearer $token" http://localhost:8080/api/v1/auth/totp/setup)" || return 1
@@ -98,21 +114,21 @@ PYCODE
 
   status="$(curl -sS -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $token" http://localhost:8080/api/v1/auth/me)" || return 1
   [[ "$status" == "401" ]] || return 1
-  status="$(curl -sS -o /tmp/lyrahcle-login-no-totp.json -w '%{http_code}' -H 'Content-Type: application/json' -d '{"identifier":"admin","password":"admin"}' http://localhost:8080/api/v1/auth/login)" || return 1
+  status="$(curl -sS -o /tmp/lyrahcle-login-no-totp.json -w '%{http_code}' -H 'Content-Type: application/json' -d "{\"identifier\":\"admin\",\"password\":\"$new_password\"}" http://localhost:8080/api/v1/auth/login)" || return 1
   [[ "$status" == "401" ]] || return 1
   python3 -c 'import json; assert json.load(open("/tmp/lyrahcle-login-no-totp.json")).get("error") == "totp_required"' || return 1
 
   totp_code="$(totp_now "$secret")" || return 1
-  totp_login_response="$(curl -fsS -H 'Content-Type: application/json' -d "{\"identifier\":\"admin\",\"password\":\"admin\",\"totp_code\":\"$totp_code\"}" http://localhost:8080/api/v1/auth/login)" || return 1
+  totp_login_response="$(curl -fsS -H 'Content-Type: application/json' -d "{\"identifier\":\"admin\",\"password\":\"$new_password\",\"totp_code\":\"$totp_code\"}" http://localhost:8080/api/v1/auth/login)" || return 1
   totp_token="$(printf '%s' "$totp_login_response" | python3 -c 'import json,sys; print(json.load(sys.stdin)["token"])')" || return 1
   [[ -n "$totp_token" ]] || return 1
 
-  status="$(curl -sS -o /dev/null -w '%{http_code}' -X POST -H "Authorization: Bearer $totp_token" -H 'Content-Type: application/json' -d '{"password":"admin"}' http://localhost:8080/api/v1/auth/totp/disable)" || return 1
+  status="$(curl -sS -o /dev/null -w '%{http_code}' -X POST -H "Authorization: Bearer $totp_token" -H 'Content-Type: application/json' -d "{\"password\":\"$new_password\"}" http://localhost:8080/api/v1/auth/totp/disable)" || return 1
   [[ "$status" == "204" ]] || return 1
   status="$(curl -sS -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $totp_token" http://localhost:8080/api/v1/auth/me)" || return 1
   [[ "$status" == "401" ]] || return 1
 
-  relogin_response="$(curl -fsS -H 'Content-Type: application/json' -d '{"identifier":"admin","password":"admin"}' http://localhost:8080/api/v1/auth/login)" || return 1
+  relogin_response="$(curl -fsS -H 'Content-Type: application/json' -d "{\"identifier\":\"admin\",\"password\":\"$new_password\"}" http://localhost:8080/api/v1/auth/login)" || return 1
   printf '%s' "$relogin_response" | python3 -c 'import json,sys; data=json.load(sys.stdin); assert data.get("token")' >/dev/null || return 1
 }
 
