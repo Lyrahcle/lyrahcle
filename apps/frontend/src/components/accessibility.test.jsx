@@ -15,6 +15,13 @@ vi.mock('../lib/api.js', () => ({
   createAsset: vi.fn(),
   createSatellite: vi.fn(),
   changePassword: vi.fn(),
+  fetchSystemInfo: vi.fn().mockResolvedValue({
+    environment: 'test',
+    license: 'AGPLv3 (core)',
+    celestrak_groups: ['stations'],
+    celestrak_sync_schedule: 'every 6 hours',
+    nvd_sync_note: 'managed by the cve-sync worker',
+  }),
 }))
 
 function withI18n(ui) {
@@ -105,7 +112,7 @@ describe('SettingsPanel', () => {
 
 describe('automated accessibility audit (axe)', () => {
   test('Login has no detectable WCAG violations', async () => {
-    const { container } = render(withI18n(<Login onSuccess={() => {}} onShowRegister={() => {}} />))
+    const { container } = render(withI18n(<Login onSuccess={() => {}} />))
     const results = await axe(container)
     expect(results).toHaveNoViolations()
   })

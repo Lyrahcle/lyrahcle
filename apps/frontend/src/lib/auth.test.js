@@ -54,7 +54,17 @@ describe('auth client', () => {
 
   it('login throws on invalid credentials without storing anything', async () => {
     global.fetch.mockResolvedValue({ ok: false, status: 401 })
-    await expect(login('admin', 'wrong')).rejects.toThrow('Invalid email or password')
+    await expect(login('admin', 'wrong')).rejects.toThrow('Invalid email/username or password')
+    expect(getToken()).toBeNull()
+  })
+
+  it('login throws TotpRequiredError when the account has 2FA enabled', async () => {
+    global.fetch.mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: () => Promise.resolve({ error: 'totp_required' }),
+    })
+    await expect(login('admin', 'correct')).rejects.toMatchObject({ message: 'totp_required' })
     expect(getToken()).toBeNull()
   })
 

@@ -1,8 +1,8 @@
 import LogoMark from './LogoMark.jsx'
 import { useI18n } from '../lib/I18nContext.jsx'
+import pkg from '../../package.json'
 
 const REPO_URL = 'https://github.com/mlko01/lyrahcle'
-const RELEASE_PHASE = 'Phase 8 · Hardening & v1.0 Prep'
 
 function FooterColumn({ heading, lead, links }) {
   return (
@@ -18,7 +18,7 @@ function FooterColumn({ heading, lead, links }) {
         {links.map(({ label, href }) => (
           <li key={label}>
             <a
-              className="outline-none transition-colors hover:text-lyra-goldBright focus-visible:text-lyra-goldBright"
+              className="font-mono text-[11px] uppercase tracking-wider outline-none transition-colors hover:text-lyra-goldBright focus-visible:text-lyra-goldBright"
               href={href}
             >
               {label}
@@ -41,6 +41,7 @@ export default function Footer() {
         { label: t('footer.githubRepo'), href: REPO_URL },
         { label: t('footer.securityRoadmap'), href: `${REPO_URL}/blob/main/SECURITY_ROADMAP.md` },
         { label: t('footer.securityPolicy'), href: `${REPO_URL}/blob/main/SECURITY.md` },
+        { label: t('footer.documentation'), href: `${REPO_URL}/tree/main/docs` },
       ],
     },
     {
@@ -78,12 +79,12 @@ export default function Footer() {
           ))}
         </div>
 
-        <div className="mt-10 flex flex-col items-center justify-between gap-3 border-t border-lyra-borderSoft pt-6 sm:flex-row">
+        <div className="mt-10 flex flex-col items-center justify-between gap-2 border-t border-lyra-borderSoft pt-6 sm:flex-row">
           <p className="font-mono text-[11px] text-lyra-mutedDim">
-            © {year} Lyrahcle. {t('footer.license')}
+            © {year} Lyrahcle. {t('footer.license')} {t('footer.designedBy')}
           </p>
           <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-lyra-mutedDim">
-            {RELEASE_PHASE}
+            v{pkg.version}
           </p>
         </div>
       </div>

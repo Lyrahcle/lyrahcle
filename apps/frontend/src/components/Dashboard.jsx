@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import Header from './Header.jsx'
-import StatusStrip from './StatusStrip.jsx'
 import Panel from './Panel.jsx'
 import Tabs from './Tabs.jsx'
 import Skeleton from './Skeleton.jsx'
@@ -81,7 +80,6 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
     { id: 'intel', label: t('tabs.intel') },
     { id: 'decoder', label: t('tabs.decoder') },
     ...(admin ? [{ id: 'admin', label: t('tabs.admin') }] : []),
-    { id: 'settings', label: t('tabs.settings') },
   ]
 
   useEffect(() => {
@@ -181,8 +179,18 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
 
   return (
     <div className="min-h-screen bg-transparent text-lyra-text">
-      <Header onLogout={onLogout} onHome={() => onChangeTab('orbital')} onOpenSettings={() => onChangeTab('settings')} />
-      <StatusStrip backendStatus={backendStatus} dbStatus={dbStatus} sdrStatus={sdrStatus} />
+      <Header
+        onLogout={onLogout}
+        onHome={() => onChangeTab('orbital')}
+        onOpenSettings={() => onChangeTab('settings')}
+        backendStatus={backendStatus}
+        dbStatus={dbStatus}
+        sdrStatus={sdrStatus}
+        searchAssets={assets}
+        searchSatellites={satellites}
+        searchCves={spaceCVEs}
+        onSearchNavigate={onChangeTab}
+      />
 
       <main id="main-content" className="mx-auto max-w-7xl px-6 py-10 sm:px-8">
         <Tabs tabs={tabs} active={activeTab} onChange={onChangeTab} />
@@ -272,9 +280,6 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
             <Panel eyebrow={t('panels.accessControl')} title={t('panels.usersAndRoles')}>
               {users === null ? <Skeleton /> : <UsersPanel users={users} onChanged={reloadUsers} />}
             </Panel>
-            <Panel eyebrow={t('panels.sdrAgents')} title={t('panels.agentApiKeys')}>
-              {agentKeys === null ? <Skeleton /> : <AgentKeysPanel keys={agentKeys} onChanged={reloadAgentKeys} />}
-            </Panel>
             <Panel eyebrow={t('panels.security')} title={t('panels.auditLog')}>
               {auditEntries === null ? (
                 <Skeleton />
@@ -291,7 +296,11 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
 
         {activeTab === 'settings' && (
           <Panel eyebrow={t('settings.eyebrow')} title={t('settings.title')}>
-            <SettingsPanel />
+            <SettingsPanel
+              admin={admin}
+              agentKeys={agentKeys}
+              onAgentKeysChanged={reloadAgentKeys}
+            />
           </Panel>
         )}
       </main>

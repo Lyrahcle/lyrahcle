@@ -1,0 +1,250 @@
+import { useEffect, useState } from 'react'
+import { disableTotp, enableTotp, fetchMe, setupTotp } from '../lib/api.js'
+import { useI18n } from '../lib/I18nContext.jsx'
+import { useFocusTrap } from '../lib/useFocusTrap.js'
+
+export default function TwoFactorModal({ onClose }) {
+  const { t } = useI18n()
+  const dialogRef = useFocusTrap()
+
+  const [loading, setLoading] = useState(true)
+  const [enabled, setEnabled] = useState(false)
+
+  const [secret, setSecret] = useState(null)
+  const [otpauthUrl, setOtpauthUrl] = useState(null)
+  const [code, setCode] = useState('')
+  const [confirming, setConfirming] = useState(false)
+  const [enableError, setEnableError] = useState(null)
+  const [enableSuccess, setEnableSuccess] = useState(false)
+
+  const [password, setPassword] = useState('')
+  const [disabling, setDisabling] = useState(false)
+  const [disableError, setDisableError] = useState(null)
+  const [disableSuccess, setDisableSuccess] = useState(false)
+
+  useEffect(() => {
+    function handleEscape(e) {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', handleEscape)
+    return () => document.removeEventListener('keydown', handleEscape)
+  }, [onClose])
+
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      try {
+        const me = await fetchMe()
+        if (cancelled) return
+        setEnabled(me.totp_enabled)
+        if (!me.totp_enabled) {
+          const setup = await setupTotp()
+          if (cancelled) return
+          setSecret(setup.secret)
+          setOtpauthUrl(setup.otpauth_url)
+        }
+      } catch (err) {
+        if (!cancelled) setEnableError(err.message)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  async function handleConfirm(e) {
+    e.preventDefault()
+    setEnableError(null)
+    setConfirming(true)
+    try {
+      await enableTotp(code)
+      setEnableSuccess(true)
+      setEnabled(true)
+    } catch (err) {
+      setEnableError(err.message)
+    } finally {
+      setConfirming(false)
+    }
+  }
+
+  async function handleDisable(e) {
+    e.preventDefault()
+    setDisableError(null)
+    setDisabling(true)
+    try {
+      await disableTotp(password)
+      setDisableSuccess(true)
+      setEnabled(false)
+    } catch (err) {
+      setDisableError(err.message)
+    } finally {
+      setDisabling(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-6">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="two-factor-title"
+        tabIndex={-1}
+        className="w-full max-w-sm rounded-lg border border-lyra-border bg-lyra-panel p-6 outline-none"
+      >
+        <div className="mb-5 flex items-center justify-between">
+          <h2 id="two-factor-title" className="font-display text-sm font-medium text-lyra-goldBright">
+            {t('twoFactorModal.title')}
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={t('common.close')}
+            className="rounded text-lyra-muted outline-none transition-colors hover:text-lyra-goldBright focus-visible:ring-1 focus-visible:ring-lyra-gold"
+          >
+            ✕
+          </button>
+        </div>
+
+        {loading ? (
+          <p className="text-sm text-lyra-muted">{t('twoFactorModal.loading')}</p>
+        ) : enabled ? (
+          disableSuccess ? (
+            <div>
+              <p role="status" className="mb-5 text-sm text-lyra-good">
+                {t('twoFactorModal.disableSuccess')}
+              </p>
+              <button
+                type="button"
+                onClick={onClose}
+                className="w-full rounded bg-lyra-gold px-4 py-2 text-sm font-medium text-lyra-bg outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-lyra-goldBright"
+              >
+                {t('common.done')}
+              </button>
+            </div>
+          ) : (
+            <form onSubmit={handleDisable}>
+              <p className="mb-4 text-sm text-lyra-muted">{t('twoFactorModal.enabledIntro')}</p>
+
+              <div className="mb-5">
+                <label htmlFor="totp-disable-password" className="mb-1.5 block text-xs uppercase tracking-wider text-lyra-mutedDim">
+                  {t('twoFactorModal.disablePasswordLabel')}
+                </label>
+                <input
+                  id="totp-disable-password"
+                  type="password"
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 text-sm text-lyra-text outline-none focus:border-lyra-gold"
+                  required
+                />
+              </div>
+
+              {disableError && (
+                <p role="alert" className="mb-4 text-sm text-lyra-bad">
+                  {disableError}
+                </p>
+              )}
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="w-full rounded border border-lyra-border px-4 py-2 text-sm text-lyra-muted outline-none transition-colors hover:text-lyra-text focus-visible:ring-1 focus-visible:ring-lyra-gold"
+                >
+                  {t('common.cancel')}
+                </button>
+                <button
+                  type="submit"
+                  disabled={disabling}
+                  className="w-full rounded border border-lyra-bad px-4 py-2 text-sm font-medium text-lyra-bad outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-lyra-bad disabled:opacity-50"
+                >
+                  {disabling ? t('twoFactorModal.disabling') : t('twoFactorModal.disableButton')}
+                </button>
+              </div>
+            </form>
+          )
+        ) : enableSuccess ? (
+          <div>
+            <p role="status" className="mb-5 text-sm text-lyra-good">
+              {t('twoFactorModal.enableSuccess')}
+            </p>
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-full rounded bg-lyra-gold px-4 py-2 text-sm font-medium text-lyra-bg outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-lyra-goldBright"
+            >
+              {t('common.done')}
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={handleConfirm}>
+            <p className="mb-4 text-sm text-lyra-muted">{t('twoFactorModal.disabledIntro')}</p>
+
+            {secret && (
+              <div className="mb-4 rounded border border-lyra-border bg-lyra-bgSoft p-3">
+                <p className="mb-1 text-[11px] uppercase tracking-wider text-lyra-mutedDim">
+                  {t('twoFactorModal.secretLabel')}
+                </p>
+                <p className="break-all font-mono text-sm text-lyra-goldBright">{secret}</p>
+                {otpauthUrl && (
+                  <a
+                    href={otpauthUrl}
+                    className="mt-2 block truncate font-mono text-[11px] text-lyra-mutedDim outline-none transition-colors hover:text-lyra-goldBright focus-visible:text-lyra-goldBright"
+                  >
+                    {otpauthUrl}
+                  </a>
+                )}
+              </div>
+            )}
+
+            <div className="mb-5">
+              <label htmlFor="totp-code" className="mb-1.5 block text-xs uppercase tracking-wider text-lyra-mutedDim">
+                {t('twoFactorModal.codeLabel')}
+              </label>
+              <input
+                id="totp-code"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                pattern="[0-9]{6}"
+                maxLength={6}
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+                className="w-full rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 text-center font-mono text-lg tracking-[0.3em] text-lyra-text outline-none focus:border-lyra-gold"
+                required
+              />
+            </div>
+
+            {enableError && (
+              <p role="alert" className="mb-4 text-sm text-lyra-bad">
+                {enableError}
+              </p>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className="w-full rounded border border-lyra-border px-4 py-2 text-sm text-lyra-muted outline-none transition-colors hover:text-lyra-text focus-visible:ring-1 focus-visible:ring-lyra-gold"
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                type="submit"
+                disabled={confirming || code.length !== 6}
+                className="w-full rounded bg-lyra-gold px-4 py-2 text-sm font-medium text-lyra-bg outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-lyra-goldBright disabled:opacity-50"
+              >
+                {confirming ? t('twoFactorModal.confirming') : t('twoFactorModal.confirmButton')}
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  )
+}

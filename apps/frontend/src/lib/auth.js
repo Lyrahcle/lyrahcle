@@ -26,14 +26,25 @@ export function decodeToken(token) {
   }
 }
 
-export async function login(email, password) {
+export class TotpRequiredError extends Error {
+  constructor() {
+    super('totp_required')
+  }
+}
+
+export async function login(identifier, password, totpCode) {
   const res = await fetch('/api/v1/auth/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ identifier, password, totp_code: totpCode }),
   })
   if (!res.ok) {
-    throw new Error(res.status === 401 ? 'Invalid email or password' : 'Login failed')
+    if (res.status === 401) {
+      const body = typeof res.json === 'function' ? await res.json().catch(() => null) : null
+      if (body?.error === 'totp_required') throw new TotpRequiredError()
+      throw new Error(totpCode ? 'Invalid two-factor code' : 'Invalid email/username or password')
+    }
+    throw new Error('Login failed')
   }
   const data = await res.json()
   localStorage.setItem(TOKEN_KEY, data.token)

@@ -3,9 +3,21 @@ import LogoMark from './LogoMark.jsx'
 import Clock from './Clock.jsx'
 import AccountMenu from './AccountMenu.jsx'
 import SearchBar from './SearchBar.jsx'
+import SystemStatusField from './SystemStatusField.jsx'
 import { useI18n } from '../lib/I18nContext.jsx'
 
-export default function Header({ onLogout, onHome, onOpenSettings }) {
+export default function Header({
+  onLogout,
+  onHome,
+  onOpenSettings,
+  backendStatus,
+  dbStatus,
+  sdrStatus,
+  searchAssets,
+  searchSatellites,
+  searchCves,
+  onSearchNavigate,
+}) {
   const { t } = useI18n()
 
   return (
@@ -13,10 +25,10 @@ export default function Header({ onLogout, onHome, onOpenSettings }) {
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-6 py-3.5 sm:px-8">
         <button
           onClick={onHome}
-          className="flex items-center gap-2.5 rounded outline-none focus-visible:ring-1 focus-visible:ring-lyra-gold"
+          className="flex items-center gap-3 rounded outline-none focus-visible:ring-1 focus-visible:ring-lyra-gold"
         >
-          <LogoMark className="h-6 w-6" />
-          <span className="font-display text-[15px] font-medium tracking-tight text-lyra-goldBright">
+          <LogoMark className="h-9 w-9" />
+          <span className="font-display text-lg font-medium tracking-tight text-lyra-goldBright">
             Lyrahcle
           </span>
           <span className="hidden font-mono text-[10px] uppercase tracking-[0.25em] text-lyra-mutedDim sm:inline">
@@ -25,8 +37,14 @@ export default function Header({ onLogout, onHome, onOpenSettings }) {
         </button>
 
         <div className="flex items-center gap-3">
-          <SearchBar />
-          <Clock />
+          <SystemStatusField backendStatus={backendStatus} dbStatus={dbStatus} sdrStatus={sdrStatus} />
+
+          <SearchBar
+            assets={searchAssets}
+            satellites={searchSatellites}
+            cves={searchCves}
+            onNavigate={onSearchNavigate}
+          />
           {onOpenSettings && (
             <button
               type="button"
@@ -38,7 +56,12 @@ export default function Header({ onLogout, onHome, onOpenSettings }) {
               <Settings className="h-3.5 w-3.5" strokeWidth={1.75} />
             </button>
           )}
+
           {onLogout && <AccountMenu onLogout={onLogout} />}
+
+          <div className="hidden border-l border-lyra-borderSoft pl-3 lg:block">
+            <Clock />
+          </div>
         </div>
       </div>
     </header>

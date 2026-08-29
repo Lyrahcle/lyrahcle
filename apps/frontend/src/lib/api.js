@@ -47,14 +47,50 @@ export async function createProgram(name) {
   return res.json()
 }
 
-export async function registerUser(email, password) {
-  const res = await fetch('/api/v1/auth/register', {
+export async function createUser(email, password, role) {
+  const res = await authedFetch('/api/v1/users/', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, password, role }),
   })
-  if (!res.ok) throw new Error(await readErrorText(res, 'registration failed'))
+  if (!res.ok) throw new Error(await readErrorText(res, 'failed to create user'))
   return res.json()
+}
+
+export async function fetchSystemInfo() {
+  const res = await authedFetch('/api/v1/system-info')
+  if (!res.ok) throw new Error('failed to fetch system info')
+  return res.json()
+}
+
+export async function fetchMe() {
+  const res = await authedFetch('/api/v1/auth/me')
+  if (!res.ok) throw new Error('failed to fetch account info')
+  return res.json()
+}
+
+export async function setupTotp() {
+  const res = await authedFetch('/api/v1/auth/totp/setup', { method: 'POST' })
+  if (!res.ok) throw new Error(await readErrorText(res, 'failed to start two-factor setup'))
+  return res.json()
+}
+
+export async function enableTotp(code) {
+  const res = await authedFetch('/api/v1/auth/totp/enable', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code }),
+  })
+  if (!res.ok) throw new Error(await readErrorText(res, 'invalid code'))
+}
+
+export async function disableTotp(password) {
+  const res = await authedFetch('/api/v1/auth/totp/disable', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password }),
+  })
+  if (!res.ok) throw new Error(await readErrorText(res, 'failed to disable two-factor authentication'))
 }
 
 export async function changePassword(currentPassword, newPassword) {

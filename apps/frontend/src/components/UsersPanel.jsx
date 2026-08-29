@@ -1,11 +1,102 @@
 import { useMemo, useState } from 'react'
 import { Search } from 'lucide-react'
-import { updateUserRole } from '../lib/api.js'
+import { createUser, updateUserRole } from '../lib/api.js'
 import { decodeToken, getToken } from '../lib/auth.js'
 import { useI18n } from '../lib/I18nContext.jsx'
 import TableScroll from './TableScroll.jsx'
 
 const ROLES = ['viewer', 'operator', 'admin']
+
+function NewUserForm({ onCreated }) {
+  const { t } = useI18n()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [role, setRole] = useState('viewer')
+  const [error, setError] = useState(null)
+  const [loading, setLoading] = useState(false)
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    setError(null)
+    setLoading(true)
+    try {
+      await createUser(email, password, role)
+      setEmail('')
+      setPassword('')
+      setRole('viewer')
+      onCreated()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className="mb-6 flex flex-wrap items-end gap-3 rounded border border-lyra-border bg-lyra-bgSoft/50 p-4"
+    >
+      <div className="flex-1 min-w-[10rem]">
+        <label htmlFor="new-user-email" className="mb-1.5 block text-[11px] uppercase tracking-wider text-lyra-mutedDim">
+          {t('common.email')}
+        </label>
+        <input
+          id="new-user-email"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="w-full rounded border border-lyra-border bg-lyra-bg px-2.5 py-1.5 text-sm text-lyra-text outline-none focus:border-lyra-gold"
+          required
+        />
+      </div>
+      <div className="flex-1 min-w-[10rem]">
+        <label htmlFor="new-user-password" className="mb-1.5 block text-[11px] uppercase tracking-wider text-lyra-mutedDim">
+          {t('common.password')}
+        </label>
+        <input
+          id="new-user-password"
+          type="password"
+          autoComplete="new-password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className="w-full rounded border border-lyra-border bg-lyra-bg px-2.5 py-1.5 text-sm text-lyra-text outline-none focus:border-lyra-gold"
+          required
+          minLength={8}
+        />
+      </div>
+      <div>
+        <label htmlFor="new-user-role" className="mb-1.5 block text-[11px] uppercase tracking-wider text-lyra-mutedDim">
+          {t('users.role')}
+        </label>
+        <select
+          id="new-user-role"
+          value={role}
+          onChange={(e) => setRole(e.target.value)}
+          className="rounded border border-lyra-border bg-lyra-bg px-2.5 py-1.5 font-mono text-xs text-lyra-text outline-none focus:border-lyra-gold"
+        >
+          {ROLES.map((r) => (
+            <option key={r} value={r}>
+              {r}
+            </option>
+          ))}
+        </select>
+      </div>
+      <button
+        type="submit"
+        disabled={loading}
+        className="rounded bg-lyra-gold px-4 py-1.5 text-sm font-medium text-lyra-bg outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-lyra-goldBright disabled:opacity-50"
+      >
+        {loading ? t('users.creating') : t('users.createUser')}
+      </button>
+      {error && (
+        <p role="alert" className="w-full text-sm text-lyra-bad">
+          {error}
+        </p>
+      )}
+    </form>
+  )
+}
 
 export default function UsersPanel({ users, onChanged }) {
   const { t } = useI18n()
@@ -35,11 +126,18 @@ export default function UsersPanel({ users, onChanged }) {
   }
 
   if (!users.length) {
-    return <p className="text-sm text-lyra-muted">{t('users.noUsers')}</p>
+    return (
+      <div>
+        <NewUserForm onCreated={onChanged} />
+        <p className="text-sm text-lyra-muted">{t('users.noUsers')}</p>
+      </div>
+    )
   }
 
   return (
     <div>
+      <NewUserForm onCreated={onChanged} />
+
       <div className="mb-4 flex items-center justify-between gap-3">
         <label className="group flex flex-1 max-w-xs items-center gap-2 rounded border border-lyra-border bg-lyra-bgSoft px-3 py-1.5 transition-colors focus-within:border-lyra-gold/50">
           <Search className="h-3.5 w-3.5 text-lyra-mutedDim group-focus-within:text-lyra-gold" strokeWidth={1.75} />

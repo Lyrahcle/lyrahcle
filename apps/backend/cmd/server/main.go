@@ -190,6 +190,17 @@ func newRouter(
 			w.Write([]byte(`{"message":"pong from lyrahcle"}`))
 		})
 
+		r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer, isTokenRevoked)).Get("/system-info", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"environment":             cfg.Environment,
+				"license":                 "AGPLv3 (core)",
+				"celestrak_groups":        cfg.CelestrakGroups,
+				"celestrak_sync_schedule": "every 6 hours",
+				"nvd_sync_note":           "managed by the cve-sync worker (apps/cve-sync)",
+			})
+		})
+
 		r.Route("/assets", func(r chi.Router) {
 			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer, isTokenRevoked)).Get("/", func(w http.ResponseWriter, r *http.Request) {
 				limit, offset := pageParams(r)
@@ -275,78 +286,46 @@ func newRouter(
 		r.Route("/auth", func(r chi.Router) {
 			r.Use(authLimiter)
 
-			r.Post("/register", func(w http.ResponseWriter, r *http.Request) {
-				var body struct {
-					Email    string `json:"email"`
-					Password string `json:"password"`
-				}
-				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-					http.Error(w, "invalid JSON body", http.StatusBadRequest)
-					return
-				}
-				body.Email = strings.TrimSpace(strings.ToLower(body.Email))
-				if err := validate.Email(body.Email); err != nil {
-					http.Error(w, err.Error(), http.StatusBadRequest)
-					return
-				}
-				if err := validate.Password(body.Password); err != nil {
-					http.Error(w, err.Error(), http.StatusBadRequest)
-					return
-				}
-
-				count, err := users.Count(r.Context())
-				if err != nil {
-					http.Error(w, err.Error(), http.StatusInternalServerError)
-					return
-				}
-				role := string(auth.RoleViewer)
-				if count == 0 {
-					role = string(auth.RoleAdmin)
-				}
-
-				hash, err := auth.HashPassword(body.Password)
-				if err != nil {
-					http.Error(w, err.Error(), http.StatusInternalServerError)
-					return
-				}
-
-				user, err := users.Create(r.Context(), body.Email, hash, role)
-				if err != nil {
-					if err == store.ErrEmailTaken {
-						http.Error(w, "email already registered", http.StatusConflict)
-						return
-					}
-					http.Error(w, err.Error(), http.StatusInternalServerError)
-					return
-				}
-
-				logAudit(r.Context(), auditLog, audit.ActorUser, user.ID.String(), audit.ActionRegister, clientIP(r), map[string]interface{}{"email": user.Email, "role": user.Role})
-
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusCreated)
-				json.NewEncoder(w).Encode(map[string]string{"id": user.ID.String(), "email": user.Email, "role": user.Role})
-			})
+			// Public self-registration is disabled: only an administrator can
+			// create accounts, via POST /users below. The very first account
+			// is created automatically at boot by seedAdmin (see SEED_ADMIN_EMAIL
+			// / SEED_ADMIN_PASSWORD).
 
 			r.Post("/login", func(w http.ResponseWriter, r *http.Request) {
 				var body struct {
-					Email    string `json:"email"`
-					Password string `json:"password"`
+					Identifier string `json:"identifier"`
+					Password   string `json:"password"`
+					TOTPCode   string `json:"totp_code"`
 				}
 				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 					http.Error(w, "invalid JSON body", http.StatusBadRequest)
 					return
 				}
-				body.Email = strings.TrimSpace(strings.ToLower(body.Email))
-				if body.Email == "" || body.Password == "" {
-					http.Error(w, "invalid email or password", http.StatusUnauthorized)
+				body.Identifier = strings.TrimSpace(strings.ToLower(body.Identifier))
+				if body.Identifier == "" || body.Password == "" {
+					http.Error(w, "invalid credentials", http.StatusUnauthorized)
 					return
 				}
 
-				user, err := users.GetByEmail(r.Context(), body.Email)
+				user, err := users.GetByIdentifier(r.Context(), body.Identifier)
 				if err != nil || !auth.CheckPassword(user.PasswordHash, body.Password) {
-					logAudit(r.Context(), auditLog, audit.ActorAnonymous, body.Email, audit.ActionLoginFailed, clientIP(r), nil)
-					http.Error(w, "invalid email or password", http.StatusUnauthorized)
+					logAudit(r.Context(), auditLog, audit.ActorAnonymous, body.Identifier, audit.ActionLoginFailed, clientIP(r), nil)
+					http.Error(w, "invalid credentials", http.StatusUnauthorized)
 					return
+				}
+
+				if user.TOTPEnabled {
+					if body.TOTPCode == "" {
+						w.Header().Set("Content-Type", "application/json")
+						w.WriteHeader(http.StatusUnauthorized)
+						json.NewEncoder(w).Encode(map[string]string{"error": "totp_required"})
+						return
+					}
+					if !auth.VerifyTOTP(user.TOTPSecret, body.TOTPCode) {
+						logAudit(r.Context(), auditLog, audit.ActorAnonymous, body.Identifier, audit.ActionLoginFailed, clientIP(r), map[string]interface{}{"reason": "invalid_totp"})
+						http.Error(w, "invalid two-factor code", http.StatusUnauthorized)
+						return
+					}
 				}
 
 				token, err := auth.IssueToken(cfg.JWTSecret, user.ID, auth.Role(user.Role), 24*time.Hour)
@@ -359,6 +338,128 @@ func newRouter(
 
 				w.Header().Set("Content-Type", "application/json")
 				json.NewEncoder(w).Encode(map[string]string{"token": token, "role": user.Role})
+			})
+
+			r.Route("/totp", func(r chi.Router) {
+				r.Use(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer, isTokenRevoked))
+
+				r.Post("/setup", func(w http.ResponseWriter, r *http.Request) {
+					claims, ok := auth.FromContext(r.Context())
+					if !ok {
+						http.Error(w, "unauthorized", http.StatusUnauthorized)
+						return
+					}
+					user, err := users.GetByID(r.Context(), claims.UserID)
+					if err != nil {
+						http.Error(w, "unauthorized", http.StatusUnauthorized)
+						return
+					}
+					if user.TOTPEnabled {
+						http.Error(w, "two-factor authentication is already enabled", http.StatusConflict)
+						return
+					}
+
+					secret, err := auth.GenerateTOTPSecret()
+					if err != nil {
+						http.Error(w, err.Error(), http.StatusInternalServerError)
+						return
+					}
+					if err := users.SetPendingTOTPSecret(r.Context(), user.ID, secret); err != nil {
+						http.Error(w, err.Error(), http.StatusInternalServerError)
+						return
+					}
+
+					uri := auth.TOTPProvisioningURI("Lyrahcle", user.Email, secret)
+					w.Header().Set("Content-Type", "application/json")
+					json.NewEncoder(w).Encode(map[string]string{"secret": secret, "otpauth_url": uri})
+				})
+
+				r.Post("/enable", func(w http.ResponseWriter, r *http.Request) {
+					var body struct {
+						Code string `json:"code"`
+					}
+					if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+						http.Error(w, "invalid JSON body", http.StatusBadRequest)
+						return
+					}
+					claims, ok := auth.FromContext(r.Context())
+					if !ok {
+						http.Error(w, "unauthorized", http.StatusUnauthorized)
+						return
+					}
+					user, err := users.GetByID(r.Context(), claims.UserID)
+					if err != nil {
+						http.Error(w, "unauthorized", http.StatusUnauthorized)
+						return
+					}
+					if user.TOTPSecret == "" {
+						http.Error(w, "call /auth/totp/setup first", http.StatusBadRequest)
+						return
+					}
+					if !auth.VerifyTOTP(user.TOTPSecret, body.Code) {
+						http.Error(w, "invalid two-factor code", http.StatusUnauthorized)
+						return
+					}
+					if err := users.EnableTOTP(r.Context(), user.ID); err != nil {
+						http.Error(w, err.Error(), http.StatusInternalServerError)
+						return
+					}
+
+					logAudit(r.Context(), auditLog, audit.ActorUser, user.ID.String(), audit.ActionTOTPEnabled, clientIP(r), nil)
+					w.WriteHeader(http.StatusNoContent)
+				})
+
+				r.Post("/disable", func(w http.ResponseWriter, r *http.Request) {
+					var body struct {
+						Password string `json:"password"`
+					}
+					if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+						http.Error(w, "invalid JSON body", http.StatusBadRequest)
+						return
+					}
+					claims, ok := auth.FromContext(r.Context())
+					if !ok {
+						http.Error(w, "unauthorized", http.StatusUnauthorized)
+						return
+					}
+					user, err := users.GetByID(r.Context(), claims.UserID)
+					if err != nil {
+						http.Error(w, "unauthorized", http.StatusUnauthorized)
+						return
+					}
+					if !auth.CheckPassword(user.PasswordHash, body.Password) {
+						http.Error(w, "invalid password", http.StatusUnauthorized)
+						return
+					}
+					if err := users.DisableTOTP(r.Context(), user.ID); err != nil {
+						http.Error(w, err.Error(), http.StatusInternalServerError)
+						return
+					}
+
+					logAudit(r.Context(), auditLog, audit.ActorUser, user.ID.String(), audit.ActionTOTPDisabled, clientIP(r), nil)
+					w.WriteHeader(http.StatusNoContent)
+				})
+			})
+
+			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer, isTokenRevoked)).Get("/me", func(w http.ResponseWriter, r *http.Request) {
+				claims, ok := auth.FromContext(r.Context())
+				if !ok {
+					http.Error(w, "unauthorized", http.StatusUnauthorized)
+					return
+				}
+				user, err := users.GetByID(r.Context(), claims.UserID)
+				if err != nil {
+					http.Error(w, "unauthorized", http.StatusUnauthorized)
+					return
+				}
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"id":           user.ID.String(),
+					"email":        user.Email,
+					"username":     user.Username,
+					"role":         user.Role,
+					"totp_enabled": user.TOTPEnabled,
+				})
 			})
 
 			r.With(auth.RequireRole(cfg.JWTSecret, auth.RoleViewer, isTokenRevoked)).Post("/logout", func(w http.ResponseWriter, r *http.Request) {
@@ -444,6 +545,58 @@ func newRouter(
 				}
 				w.Header().Set("Content-Type", "application/json")
 				json.NewEncoder(w).Encode(list)
+			})
+
+			r.Post("/", func(w http.ResponseWriter, r *http.Request) {
+				var body struct {
+					Email    string `json:"email"`
+					Password string `json:"password"`
+					Role     string `json:"role"`
+				}
+				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+					http.Error(w, "invalid JSON body", http.StatusBadRequest)
+					return
+				}
+				body.Email = strings.TrimSpace(strings.ToLower(body.Email))
+				if err := validate.Email(body.Email); err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+				if err := validate.Password(body.Password); err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+				if body.Role == "" {
+					body.Role = string(auth.RoleViewer)
+				}
+				if !auth.ValidRole(body.Role) {
+					http.Error(w, "role must be one of: viewer, operator, admin", http.StatusBadRequest)
+					return
+				}
+
+				hash, err := auth.HashPassword(body.Password)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+
+				user, err := users.Create(r.Context(), body.Email, hash, body.Role)
+				if err != nil {
+					if err == store.ErrEmailTaken {
+						http.Error(w, "email already registered", http.StatusConflict)
+						return
+					}
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+
+				if claims, ok := auth.FromContext(r.Context()); ok {
+					logAudit(r.Context(), auditLog, audit.ActorUser, claims.UserID.String(), audit.ActionUserCreated, clientIP(r), map[string]interface{}{"target_email": user.Email, "role": user.Role})
+				}
+
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusCreated)
+				json.NewEncoder(w).Encode(map[string]string{"id": user.ID.String(), "email": user.Email, "username": user.Username, "role": user.Role})
 			})
 
 			r.Patch("/{userID}/role", func(w http.ResponseWriter, r *http.Request) {

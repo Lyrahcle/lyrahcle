@@ -67,3 +67,21 @@ body::before {
 ::selection {
   background: rgb(var(--lyra-gold) / 0.3);
 }
+
+@keyframes lyra-node-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
+.lyra-pulse-node {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: lyra-node-pulse 3.2s ease-in-out infinite;
+}
