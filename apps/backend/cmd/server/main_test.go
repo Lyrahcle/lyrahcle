@@ -502,9 +502,10 @@ func TestSystemInfoEndpoint(t *testing.T) {
 
 func TestSatellitesStreamEndpointSendsSSEEvent(t *testing.T) {
 	router, _, users := testRouter(t)
-	token := seedUserAndLogin(t, router, users, "stream@example.com", "correct-horse-battery", "viewer")
+	operatorToken := seedUserAndLogin(t, router, users, "stream-operator@example.com", "correct-horse-battery", "operator")
+	viewerToken := seedUserAndLogin(t, router, users, "stream-viewer@example.com", "correct-horse-battery", "viewer")
 
-	rec := doJSON(t, router, http.MethodPost, "/api/v1/satellites/", token, map[string]interface{}{
+	rec := doJSON(t, router, http.MethodPost, "/api/v1/satellites/", operatorToken, map[string]interface{}{
 		"norad_id":  25544,
 		"name":      "ISS (ZARYA)",
 		"tle_line1": "1 25544U 98067A   24001.00000000  .00000000  00000-0  00000-0 0  9999",
@@ -518,7 +519,7 @@ func TestSatellitesStreamEndpointSendsSSEEvent(t *testing.T) {
 	defer cancel()
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/satellites/stream", nil).WithContext(ctx)
-	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Authorization", "Bearer "+viewerToken)
 	streamRec := httptest.NewRecorder()
 
 	router.ServeHTTP(streamRec, req)
