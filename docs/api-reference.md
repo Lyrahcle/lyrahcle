@@ -76,7 +76,8 @@ the `Authorization: Bearer` header used by human sessions.
 | `GET` | `/api/v1/assets` | viewer+ | List tracked assets (paginated) |
 | `POST` | `/api/v1/auth/register` | — | Create a user (first user ever becomes admin) |
 | `POST` | `/api/v1/auth/login` | — | Exchange email + password for a bearer token |
-| `POST` | `/api/v1/auth/change-password` | viewer+ | Change your own password |
+| `POST` | `/api/v1/auth/change-password` | viewer+ | Change your own password (also revokes the token used to make this request — see Redis-backed features below) |
+| `POST` | `/api/v1/auth/logout` | viewer+ | Revoke the current token immediately, before its natural expiry (requires Redis — a no-op if unavailable) |
 | `GET` | `/api/v1/users/` | admin | List all users and their roles |
 | `PATCH` | `/api/v1/users/{userID}/role` | admin | Promote or demote a user's role (blocks demoting the last remaining admin) |
 | `GET` | `/api/v1/audit-log` | admin | List security-relevant events (paginated) |
@@ -100,3 +101,20 @@ array.
 
 Every endpoint above also has a matching panel or form in the dashboard —
 none of them require `curl` for day-to-day use.
+
+## Redis-backed features
+
+Three things are backed by Redis when `REDIS_URL` is reachable at startup —
+all optional, all degrade gracefully (a warning is logged, the feature is
+simply disabled) if Redis isn't available:
+
+- **Rate limiting** persists across restarts and is shared correctly
+  across multiple backend replicas, instead of each process keeping its
+  own in-memory counter.
+- **Token revocation**: `POST /auth/logout` and `POST /auth/change-password`
+  both invalidate the JWT used to make the request immediately, rather than
+  leaving it valid until its natural expiry (up to 24h later).
+- **Response caching**: `GET /satellites/` (5s TTL) and
+  `GET /threat-intel/space-cves` (30s TTL) are cached, since both are
+  identical for every caller and the satellites list in particular is
+  polled by every open dashboard every few seconds.

@@ -9,7 +9,7 @@ services:
       postgres:
         condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
     restart: unless-stopped
     environment:
       - DATABASE_URL=postgres://lyrahcle:lyrahcle@postgres:5432/lyrahcle?sslmode=disable

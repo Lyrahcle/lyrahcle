@@ -41,9 +41,25 @@ export async function login(email, password) {
   return data
 }
 
-export function logout() {
+export async function logout() {
+  const token = getToken()
   localStorage.removeItem(TOKEN_KEY)
   localStorage.removeItem(ROLE_KEY)
+
+  // Best-effort: revoke the token server-side so it can't be replayed if
+  // leaked. The UI has already logged the user out locally either way, so
+  // a failure here (offline, expired token, Redis not configured on the
+  // backend) is never surfaced to the user.
+  if (token) {
+    try {
+      await fetch('/api/v1/auth/logout', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+    } catch {
+      // ignore — local logout already happened
+    }
+  }
 }
 
 export function authHeaders() {

@@ -9,7 +9,7 @@ page is the complete cross-service reference.
 | Variable | Default | Required in production | Description |
 |---|---|---|---|
 | `DATABASE_URL` | `postgres://lyrahcle:lyrahcle@localhost:5432/lyrahcle?sslmode=disable` | yes | Postgres connection string |
-| `REDIS_URL` | `localhost:6379` | no (not yet used by any code path) | Redis connection string, reserved for future queueing/caching |
+| `REDIS_URL` | `localhost:6379` | no | Redis address for the backend's optional rate limiting, JWT revocation (logout, password change), and response caching. If unreachable at startup, the backend logs a warning and falls back to an in-memory rate limiter with revocation/caching disabled — it does not fail to start. |
 | `PORT` | `8080` | no | HTTP(S) listen port |
 | `CELESTRAK_GROUPS` | `stations` | no | Comma-separated [Celestrak groups](https://celestrak.org/NORAD/elements/) to sync TLEs from on startup and every 6h |
 | `JWT_SECRET` | insecure dev default (logs a warning) | **yes** | Secret used to sign auth tokens (HS256). Use a long random value, e.g. `openssl rand -hex 32` |
