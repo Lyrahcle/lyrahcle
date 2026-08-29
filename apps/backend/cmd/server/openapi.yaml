@@ -1,539 +1,1024 @@
 openapi: 3.0.3
 info:
   title: Lyrahcle API
-  description: >
-    Space-cybersecurity platform API: asset inventory, orbital tracking,
-    RF signal intelligence, TM/TC protocol decoding, and space-related
-    threat intelligence. See docs/api-reference.md for a narrative guide
-    with curl examples.
-  version: "0.9.0"
+  description: Space cybersecurity operations API for assets, orbital tracking, RF telemetry, TM/TC decoding, threat intelligence, and security administration.
+  version: 0.9.0
   contact:
-    name: mlko01
-    email: manu.ciberseguridad@gmail.com
+    name: Lyrahcle
   license:
     name: AGPLv3
-    url: https://github.com/mlko01/lyrahcle/blob/main/LICENSE
+    url: https://github.com/Lyrahcle/lyrahcle/blob/main/LICENSE
 servers:
-  - url: http://localhost:8080
-    description: Local development
-
+- url: http://localhost:8080
+  description: Local development
 tags:
-  - name: System
-  - name: Auth
-  - name: Users
-  - name: Assets
-  - name: Programs
-  - name: Satellites
-  - name: RF
-  - name: Agent Keys
-  - name: TM/TC
-  - name: Threat Intel
-  - name: Audit
-
+- name: System
+- name: Auth
+- name: Users
+- name: Assets
+- name: Programs
+- name: Satellites
+- name: RF
+- name: Agent Keys
+- name: TM/TC
+- name: Threat Intel
+- name: Audit
 security:
-  - bearerAuth: []
-
+- bearerAuth: []
 paths:
   /healthz:
     get:
-      tags: [System]
+      tags:
+      - System
       summary: Liveness check
       security: []
       responses:
-        "200":
+        '200':
           description: Service is up
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/HealthStatus" }
-
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
   /metrics:
     get:
-      tags: [System]
+      tags:
+      - System
       summary: Prometheus metrics
       security: []
       responses:
-        "200":
+        '200':
           description: Prometheus text exposition format
           content:
             text/plain: {}
-
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+  /openapi.yaml:
+    get:
+      tags:
+      - System
+      summary: OpenAPI specification
+      security: []
+      responses:
+        '200':
+          description: OpenAPI YAML
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+  /docs:
+    get:
+      tags:
+      - System
+      summary: Swagger UI
+      security: []
+      responses:
+        '200':
+          description: Interactive API documentation
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
   /api/v1/ping:
     get:
-      tags: [System]
+      tags:
+      - System
       summary: Backend reachability check
       security: []
       responses:
-        "200":
+        '200':
           description: Pong
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/PingResponse" }
-
-  /api/v1/auth/register:
-    post:
-      tags: [Auth]
-      summary: Create a user
-      description: The first user ever registered becomes admin automatically.
-      security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/RegisterRequest" }
+              schema:
+                $ref: '#/components/schemas/PingResponse'
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+  /api/v1/system-info:
+    get:
+      tags:
+      - System
+      summary: Runtime system information
+      description: 'Requires role: viewer or higher.'
       responses:
-        "201":
-          description: User created
+        '200':
+          description: System information
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/UserSummary" }
-        "400": { $ref: "#/components/responses/BadRequest" }
-        "409":
-          description: Email already registered
-          content:
-            text/plain: {}
-
+              schema:
+                type: object
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /api/v1/auth/login:
     post:
-      tags: [Auth]
-      summary: Exchange email and password for a bearer token
+      tags:
+      - Auth
+      summary: Authenticate with email or username
       security: []
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/LoginRequest" }
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
       responses:
-        "200":
+        '200':
           description: Authenticated
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/LoginResponse" }
-        "401":
-          description: Invalid email or password
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+        '401':
+          description: Invalid credentials, invalid TOTP, or TOTP required
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+        '429':
+          description: Too many login attempts
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+      description: Rate limited independently from normal API traffic. If TOTP is enabled, include totp_code.
+  /api/v1/auth/me:
+    get:
+      tags:
+      - Auth
+      summary: Get current account
+      description: 'Requires role: viewer or higher.'
+      responses:
+        '200':
+          description: Current user
           content:
-            text/plain: {}
-
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSummary'
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/auth/logout:
+    post:
+      tags:
+      - Auth
+      summary: Log out and revoke current token
+      description: Requires Redis for immediate token revocation. The request still succeeds if Redis is unavailable.
+      responses:
+        '204':
+          description: Logged out
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /api/v1/auth/change-password:
     post:
-      tags: [Auth]
+      tags:
+      - Auth
       summary: Change your own password
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/ChangePasswordRequest" }
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
       responses:
-        "204": { description: Password changed }
-        "400": { $ref: "#/components/responses/BadRequest" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-
+        '204':
+          description: Password changed
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/auth/totp/setup:
+    post:
+      tags:
+      - Auth
+      summary: Create a pending TOTP secret
+      responses:
+        '200':
+          description: TOTP setup data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TOTPSetupResponse'
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+        '409':
+          description: TOTP already enabled
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+  /api/v1/auth/totp/enable:
+    post:
+      tags:
+      - Auth
+      summary: Enable TOTP
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TOTPCodeRequest'
+      responses:
+        '204':
+          description: TOTP enabled
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/auth/totp/disable:
+    post:
+      tags:
+      - Auth
+      summary: Disable TOTP
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TOTPDisableRequest'
+      responses:
+        '204':
+          description: TOTP disabled
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /api/v1/users/:
     get:
-      tags: [Users]
+      tags:
+      - Users
       summary: List all users and their roles
-      description: "Requires role: admin."
+      description: 'Requires role: admin.'
       responses:
-        "200":
+        '200':
           description: List of users
           content:
             application/json:
               schema:
                 type: array
-                items: { $ref: "#/components/schemas/UserSummary" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-
-  /api/v1/users/{userID}/role:
-    patch:
-      tags: [Users]
-      summary: Promote or demote a user's role
-      description: >
-        Requires role: admin. Blocks demoting the last remaining admin.
-      parameters:
-        - $ref: "#/components/parameters/UserID"
+                items:
+                  $ref: '#/components/schemas/UserSummary'
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags:
+      - Users
+      summary: Create a user
+      description: 'Requires role: admin. Public self-registration is disabled.'
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/UpdateRoleRequest" }
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
       responses:
-        "200":
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSummary'
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Email already registered
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+  /api/v1/users/{userID}/role:
+    patch:
+      tags:
+      - Users
+      summary: Promote or demote a user's role
+      description: 'Requires role: admin. Blocks demoting the last remaining admin.
+
+        '
+      parameters:
+      - $ref: '#/components/parameters/UserID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRoleRequest'
+      responses:
+        '200':
           description: Role updated
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/UserSummary" }
-        "400": { $ref: "#/components/responses/BadRequest" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "404":
+              schema:
+                $ref: '#/components/schemas/UserSummary'
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
           description: User not found
           content:
             text/plain: {}
-        "409":
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+        '409':
           description: Would demote the last remaining admin
           content:
             text/plain: {}
-
-  /api/v1/assets/:
-    get:
-      tags: [Assets]
-      summary: List tracked assets
-      description: "Requires role: viewer or higher."
-      parameters:
-        - $ref: "#/components/parameters/Limit"
-        - $ref: "#/components/parameters/Offset"
-      responses:
-        "200":
-          description: Paginated list of assets
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/AssetPage" }
-    post:
-      tags: [Assets]
-      summary: Create or update an asset
-      description: "Requires role: operator or higher."
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/CreateAssetRequest" }
-      responses:
-        "201": { description: Asset created }
-        "400": { $ref: "#/components/responses/BadRequest" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
   /api/v1/programs/:
     get:
-      tags: [Programs]
+      tags:
+      - Programs
       summary: List programs
-      description: "Requires role: viewer or higher."
+      description: 'Requires role: viewer or higher.'
       responses:
-        "200":
+        '200':
           description: List of programs
           content:
             application/json:
               schema:
                 type: array
-                items: { $ref: "#/components/schemas/Program" }
+                items:
+                  $ref: '#/components/schemas/Program'
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
     post:
-      tags: [Programs]
+      tags:
+      - Programs
       summary: Create a program
-      description: "Requires role: operator or higher."
+      description: 'Requires role: operator or higher.'
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [name]
+              required:
+              - name
               properties:
-                name: { type: string, example: "Constellation Alpha" }
+                name:
+                  type: string
+                  example: Constellation Alpha
       responses:
-        "201":
+        '201':
           description: Program created
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/Program" }
-        "400": { $ref: "#/components/responses/BadRequest" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-
+              schema:
+                $ref: '#/components/schemas/Program'
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/assets/:
+    get:
+      tags:
+      - Assets
+      summary: List tracked assets
+      description: 'Requires role: viewer or higher.'
+      parameters:
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: Paginated list of assets
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssetPage'
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+    post:
+      tags:
+      - Assets
+      summary: Create or update an asset
+      description: 'Requires role: operator or higher.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAssetRequest'
+      responses:
+        '201':
+          description: Asset created
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/satellites/:
     get:
-      tags: [Satellites]
+      tags:
+      - Satellites
       summary: List tracked satellites with live computed position
-      description: "Requires role: viewer or higher."
+      description: 'Requires role: viewer or higher.'
       responses:
-        "200":
+        '200':
           description: List of satellites
           content:
             application/json:
               schema:
                 type: array
-                items: { $ref: "#/components/schemas/SatelliteWithPosition" }
+                items:
+                  $ref: '#/components/schemas/SatelliteWithPosition'
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
     post:
-      tags: [Satellites]
+      tags:
+      - Satellites
       summary: Register a satellite by NORAD ID and TLE
-      description: "Requires role: operator or higher."
+      description: 'Requires role: operator or higher.'
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/RegisterSatelliteRequest" }
+            schema:
+              $ref: '#/components/schemas/RegisterSatelliteRequest'
       responses:
-        "201": { description: Satellite registered }
-        "400": { $ref: "#/components/responses/BadRequest" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-
-  /api/v1/rf/ingest:
-    post:
-      tags: [RF]
-      summary: Ingest an RF reading
-      description: >
-        Used by sdr-agent. Auth via `X-Agent-Key` (per-agent API key,
-        preferred) or an operator-or-higher bearer token (legacy).
-        Each reading is checked against that agent's recent baseline and
-        flagged as an anomaly on statistical outliers.
-      security:
-        - bearerAuth: []
-        - agentKeyAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/RFReadingInput" }
-      responses:
-        "201": { description: Reading ingested }
-        "400": { $ref: "#/components/responses/BadRequest" }
-        "403":
-          description: agent_id does not match the authenticated agent key
-          content:
-            text/plain: {}
-
-  /api/v1/rf/readings:
-    get:
-      tags: [RF]
-      summary: List recent RF readings
-      description: "Requires role: viewer or higher. Returns up to 100 most recent."
-      responses:
-        "200":
-          description: List of RF readings
-          content:
-            application/json:
+        '201':
+          description: Satellite registered
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
               schema:
-                type: array
-                items: { $ref: "#/components/schemas/RFReading" }
-
-  /api/v1/rf/anomalies:
+                type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/satellites/stream:
     get:
-      tags: [RF]
-      summary: List recent RF anomalies
-      description: >
-        Requires role: viewer or higher. Statistical outliers (z-score,
-        3σ threshold) in power or frequency vs. that agent's baseline.
+      tags:
+      - Satellites
+      summary: Stream live satellite positions
+      description: 'Requires role: viewer or higher. Server-Sent Events; sends an initial satellites event and refreshes every five seconds.'
       responses:
-        "200":
-          description: List of RF anomalies
+        '200':
+          description: SSE stream
           content:
-            application/json:
+            text/event-stream:
               schema:
-                type: array
-                items: { $ref: "#/components/schemas/RFAnomaly" }
-
+                type: string
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /api/v1/agent-keys/:
     get:
-      tags: [Agent Keys]
+      tags:
+      - Agent Keys
       summary: List issued agent keys
-      description: "Requires role: admin."
+      description: 'Requires role: admin.'
       responses:
-        "200":
+        '200':
           description: List of agent key summaries
           content:
             application/json:
               schema:
                 type: array
-                items: { $ref: "#/components/schemas/AgentKeySummary" }
+                items:
+                  $ref: '#/components/schemas/AgentKeySummary'
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
     post:
-      tags: [Agent Keys]
+      tags:
+      - Agent Keys
       summary: Create an API key scoped to one agent_id
-      description: >
-        Requires role: admin. The plaintext key is returned once, at
-        creation time — only its SHA-256 hash is stored.
+      description: "Requires role: admin. The plaintext key is returned once, at creation time \u2014 only its SHA-256 hash is stored.\n"
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [agent_id]
+              required:
+              - agent_id
               properties:
-                agent_id: { type: string, example: "sdr-agent-madrid" }
+                agent_id:
+                  type: string
+                  example: sdr-agent-madrid
       responses:
-        "201":
+        '201':
           description: Key created
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/AgentKeyCreated" }
-        "400": { $ref: "#/components/responses/BadRequest" }
-        "409":
+              schema:
+                $ref: '#/components/schemas/AgentKeyCreated'
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
           description: agent_id already has an active key
           content:
             text/plain: {}
-
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
   /api/v1/agent-keys/{agentID}:
     delete:
-      tags: [Agent Keys]
+      tags:
+      - Agent Keys
       summary: Revoke that agent's key
-      description: "Requires role: admin."
+      description: 'Requires role: admin.'
       parameters:
-        - name: agentID
-          in: path
-          required: true
-          schema: { type: string }
+      - name: agentID
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
-        "204": { description: Key revoked }
-        "404":
+        '204':
+          description: Key revoked
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+        '404':
           description: No active key for that agent_id
           content:
             text/plain: {}
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+  /api/v1/agents/me/device:
+    post:
+      tags:
+      - Agent Keys
+      summary: Report authenticated agent device metadata
+      description: Requires X-Agent-Key. Agent identity is derived from the key.
+      security:
+      - agentKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentDeviceInfo'
+      responses:
+        '204':
+          description: Device metadata stored
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/rf/ingest:
+    post:
+      tags:
+      - RF
+      summary: Ingest an RF reading
+      description: 'Used by sdr-agent. Auth via `X-Agent-Key` (per-agent API key, preferred) or an operator-or-higher bearer token (legacy). Each reading is checked against that agent''s recent baseline and flagged as an anomaly on statistical outliers.
 
+        '
+      security:
+      - bearerAuth: []
+      - agentKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RFReadingInput'
+      responses:
+        '201':
+          description: Reading ingested
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          description: agent_id does not match the authenticated agent key
+          content:
+            text/plain: {}
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+  /api/v1/rf/readings:
+    get:
+      tags:
+      - RF
+      summary: List recent RF readings
+      description: 'Requires role: viewer or higher. Returns up to 100 most recent.'
+      responses:
+        '200':
+          description: List of RF readings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RFReading'
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+  /api/v1/rf/anomalies:
+    get:
+      tags:
+      - RF
+      summary: List recent RF anomalies
+      description: 'Requires role: viewer or higher. Returns recent anomalies produced by robust spot and trend baselines.'
+      responses:
+        '200':
+          description: List of RF anomalies
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RFAnomaly'
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
   /api/v1/tmtc/decode/ax25:
     post:
-      tags: [TM/TC]
+      tags:
+      - TM/TC
       summary: Decode a hex-encoded AX.25 UI frame
-      description: "Requires role: viewer or higher."
+      description: 'Requires role: viewer or higher.'
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [frame_hex]
+              required:
+              - frame_hex
               properties:
-                frame_hex: { type: string, example: "82A0A4A6404060AE8482646860E103F0..." }
+                frame_hex:
+                  type: string
+                  example: 82A0A4A6404060AE8482646860E103F0...
       responses:
-        "200":
+        '200':
           description: Decoded frame
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/AX25Frame" }
-        "400": { $ref: "#/components/responses/BadRequest" }
-
+              schema:
+                $ref: '#/components/schemas/AX25Frame'
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
   /api/v1/tmtc/decode/ccsds:
     post:
-      tags: [TM/TC]
+      tags:
+      - TM/TC
       summary: Decode a hex-encoded CCSDS Space Packet
-      description: "Requires role: viewer or higher."
+      description: 'Requires role: viewer or higher.'
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [packet_hex]
+              required:
+              - packet_hex
               properties:
-                packet_hex: { type: string }
+                packet_hex:
+                  type: string
       responses:
-        "200":
+        '200':
           description: Decoded packet
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/CCSDSPacket" }
-        "400": { $ref: "#/components/responses/BadRequest" }
-
+              schema:
+                $ref: '#/components/schemas/CCSDSPacket'
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
   /api/v1/tmtc/decode/pus:
     post:
-      tags: [TM/TC]
+      tags:
+      - TM/TC
       summary: Decode a hex-encoded PUS packet
-      description: "Built on the CCSDS Space Packet header. Requires role: viewer or higher."
+      description: 'Built on the CCSDS Space Packet header. Requires role: viewer or higher.'
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [packet_hex]
+              required:
+              - packet_hex
               properties:
-                packet_hex: { type: string }
+                packet_hex:
+                  type: string
       responses:
-        "200":
+        '200':
           description: Decoded packet
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/PUSPacket" }
-        "400": { $ref: "#/components/responses/BadRequest" }
-
+              schema:
+                $ref: '#/components/schemas/PUSPacket'
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
   /api/v1/tmtc/decode/csp:
     post:
-      tags: [TM/TC]
+      tags:
+      - TM/TC
       summary: Decode a hex-encoded CubeSat Space Protocol (CSP v1) packet
-      description: "Requires role: viewer or higher."
+      description: 'Requires role: viewer or higher.'
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [packet_hex]
+              required:
+              - packet_hex
               properties:
-                packet_hex: { type: string }
+                packet_hex:
+                  type: string
       responses:
-        "200":
+        '200':
           description: Decoded packet
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/CSPPacket" }
-        "400": { $ref: "#/components/responses/BadRequest" }
-
+              schema:
+                $ref: '#/components/schemas/CSPPacket'
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
   /api/v1/threat-intel/space-cves:
     get:
-      tags: [Threat Intel]
+      tags:
+      - Threat Intel
       summary: List space-related CVEs synced from the NVD
-      description: >
-        Requires role: viewer or higher. Auto-updates daily via the
-        cve-sync worker.
+      description: 'Requires role: viewer or higher. Supports severity, keyword, publication-date, and sort filters.'
       parameters:
-        - $ref: "#/components/parameters/Limit"
-        - $ref: "#/components/parameters/Offset"
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Offset'
+      - name: severity
+        in: query
+        schema:
+          type: string
+      - name: keyword
+        in: query
+        schema:
+          type: string
+      - name: published_from
+        in: query
+        schema:
+          type: string
+          format: date
+      - name: published_to
+        in: query
+        schema:
+          type: string
+          format: date
+      - name: sort
+        in: query
+        schema:
+          type: string
+      - name: order
+        in: query
+        schema:
+          type: string
+          enum:
+          - asc
+          - desc
+          default: desc
       responses:
-        "200":
+        '200':
           description: Paginated list of CVEs
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/SpaceCVEPage" }
-
+              schema:
+                $ref: '#/components/schemas/SpaceCVEPage'
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+  /api/v1/threat-intel/space-cves/keywords:
+    get:
+      tags:
+      - Threat Intel
+      summary: List distinct CVE keywords
+      description: 'Requires role: viewer or higher.'
+      responses:
+        '200':
+          description: Keywords
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
   /api/v1/asset-alerts/:
     get:
-      tags: [Threat Intel]
+      tags:
+      - Threat Intel
       summary: List CVE-to-asset alerts
-      description: >
-        Requires role: viewer or higher. Raised automatically by a
-        background worker when a synced CVE's search keyword is relevant
-        to a tracked asset's kind (e.g. a "satellite"-keyword CVE against
-        every satellite asset). Sorted unacknowledged-first, then most
-        recent.
+      description: 'Requires role: viewer or higher. Raised automatically by a background worker when a synced CVE''s search keyword is relevant to a tracked asset''s kind (e.g. a "satellite"-keyword CVE against every satellite asset). Sorted unacknowledged-first, then most recent.
+
+        '
       parameters:
-        - $ref: "#/components/parameters/Limit"
-        - $ref: "#/components/parameters/Offset"
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Offset'
       responses:
-        "200":
+        '200':
           description: Paginated list of alerts
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/AssetCVEAlertPage" }
-
+              schema:
+                $ref: '#/components/schemas/AssetCVEAlertPage'
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
   /api/v1/asset-alerts/{alertID}/acknowledge:
     post:
-      tags: [Threat Intel]
+      tags:
+      - Threat Intel
       summary: Mark an alert as reviewed
-      description: >
-        Requires role: operator or higher. Idempotent — acknowledging an
-        already-acknowledged alert succeeds and just overwrites who/when.
+      description: "Requires role: operator or higher. Idempotent \u2014 acknowledging an already-acknowledged alert succeeds and just overwrites who/when.\n"
       parameters:
-        - name: alertID
-          in: path
-          required: true
-          schema: { type: string, format: uuid }
+      - name: alertID
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
       responses:
-        "204": { description: Acknowledged }
-        "400": { $ref: "#/components/responses/BadRequest" }
-        "404":
+        '204':
+          description: Acknowledged
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
           description: No alert with that ID
           content:
             text/plain: {}
-
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
   /api/v1/audit-log:
     get:
-      tags: [Audit]
+      tags:
+      - Audit
       summary: List security-relevant events
-      description: "Requires role: admin."
+      description: 'Requires role: admin.'
       parameters:
-        - $ref: "#/components/parameters/Limit"
-        - $ref: "#/components/parameters/Offset"
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Offset'
       responses:
-        "200":
+        '200':
           description: Paginated list of audit entries
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/AuditPage" }
-
+              schema:
+                $ref: '#/components/schemas/AuditPage'
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
 components:
   securitySchemes:
     bearerAuth:
@@ -546,22 +1031,28 @@ components:
       in: header
       name: X-Agent-Key
       description: Per-agent key issued via POST /api/v1/agent-keys.
-
   parameters:
     Limit:
       name: limit
       in: query
-      schema: { type: integer, default: 50, maximum: 200 }
+      schema:
+        type: integer
+        default: 50
+        maximum: 200
     Offset:
       name: offset
       in: query
-      schema: { type: integer, default: 0, minimum: 0 }
+      schema:
+        type: integer
+        default: 0
+        minimum: 0
     UserID:
       name: userID
       in: path
       required: true
-      schema: { type: string, format: uuid }
-
+      schema:
+        type: string
+        format: uuid
   responses:
     BadRequest:
       description: Invalid request body or parameters
@@ -575,294 +1066,560 @@ components:
       description: Authenticated, but role does not permit this action
       content:
         text/plain: {}
-
   schemas:
     HealthStatus:
       type: object
       properties:
-        status: { type: string, example: ok }
-
+        status:
+          type: string
+          example: ok
     PingResponse:
       type: object
       properties:
-        message: { type: string, example: "pong from lyrahcle" }
-
-    RegisterRequest:
-      type: object
-      required: [email, password]
-      properties:
-        email: { type: string, format: email }
-        password: { type: string, format: password, minLength: 8 }
-
+        message:
+          type: string
+          example: pong from lyrahcle
     LoginRequest:
       type: object
-      required: [email, password]
+      required:
+      - identifier
+      - password
       properties:
-        email: { type: string }
-        password: { type: string, format: password }
-
+        identifier:
+          type: string
+          description: Email or username
+        password:
+          type: string
+          format: password
+        totp_code:
+          type: string
+          description: Required when TOTP is enabled
     LoginResponse:
       type: object
       properties:
-        token: { type: string }
-        role: { type: string, enum: [viewer, operator, admin] }
-
+        token:
+          type: string
+        role:
+          type: string
+          enum:
+          - viewer
+          - operator
+          - admin
     ChangePasswordRequest:
       type: object
-      required: [current_password, new_password]
+      required:
+      - current_password
+      - new_password
       properties:
-        current_password: { type: string, format: password }
-        new_password: { type: string, format: password, minLength: 8 }
-
+        current_password:
+          type: string
+          format: password
+        new_password:
+          type: string
+          format: password
+          minLength: 8
     UpdateRoleRequest:
       type: object
-      required: [role]
+      required:
+      - role
       properties:
-        role: { type: string, enum: [viewer, operator, admin] }
-
+        role:
+          type: string
+          enum:
+          - viewer
+          - operator
+          - admin
     UserSummary:
       type: object
       properties:
-        id: { type: string, format: uuid }
-        email: { type: string }
-        role: { type: string, enum: [viewer, operator, admin] }
-
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+        username:
+          type: string
+        role:
+          type: string
+          enum:
+          - viewer
+          - operator
+          - admin
+        totp_enabled:
+          type: boolean
     Program:
       type: object
       properties:
-        id: { type: string, format: uuid }
-        name: { type: string }
-
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
     Asset:
       type: object
       properties:
-        id: { type: string, format: uuid }
-        program_id: { type: string, format: uuid }
-        kind: { type: string, example: domain }
-        value: { type: string, example: "ground-station.example.com" }
-
+        id:
+          type: string
+          format: uuid
+        program_id:
+          type: string
+          format: uuid
+        kind:
+          type: string
+          example: domain
+        value:
+          type: string
+          example: ground-station.example.com
     CreateAssetRequest:
       type: object
-      required: [program_id, kind, value]
+      required:
+      - program_id
+      - kind
+      - value
       properties:
-        program_id: { type: string, format: uuid }
-        kind: { type: string, example: domain }
-        value: { type: string }
-
+        program_id:
+          type: string
+          format: uuid
+        kind:
+          type: string
+          example: domain
+        value:
+          type: string
     AssetPage:
       allOf:
-        - $ref: "#/components/schemas/Page"
-        - type: object
-          properties:
+      - $ref: '#/components/schemas/Page'
+      - type: object
+        properties:
+          items:
+            type: array
             items:
-              type: array
-              items: { $ref: "#/components/schemas/Asset" }
-
+              $ref: '#/components/schemas/Asset'
     Page:
       type: object
       properties:
-        total: { type: integer }
-        limit: { type: integer }
-        offset: { type: integer }
-
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
     SatellitePosition:
       type: object
       properties:
-        latitude_deg: { type: number, format: double }
-        longitude_deg: { type: number, format: double }
-        altitude_km: { type: number, format: double }
-
+        latitude_deg:
+          type: number
+          format: double
+        longitude_deg:
+          type: number
+          format: double
+        altitude_km:
+          type: number
+          format: double
     SatelliteWithPosition:
       type: object
       properties:
-        id: { type: string, format: uuid }
-        norad_id: { type: integer, example: 25544 }
-        name: { type: string, example: "ISS (ZARYA)" }
-        tle_line1: { type: string }
-        tle_line2: { type: string }
-        updated_at: { type: string, format: date-time }
+        id:
+          type: string
+          format: uuid
+        norad_id:
+          type: integer
+          example: 25544
+        name:
+          type: string
+          example: ISS (ZARYA)
+        tle_line1:
+          type: string
+        tle_line2:
+          type: string
+        updated_at:
+          type: string
+          format: date-time
         position:
           allOf:
-            - $ref: "#/components/schemas/SatellitePosition"
+          - $ref: '#/components/schemas/SatellitePosition'
           nullable: true
           description: Omitted if SGP4 propagation fails for this TLE.
-
     RegisterSatelliteRequest:
       type: object
-      required: [norad_id, name, tle_line1, tle_line2]
+      required:
+      - norad_id
+      - name
+      - tle_line1
+      - tle_line2
       properties:
-        norad_id: { type: integer }
-        name: { type: string }
-        tle_line1: { type: string }
-        tle_line2: { type: string }
-
+        norad_id:
+          type: integer
+        name:
+          type: string
+        tle_line1:
+          type: string
+        tle_line2:
+          type: string
     RFReadingInput:
       type: object
-      required: [agent_id, frequency_hz, power_dbm, captured_at]
+      required:
+      - agent_id
+      - frequency_hz
+      - power_dbm
+      - captured_at
       properties:
-        agent_id: { type: string }
-        frequency_hz: { type: integer, format: int64, example: 437500000 }
-        power_dbm: { type: number, format: double, example: -62.4 }
-        captured_at: { type: string, format: date-time }
-
+        agent_id:
+          type: string
+        frequency_hz:
+          type: integer
+          format: int64
+          example: 437500000
+        power_dbm:
+          type: number
+          format: double
+          example: -62.4
+        captured_at:
+          type: string
+          format: date-time
     RFReading:
       allOf:
-        - $ref: "#/components/schemas/RFReadingInput"
-        - type: object
-          properties:
-            id: { type: string, format: uuid }
-
+      - $ref: '#/components/schemas/RFReadingInput'
+      - type: object
+        properties:
+          id:
+            type: string
+            format: uuid
     RFAnomaly:
       type: object
       properties:
-        id: { type: string, format: uuid }
-        reading_id: { type: string, format: uuid }
-        agent_id: { type: string }
-        metric: { type: string, enum: [power_dbm, frequency_hz] }
-        value: { type: number, format: double }
-        baseline_mean: { type: number, format: double }
-        baseline_stddev: { type: number, format: double }
-        z_score: { type: number, format: double }
-        detected_at: { type: string, format: date-time }
-
+        id:
+          type: string
+          format: uuid
+        reading_id:
+          type: string
+          format: uuid
+        agent_id:
+          type: string
+        metric:
+          type: string
+          enum:
+          - power_dbm
+          - frequency_hz
+        value:
+          type: number
+          format: double
+        baseline_mean:
+          type: number
+          format: double
+        baseline_stddev:
+          type: number
+          format: double
+        z_score:
+          type: number
+          format: double
+        detected_at:
+          type: string
+          format: date-time
     AgentKeySummary:
       type: object
       properties:
-        agent_id: { type: string }
-        created_at: { type: string, format: date-time }
+        agent_id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
         last_used_at:
           type: string
           format: date-time
           nullable: true
-        revoked: { type: boolean }
-
+        revoked:
+          type: boolean
+        device:
+          $ref: '#/components/schemas/AgentDeviceInfo'
     AgentKeyCreated:
       type: object
       properties:
-        agent_id: { type: string }
+        agent_id:
+          type: string
         api_key:
           type: string
-          description: Shown once — store it now, it cannot be retrieved again.
-
+          description: "Shown once \u2014 store it now, it cannot be retrieved again."
     AX25Frame:
       type: object
       properties:
-        destination: { type: string }
-        destination_ssid: { type: integer }
-        source: { type: string }
-        source_ssid: { type: integer }
-        control: { type: integer }
-        pid: { type: integer }
-        payload: { type: string }
-        payload_hex: { type: string }
-
+        destination:
+          type: string
+        destination_ssid:
+          type: integer
+        source:
+          type: string
+        source_ssid:
+          type: integer
+        control:
+          type: integer
+        pid:
+          type: integer
+        payload:
+          type: string
+        payload_hex:
+          type: string
     CCSDSPacket:
       type: object
       properties:
-        version: { type: integer }
-        packet_type: { type: string, enum: [TM, TC] }
-        secondary_header_flag: { type: boolean }
-        apid: { type: integer }
-        sequence_flags: { type: string }
-        sequence_count: { type: integer }
-        data_length: { type: integer }
-        payload: { type: string }
-        payload_hex: { type: string }
-
+        version:
+          type: integer
+        packet_type:
+          type: string
+          enum:
+          - TM
+          - TC
+        secondary_header_flag:
+          type: boolean
+        apid:
+          type: integer
+        sequence_flags:
+          type: string
+        sequence_count:
+          type: integer
+        data_length:
+          type: integer
+        payload:
+          type: string
+        payload_hex:
+          type: string
     PUSPacket:
       type: object
       properties:
-        apid: { type: integer }
-        packet_type: { type: string, enum: [TM, TC] }
-        sequence_count: { type: integer }
-        pus_version: { type: integer }
-        service_type: { type: integer }
-        service_subtype: { type: integer }
-        message_type_counter: { type: integer }
-        destination_id: { type: integer }
-        payload: { type: string }
-        payload_hex: { type: string }
-
+        apid:
+          type: integer
+        packet_type:
+          type: string
+          enum:
+          - TM
+          - TC
+        sequence_count:
+          type: integer
+        pus_version:
+          type: integer
+        service_type:
+          type: integer
+        service_subtype:
+          type: integer
+        message_type_counter:
+          type: integer
+        destination_id:
+          type: integer
+        payload:
+          type: string
+        payload_hex:
+          type: string
     CSPPacket:
       type: object
       properties:
-        priority: { type: integer }
-        source: { type: integer }
-        destination: { type: integer }
-        destination_port: { type: integer }
-        source_port: { type: integer }
-        reserved: { type: integer }
-        hmac: { type: boolean }
-        xtea: { type: boolean }
-        rdp: { type: boolean }
-        crc: { type: boolean }
-        payload: { type: string }
-        payload_hex: { type: string }
-
+        priority:
+          type: integer
+        source:
+          type: integer
+        destination:
+          type: integer
+        destination_port:
+          type: integer
+        source_port:
+          type: integer
+        reserved:
+          type: integer
+        hmac:
+          type: boolean
+        xtea:
+          type: boolean
+        rdp:
+          type: boolean
+        crc:
+          type: boolean
+        payload:
+          type: string
+        payload_hex:
+          type: string
     SpaceCVE:
       type: object
       properties:
-        cve_id: { type: string, example: "CVE-2025-12345" }
-        description: { type: string }
-        published: { type: string, format: date-time }
-        severity: { type: string, enum: [LOW, MEDIUM, HIGH, CRITICAL] }
-        score: { type: number, format: double }
-        keyword: { type: string }
-        synced_at: { type: string, format: date-time }
-
+        cve_id:
+          type: string
+          example: CVE-2025-12345
+        description:
+          type: string
+        published:
+          type: string
+          format: date-time
+        severity:
+          type: string
+          enum:
+          - LOW
+          - MEDIUM
+          - HIGH
+          - CRITICAL
+        score:
+          type: number
+          format: double
+        keyword:
+          type: string
+        synced_at:
+          type: string
+          format: date-time
     SpaceCVEPage:
       allOf:
-        - $ref: "#/components/schemas/Page"
-        - type: object
-          properties:
+      - $ref: '#/components/schemas/Page'
+      - type: object
+        properties:
+          items:
+            type: array
             items:
-              type: array
-              items: { $ref: "#/components/schemas/SpaceCVE" }
-
+              $ref: '#/components/schemas/SpaceCVE'
     AssetCVEAlert:
       type: object
       properties:
-        id: { type: string, format: uuid }
-        asset_id: { type: string, format: uuid }
-        asset_kind: { type: string, example: satellite }
-        asset_value: { type: string, example: "NORAD-25544" }
-        cve_id: { type: string, example: "CVE-2026-77777" }
-        cve_description: { type: string }
-        cve_score: { type: number, format: double }
-        matched_keyword: { type: string, example: satellite }
-        severity: { type: string, enum: [LOW, MEDIUM, HIGH, CRITICAL, unknown] }
-        acknowledged: { type: boolean }
-        acknowledged_by: { type: string, format: uuid, nullable: true }
-        acknowledged_at: { type: string, format: date-time, nullable: true }
-        created_at: { type: string, format: date-time }
-
+        id:
+          type: string
+          format: uuid
+        asset_id:
+          type: string
+          format: uuid
+        asset_kind:
+          type: string
+          example: satellite
+        asset_value:
+          type: string
+          example: NORAD-25544
+        cve_id:
+          type: string
+          example: CVE-2026-77777
+        cve_description:
+          type: string
+        cve_score:
+          type: number
+          format: double
+        matched_keyword:
+          type: string
+          example: satellite
+        severity:
+          type: string
+          enum:
+          - LOW
+          - MEDIUM
+          - HIGH
+          - CRITICAL
+          - unknown
+        acknowledged:
+          type: boolean
+        acknowledged_by:
+          type: string
+          format: uuid
+          nullable: true
+        acknowledged_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
     AssetCVEAlertPage:
       allOf:
-        - $ref: "#/components/schemas/Page"
-        - type: object
-          properties:
+      - $ref: '#/components/schemas/Page'
+      - type: object
+        properties:
+          items:
+            type: array
             items:
-              type: array
-              items: { $ref: "#/components/schemas/AssetCVEAlert" }
-
+              $ref: '#/components/schemas/AssetCVEAlert'
     AuditEntry:
       type: object
       properties:
-        id: { type: string, format: uuid }
-        occurred_at: { type: string, format: date-time }
-        actor_type: { type: string, enum: [user, agent, anonymous] }
-        actor_id: { type: string }
-        action: { type: string }
-        ip: { type: string }
+        id:
+          type: string
+          format: uuid
+        occurred_at:
+          type: string
+          format: date-time
+        actor_type:
+          type: string
+          enum:
+          - user
+          - agent
+          - anonymous
+        actor_id:
+          type: string
+        action:
+          type: string
+        ip:
+          type: string
         details:
           type: object
           additionalProperties: true
-
     AuditPage:
       allOf:
-        - $ref: "#/components/schemas/Page"
-        - type: object
-          properties:
+      - $ref: '#/components/schemas/Page'
+      - type: object
+        properties:
+          items:
+            type: array
             items:
-              type: array
-              items: { $ref: "#/components/schemas/AuditEntry" }
+              $ref: '#/components/schemas/AuditEntry'
+    CreateUserRequest:
+      type: object
+      required:
+      - email
+      - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+          minLength: 8
+        role:
+          type: string
+          enum:
+          - viewer
+          - operator
+          - admin
+          default: viewer
+    TOTPSetupResponse:
+      type: object
+      properties:
+        secret:
+          type: string
+        otpauth_url:
+          type: string
+    TOTPCodeRequest:
+      type: object
+      required:
+      - code
+      properties:
+        code:
+          type: string
+          example: '123456'
+    TOTPDisableRequest:
+      type: object
+      required:
+      - password
+      properties:
+        password:
+          type: string
+          format: password
+    AgentDeviceInfo:
+      type: object
+      properties:
+        driver:
+          type: string
+        hardware:
+          type: string
+        manufacturer:
+          type: string
+        product:
+          type: string
+        serial:
+          type: string
+        rx:
+          type: boolean
+        tx:
+          type: boolean
+        reported_at:
+          type: string
+          format: date-time
+          readOnly: true

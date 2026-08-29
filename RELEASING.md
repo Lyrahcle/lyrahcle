@@ -1,72 +1,45 @@
 # Releasing
 
-Lyrahcle follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH`)
-once v1.0.0 ships. Before that, `0.x.y` tags are used the same way: `MINOR`
-for anything that isn't a pure bug fix, `PATCH` for bug fixes only.
+Lyrahcle uses Semantic Versioning. Before v1.0, feature releases increment the minor version and bug-only releases increment the patch version.
 
-## What gets published
+## Release prerequisites
 
-Pushing a tag matching `v*.*.*` (e.g. `v0.8.0`) triggers
-[`.github/workflows/release.yml`](./.github/workflows/release.yml), which:
+- `main` is green in CI.
+- `CHANGELOG.md` describes the release.
+- Documentation matches the current API and configuration.
+- No known critical/high release-blocking vulnerabilities remain.
 
-1. Builds and pushes four Docker images to the GitHub Container Registry
-   (GHCR), each tagged with both the version and `latest`:
-   - `ghcr.io/mlko01/lyrahcle-backend`
-   - `ghcr.io/mlko01/lyrahcle-frontend`
-   - `ghcr.io/mlko01/lyrahcle-cve-sync`
-   - `ghcr.io/mlko01/lyrahcle-sdr-agent`
-2. Creates a GitHub Release on the tag with auto-generated notes (commits
-   since the last tag) plus a pointer to [CHANGELOG.md](./CHANGELOG.md).
-
-GHCR is used because it needs no extra secrets — the workflow authenticates
-with the repository's built-in `GITHUB_TOKEN`. `packages/` (the planned MIT
-shared libraries) has no actual code yet, so there's nothing to publish to
-npm; that step will be added once those packages exist.
-
-## Cutting a release
+## Create a release
 
 ```bash
-# 1. Make sure main is green and CHANGELOG.md's "Unreleased" section
-#    reflects everything going out in this release.
-git checkout main && git pull
+git checkout main
+git pull origin main
 
-# 2. Move the CHANGELOG's "Unreleased" heading to a dated version heading,
-#    e.g. "## [0.8.0] - 2026-09-01", and start a fresh empty "Unreleased"
-#    above it.
-
-git add CHANGELOG.md
-git commit -m "chore: release v0.8.0"
-git push origin main
-
-# 3. Tag and push — this is what triggers the release workflow.
-git tag -a v0.8.0 -m "v0.8.0"
-git push origin v0.8.0
+git tag -a v0.9.0 -m "v0.9.0"
+git push origin v0.9.0
 ```
 
-Then watch the **Release** workflow run in the Actions tab. Once it's green,
-the images are live on GHCR and the GitHub Release page has the notes.
+A `v*.*.*` tag triggers `.github/workflows/release.yml`. The workflow builds, scans, and publishes four GHCR images, then creates a GitHub Release.
 
-## Publishing to Docker Hub instead of (or in addition to) GHCR
+The registry owner is derived from the repository owner automatically:
 
-Not enabled by default — it needs a Docker Hub account and an access token,
-which only you can create. To add it:
+```text
+ghcr.io/<owner>/lyrahcle-backend:<version>
+ghcr.io/<owner>/lyrahcle-frontend:<version>
+ghcr.io/<owner>/lyrahcle-cve-sync:<version>
+ghcr.io/<owner>/lyrahcle-sdr-agent:<version>
+```
 
-1. Create a Docker Hub access token (Docker Hub → Account Settings →
-   Security → New Access Token).
-2. Add `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` as repository secrets
-   (Settings → Secrets and variables → Actions).
-3. In `.github/workflows/release.yml`, add a second `docker/login-action`
-   step logged into `docker.io` with those secrets, and add
-   `docker.io/<your-username>/lyrahcle-<image>:<tag>` entries to the `tags:`
-   list in the build-and-push step.
+The Docker image version omits the leading `v`. A Git tag `v0.9.0` therefore publishes image tag `0.9.0` plus `latest`.
 
-## Pulling a released image
+Example for this repository:
 
 ```bash
-docker pull ghcr.io/mlko01/lyrahcle-backend:0.8.0
-docker pull ghcr.io/mlko01/lyrahcle-backend:latest
+docker pull ghcr.io/Lyrahcle/lyrahcle-backend:0.9.0
 ```
 
-GHCR images inherit the visibility of the repository; if the repository is
-private, `docker login ghcr.io` with a personal access token
-(`read:packages` scope) is required before pulling.
+If the package is private, authenticate to GHCR with credentials that have `read:packages` access.
+
+## Failed releases
+
+Do not move an existing tag. Fix the problem on `main`, choose the next patch version, and publish a new tag so the release history remains auditable.
