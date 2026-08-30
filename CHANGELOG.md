@@ -4,6 +4,12 @@ Notable changes are tracked here until versioned release notes take over.
 
 ## Unreleased
 
+### v9.1.1 backend runtime image hardening
+
+- Replaced the backend distroless runtime dependency with a scratch image to remove the failing GCR runtime pull from CI.
+- Copied only CA certificates, timezone data, the static Go binary, and migrations into the runtime image.
+- Kept the backend non-root with numeric UID/GID 65532 and stripped build paths/symbols from the production binary.
+
 ### v9.1 secure remote agent management
 
 - Added declarative, versioned SDR agent configuration for capture frequency and interval with strict server/database/agent bounds.

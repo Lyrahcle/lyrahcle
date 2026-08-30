@@ -1,15 +1,18 @@
 # syntax=docker/dockerfile:1
-FROM golang:1-alpine AS build
+FROM golang:1.27-alpine AS build
+RUN apk add --no-cache ca-certificates tzdata
 WORKDIR /src
 COPY apps/backend/go.mod apps/backend/go.sum ./
 RUN go mod download
 COPY apps/backend/ ./
-RUN CGO_ENABLED=0 go build -o /out/lyrahcle-backend ./cmd/server
+RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/lyrahcle-backend ./cmd/server
 
-FROM gcr.io/distroless/static-debian12
+FROM scratch
+COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+COPY --from=build /usr/share/zoneinfo /usr/share/zoneinfo
 COPY --from=build /out/lyrahcle-backend /lyrahcle-backend
 COPY apps/backend/migrations /migrations
 WORKDIR /
-USER nonroot:nonroot
+USER 65532:65532
 EXPOSE 8080
 ENTRYPOINT ["/lyrahcle-backend"]
