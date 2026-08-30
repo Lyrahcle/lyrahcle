@@ -8,6 +8,9 @@
 | `REDIS_URL` | `localhost:6379` | Required in production for revocation, authorization-state checks, rate limiting, and caching |
 | `PORT` | `8080` | API listen port |
 | `CELESTRAK_GROUPS` | `stations` | Comma-separated Celestrak groups |
+| `TLE_CORRELATION_MAX_AGE` | `24h` | Maximum TLE age allowed to influence automatic orbital severity |
+| `TLE_STALE_MAX_AGE` | `72h` | TLE age after which propagation is considered stale and is not used for orbital context |
+| `ORBITAL_AUTO_ESCALATION_ENABLED` | `false` | Enables experimental orbital severity escalation only when TLE quality passes the freshness gate |
 | `JWT_SECRET` | insecure development value | Current signing key; production requires at least 32 bytes |
 | `JWT_SECRET_PREVIOUS` | unset | Previous signing key during a controlled rotation window |
 | `JWT_ACCESS_TTL` | `30m` | Access-token lifetime; production refuses values above `2h` |

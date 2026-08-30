@@ -29,3 +29,31 @@ groups:
           severity: warning
         annotations:
           summary: Lyrahcle has an unusually high number of open SSE connections
+      - alert: LyrahcleTLECorrelationDegraded
+        expr: min(lyrahcle_tle_correlation_eligible) < 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: One or more satellite TLEs exceed the orbital-correlation freshness threshold
+      - alert: LyrahcleStaleTLEData
+        expr: max(lyrahcle_tle_stale) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: One or more satellite TLEs are stale or unusable
+      - alert: LyrahcleCelestrakSyncFailures
+        expr: sum(increase(lyrahcle_celestrak_sync_failures_total[30m])) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Lyrahcle has recent CelesTrak synchronization failures
+      - alert: LyrahcleOrbitalCorrelationSuppressed
+        expr: sum(increase(lyrahcle_orbital_correlation_suppressed_total{reason=~"tle_.*"}[30m])) > 0
+        for: 5m
+        labels:
+          severity: info
+        annotations:
+          summary: Orbital correlation is being suppressed by TLE data quality

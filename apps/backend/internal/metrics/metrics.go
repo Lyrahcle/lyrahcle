@@ -30,10 +30,35 @@ var (
 		Name: "lyrahcle_sse_connections",
 		Help: "Currently open SSE connections by stream",
 	}, []string{"stream"})
+
+	TLEAgeSeconds = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "lyrahcle_tle_age_seconds",
+		Help: "Age of the current TLE epoch in seconds by NORAD ID",
+	}, []string{"norad_id"})
+
+	TLEStale = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "lyrahcle_tle_stale",
+		Help: "Whether the current TLE is stale or unusable by NORAD ID",
+	}, []string{"norad_id"})
+
+	TLECorrelationEligible = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "lyrahcle_tle_correlation_eligible",
+		Help: "Whether the current TLE satisfies the automatic orbital-correlation freshness gate by NORAD ID",
+	}, []string{"norad_id"})
+
+	OrbitalCorrelationSuppressedTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "lyrahcle_orbital_correlation_suppressed_total",
+		Help: "Orbital correlation suppressions by reason",
+	}, []string{"reason"})
+
+	CelestrakSyncFailuresTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "lyrahcle_celestrak_sync_failures_total",
+		Help: "CelesTrak synchronization failures by group",
+	}, []string{"group"})
 )
 
 func init() {
-	prometheus.MustRegister(RequestsTotal, RequestDuration, AuthLoginsTotal, SSEConnections)
+	prometheus.MustRegister(RequestsTotal, RequestDuration, AuthLoginsTotal, SSEConnections, TLEAgeSeconds, TLEStale, TLECorrelationEligible, OrbitalCorrelationSuppressedTotal, CelestrakSyncFailuresTotal)
 }
 
 type statusRecorder struct {

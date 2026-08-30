@@ -14,6 +14,9 @@ type Config struct {
 	RedisURL                  string
 	Port                      string
 	CelestrakGroups           []string
+	TLECorrelationMaxAge      time.Duration
+	TLEStaleMaxAge            time.Duration
+	OrbitalAutoEscalation     bool
 	JWTSecret                 []byte
 	JWTPreviousSecret         []byte
 	JWTAccessTTL              time.Duration
@@ -61,12 +64,23 @@ func Load() Config {
 	if err != nil || agentEnrollmentTTL < 5*time.Minute || agentEnrollmentTTL > time.Hour {
 		log.Fatal("FATAL: AGENT_ENROLLMENT_TTL must be between 5m and 1h")
 	}
+	tLECorrelationMaxAge, err := time.ParseDuration(getEnv("TLE_CORRELATION_MAX_AGE", "24h"))
+	if err != nil || tLECorrelationMaxAge < time.Hour || tLECorrelationMaxAge > 7*24*time.Hour {
+		log.Fatal("FATAL: TLE_CORRELATION_MAX_AGE must be between 1h and 168h")
+	}
+	tLEStaleMaxAge, err := time.ParseDuration(getEnv("TLE_STALE_MAX_AGE", "72h"))
+	if err != nil || tLEStaleMaxAge <= tLECorrelationMaxAge || tLEStaleMaxAge > 30*24*time.Hour {
+		log.Fatal("FATAL: TLE_STALE_MAX_AGE must be greater than TLE_CORRELATION_MAX_AGE and no more than 720h")
+	}
 
 	cfg := Config{
 		DatabaseURL:               getEnv("DATABASE_URL", "postgres://lyrahcle:lyrahcle@localhost:5432/lyrahcle?sslmode=disable"),
 		RedisURL:                  getEnv("REDIS_URL", "localhost:6379"),
 		Port:                      getEnv("PORT", "8080"),
 		CelestrakGroups:           strings.Split(getEnv("CELESTRAK_GROUPS", "stations"), ","),
+		TLECorrelationMaxAge:      tLECorrelationMaxAge,
+		TLEStaleMaxAge:            tLEStaleMaxAge,
+		OrbitalAutoEscalation:     strings.EqualFold(getEnv("ORBITAL_AUTO_ESCALATION_ENABLED", "false"), "true"),
 		JWTSecret:                 []byte(secret),
 		JWTPreviousSecret:         []byte(getEnv("JWT_SECRET_PREVIOUS", "")),
 		JWTAccessTTL:              ttl,
@@ -94,6 +108,9 @@ func Load() Config {
 	}
 
 	production := cfg.IsProduction()
+	if cfg.OrbitalAutoEscalation {
+		log.Println("WARNING: orbital automatic severity escalation is enabled; validate RF/orbital performance against representative station data before production use")
+	}
 
 	if insecureDefault {
 		if production {

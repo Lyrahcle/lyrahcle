@@ -15,6 +15,9 @@ services:
       - DATABASE_URL=postgres://lyrahcle:lyrahcle@postgres:5432/lyrahcle?sslmode=disable
       - REDIS_URL=redis:6379
       - CELESTRAK_GROUPS=stations
+      - TLE_CORRELATION_MAX_AGE=24h
+      - TLE_STALE_MAX_AGE=72h
+      - ORBITAL_AUTO_ESCALATION_ENABLED=false
       - JWT_SECRET=${JWT_SECRET:-insecure-dev-secret-change-me}
       - JWT_SECRET_PREVIOUS=${JWT_SECRET_PREVIOUS:-}
       - JWT_ACCESS_TTL=${JWT_ACCESS_TTL:-30m}

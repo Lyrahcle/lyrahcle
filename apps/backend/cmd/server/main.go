@@ -42,6 +42,7 @@ import (
 	"github.com/mlko01/lyrahcle/apps/backend/internal/scheduler"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/sessionstore"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/store"
+	"github.com/mlko01/lyrahcle/apps/backend/internal/tlequality"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/tmtc"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/tokenblocklist"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/validate"
@@ -104,12 +105,12 @@ func main() {
 		log.Println("recon sweep tick (not yet implemented)")
 	})
 	_ = sched.Every("0 */6 * * *", "tle-sync", func() {
-		syncTLEs(ctx, cfg.CelestrakGroups, satellites)
+		syncTLEs(ctx, cfg.CelestrakGroups, satellites, tlePolicy(cfg))
 	})
 	sched.Start()
 	defer sched.Stop()
 
-	go syncTLEs(ctx, cfg.CelestrakGroups, satellites)
+	go syncTLEs(ctx, cfg.CelestrakGroups, satellites, tlePolicy(cfg))
 
 	r := newRouter(cfg, pool, assets, programs, rf, rfAnomalies, satellites, users, agentKeys, auditLog, spaceCVEs, assetAlerts, incidents, redisClient)
 
@@ -1374,7 +1375,7 @@ func newRouter(
 					return
 				}
 
-				detectRFAnomalies(r.Context(), rfAnomalies, detectionRules, incidents, auditLog, satellites, agentIdentities, spaceCVEs, reading, history)
+				detectRFAnomalies(r.Context(), rfAnomalies, detectionRules, incidents, auditLog, satellites, agentIdentities, spaceCVEs, tlePolicy(cfg), cfg.OrbitalAutoEscalation, reading, history)
 
 				w.WriteHeader(http.StatusCreated)
 			})
@@ -1402,7 +1403,7 @@ func newRouter(
 
 		r.Route("/satellites", func(r chi.Router) {
 			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)).Get("/", func(w http.ResponseWriter, r *http.Request) {
-				out, err := satellitesWithPositions(r.Context(), satellites, cache)
+				out, err := satellitesWithPositions(r.Context(), satellites, cache, tlePolicy(cfg))
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
@@ -1430,7 +1431,7 @@ func newRouter(
 				defer ticker.Stop()
 
 				sendUpdate := func() bool {
-					out, err := satellitesWithPositions(r.Context(), satellites, cache)
+					out, err := satellitesWithPositions(r.Context(), satellites, cache, tlePolicy(cfg))
 					if err != nil {
 						return true
 					}
@@ -2193,7 +2194,8 @@ func securityHeaders(tlsEnabled bool) func(http.Handler) http.Handler {
 	}
 }
 
-func syncTLEs(ctx context.Context, groups []string, satellites *store.SatelliteStore) {
+func syncTLEs(ctx context.Context, groups []string, satellites *store.SatelliteStore, policy tlequality.Policy) {
+	defer refreshTLEMetrics(ctx, satellites, policy)
 	for _, group := range groups {
 		group = strings.TrimSpace(group)
 		if group == "" {
@@ -2202,12 +2204,20 @@ func syncTLEs(ctx context.Context, groups []string, satellites *store.SatelliteS
 
 		entries, err := celestrak.FetchGroup(group)
 		if err != nil {
+			metrics.CelestrakSyncFailuresTotal.WithLabelValues(group).Inc()
 			log.Printf("tle-sync: fetch group %q: %v", group, err)
+			continue
+		}
+
+		if len(entries) == 0 {
+			metrics.CelestrakSyncFailuresTotal.WithLabelValues(group).Inc()
+			log.Printf("tle-sync: group %q returned no entries", group)
 			continue
 		}
 
 		for _, e := range entries {
 			if err := satellites.Upsert(ctx, e.NoradID, e.Name, e.Line1, e.Line2); err != nil {
+				metrics.CelestrakSyncFailuresTotal.WithLabelValues(group).Inc()
 				log.Printf("tle-sync: upsert %d (%s): %v", e.NoradID, e.Name, err)
 			}
 		}
@@ -2216,9 +2226,20 @@ func syncTLEs(ctx context.Context, groups []string, satellites *store.SatelliteS
 	}
 }
 
+func refreshTLEMetrics(ctx context.Context, satellites *store.SatelliteStore, policy tlequality.Policy) {
+	list, err := satellites.List(ctx)
+	if err != nil {
+		return
+	}
+	now := time.Now().UTC()
+	for _, satellite := range list {
+		recordTLEMetrics(satellite.NoradID, tlequality.Assess(satellite.TLEEpoch, now, policy))
+	}
+}
+
 const anomalyHistoryWindow = 20
 
-func detectRFAnomalies(ctx context.Context, anomalies *store.AnomalyStore, rules *store.DetectionRuleStore, incidents *store.IncidentStore, auditLog *store.AuditStore, satellites *store.SatelliteStore, identities *store.AgentIdentityStore, spaceCVEs *store.SpaceCVEStore, reading store.RFReading, history []store.RFReading) {
+func detectRFAnomalies(ctx context.Context, anomalies *store.AnomalyStore, rules *store.DetectionRuleStore, incidents *store.IncidentStore, auditLog *store.AuditStore, satellites *store.SatelliteStore, identities *store.AgentIdentityStore, spaceCVEs *store.SpaceCVEStore, policy tlequality.Policy, orbitalAutoEscalation bool, reading store.RFReading, history []store.RFReading) {
 	powerHistory := make([]float64, len(history))
 	freqHistory := make([]float64, len(history))
 	for i, h := range history {
@@ -2295,7 +2316,7 @@ func correlateRFDetectionRules(ctx context.Context, rules *store.DetectionRuleSt
 		return
 	}
 
-	orbitalSecurity := buildOrbitalSecurityContext(ctx, satellites, identities, spaceCVEs, reading, anomalyRecord)
+	orbitalSecurity := buildOrbitalSecurityContext(ctx, satellites, identities, spaceCVEs, policy, orbitalAutoEscalation, reading, anomalyRecord)
 	if orbitalSecurity.SeverityFloor != "" {
 		autoSeverity = detection.HigherSeverity(autoSeverity, orbitalSecurity.SeverityFloor)
 	}
@@ -2391,10 +2412,13 @@ func clientIP(r *http.Request) string {
 
 type satWithPos struct {
 	store.Satellite
-	Position *orbit.Position `json:"position,omitempty"`
+	Position          *orbit.Position `json:"position,omitempty"`
+	TLEStatus         string          `json:"tle_status"`
+	TLEAgeSeconds     int64           `json:"tle_age_seconds"`
+	OrbitalConfidence string          `json:"orbital_confidence"`
 }
 
-func satellitesWithPositions(ctx context.Context, satellites *store.SatelliteStore, cache *respcache.Cache) ([]satWithPos, error) {
+func satellitesWithPositions(ctx context.Context, satellites *store.SatelliteStore, cache *respcache.Cache, policy tlequality.Policy) ([]satWithPos, error) {
 	const cacheKey = "lyrahcle:cache:satellites"
 	var out []satWithPos
 	if hit, _ := cache.Get(ctx, cacheKey, &out); hit {
@@ -2420,9 +2444,18 @@ func satellitesWithPositions(ctx context.Context, satellites *store.SatelliteSto
 				defer wg.Done()
 				for index := range jobs {
 					sat := list[index]
-					entry := satWithPos{Satellite: sat}
-					if pos, err := orbit.CurrentPosition(sat.TLELine1, sat.TLELine2); err == nil {
-						entry.Position = &pos
+					assessment := tlequality.Assess(sat.TLEEpoch, time.Now().UTC(), policy)
+					recordTLEMetrics(sat.NoradID, assessment)
+					entry := satWithPos{
+						Satellite:         sat,
+						TLEStatus:         string(assessment.Status),
+						TLEAgeSeconds:     int64(assessment.Age.Seconds()),
+						OrbitalConfidence: assessment.Confidence,
+					}
+					if assessment.Status == tlequality.StatusFresh || assessment.Status == tlequality.StatusAging {
+						if pos, err := orbit.CurrentPosition(sat.TLELine1, sat.TLELine2); err == nil {
+							entry.Position = &pos
+						}
 					}
 					out[index] = entry
 				}
@@ -2437,6 +2470,25 @@ func satellitesWithPositions(ctx context.Context, satellites *store.SatelliteSto
 
 	cache.Set(ctx, cacheKey, out, 5*time.Second)
 	return out, nil
+}
+
+func tlePolicy(cfg config.Config) tlequality.Policy {
+	return tlequality.Policy{CorrelationMaxAge: cfg.TLECorrelationMaxAge, StaleMaxAge: cfg.TLEStaleMaxAge}
+}
+
+func recordTLEMetrics(noradID int, assessment tlequality.Assessment) {
+	label := strconv.Itoa(noradID)
+	metrics.TLEAgeSeconds.WithLabelValues(label).Set(assessment.Age.Seconds())
+	stale := 0.0
+	if assessment.Status == tlequality.StatusStale || assessment.Status == tlequality.StatusUnusable {
+		stale = 1
+	}
+	metrics.TLEStale.WithLabelValues(label).Set(stale)
+	eligible := 0.0
+	if assessment.EscalationAllowed {
+		eligible = 1
+	}
+	metrics.TLECorrelationEligible.WithLabelValues(label).Set(eligible)
 }
 
 func seedAdmin(ctx context.Context, users *store.UserStore, cfg config.Config) error {

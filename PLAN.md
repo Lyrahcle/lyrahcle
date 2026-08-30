@@ -75,3 +75,7 @@ Delivered: Ed25519-signed immutable configuration versions, mTLS-only polling, r
 ## v9.2 orbital-aware correlation milestone
 
 Delivered: admin-managed ground-station coordinates, signed satellite targeting for SDR agents, satellite-tagged RF readings/anomalies, physical visibility/range/range-rate calculations, Doppler-aware frequency residual checks, and orbital evidence attached to correlated incidents. Generic Threat Intel is contextual only and does not elevate severity without an asset relationship.
+
+## v9.2.2 TLE safety milestone
+
+Delivered: TLE epoch parsing/persistence, configurable freshness states, fail-closed suppression of stale orbital propagation, Prometheus freshness/sync alerts, and candidate-only orbital severity by default until representative physical RF validation is complete.

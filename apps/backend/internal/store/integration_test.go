@@ -102,6 +102,9 @@ func TestSatelliteStoreUpsertAndList(t *testing.T) {
 	if satellites[0].TLELine1 != updatedLine1 {
 		t.Errorf("TLE line1 was not updated by the second upsert")
 	}
+	if satellites[0].TLEEpoch == nil {
+		t.Fatal("TLE epoch was not persisted")
+	}
 }
 
 func TestUserStoreCreateAndGetByEmail(t *testing.T) {

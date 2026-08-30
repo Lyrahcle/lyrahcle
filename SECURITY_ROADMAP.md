@@ -131,9 +131,14 @@
 - [x] Signed optional satellite target in remote SDR configuration
 - [x] Satellite association persisted on RF readings and anomalies
 - [x] Visibility, elevation, slant range, range-rate, and expected Doppler context
-- [x] Critical escalation for signal attribution when the target satellite is below the station horizon
-- [x] High-severity floor for Doppler-aware frequency residuals outside bounded tolerance
+- [x] Candidate critical finding for signal attribution when the target satellite is below the station horizon
+- [x] Candidate high-severity finding for Doppler-aware frequency residuals outside bounded tolerance
 - [x] Orbital and ambient Threat Intel evidence attached to correlated incidents
 - [x] Threat Intel context does not raise severity without an explicit asset relationship
+- [x] TLE epoch freshness gate independent from ingestion timestamp
+- [x] Aging/stale/unusable TLEs suppress automatic orbital severity
+- [x] Orbital automatic escalation disabled by default pending representative RF validation
+- [x] Prometheus alerts for stale TLEs and CelesTrak synchronization failures
+- [ ] Validate Doppler/visibility false-positive rates against physical SDR capture datasets
 - [ ] Pass prediction windows and AOS/LOS scheduling
 - [ ] Maneuver and conjunction anomaly context

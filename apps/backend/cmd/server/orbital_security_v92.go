@@ -8,8 +8,10 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/mlko01/lyrahcle/apps/backend/internal/detection"
+	"github.com/mlko01/lyrahcle/apps/backend/internal/metrics"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/orbitalcontext"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/store"
+	"github.com/mlko01/lyrahcle/apps/backend/internal/tlequality"
 )
 
 type orbitalSecurityContext struct {
@@ -24,6 +26,8 @@ func buildOrbitalSecurityContext(
 	satellites *store.SatelliteStore,
 	identities *store.AgentIdentityStore,
 	spaceCVEs *store.SpaceCVEStore,
+	policy tlequality.Policy,
+	autoEscalation bool,
 	reading store.RFReading,
 	anomalyRecord store.RFAnomaly,
 ) orbitalSecurityContext {
@@ -38,60 +42,103 @@ func buildOrbitalSecurityContext(
 	if err != nil {
 		return orbitalSecurityContext{}
 	}
-	result, err := orbitalcontext.Evaluate(
-		orbitalcontext.Station{LatitudeDeg: station.LatitudeDeg, LongitudeDeg: station.LongitudeDeg, AltitudeM: station.AltitudeM},
-		satellite.TLELine1,
-		satellite.TLELine2,
-		reading.CapturedAt,
-		float64(reading.FrequencyHz),
-	)
-	if err != nil {
-		return orbitalSecurityContext{}
+
+	assessment := tlequality.Assess(satellite.TLEEpoch, reading.CapturedAt, policy)
+	recordTLEMetrics(satellite.NoradID, tlequality.Assess(satellite.TLEEpoch, time.Now().UTC(), policy))
+	metadata := map[string]interface{}{
+		"satellite_id":                    satellite.ID.String(),
+		"satellite_name":                  satellite.Name,
+		"norad_id":                        satellite.NoradID,
+		"station_latitude_deg":            station.LatitudeDeg,
+		"station_longitude_deg":           station.LongitudeDeg,
+		"station_altitude_m":              station.AltitudeM,
+		"tle_status":                      string(assessment.Status),
+		"tle_age_seconds":                 int64(assessment.Age.Seconds()),
+		"orbital_confidence":              assessment.Confidence,
+		"orbital_data_quality_allows":     assessment.EscalationAllowed,
+		"orbital_auto_escalation_enabled": autoEscalation,
+		"orbital_validation_status":       "experimental",
+	}
+	if satellite.TLEEpoch != nil {
+		metadata["tle_epoch"] = satellite.TLEEpoch.UTC().Format(time.RFC3339Nano)
 	}
 
 	severity := ""
-	if !result.Visible {
-		severity = "critical"
-	}
-	frequencyResidual := 0.0
-	frequencyTolerance := 0.0
-	if anomalyRecord.Metric == "frequency_hz" || anomalyRecord.Metric == "frequency_hz_trend" {
-		expected := anomalyRecord.BaselineMean + result.ExpectedDopplerHz
-		frequencyResidual = math.Abs(anomalyRecord.Value - expected)
-		frequencyTolerance = math.Max(2500, 3*math.Abs(anomalyRecord.BaselineStddev))
-		if frequencyResidual > frequencyTolerance {
-			severity = detection.HigherSeverity(severity, "high")
+	agentStatus, err := identities.Status(ctx, reading.AgentID)
+	if err == nil {
+		metadata["agent_status"] = agentStatus
+		if agentStatus != "active" {
+			severity = detection.HigherSeverity(severity, "critical")
 		}
 	}
 
-	agentStatus, err := identities.Status(ctx, reading.AgentID)
-	if err == nil && agentStatus != "active" {
-		severity = detection.HigherSeverity(severity, "critical")
+	candidateSeverity := ""
+	if assessment.Status == tlequality.StatusFresh || assessment.Status == tlequality.StatusAging {
+		result, err := orbitalcontext.Evaluate(
+			orbitalcontext.Station{LatitudeDeg: station.LatitudeDeg, LongitudeDeg: station.LongitudeDeg, AltitudeM: station.AltitudeM},
+			satellite.TLELine1,
+			satellite.TLELine2,
+			reading.CapturedAt,
+			float64(reading.FrequencyHz),
+		)
+		if err == nil {
+			metadata["visible"] = result.Visible
+			metadata["elevation_deg"] = result.ElevationDeg
+			metadata["range_km"] = result.RangeKm
+			metadata["range_rate_mps"] = result.RangeRateMPS
+			metadata["expected_doppler_hz"] = result.ExpectedDopplerHz
+			if !result.Visible {
+				candidateSeverity = "critical"
+			}
+			if anomalyRecord.Metric == "frequency_hz" || anomalyRecord.Metric == "frequency_hz_trend" {
+				expected := anomalyRecord.BaselineMean + result.ExpectedDopplerHz
+				frequencyResidual := math.Abs(anomalyRecord.Value - expected)
+				frequencyTolerance := math.Max(2500, 3*math.Abs(anomalyRecord.BaselineStddev))
+				metadata["frequency_residual_hz"] = frequencyResidual
+				metadata["frequency_tolerance_hz"] = frequencyTolerance
+				if frequencyResidual > frequencyTolerance {
+					candidateSeverity = detection.HigherSeverity(candidateSeverity, "high")
+				}
+			}
+		}
+	}
+
+	if candidateSeverity != "" {
+		metadata["candidate_orbital_severity"] = candidateSeverity
+	}
+	if assessment.EscalationAllowed && autoEscalation {
+		severity = detection.HigherSeverity(severity, candidateSeverity)
+		metadata["orbital_escalation_applied"] = candidateSeverity != ""
+	} else {
+		metadata["orbital_escalation_applied"] = false
+		reason := suppressionReason(assessment, autoEscalation)
+		if reason != "" {
+			metadata["orbital_escalation_suppressed_reason"] = reason
+			metrics.OrbitalCorrelationSuppressedTotal.WithLabelValues(reason).Inc()
+		}
 	}
 
 	threatCVEs, err := spaceCVEs.RecentHighSeverity(ctx, time.Now().UTC().Add(-30*24*time.Hour), 5)
 	if err != nil {
 		threatCVEs = nil
 	}
-	metadata := map[string]interface{}{
-		"satellite_id":          satellite.ID.String(),
-		"satellite_name":        satellite.Name,
-		"norad_id":              satellite.NoradID,
-		"station_latitude_deg":  station.LatitudeDeg,
-		"station_longitude_deg": station.LongitudeDeg,
-		"station_altitude_m":    station.AltitudeM,
-		"visible":               result.Visible,
-		"elevation_deg":         result.ElevationDeg,
-		"range_km":              result.RangeKm,
-		"range_rate_mps":        result.RangeRateMPS,
-		"expected_doppler_hz":   result.ExpectedDopplerHz,
-		"agent_status":          agentStatus,
-	}
-	if frequencyTolerance > 0 {
-		metadata["frequency_residual_hz"] = frequencyResidual
-		metadata["frequency_tolerance_hz"] = frequencyTolerance
-	}
 	return orbitalSecurityContext{Available: true, SeverityFloor: severity, Metadata: metadata, ThreatCVEs: threatCVEs}
+}
+
+func suppressionReason(assessment tlequality.Assessment, autoEscalation bool) string {
+	if assessment.Status == tlequality.StatusAging {
+		return "tle_aging"
+	}
+	if assessment.Status == tlequality.StatusStale {
+		return "tle_stale"
+	}
+	if assessment.Status == tlequality.StatusUnusable {
+		return "tle_unusable"
+	}
+	if !autoEscalation {
+		return "validation_mode"
+	}
+	return ""
 }
 
 func attachOrbitalSecurityEvidence(ctx context.Context, incidents *store.IncidentStore, incidentID string, security orbitalSecurityContext) {
@@ -128,7 +175,6 @@ func attachOrbitalSecurityEvidence(ctx context.Context, incidents *store.Inciden
 			},
 		})
 	}
-
 }
 
 func stringValue(value interface{}) string {

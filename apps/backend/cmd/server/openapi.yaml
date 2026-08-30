@@ -2106,14 +2106,28 @@ components:
           type: string
         tle_line2:
           type: string
+        tle_epoch:
+          type: string
+          format: date-time
+          nullable: true
+          description: Epoch encoded in TLE line 1.
         updated_at:
           type: string
           format: date-time
+        tle_status:
+          type: string
+          enum: [fresh, aging, stale, unusable]
+        tle_age_seconds:
+          type: integer
+          format: int64
+        orbital_confidence:
+          type: string
+          enum: [high, degraded, unavailable]
         position:
           allOf:
           - $ref: '#/components/schemas/SatellitePosition'
           nullable: true
-          description: Omitted if SGP4 propagation fails for this TLE.
+          description: Omitted if propagation fails or TLE quality is stale or unusable.
     RegisterSatelliteRequest:
       type: object
       required:

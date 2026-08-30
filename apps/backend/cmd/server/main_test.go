@@ -47,10 +47,8 @@ func testRouter(t *testing.T) (http.Handler, *pgxpool.Pool, *store.UserStore) {
 	t.Cleanup(pool.Close)
 
 	cfg := config.Config{
-		JWTSecret:       []byte("test-jwt-secret-for-http-tests-only"),
-		JWTAccessTTL:    time.Hour,
-		WebAuthnRPID:    "localhost",
-		WebAuthnOrigins: []string{"http://localhost:5173"},
+		JWTSecret:    []byte("test-jwt-secret-for-http-tests-only"),
+		JWTAccessTTL: time.Hour,
 	}
 
 	assets := store.NewAssetStore(pool)
@@ -295,6 +293,9 @@ func TestSatelliteCreateAndListRoundTrip(t *testing.T) {
 	}
 	if len(list) != 1 || list[0]["name"] != "ISS (ZARYA)" {
 		t.Errorf("satellites list = %v, want one entry named ISS (ZARYA)", list)
+	}
+	if list[0]["tle_status"] == nil || list[0]["orbital_confidence"] == nil {
+		t.Errorf("satellite response missing TLE quality fields: %v", list[0])
 	}
 }
 

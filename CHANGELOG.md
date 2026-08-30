@@ -3,11 +3,18 @@
 
 ## Unreleased
 
+### v9.2.2 TLE freshness and correlation safety
+
+- Added TLE epoch persistence and configurable freshness states derived from the orbital element itself rather than ingestion time.
+- Suppressed orbital severity escalation for aging, stale, unusable, or unvalidated orbital context and disabled orbital auto-escalation by default.
+- Added TLE age/staleness and CelesTrak synchronization metrics plus Prometheus alerts for degraded orbital data quality.
+- Exposed TLE quality and orbital-confidence fields in satellite responses and omitted propagated positions for stale/unusable TLEs.
+
 - Refined the README into a concise project landing page with product context, CI/license/release/coverage badges, the existing dashboard screenshot, a development-only quick-start warning, visible contribution guidance, and direct roadmap links.
 
 Notable changes are tracked here until versioned release notes take over.
 
-## Unreleased
+## Previous unreleased milestones
 
 ### v9.1.1 backend runtime image hardening
 
