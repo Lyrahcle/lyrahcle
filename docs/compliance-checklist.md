@@ -11,8 +11,8 @@ This checklist is an engineering evidence tracker, not a certification claim. Ma
 - [x] Logout, active-session inventory, per-session revocation, and user-wide session revocation
 - [x] Signing-key overlap for controlled JWT key rotation
 - [x] Per-agent revocable credentials
-- [ ] Automated agent credential rotation and enrollment
-- [ ] mTLS for production SDR agents
+- [x] Automated SDR agent certificate rotation and enrollment
+- [x] Certificate-backed mTLS support for long-running SDR agents
 
 - [ ] Complete browser token-storage and CSRF design review before v1.0
 
@@ -57,8 +57,9 @@ This checklist is an engineering evidence tracker, not a certification claim. Ma
 - [x] Redis required in production for authorization-state guarantees
 - [x] Graceful backend shutdown
 - [x] Database backup tooling
-- [ ] Automated restore test in CI/staging
-- [ ] Documented RPO/RTO
+- [x] Guarded automated backup/restore drill in the full-stack CI smoke test
+- [ ] Production-like disaster-recovery exercise with recorded RPO/RTO
+- [ ] Documented production RPO/RTO targets
 - [ ] HA PostgreSQL/Redis/backend reference architecture
 
 ## Supply chain

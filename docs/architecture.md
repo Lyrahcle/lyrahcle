@@ -37,7 +37,7 @@ Backend (Go/chi) <---- SDR Agent
 
 ## Trust boundaries
 
-Human sessions use short-lived JWT bearer tokens. Redis stores active-session metadata and revocation state; users can revoke individual sessions or all sessions. Roles are `viewer`, `auditor`, `analyst`, `operator`, and `admin`, with explicit permissions rather than relying on frontend visibility. SDR agents should use individual `X-Agent-Key` credentials; the backend resolves the agent identity from the key and does not trust an arbitrary agent identity for device self-report.
+Human sessions use short-lived JWT bearer tokens. Redis stores active-session metadata and revocation state; users can revoke individual sessions or all sessions. Roles are `viewer`, `auditor`, `analyst`, `operator`, and `admin`, with explicit permissions rather than relying on frontend visibility. Long-running SDR agents should use v9.0 certificate enrollment and mTLS. The backend resolves machine identity from the validated client-certificate fingerprint and active database identity state. Legacy `X-Agent-Key` credentials remain migration-only compatibility; neither certificate- nor key-authenticated requests may select a different agent identity in the request body.
 
 The backend applies request-size limits, input validation, security headers, rate limiting, audit events, request correlation IDs, and authorization at route boundaries.
 

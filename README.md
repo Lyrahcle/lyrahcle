@@ -69,7 +69,7 @@ Interactive API documentation is available at `http://localhost:8080/docs` while
 
 ## Roadmap
 
-Lyrahcle is pre-v1.0 and under active hardening. Current priorities are RF/orbital forensics, production validation, security review, load/restore testing, and the v1.0 release gates.
+Lyrahcle is pre-v1.0 and under active hardening. Current priorities are physical SDR validation of orbital correlation, pass prediction/AOS-LOS, cross-domain correlation, agent-fleet hardening, production validation, and the remaining v1.0 security/operations gates.
 
 - [Development plan](./PLAN.md)
 - [Improvement roadmap](./docs/improvement-roadmap.md)

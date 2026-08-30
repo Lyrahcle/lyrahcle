@@ -155,10 +155,11 @@ services:
       - AGENT_ID=sdr-agent-dev
       - FREQUENCY_HZ=437500000
       - CAPTURE_INTERVAL_SECONDS=10
-      # Recommended: create with
-      #   POST /api/v1/agent-keys {"agent_id": "sdr-agent-dev"} (admin token required)
-      # and paste the returned api_key here. Falls back to AGENT_TOKEN (a shared
-      # operator JWT) if unset, for backward compatibility.
+      # Development/migration compatibility only. Production long-running agents
+      # should use v9.0 enrollment + mTLS (AGENT_CERT_FILE/AGENT_KEY_FILE) and
+      # optionally v9.1 signed remote configuration. Legacy keys can be created
+      # with POST /api/v1/agent-keys/ (admin required). AGENT_TOKEN is an older
+      # human-JWT fallback and should not be used for unattended production agents.
       - AGENT_API_KEY=${AGENT_API_KEY:-}
       - AGENT_TOKEN=${AGENT_TOKEN:-}
       - AGENT_CA_CERT=${AGENT_CA_CERT:-}

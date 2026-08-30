@@ -31,7 +31,7 @@ Prometheus loads `deploy/prometheus/alerts.yml`. Initial alerts cover elevated s
 
 Every backend response carries `X-Request-ID`. Backend request logs use the same identifier, allowing an operator to correlate application errors with HTTP metrics and audit events without logging sensitive payloads.
 
-Distributed tracing remains a pre-v1 follow-up. Request IDs are the current cross-layer correlation primitive.
+Request IDs remain the always-on cross-layer correlation primitive. Optional distributed tracing is available through OpenTelemetry when an OTLP/HTTP endpoint is configured.
 
 ## OpenTelemetry tracing
 

@@ -1,6 +1,6 @@
 # Improvement Roadmap
 
-This roadmap tracks the current product and security backlog after v8.5.
+This is the canonical shipped/next/later backlog for the current pre-v1 line. Milestone history lives in `CHANGELOG.md`; security-specific evidence and gates live in `SECURITY_ROADMAP.md`.
 
 Status values: **Shipped**, **Partial**, **Next**, and **Later**.
 
@@ -38,7 +38,10 @@ Status values: **Shipped**, **Partial**, **Next**, and **Later**.
 | Cross-domain correlation | Next | v8.3-v9 |
 | RF heat map | Next | v9 |
 | Telemetry, RF, CVE, and operations charts | Next | v8.3-v9 |
-| Orbital-aware RF detection | Next | v9 |
+| Orbital-aware RF detection and TLE freshness gating | Shipped | v9.2/v9.2.2 |
+| Physical SDR validation of Doppler/visibility correlation | Next | Before auto-escalation/v1.0 |
+| Pass prediction and AOS/LOS scheduling | Next | v9.x |
+| Maneuver and conjunction anomaly context | Next | v9.x |
 | More threat-intelligence sources | Later | v9 |
 | ML-assisted anomaly detection | Later | Post-v1 |
 | Advanced/proprietary RF decoders | Later | Enterprise |
@@ -84,7 +87,7 @@ Status values: **Shipped**, **Partial**, **Next**, and **Later**.
 | OpenTelemetry distributed tracing | Shipped | v8.4 |
 | Automated staging/production CD | Later | v9 |
 | Container image scanning | Shipped | Current |
-| Remote SDR configuration | Later | v9 |
+| Signed remote SDR configuration | Shipped | v9.1 |
 | IQ forensic capture and playback | Partial | v9 |
 
 ## UX and documentation
@@ -117,10 +120,22 @@ Status values: **Shipped**, **Partial**, **Next**, and **Later**.
 | Shared `rf-lib` | Later | Post-v1 |
 | Shared `tle-lib` | Later | Post-v1 |
 | Shared UI component library | Later | Post-v1 |
+| Fleet policy and staged agent rollouts | Next | v9.x |
+| Agent hardware capability validation | Next | v9.x |
+| Stronger remote-config signing-key custody | Next | Before v1.0 |
 
 | Agent quarantine and irreversible certificate revocation | Shipped | v9.0 |
-| Signed remote SDR configuration | Next | v9.1 |
-| Orbital-aware RF correlation | Next | v9.2 |
+| Signed remote SDR configuration | Shipped | v9.1 |
+| Orbital-aware RF correlation | Shipped | v9.2 |
+
+## Current pre-v1 priorities
+
+1. Validate v9.2/v9.2.2 Doppler and visibility behavior with representative physical SDR captures before enabling automatic orbital escalation.
+2. Add pass prediction, AOS/LOS scheduling, then maneuver/conjunction context.
+3. Extend deterministic correlation across asset alerts, orbital events, agent posture, and audit evidence.
+4. Complete sensitive-endpoint authorization review, browser token/CSRF review, HA guidance, and production-like query/load validation.
+5. Complete fleet policy, staged rollouts, hardware capability validation, and stronger signing-key custody.
+6. Finish operator-facing RF/telemetry/CVE/operations visualizations and connectivity/CVE guides.
 
 ## v9.1 delivered
 

@@ -21,7 +21,8 @@ tags:
 - name: Satellites
 - name: RF
 - name: Detection
-- name: Agent Keys
+- name: Agents
+- name: Legacy Agent Keys
 - name: TM/TC
 - name: Incidents
 - name: Threat Intel
@@ -781,8 +782,8 @@ paths:
   /api/v1/agent-keys/:
     get:
       tags:
-      - Agent Keys
-      summary: List issued agent keys
+      - Legacy Agent Keys
+      summary: List legacy issued agent keys
       description: 'Requires role: admin.'
       responses:
         '200':
@@ -800,8 +801,8 @@ paths:
                 type: string
     post:
       tags:
-      - Agent Keys
-      summary: Create an API key scoped to one agent_id
+      - Legacy Agent Keys
+      summary: Create a legacy API key scoped to one agent_id
       description: 'Requires role: admin. The plaintext key is returned once, at creation time — only its SHA-256 hash is
         stored.
 
@@ -844,7 +845,7 @@ paths:
   /api/v1/agent-keys/{agentID}:
     delete:
       tags:
-      - Agent Keys
+      - Legacy Agent Keys
       summary: Revoke that agent's key
       description: 'Requires role: admin.'
       parameters:
@@ -873,9 +874,9 @@ paths:
   /api/v1/agents/me/device:
     post:
       tags:
-      - Agent Keys
+      - Legacy Agent Keys
       summary: Report authenticated agent device metadata
-      description: Requires X-Agent-Key. Agent identity is derived from the key.
+      description: Long-running agents should authenticate with an active mTLS client certificate. Legacy X-Agent-Key remains accepted for migration. Agent identity is derived from the authenticated machine credential and cannot be selected by the request body. OpenAPI 3.0 does not model the TLS client-certificate check as a security scheme.
       security:
       - agentKeyAuth: []
       requestBody:
@@ -901,11 +902,7 @@ paths:
       tags:
       - RF
       summary: Ingest an RF reading
-      description: 'Used by sdr-agent. Auth via `X-Agent-Key` (per-agent API key, preferred) or an operator-or-higher bearer
-        token (legacy). Each reading is checked against that agent''s recent baseline and flagged as an anomaly on statistical
-        outliers.
-
-        '
+      description: 'Used by sdr-agent. Active mTLS client certificates are the preferred unattended-agent credential. Legacy `X-Agent-Key` credentials remain accepted for migration, and operator-or-higher bearer tokens are supported for human operational ingestion. Each reading is checked against that agent''s recent baseline and flagged as an anomaly on statistical outliers. OpenAPI 3.0 does not model the TLS client-certificate check as a security scheme.'
       security:
       - bearerAuth: []
       - agentKeyAuth: []
@@ -1892,7 +1889,7 @@ components:
       type: apiKey
       in: header
       name: X-Agent-Key
-      description: Per-agent key issued via POST /api/v1/agent-keys.
+      description: Legacy per-agent migration credential issued via POST /api/v1/agent-keys. Long-running agents should use mTLS enrollment.
   parameters:
     Limit:
       name: limit

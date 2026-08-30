@@ -10,9 +10,10 @@ Before exposing Lyrahcle outside a trusted development environment:
 - Enable TLS and keep private keys outside the repository.
 - Replace the default PostgreSQL credentials and do not expose PostgreSQL publicly.
 - Restrict Redis to trusted networks and authentication controls appropriate to your environment; production startup fails when Redis is unavailable because session revocation is security-critical.
-- Issue one `AGENT_API_KEY` per SDR agent; do not reuse human JWTs for long-running agents.
-- Configure durable PostgreSQL backups and test restoration.
+- Configure the SDR Agent CA and enroll long-running agents with mTLS. Keep legacy `AGENT_API_KEY` credentials only for controlled migration; do not use human JWTs for unattended agents.
+- Configure durable PostgreSQL backups, keep restore evidence, and exercise recovery against an isolated database. Before v1.0, also record production-like DR RPO/RTO.
 - Review CI/security scan results and the release SBOM before deploying a release.
+- Keep `ORBITAL_AUTO_ESCALATION_ENABLED=false` until Doppler/visibility behavior has been validated with representative physical SDR captures for the deployment.
 
 There is no public self-registration. New users are created by an admin.
 

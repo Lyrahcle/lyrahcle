@@ -47,6 +47,8 @@ Legacy `X-Agent-Key` credentials remain available only for migration. When a cli
 
 See `docs/agent-enrollment.md` for certificate setup, rotation, quarantine, and revocation.
 
+The embedded OpenAPI document is OpenAPI 3.0.3. It documents mTLS requirements in endpoint descriptions; the actual client-certificate authentication is enforced by the Go TLS/authentication layer rather than represented as an OpenAPI 3.0 security scheme.
+
 ## Request IDs
 
 Every backend response includes `X-Request-ID`. A safe incoming `X-Request-ID` may be preserved; unsafe values are replaced. Include this ID when correlating frontend errors, reverse-proxy logs, backend logs, and operator reports.
@@ -114,7 +116,7 @@ Every backend response includes `X-Request-ID`. A safe incoming `X-Request-ID` m
 | `GET` | `/api/v1/threat-intel/space-cves/keywords` | Viewer | Available CVE keywords |
 | `GET` | `/api/v1/asset-alerts/` | Viewer | CVE-to-asset alerts |
 | `POST` | `/api/v1/asset-alerts/{alertID}/acknowledge` | Operator | Acknowledge alert |
-| `GET` | `/api/v1/audit-log` | Admin | Security audit trail |
+| `GET` | `/api/v1/audit-log` | Auditor or Admin | Security audit trail |
 
 ## Pagination and CVE filters
 

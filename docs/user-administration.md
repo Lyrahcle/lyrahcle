@@ -42,7 +42,7 @@ Role, account-status, and deletion actions are written to the audit log. Role an
 
 ## Two-factor authentication
 
-The supported user-facing second factor is Google Authenticator using standard TOTP. Enabling or disabling TOTP revokes existing sessions. WebAuthn security keys are intentionally tracked separately as a future identity release.
+Lyrahcle supports Google Authenticator TOTP and cross-platform WebAuthn security keys. Enabling or disabling TOTP revokes existing sessions. When a WebAuthn key is enrolled, password login requires the registered key; key enrollment and removal also revoke existing sessions.
 
 ## Hardware security keys
 

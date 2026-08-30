@@ -46,7 +46,7 @@ Model relationships between programs, satellites, ground stations, radios, firmw
 
 ### 6. Production hardening
 
-Complete real SDR hardware validation, high-availability deployment guidance, distributed tracing, backup/restore drills, and operational runbooks. Prometheus/Grafana observability, signed container images, build provenance, CycloneDX SBOM generation, dependency review, SDR fuzzing, and JWT rotation overlap are now part of the pre-v1 baseline.
+Complete real SDR hardware validation, high-availability deployment guidance, production-like disaster-recovery exercises, and operational runbooks. Prometheus/Grafana observability, OpenTelemetry tracing, guarded backup/restore drills, signed container images, build provenance, CycloneDX SBOM generation, dependency review, SDR fuzzing, and JWT rotation overlap are already part of the pre-v1 baseline.
 
 ## v1.0 gate
 
@@ -60,7 +60,7 @@ Delivered in v8.3: bootstrap password rotation, stronger password policy, analys
 
 Delivered: cross-platform WebAuthn security keys, opt-in TLS SMTP password recovery, OTLP tracing export, authenticated global search, targeted search indexes, bounded orbital-position workers, and a controlled load-test helper.
 
-Next: broader endpoint audit coverage, database query plans under production-like data, richer operational charts, connectivity/CVE operator guides, restore drills, and agent certificate enrollment.
+Next: broader endpoint audit coverage, database query plans under production-like data, richer operational charts, connectivity/CVE operator guides, production-like disaster-recovery exercises, and continued agent-fleet hardening.
 
 ## v9.0 agent trust milestone
 
@@ -79,3 +79,13 @@ Delivered: admin-managed ground-station coordinates, signed satellite targeting 
 ## v9.2.2 TLE safety milestone
 
 Delivered: TLE epoch parsing/persistence, configurable freshness states, fail-closed suppression of stale orbital propagation, Prometheus freshness/sync alerts, and candidate-only orbital severity by default until representative physical RF validation is complete.
+
+
+## Current execution order
+
+1. Keep `ORBITAL_AUTO_ESCALATION_ENABLED=false` until representative physical SDR validation is complete.
+2. Implement pass prediction and AOS/LOS scheduling.
+3. Extend correlation across orbital events, asset alerts, agent posture, and audit evidence.
+4. Add maneuver/conjunction context and improve orbital confidence handling.
+5. Complete fleet policy, staged rollouts, hardware capability validation, and signing-key custody.
+6. Close the remaining v1.0 production gates: authorization review, browser token/CSRF review, HA guidance, production-like DR/load/query validation, and operator documentation.

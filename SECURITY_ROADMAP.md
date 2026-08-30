@@ -41,7 +41,8 @@
 - [ ] Complete browser token-storage and CSRF design review
 - [x] Generate CycloneDX SBOMs in CI and attach them to tagged releases
 - [x] Sign tagged container images with keyless Cosign and publish GitHub build provenance attestations
-- [ ] Document and test backup restore and disaster recovery procedures
+- [x] Document backup/restore procedures and exercise the guarded full-stack restore drill
+- [ ] Exercise a production-like disaster-recovery scenario and record target/observed RPO and RTO
 - [ ] Add production deployment patterns for redundant backend/Redis/PostgreSQL infrastructure
 - [ ] Extend correlation beyond RF into asset alerts, orbital events, agent posture, and audit evidence
 
@@ -101,7 +102,7 @@
 - [x] Define an explicit permission matrix for current roles; administrator subroles remain future work
 - [x] Add user disable/enable and soft-delete lifecycle with audit coverage
 - [ ] Review every sensitive endpoint against the permission matrix
-- [ ] Add automatic SDR agent credential rotation before mTLS enrollment
+- [x] Add automatic SDR agent certificate rotation before expiry
 
 ## v9.0 SDR agent trust
 

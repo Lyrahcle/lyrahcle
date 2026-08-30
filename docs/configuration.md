@@ -45,8 +45,8 @@ The frontend is a static Vite build served by nginx. Runtime API routing is cont
 |---|---|---|
 | `BACKEND_URL` | `http://backend:8080` | Backend base URL |
 | `AGENT_ID` | `sdr-agent-dev` | Agent identity used for RF readings |
-| `AGENT_API_KEY` | unset | Preferred per-agent credential |
-| `AGENT_TOKEN` | unset | Legacy/fallback human operator JWT |
+| `AGENT_API_KEY` | unset | Legacy per-agent credential retained for controlled migration; mTLS is preferred for long-running agents |
+| `AGENT_TOKEN` | unset | Legacy development fallback only; do not use human JWTs for unattended production agents |
 | `AGENT_CA_CERT` | empty | Optional PEM CA bundle for private or development PKI |
 | `FREQUENCY_HZ` | `437500000` | Center frequency |
 | `CAPTURE_INTERVAL_SECONDS` | `10` | RF reading interval |
@@ -57,7 +57,7 @@ The frontend is a static Vite build served by nginx. Runtime API routing is cont
 | `REPLAY_WINDOW_SAMPLES` | `65536` | Samples reduced into each replay reading |
 | `REPLAY_DELAY_MS` | `300` | Delay between replay uploads |
 
-Create an agent key as an admin through the dashboard or `POST /api/v1/agent-keys/`. The device self-report endpoint derives identity from `X-Agent-Key`; the body does not choose another agent.
+For production, use the enrollment/mTLS variables below. Legacy agent keys can still be created through the dashboard or `POST /api/v1/agent-keys/` during migration. Device self-report and RF ingest derive machine identity from the validated client certificate or legacy `X-Agent-Key`; an authenticated agent cannot choose a different identity in the body.
 
 ## CVE sync
 
@@ -76,7 +76,7 @@ The sync keyword set is currently defined in code.
 
 ## Docker Compose host variables
 
-`docker-compose.yml` currently consumes `JWT_SECRET`, `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`, `AGENT_API_KEY`, `AGENT_TOKEN`, and `AGENT_CA_CERT` from the host or root `.env` file where configured.
+`docker-compose.yml` accepts host/root-`.env` overrides for `JWT_SECRET`, `JWT_SECRET_PREVIOUS`, `JWT_ACCESS_TTL`, `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`, `WEBAUTHN_RP_ID`, `WEBAUTHN_ORIGINS`, password-recovery/SMTP settings, `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`, Grafana administrator credentials, and the legacy SDR-agent compatibility variables `AGENT_API_KEY`, `AGENT_TOKEN`, and `AGENT_CA_CERT`. Backend mTLS identity and remote-configuration signing files are mounted/configured explicitly rather than being enabled by the default development Compose profile.
 
 Never commit a production `.env` file or private credentials.
 
