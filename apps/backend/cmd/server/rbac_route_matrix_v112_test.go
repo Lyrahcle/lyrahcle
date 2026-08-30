@@ -28,6 +28,8 @@ func TestRBACRouteMatrixCoversSensitiveDomains(t *testing.T) {
 			`"programs.read"`, `"programs.manage"`,
 			`"incidents.read"`, `"incidents.manage"`,
 			`"rf.read"`, `"rf.ingest"`,
+			`"detections.read"`, `"detections.manage"`,
+			`"alerts.read"`, `"alerts.manage"`,
 			`"audit.read"`,
 			`"agents.read"`, `"agents.manage"`,
 		},

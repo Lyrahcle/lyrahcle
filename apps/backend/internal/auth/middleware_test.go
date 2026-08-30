@@ -234,3 +234,77 @@ func TestRequireAgentCredentialDoesNotDowngradeInvalidCertificateToAPIKey(t *tes
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusUnauthorized)
 	}
 }
+
+func TestRequireAgentCredentialRejectsJWTOnly(t *testing.T) {
+	secret := []byte("secret")
+	token, err := IssueToken(secret, uuid.New(), RoleAdmin, time.Hour)
+	if err != nil {
+		t.Fatalf("IssueToken: %v", err)
+	}
+	handler := RequireAgentCredential(fakeLookup(map[string]string{}), func(context.Context, string) (string, error) {
+		return "", errors.New("not found")
+	})(newTestHandler())
+	req := httptest.NewRequest(http.MethodPost, "/agents/me/device", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusUnauthorized)
+	}
+}
+
+func TestRequireAgentCredentialOrPermissionAllowsCustomViewerCapability(t *testing.T) {
+	secret := []byte("secret")
+	userID := uuid.New()
+	organizationID := uuid.New()
+	token, _, err := IssueOrganizationUserTokenWithState(secret, userID, organizationID, RoleViewer, false, 1, time.Hour)
+	if err != nil {
+		t.Fatalf("IssueOrganizationUserTokenWithState: %v", err)
+	}
+	checker := permissionCheckerFunc(func(_ context.Context, u, o uuid.UUID, permission string) (bool, error) {
+		return u == userID && o == organizationID && permission == "rf.ingest", nil
+	})
+	handler := RequireAgentCredentialOrPermissionWithFallback(
+		secret, nil, checker, "rf.ingest",
+		fakeLookup(map[string]string{}),
+		func(context.Context, string) (string, error) { return "", errors.New("not found") },
+		nil,
+	)(newTestHandler())
+	req := httptest.NewRequest(http.MethodPost, "/rf/ingest", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
+	}
+}
+
+func TestRequireAgentCredentialOrPermissionDoesNotDowngradeInvalidAgentKeyToJWT(t *testing.T) {
+	secret := []byte("secret")
+	userID := uuid.New()
+	organizationID := uuid.New()
+	token, _, err := IssueOrganizationUserTokenWithState(secret, userID, organizationID, RoleViewer, false, 1, time.Hour)
+	if err != nil {
+		t.Fatalf("IssueOrganizationUserTokenWithState: %v", err)
+	}
+	checker := permissionCheckerFunc(func(_ context.Context, _, _ uuid.UUID, permission string) (bool, error) {
+		return permission == "rf.ingest", nil
+	})
+	handler := RequireAgentCredentialOrPermissionWithFallback(
+		secret, nil, checker, "rf.ingest",
+		fakeLookup(map[string]string{}),
+		func(context.Context, string) (string, error) { return "", errors.New("not found") },
+		nil,
+	)(newTestHandler())
+	req := httptest.NewRequest(http.MethodPost, "/rf/ingest", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("X-Agent-Key", "invalid-agent-key")
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusUnauthorized)
+	}
+}

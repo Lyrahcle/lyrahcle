@@ -174,7 +174,7 @@ func registerAgentIdentityRoutes(
 		}
 		return agentID, err
 	}
-	credentialAuth := auth.RequireAgentCredentialOrRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleOperator, keyLookup, certLookup, isTokenRevoked)
+	credentialAuth := auth.RequireAgentCredential(keyLookup, certLookup)
 	agentRead := auth.RequireAnyPermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, []string{"agents.read", "agents.manage"}, isTokenRevoked)
 	agentManage := auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "agents.manage", isTokenRevoked)
 

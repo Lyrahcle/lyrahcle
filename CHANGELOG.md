@@ -1,3 +1,4 @@
+- v11.16: fixed PostgreSQL asset projection/scan parity exposed by CI integration tests and completed capability-based auth for hybrid RF ingest, detection rules, RF reads, alerts, and machine-only agent self-service routes.
 - v11.1: enforce granular capabilities across sensitive HTTP read/write surfaces.
 - v11.0.1: fixed backend import paths to match the Go module declared in apps/backend/go.mod.
 - v11.0: granular organization-scoped RBAC foundation with permissions, custom roles, compatibility mappings and permission middleware.

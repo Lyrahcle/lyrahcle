@@ -105,7 +105,14 @@ func passwordChangePathAllowed(path string) bool {
 type AgentKeyLookup func(ctx context.Context, keyHash string) (agentID string, err error)
 type AgentCertificateLookup func(ctx context.Context, fingerprint string) (agentID string, err error)
 
-func RequireAgentCredentialOrRoleWithFallback(current, previous []byte, minimum Role, keyLookup AgentKeyLookup, certificateLookup AgentCertificateLookup, isRevoked ...RevocationCheck) func(http.Handler) http.Handler {
+func hasPresentedAgentCredential(r *http.Request) bool {
+	return (r.TLS != nil && len(r.TLS.PeerCertificates) > 0) || r.Header.Get("X-Agent-Key") != ""
+}
+
+// RequireAgentCredential authenticates machine-only endpoints with either an mTLS
+// certificate or an agent API key. If a certificate is presented, it always takes
+// precedence; a revoked certificate must never downgrade to an API key.
+func RequireAgentCredential(keyLookup AgentKeyLookup, certificateLookup AgentCertificateLookup) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.TLS != nil && len(r.TLS.PeerCertificates) > 0 {
@@ -127,6 +134,18 @@ func RequireAgentCredentialOrRoleWithFallback(current, previous []byte, minimum 
 				}
 				ctx := context.WithValue(r.Context(), agentIDContextKey, agentID)
 				next.ServeHTTP(w, r.WithContext(ctx))
+				return
+			}
+			http.Error(w, "missing agent credential", http.StatusUnauthorized)
+		})
+	}
+}
+
+func RequireAgentCredentialOrRoleWithFallback(current, previous []byte, minimum Role, keyLookup AgentKeyLookup, certificateLookup AgentCertificateLookup, isRevoked ...RevocationCheck) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if hasPresentedAgentCredential(r) {
+				RequireAgentCredential(keyLookup, certificateLookup)(next).ServeHTTP(w, r)
 				return
 			}
 			requireRole(current, previous, minimum, isRevoked...)(next).ServeHTTP(w, r)

@@ -70,6 +70,16 @@ func TestAssetStoreUpsertAndList(t *testing.T) {
 	if page.Items[0].Value != "example.com" {
 		t.Errorf("asset value = %q, want %q", page.Items[0].Value, "example.com")
 	}
+	if page.Items[0].OrganizationID != DefaultOrganizationID {
+		t.Errorf("asset organization = %v, want default organization %v", page.Items[0].OrganizationID, DefaultOrganizationID)
+	}
+	byKind, err := store.ListByKinds(ctx, []string{"domain"})
+	if err != nil {
+		t.Fatalf("ListByKinds returned error: %v", err)
+	}
+	if len(byKind) != 1 || byKind[0].OrganizationID != DefaultOrganizationID {
+		t.Fatalf("ListByKinds = %+v, want one default-organization asset", byKind)
+	}
 	if page.Total != 1 {
 		t.Errorf("Total = %d, want 1", page.Total)
 	}

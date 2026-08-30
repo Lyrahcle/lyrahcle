@@ -32,7 +32,7 @@ func (s *AssetStore) List(ctx context.Context, limit, offset int) (Page[Asset], 
 	}
 
 	rows, err := s.pool.Query(ctx, `
-		SELECT id, program_id, kind, value FROM assets
+		SELECT id, organization_id, program_id, kind, value FROM assets
 		ORDER BY last_seen DESC
 		LIMIT $1 OFFSET $2
 	`, limit, offset)
@@ -78,7 +78,7 @@ func (s *AssetStore) ListByKinds(ctx context.Context, kinds []string) ([]Asset, 
 	items := []Asset{}
 	for rows.Next() {
 		var a Asset
-		if err := rows.Scan(&a.ID, &a.ProgramID, &a.Kind, &a.Value); err != nil {
+		if err := rows.Scan(&a.ID, &a.OrganizationID, &a.ProgramID, &a.Kind, &a.Value); err != nil {
 			return nil, err
 		}
 		items = append(items, a)

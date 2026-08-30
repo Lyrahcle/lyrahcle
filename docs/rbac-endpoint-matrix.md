@@ -12,6 +12,8 @@ must enforce capabilities rather than `RoleAdmin`/`RoleOperator` directly.
 | Programs | `programs.read` | `programs.manage` | `/api/v1/programs/*` |
 | Incidents | `incidents.read` | `incidents.manage` | `/api/v1/incidents/*` |
 | RF | `rf.read` | `rf.ingest` | `/api/v1/rf/*` |
+| Detection rules | `detections.read` | `detections.manage` | `/api/v1/detection-rules/*` |
+| Asset alerts | `alerts.read` | `alerts.manage` | `/api/v1/asset-alerts/*` |
 | Orbital | `orbital.read` | `orbital.manage` | orbital event routes |
 | Audit | `audit.read` | — | `/api/v1/audit-log` |
 | Organization scope (tenant) | `organizations.read` | `organizations.manage` (reserved) | `/api/v1/organization-scope/*` |
@@ -20,6 +22,4 @@ must enforce capabilities rather than `RoleAdmin`/`RoleOperator` directly.
 
 Global organization administration is intentionally outside tenant-local RBAC: `/api/v1/organizations/*` uses the platform-administrator boundary. `organizations.read` currently protects the tenant scope summary; `organizations.manage` remains reserved for future tenant-local organization settings.
 
-Machine-agent routes remain credential-scoped and are not converted into human RBAC
-checks. Static regression tests cover the sensitive human domains and explicitly reject
-the historical `incidents.manage` guard on agent-key administration.
+Machine-only self-service routes such as `/api/v1/agents/me/device` and certificate rotation remain credential-scoped. RF ingestion is intentionally hybrid: mTLS/agent-key traffic is authenticated as the agent, while human JWT traffic must hold `rf.ingest`; there is no `RoleOperator` fallback. Static regression tests cover the sensitive human domains and explicitly reject legacy role coupling.
