@@ -25,35 +25,14 @@ func registerTenantScopeRoutes(r chi.Router, cfg config.Config, scope *store.Ten
 				http.Error(w, "organization context required", http.StatusForbidden)
 				return
 			}
-			agents, err := scope.CountAgents(r.Context(), orgID)
-			if err != nil {
-				http.Error(w, "tenant summary failed", http.StatusInternalServerError)
-				return
-			}
-			assets, err := scope.CountAssets(r.Context(), orgID)
-			if err != nil {
-				http.Error(w, "tenant summary failed", http.StatusInternalServerError)
-				return
-			}
-			incidents, err := scope.CountIncidents(r.Context(), orgID)
-			if err != nil {
-				http.Error(w, "tenant summary failed", http.StatusInternalServerError)
-				return
-			}
-			auditEvents, err := scope.CountAuditEvents(r.Context(), orgID)
+			snapshot, err := scope.Snapshot(r.Context(), orgID)
 			if err != nil {
 				http.Error(w, "tenant summary failed", http.StatusInternalServerError)
 				return
 			}
 
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"organization_id": orgID,
-				"agents":          agents,
-				"assets":          assets,
-				"incidents":       incidents,
-				"audit_events":    auditEvents,
-			})
+			json.NewEncoder(w).Encode(snapshot)
 		})
 	})
 }

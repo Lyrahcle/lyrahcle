@@ -22,3 +22,10 @@ RF ingest resolves the organization from the authenticated JWT or agent identity
 ### Remaining work
 
 Before declaring complete enterprise multi-tenancy, background workers/correlation paths and any remaining domain-specific queries should be audited for tenant propagation, followed by true database-backed Org-A/Org-B negative integration tests.
+
+
+## v10.6 — isolation audit gate
+
+The multi-tenant foundation now includes automated source-contract checks, a complete tenant-owned domain snapshot and an optional PostgreSQL-backed Org-A/Org-B integration test controlled by `LYRAHCLE_TEST_DATABASE_URL`.
+
+This is the release gate before moving to granular RBAC and SSO. New tenant-owned domains should not be accepted without organization ownership and negative cross-tenant tests.

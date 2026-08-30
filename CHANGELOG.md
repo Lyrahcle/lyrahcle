@@ -1,3 +1,4 @@
+- v10.6: added tenant-isolation audit gates, full tenant snapshots, source-contract checks and optional database-backed Org-A/Org-B integration tests.
 - v10.5: tenant-isolated programs, RF telemetry/anomalies, orbital events, asset-CVE alert operations and mixed global/local search.
 - v10.4: tenant-isolated agent administration and organization ownership across enrollment, certificates, remote config and legacy agent keys.
 - v10.3: tenant-isolated assets, incidents and audit handlers; corrected v10.2 agent ownership migration to `agent_identities`.
