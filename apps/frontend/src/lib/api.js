@@ -556,3 +556,36 @@ export async function updateAgentIdentityStatus(agentId, status) {
   })
   if (!res.ok) throw new Error(await readErrorText(res, 'failed to update agent status'))
 }
+
+export async function fetchAgentConfig(agentId) {
+  const res = await authedFetch(`/api/v1/agents/${encodeURIComponent(agentId)}/config`)
+  if (res.status === 204) return null
+  if (!res.ok) throw new Error(await readErrorText(res, 'failed to fetch agent config'))
+  return res.json()
+}
+
+export async function fetchAgentConfigHistory(agentId) {
+  const res = await authedFetch(`/api/v1/agents/${encodeURIComponent(agentId)}/config/history`)
+  if (!res.ok) throw new Error(await readErrorText(res, 'failed to fetch agent config history'))
+  return res.json()
+}
+
+export async function applyAgentConfig(agentId, frequencyHz, captureIntervalSeconds) {
+  const res = await authedFetch(`/api/v1/agents/${encodeURIComponent(agentId)}/config`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ frequency_hz: frequencyHz, capture_interval_seconds: captureIntervalSeconds }),
+  })
+  if (!res.ok) throw new Error(await readErrorText(res, 'failed to apply agent config'))
+  return res.json()
+}
+
+export async function rollbackAgentConfig(agentId, version) {
+  const res = await authedFetch(`/api/v1/agents/${encodeURIComponent(agentId)}/config/rollback`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ version }),
+  })
+  if (!res.ok) throw new Error(await readErrorText(res, 'failed to rollback agent config'))
+  return res.json()
+}

@@ -114,3 +114,12 @@
 - [x] Agent quarantine and irreversible revocation
 - [x] Device, agent-version, certificate fingerprint, and last-seen posture
 - [x] Legacy API-key compatibility without sending the key when mTLS is active
+
+## v9.1 agent control-plane hardening
+
+- Delivered immutable, monotonic SDR agent configuration versions.
+- Delivered independent Ed25519 configuration signatures in addition to mTLS transport authentication.
+- Delivered mTLS-only polling and acknowledgement endpoints with checksum binding.
+- Delivered rollback as a newly signed version instead of history mutation.
+- Kept remote shell execution and arbitrary command payloads out of the control plane.
+- Next: fleet policy, staged rollouts, hardware capability attestation, and stronger signing-key custody.

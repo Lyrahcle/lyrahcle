@@ -5,6 +5,7 @@ import Panel from './Panel.jsx'
 import Skeleton from './Skeleton.jsx'
 import AgentKeysPanel from './AgentKeysPanel.jsx'
 import AgentIdentityPanel from './AgentIdentityPanel.jsx'
+import AgentRemoteConfigPanel from './AgentRemoteConfigPanel.jsx'
 import TableScroll from './TableScroll.jsx'
 
 const SDR_DEVICES = [
@@ -148,6 +149,12 @@ export default function ConnectivityPanel({ admin, agentKeys, agentIdentities, o
       {admin && (
         <Panel eyebrow={t('panels.connectivity')} title={t('connectivity.mtlsIdentities')} uppercase>
           {agentIdentities === null ? <Skeleton /> : <AgentIdentityPanel agents={agentIdentities} onChanged={onAgentIdentitiesChanged} />}
+        </Panel>
+      )}
+
+      {admin && (
+        <Panel eyebrow={t('panels.connectivity')} title={t('connectivity.remoteConfiguration')} uppercase>
+          {agentIdentities === null ? <Skeleton /> : <AgentRemoteConfigPanel agents={agentIdentities} />}
         </Panel>
       )}
 

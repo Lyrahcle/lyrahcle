@@ -1730,6 +1730,128 @@ paths:
           description: Agent status updated
         '404':
           description: Agent not found
+  /api/v1/agents/{agentID}/config:
+    get:
+      tags: [Agents]
+      summary: Read desired signed configuration for an SDR agent
+      description: 'Requires role: admin.'
+      parameters:
+      - name: agentID
+        in: path
+        required: true
+        schema: {type: string}
+      responses:
+        '200': {description: Desired configuration and acknowledgement state}
+        '204': {description: No desired configuration}
+    put:
+      tags: [Agents]
+      summary: Publish a new signed SDR agent configuration
+      description: 'Requires role: admin. Creates an immutable monotonic version. Only active mTLS agents are configurable.'
+      parameters:
+      - name: agentID
+        in: path
+        required: true
+        schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [frequency_hz, capture_interval_seconds]
+              properties:
+                frequency_hz:
+                  type: integer
+                  format: int64
+                  minimum: 100000
+                  maximum: 6000000000
+                capture_interval_seconds:
+                  type: integer
+                  minimum: 1
+                  maximum: 3600
+      responses:
+        '201': {description: Signed configuration version created}
+        '409': {description: Agent is not active}
+  /api/v1/agents/{agentID}/config/history:
+    get:
+      tags: [Agents]
+      summary: List immutable SDR agent configuration history
+      description: 'Requires role: admin. Returns up to the latest 20 versions and acknowledgements.'
+      parameters:
+      - name: agentID
+        in: path
+        required: true
+        schema: {type: string}
+      responses:
+        '200': {description: Configuration history}
+  /api/v1/agents/{agentID}/config/rollback:
+    post:
+      tags: [Agents]
+      summary: Roll back SDR agent settings by creating a new signed version
+      description: 'Requires role: admin. Historical rows remain immutable.'
+      parameters:
+      - name: agentID
+        in: path
+        required: true
+        schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [version]
+              properties:
+                version: {type: integer, format: int64, minimum: 1}
+      responses:
+        '201': {description: Rollback version created}
+        '404': {description: Historical version not found}
+  /api/v1/agents/me/config:
+    get:
+      tags: [Agents]
+      summary: Poll the desired signed configuration
+      description: Requires a valid active SDR mTLS client certificate. Legacy API keys and human JWTs are not accepted.
+      security: []
+      parameters:
+      - name: after_version
+        in: query
+        schema: {type: integer, format: int64, minimum: 0}
+      responses:
+        '200':
+          description: Signed configuration envelope
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [payload, signature, checksum_sha256]
+                properties:
+                  payload: {type: string}
+                  signature: {type: string}
+                  checksum_sha256: {type: string}
+        '204': {description: No newer desired version}
+        '401': {description: Active mTLS identity required}
+  /api/v1/agents/me/config/ack:
+    post:
+      tags: [Agents]
+      summary: Acknowledge application or rejection of a signed configuration
+      description: Requires a valid active SDR mTLS client certificate. Acknowledgements are idempotent for the same status/message/checksum.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [version, status, checksum_sha256]
+              properties:
+                version: {type: integer, format: int64, minimum: 1}
+                status: {type: string, enum: [applied, rejected]}
+                message: {type: string, maxLength: 256}
+                checksum_sha256: {type: string, minLength: 64, maxLength: 64}
+      responses:
+        '204': {description: Acknowledgement recorded}
+        '409': {description: Acknowledgement conflicts with immutable history}
+        '401': {description: Active mTLS identity required}
 components:
   securitySchemes:
     bearerAuth:

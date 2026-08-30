@@ -28,3 +28,5 @@ The backend also embeds an OpenAPI specification at `/openapi.yaml` and Swagger 
 
 
 - [SDR agent enrollment and mTLS](./agent-enrollment.md)
+
+- [Signed remote agent configuration](./agent-remote-configuration.md)

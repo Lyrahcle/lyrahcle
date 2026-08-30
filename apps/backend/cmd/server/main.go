@@ -186,9 +186,14 @@ func newRouter(
 	passwordResets := store.NewPasswordResetStore(pool)
 	searchStore := store.NewSearchStore(pool)
 	agentIdentities := store.NewAgentIdentityStore(pool)
+	agentConfigs := store.NewAgentConfigStore(pool)
 	agentCA, err := buildAgentCA(cfg)
 	if err != nil {
 		panic(fmt.Sprintf("agent CA configuration: %v", err))
+	}
+	agentConfigSigner, err := buildAgentConfigSigner(cfg)
+	if err != nil {
+		panic(fmt.Sprintf("agent config signing configuration: %v", err))
 	}
 	webAuthnFlows := webauthnflow.New(redisClient)
 	webAuthnHandler := buildWebAuthnHandler(cfg)
@@ -263,6 +268,7 @@ func newRouter(
 		})
 
 		registerAgentIdentityRoutes(r, cfg, agentCA, agentIdentities, agentKeys, auditLog, isTokenRevoked)
+		registerAgentConfigRoutes(r, cfg, agentConfigSigner, agentConfigs, agentIdentities, auditLog, isTokenRevoked)
 
 		r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)).Get("/search", func(w http.ResponseWriter, r *http.Request) {
 			query := strings.TrimSpace(r.URL.Query().Get("q"))

@@ -168,3 +168,18 @@ Admin-only endpoints:
 ## Global search
 
 `GET /api/v1/search?q=...` searches satellites, assets, CVEs, and incidents for authenticated users. Queries are length-limited and parameterized; results are capped by the backend.
+
+## SDR agent remote configuration
+
+v9.1 adds admin-managed, immutable configuration versions for active mTLS agents.
+
+| Method | Path | Access | Purpose |
+|---|---|---|---|
+| `GET` | `/api/v1/agents/{agentID}/config` | admin | Read desired version and acknowledgement |
+| `PUT` | `/api/v1/agents/{agentID}/config` | admin | Publish frequency/interval settings |
+| `GET` | `/api/v1/agents/{agentID}/config/history` | admin | Read latest immutable versions |
+| `POST` | `/api/v1/agents/{agentID}/config/rollback` | admin | Create a new version from historical settings |
+| `GET` | `/api/v1/agents/me/config` | mTLS agent | Poll a newer signed version |
+| `POST` | `/api/v1/agents/me/config/ack` | mTLS agent | Record `applied` or `rejected` |
+
+The agent endpoints require a currently active client certificate. API keys and human JWTs cannot be used to fetch or acknowledge remote configuration.

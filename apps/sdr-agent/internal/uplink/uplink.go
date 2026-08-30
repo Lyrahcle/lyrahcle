@@ -7,7 +7,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/mlko01/lyrahcle/apps/sdr-agent/internal/capture"
@@ -22,6 +24,19 @@ type Client struct {
 	http       *http.Client
 	transport  *http.Transport
 	mtls       bool
+}
+
+type RemoteConfigEnvelope struct {
+	Payload   string `json:"payload"`
+	Signature string `json:"signature"`
+	Checksum  string `json:"checksum_sha256"`
+}
+
+type RemoteConfigAck struct {
+	Version  int64  `json:"version"`
+	Status   string `json:"status"`
+	Message  string `json:"message"`
+	Checksum string `json:"checksum_sha256"`
 }
 
 type deviceReport struct {
@@ -159,4 +174,44 @@ func (c *Client) ReloadIdentity() {
 	if c.transport != nil {
 		c.transport.CloseIdleConnections()
 	}
+}
+
+func (c *Client) FetchRemoteConfig(afterVersion int64) (RemoteConfigEnvelope, bool, error) {
+	if !c.mtls {
+		return RemoteConfigEnvelope{}, false, fmt.Errorf("uplink: remote configuration requires mTLS")
+	}
+	endpoint, err := url.Parse(c.BackendURL + "/api/v1/agents/me/config")
+	if err != nil {
+		return RemoteConfigEnvelope{}, false, err
+	}
+	query := endpoint.Query()
+	query.Set("after_version", strconv.FormatInt(afterVersion, 10))
+	endpoint.RawQuery = query.Encode()
+	req, err := http.NewRequest(http.MethodGet, endpoint.String(), nil)
+	if err != nil {
+		return RemoteConfigEnvelope{}, false, err
+	}
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return RemoteConfigEnvelope{}, false, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusNoContent {
+		return RemoteConfigEnvelope{}, false, nil
+	}
+	if resp.StatusCode != http.StatusOK {
+		return RemoteConfigEnvelope{}, false, fmt.Errorf("uplink: remote config returned status %d", resp.StatusCode)
+	}
+	var envelope RemoteConfigEnvelope
+	if err := json.NewDecoder(resp.Body).Decode(&envelope); err != nil {
+		return RemoteConfigEnvelope{}, false, err
+	}
+	return envelope, true, nil
+}
+
+func (c *Client) AckRemoteConfig(ack RemoteConfigAck) error {
+	if !c.mtls {
+		return fmt.Errorf("uplink: remote configuration requires mTLS")
+	}
+	return c.postJSON("/api/v1/agents/me/config/ack", ack)
 }

@@ -48,6 +48,8 @@ docker compose --profile sdr up --build
 | `apps/sdr-agent` | Edge RF agent and IQ capture/replay |
 | `apps/cve-sync` | NVD ingestion worker and CVE publisher |
 
+Lyrahcle also supports mTLS-enrolled SDR agents with independently signed, declarative remote capture configuration and acknowledgements.
+
 ## Documentation
 
 Start with [`docs/README.md`](./docs/README.md).

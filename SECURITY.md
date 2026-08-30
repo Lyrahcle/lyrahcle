@@ -19,3 +19,8 @@ See [docs/ieee3536-threat-model.md](./docs/ieee3536-threat-model.md) for the cur
 ## SDR Agent CA
 
 The SDR Agent CA private key can issue machine identities and must be treated as a production signing secret. Do not commit it, bake it into images, or expose it through logs or API responses. Mount it with least privilege from a secrets manager or HSM-backed workflow. Agent private keys are generated and stored on each SDR agent and are never transmitted to Lyrahcle.
+
+
+## Agent remote configuration signing key
+
+The v9.1 Ed25519 configuration-signing key is a separate high-value secret from the SDR Agent CA. Keep the private key backend-only and distribute only its public verification key to agents. Remote configuration remains restricted to typed capture settings; do not extend the channel with shell commands or arbitrary executable payloads.

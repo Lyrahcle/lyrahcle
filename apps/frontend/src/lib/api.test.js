@@ -1,11 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  applyAgentConfig,
   createAgentKey,
   createAgentEnrollmentToken,
   createAsset,
   createIncident,
   createProgram,
   createSatellite,
+  fetchAgentConfig,
+  fetchAgentConfigHistory,
   fetchAgentKeys,
   fetchAgentIdentities,
   fetchAssets,
@@ -16,6 +19,7 @@ import {
   fetchPrograms,
   fetchRfReadings,
   fetchSessions,
+  rollbackAgentConfig,
   revokeSession,
   revokeAllSessions,
   fetchSatellites,
@@ -157,6 +161,30 @@ describe('api client', () => {
     mockFetchOnce(true, null)
     await revokeAgentKey('sdr-1')
     expect(fetch).toHaveBeenCalledWith('/api/v1/agent-keys/sdr-1', expect.objectContaining({ method: 'DELETE' }))
+  })
+
+  it('agent remote config client uses signed config endpoints', async () => {
+    mockFetchOnce(true, { version: 2, config: { frequency_hz: 437500000, capture_interval_seconds: 10 } })
+    await fetchAgentConfig('sdr-1')
+    expect(fetch).toHaveBeenCalledWith('/api/v1/agents/sdr-1/config', { headers: {} })
+
+    mockFetchOnce(true, [])
+    await fetchAgentConfigHistory('sdr-1')
+    expect(fetch).toHaveBeenCalledWith('/api/v1/agents/sdr-1/config/history', { headers: {} })
+
+    mockFetchOnce(true, { version: 3 }, 201)
+    await applyAgentConfig('sdr-1', 437500000, 15)
+    expect(fetch).toHaveBeenCalledWith('/api/v1/agents/sdr-1/config', expect.objectContaining({
+      method: 'PUT',
+      body: JSON.stringify({ frequency_hz: 437500000, capture_interval_seconds: 15 }),
+    }))
+
+    mockFetchOnce(true, { version: 4 }, 201)
+    await rollbackAgentConfig('sdr-1', 2)
+    expect(fetch).toHaveBeenCalledWith('/api/v1/agents/sdr-1/config/rollback', expect.objectContaining({
+      method: 'POST',
+      body: JSON.stringify({ version: 2 }),
+    }))
   })
 
   it('agent identity client uses enrollment and lifecycle endpoints', async () => {

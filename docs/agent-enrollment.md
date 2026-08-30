@@ -79,3 +79,8 @@ Revocation is intentionally irreversible. A replacement physical station should 
 Existing `X-Agent-Key` authentication remains accepted during the migration period. If a client certificate is configured, the SDR agent uses mTLS and does not send the API key. New deployments should prefer enrollment and mTLS.
 
 If a certificate expires before rotation succeeds, an administrator can issue a new enrollment token for the same `agent_id`. The backend permits this recovery only when no valid active certificate remains and supersedes the expired certificate before issuing the replacement identity.
+
+
+## Remote configuration
+
+After enrollment, v9.1 can optionally manage a narrow signed capture policy. The mTLS certificate authenticates the agent transport while a separate Ed25519 key authenticates each configuration version. See `docs/agent-remote-configuration.md`.

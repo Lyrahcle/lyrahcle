@@ -4,16 +4,23 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"sync/atomic"
 	"time"
 
 	"github.com/mlko01/lyrahcle/apps/sdr-agent/internal/capture"
 	"github.com/mlko01/lyrahcle/apps/sdr-agent/internal/forensics"
 	"github.com/mlko01/lyrahcle/apps/sdr-agent/internal/identity"
+	"github.com/mlko01/lyrahcle/apps/sdr-agent/internal/remoteconfig"
 	"github.com/mlko01/lyrahcle/apps/sdr-agent/internal/replay"
 	"github.com/mlko01/lyrahcle/apps/sdr-agent/internal/soapy"
 	"github.com/mlko01/lyrahcle/apps/sdr-agent/internal/streaming"
 	"github.com/mlko01/lyrahcle/apps/sdr-agent/internal/uplink"
 )
+
+type runtimeAgentConfig struct {
+	FrequencyHz            int64
+	CaptureIntervalSeconds int
+}
 
 func getEnv(key, fallback string) string {
 	if v := os.Getenv(key); v != "" {
@@ -39,8 +46,9 @@ func main() {
 	clientCertPath := getEnv("AGENT_CERT_FILE", "")
 	clientKeyPath := getEnv("AGENT_KEY_FILE", "")
 	enrollmentToken := getEnv("AGENT_ENROLLMENT_TOKEN", "")
-	agentVersion := getEnv("AGENT_VERSION", "v9.0")
+	agentVersion := getEnv("AGENT_VERSION", "v9.1")
 	firmwareVersion := getEnv("AGENT_FIRMWARE_VERSION", "")
+	configVerifyKeyPath := getEnv("AGENT_CONFIG_VERIFY_KEY", "")
 	rotateBefore, err := time.ParseDuration(getEnv("AGENT_ROTATE_BEFORE", "24h"))
 	if err != nil || rotateBefore < time.Hour {
 		log.Fatal("AGENT_ROTATE_BEFORE must be a duration of at least 1h")
@@ -61,8 +69,17 @@ func main() {
 			log.Fatalf("agent identity: %v", err)
 		}
 	}
-	freqHz, _ := strconv.ParseInt(getEnv("FREQUENCY_HZ", "437500000"), 10, 64)
+	freqHz, err := strconv.ParseInt(getEnv("FREQUENCY_HZ", "437500000"), 10, 64)
+	if err != nil || freqHz < 100000 || freqHz > 6000000000 {
+		log.Fatal("FREQUENCY_HZ must be between 100000 and 6000000000")
+	}
 	intervalSec := getEnvInt("CAPTURE_INTERVAL_SECONDS", 10)
+	if intervalSec < 1 || intervalSec > 3600 {
+		log.Fatal("CAPTURE_INTERVAL_SECONDS must be between 1 and 3600")
+	}
+	if configVerifyKeyPath != "" && clientCertPath == "" {
+		log.Fatal("AGENT_CONFIG_VERIFY_KEY requires mTLS agent identity")
+	}
 
 	if clientCertPath != "" {
 		log.Println("agent authentication: mTLS client certificate")
@@ -79,6 +96,25 @@ func main() {
 	}
 	if clientCertPath != "" {
 		go runIdentityMaintenance(identityCfg, client)
+	}
+
+	var liveConfig atomic.Value
+	liveConfig.Store(runtimeAgentConfig{FrequencyHz: freqHz, CaptureIntervalSeconds: intervalSec})
+	configChanged := make(chan struct{}, 1)
+	if configVerifyKeyPath != "" {
+		verifier, err := remoteconfig.LoadVerifier(configVerifyKeyPath, agentID)
+		if err != nil {
+			log.Fatalf("remote configuration: %v", err)
+		}
+		manager := remoteconfig.NewManager(client, verifier, func(settings remoteconfig.Settings) error {
+			liveConfig.Store(runtimeAgentConfig{FrequencyHz: settings.FrequencyHz, CaptureIntervalSeconds: settings.CaptureIntervalSeconds})
+			select {
+			case configChanged <- struct{}{}:
+			default:
+			}
+			return nil
+		})
+		go runRemoteConfig(manager)
 	}
 
 	if replayFile := getEnv("REPLAY_FILE", ""); replayFile != "" {
@@ -100,11 +136,19 @@ func main() {
 
 	log.Printf("lyrahcle sdr-agent %q starting, target=%s, freq=%d Hz, interval=%ds", agentID, backendURL, freqHz, intervalSec)
 
-	ticker := time.NewTicker(time.Duration(intervalSec) * time.Second)
-	defer ticker.Stop()
-
-	for range ticker.C {
-		reading, err := source.Read(freqHz)
+	for {
+		current := liveConfig.Load().(runtimeAgentConfig)
+		timer := time.NewTimer(time.Duration(current.CaptureIntervalSeconds) * time.Second)
+		select {
+		case <-configChanged:
+			if !timer.Stop() {
+				<-timer.C
+			}
+			continue
+		case <-timer.C:
+		}
+		current = liveConfig.Load().(runtimeAgentConfig)
+		reading, err := source.Read(current.FrequencyHz)
 		if err != nil {
 			log.Printf("capture error: %v", err)
 			continue
@@ -200,5 +244,27 @@ func runIdentityMaintenance(cfg identity.Config, client *uplink.Client) {
 			client.ReloadIdentity()
 			log.Println("agent identity rotated and TLS connections reloaded")
 		}
+	}
+}
+func runRemoteConfig(manager *remoteconfig.Manager) {
+	interval, err := time.ParseDuration(getEnv("AGENT_CONFIG_POLL_INTERVAL", "30s"))
+	if err != nil || interval < 5*time.Second || interval > 10*time.Minute {
+		interval = 30 * time.Second
+	}
+	poll := func() {
+		changed, err := manager.Poll()
+		if err != nil {
+			log.Printf("remote configuration poll failed: %v", err)
+			return
+		}
+		if changed {
+			log.Printf("remote configuration applied: version=%d", manager.Version())
+		}
+	}
+	poll()
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for range ticker.C {
+		poll()
 	}
 }

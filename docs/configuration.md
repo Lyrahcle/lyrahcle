@@ -102,7 +102,10 @@ Prometheus alert rules live in `deploy/prometheus/alerts.yml`; Grafana provision
 | `AGENT_ENROLLMENT_TOKEN` | One-time bootstrap token | unset |
 | `AGENT_ROTATE_BEFORE` | Rotate certificate before expiry | `24h` |
 | `AGENT_IDENTITY_CHECK_INTERVAL` | Runtime certificate-maintenance interval | `10m` |
-| `AGENT_VERSION` | Agent software version reported at enrollment | `v9.0` |
+| `AGENT_VERSION` | Agent software version reported at enrollment | `v9.1` |
 | `AGENT_FIRMWARE_VERSION` | Optional connected-device firmware version | unset |
+| `AGENT_CONFIG_SIGNING_KEY_FILE` | Backend Ed25519 private key for signing remote agent configuration | disabled |
+| `AGENT_CONFIG_VERIFY_KEY` | SDR agent Ed25519 public key used to verify remote configuration | disabled |
+| `AGENT_CONFIG_POLL_INTERVAL` | SDR agent desired-config polling interval | `30s` |
 
-See `docs/agent-enrollment.md` for the complete trust and rotation flow.
+See `docs/agent-enrollment.md` for certificate identity and `docs/agent-remote-configuration.md` for signed remote configuration.

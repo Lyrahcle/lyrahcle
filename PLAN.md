@@ -34,7 +34,7 @@ Add per-satellite or per-link baselines, replay/spoofing indicators, expected Do
 
 ### 3. Agent fleet security
 
-v9.0 delivers one-time enrollment, locally generated agent keys, short-lived client certificates, automatic rotation, quarantine, revocation, and direct mTLS authentication. Next work is signed remote configuration and fleet policy.
+v9.0 delivers one-time enrollment, locally generated agent keys, short-lived client certificates, automatic rotation, quarantine, revocation, and direct mTLS authentication. v9.1 adds signed, declarative remote capture configuration with acknowledgements and rollback. Next work is fleet policy, staged rollout, and hardware capability constraints.
 
 ### 4. Orbital security context
 
@@ -65,3 +65,8 @@ Next: broader endpoint audit coverage, database query plans under production-lik
 ## v9.0 agent trust milestone
 
 Delivered: dedicated SDR Agent CA support, one-time enrollment tokens, CSR signing, certificate-backed identity, automatic pre-expiry rotation, quarantine, irreversible revocation, version posture, and Connectivity UI lifecycle controls. Legacy API keys remain as a migration path only.
+
+
+## v9.1 remote management milestone
+
+Delivered: Ed25519-signed immutable configuration versions, mTLS-only polling, runtime frequency/interval changes, applied/rejected acknowledgements, rollback as a new signed version, audit coverage, and Connectivity controls. Remote management deliberately excludes shell execution and arbitrary command payloads.

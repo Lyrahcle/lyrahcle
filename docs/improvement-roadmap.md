@@ -121,3 +121,13 @@ Status values: **Shipped**, **Partial**, **Next**, and **Later**.
 | Agent quarantine and irreversible certificate revocation | Shipped | v9.0 |
 | Signed remote SDR configuration | Next | v9.1 |
 | Orbital-aware RF correlation | Next | v9.2 |
+
+## v9.1 delivered
+
+- Signed declarative SDR remote configuration
+- Immutable configuration history and acknowledgements
+- Runtime frequency and capture-interval updates
+- Safe rollback through a new signed version
+- No generic remote command execution
+
+Next agent-fleet work should focus on staged rollout, policy constraints, hardware capability validation, and signing-key custody rather than expanding the payload into arbitrary commands.

@@ -4,6 +4,15 @@ Notable changes are tracked here until versioned release notes take over.
 
 ## Unreleased
 
+### v9.1 secure remote agent management
+
+- Added declarative, versioned SDR agent configuration for capture frequency and interval with strict server/database/agent bounds.
+- Added independent Ed25519 signing of remote configuration; agents verify signature, checksum, and bound `agent_id` before applying changes.
+- Added mTLS-only agent config polling and acknowledgements, immutable version history, acknowledgement state, and audit events.
+- Added rollback by creating a new signed version from historical settings rather than mutating history.
+- Added runtime application without process restart and no remote shell/command execution surface.
+- Added Connectivity administration controls, signing-key generation tooling, OpenAPI coverage, and remote configuration documentation.
+
 ### v8.5 pre-v1 stabilization
 
 - Reduced dashboard backend load by polling only the active workspace and opening satellite/incident SSE streams only while those views are active.
