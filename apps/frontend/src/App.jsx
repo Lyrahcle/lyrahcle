@@ -9,10 +9,17 @@ function App() {
   const [authenticated, setAuthenticated] = useState(isAuthenticated())
   const [activeTab, setActiveTab] = useState('orbital')
   const [permissionsReady, setPermissionsReady] = useState(false)
+  const mustChangePassword = authenticated && passwordChangeRequired()
+
+  const handleLogout = useCallback(() => {
+    clearEffectivePermissions()
+    logout()
+    setAuthenticated(false)
+  }, [])
 
   useEffect(() => {
     let cancelled = false
-    if (!authenticated) {
+    if (!authenticated || mustChangePassword) {
       clearEffectivePermissions()
       setPermissionsReady(false)
       return undefined
@@ -27,23 +34,17 @@ function App() {
     return () => {
       cancelled = true
     }
-  }, [authenticated])
-
-  const handleLogout = useCallback(() => {
-    clearEffectivePermissions()
-    logout()
-    setAuthenticated(false)
-  }, [])
+  }, [authenticated, mustChangePassword, handleLogout])
 
   if (!authenticated) {
     return <Login onSuccess={() => { setPermissionsReady(false); setAuthenticated(true) }} />
   }
 
-  if (!permissionsReady) return null
-
-  if (passwordChangeRequired()) {
+  if (mustChangePassword) {
     return <ChangePasswordModal required onClose={() => {}} onSecurityChange={handleLogout} />
   }
+
+  if (!permissionsReady) return null
 
   return (
     <Dashboard
