@@ -20,7 +20,7 @@ import AuditLogPanel from './AuditLogPanel.jsx'
 import UsersPanel from './UsersPanel.jsx'
 import SettingsPanel from './SettingsPanel.jsx'
 import Footer from './Footer.jsx'
-import { AnomalyTimelineChart, CVESeverityChart, CVETimelineChart, IncidentSeverityChart, IncidentTimelineChart, RFPowerChart, RFSpectrumChart } from './TelemetryCharts.jsx'
+import { AnomalyTimelineChart, CVESeverityChart, CVETimelineChart, IncidentSeverityChart, IncidentTimelineChart, OrbitalAltitudeChart, RFPowerChart, RFSpectrumChart, RFStationMapChart } from './TelemetryCharts.jsx'
 import { canAudit, canWrite, isAdmin } from '../lib/auth.js'
 import { useI18n } from '../lib/I18nContext.jsx'
 import {
@@ -165,6 +165,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
         await Promise.all([
           safeFetch(fetchRfReadings, setRfReadings),
           safeFetch(fetchRfAnomalies, setRfAnomalies),
+          safeFetch(fetchAgentIdentities, setAgentIdentities),
           safeFetch(() => fetchDetectionRules(PAGE_LIMIT, 0), setDetectionRules, { items: [], total: 0, limit: PAGE_LIMIT, offset: 0 }),
         ])
         return
@@ -339,6 +340,9 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
                 </div>
               )}
             </Panel>
+            <Panel eyebrow={t('panels.orbitalTracking')} title="Orbital altitude profile">
+              {satellites === null ? <Skeleton /> : <OrbitalAltitudeChart satellites={satellites} />}
+            </Panel>
             <Panel eyebrow={t('panels.orbitalTracking')} title={t('panels.trackedSatellites')} uppercase>
               {canWrite() && <NewSatelliteForm onCreated={reloadSatellites} />}
               {satellites === null ? <Skeleton /> : <SatellitesPanel satellites={satellites} />}
@@ -372,6 +376,11 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
                   </div>
                   <RfPanel readings={rfReadings} />
                 </div>
+              )}
+            </Panel>
+            <Panel eyebrow={t('panels.signalIntelligence')} title="RF station coverage">
+              {rfReadings === null || agentIdentities === null ? <Skeleton /> : (
+                <RFStationMapChart agents={agentIdentities} readings={rfReadings} />
               )}
             </Panel>
             <Panel eyebrow={t('panels.anomalyDetection')} title={t('panels.flaggedAnomalies')}>
