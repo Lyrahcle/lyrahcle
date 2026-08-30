@@ -44,6 +44,7 @@ describe('api client', () => {
   beforeEach(() => {
     global.fetch = vi.fn()
     localStorage.clear()
+    sessionStorage.clear()
   })
 
   afterEach(() => {
@@ -51,7 +52,7 @@ describe('api client', () => {
   })
 
   it('fetchAssets sends the auth header, pagination params, and returns the parsed body', async () => {
-    localStorage.setItem('lyra_token', 'test-token')
+    sessionStorage.setItem('lyra_token', 'test-token')
     const page = { items: [{ id: '1', kind: 'domain', value: 'example.com' }], total: 1, limit: 50, offset: 0 }
     mockFetchOnce(true, page)
     const data = await fetchAssets()
@@ -67,7 +68,7 @@ describe('api client', () => {
   })
 
   it('fetchAssets throws UnauthorizedError and clears the session on a 401', async () => {
-    localStorage.setItem('lyra_token', 'stale-token')
+    sessionStorage.setItem('lyra_token', 'stale-token')
     mockFetchOnce(false, null, 401)
     await expect(fetchAssets()).rejects.toBeInstanceOf(UnauthorizedError)
     expect(localStorage.getItem('lyra_token')).toBeNull()
@@ -130,7 +131,7 @@ describe('api client', () => {
   })
 
   it('fetchRfReadings sends the auth header', async () => {
-    localStorage.setItem('lyra_token', 'test-token')
+    sessionStorage.setItem('lyra_token', 'test-token')
     mockFetchOnce(true, [])
     await fetchRfReadings()
     expect(fetch).toHaveBeenCalledWith('/api/v1/rf/readings', {
@@ -139,7 +140,7 @@ describe('api client', () => {
   })
 
   it('fetchSatellites sends the auth header', async () => {
-    localStorage.setItem('lyra_token', 'test-token')
+    sessionStorage.setItem('lyra_token', 'test-token')
     mockFetchOnce(true, [])
     await fetchSatellites()
     expect(fetch).toHaveBeenCalledWith('/api/v1/satellites/', {
@@ -252,7 +253,7 @@ describe('api client', () => {
   })
 
   it('session client lists and revokes only through authenticated session endpoints', async () => {
-    localStorage.setItem('lyra_token', 'test-token')
+    sessionStorage.setItem('lyra_token', 'test-token')
     mockFetchOnce(true, [{ id: '11111111-1111-1111-1111-111111111111', current: true }])
     const sessions = await fetchSessions()
     expect(sessions).toHaveLength(1)
