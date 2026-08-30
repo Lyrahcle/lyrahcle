@@ -1,22 +1,28 @@
 # Organizations and multi-tenancy
 
-## v10.0 foundation
+## v10.0 — foundation
+Organizations, default-organization migration, user membership and JWT organization context.
 
-v10.0 introduced organizations, default-organization migration, user membership and JWT organization context.
+## v10.1 — user administration isolation
+User list/create/role/status/delete operations are restricted to the authenticated organization and last-admin protection is tenant-local.
 
-## v10.1 user administration isolation
+## v10.2 — critical-domain tenant boundary
 
-The administrative user surface is now tenant-scoped:
+The database now carries mandatory `organization_id` ownership for:
 
-- user listing is restricted to the authenticated organization;
-- newly created users are assigned to the administrator's organization;
-- role changes, enable/disable and soft-delete require the target user to belong to the same organization;
-- the last-admin safeguard is calculated per organization;
-- user-administration audit metadata records `organization_id`;
-- organization-less legacy tokens are rejected by tenant administrative routes.
+- agents
+- assets
+- incidents
+- audit events
 
-A known user UUID from another organization is intentionally treated as not found by scoped store methods.
+Existing rows are backfilled into the stable default organization. Foreign keys and tenant-first indexes make the ownership boundary explicit.
 
-## Remaining isolation work
+A reusable tenant-scope store performs organization-keyed existence/count queries, and the admin-only `/api/v1/organization-scope/summary` endpoint provides a safe tenant-local diagnostic view.
 
-Complete multi-tenancy still requires organization scoping for agents, assets, incidents, audit queries, RF, orbital data, programs, CVE relationships, background jobs, search and streaming/SSE. Those domains must receive negative cross-tenant tests before production multi-tenancy is declared complete.
+### Important isolation gate
+
+v10.2 establishes the schema and query primitives; it does **not** yet claim that every legacy agent/asset/incident/audit handler has been migrated. Those handlers must be converted to organization-scoped store methods before production multi-tenancy is enabled.
+
+## Next
+
+v10.3 migrates the actual critical-domain read/write handlers and adds negative Org-A/Org-B integration tests. RF, orbital, programs, CVE relationships, background jobs, search and SSE follow after that gate.
