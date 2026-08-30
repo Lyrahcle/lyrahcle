@@ -31,7 +31,7 @@ func TestTenantOwnedRoutesAvoidKnownGlobalStoreCalls(t *testing.T) {
 }
 
 func TestSearchSeparatesGlobalAndTenantOwnedDomains(t *testing.T) {
-	data, err := os.ReadFile("../internal/store/search.go")
+	data, err := os.ReadFile("../../internal/store/search.go")
 	if err != nil {
 		t.Fatal(err)
 	}
