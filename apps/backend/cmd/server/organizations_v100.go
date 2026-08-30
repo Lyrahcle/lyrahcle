@@ -9,10 +9,10 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/lyrahcle/lyrahcle/apps/backend/internal/audit"
-	"github.com/lyrahcle/lyrahcle/apps/backend/internal/auth"
-	"github.com/lyrahcle/lyrahcle/apps/backend/internal/config"
-	"github.com/lyrahcle/lyrahcle/apps/backend/internal/store"
+	"github.com/mlko01/lyrahcle/apps/backend/internal/audit"
+	"github.com/mlko01/lyrahcle/apps/backend/internal/auth"
+	"github.com/mlko01/lyrahcle/apps/backend/internal/config"
+	"github.com/mlko01/lyrahcle/apps/backend/internal/store"
 )
 
 var organizationSlugPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{1,62}$`)

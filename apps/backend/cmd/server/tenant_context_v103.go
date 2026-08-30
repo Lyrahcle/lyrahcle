@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
-	"github.com/lyrahcle/lyrahcle/apps/backend/internal/auth"
+	"github.com/mlko01/lyrahcle/apps/backend/internal/auth"
 )
 
 func requestOrganizationID(w http.ResponseWriter, r *http.Request) (uuid.UUID, bool) {

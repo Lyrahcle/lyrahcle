@@ -6,9 +6,9 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/lyrahcle/lyrahcle/apps/backend/internal/auth"
-	"github.com/lyrahcle/lyrahcle/apps/backend/internal/config"
-	"github.com/lyrahcle/lyrahcle/apps/backend/internal/store"
+	"github.com/mlko01/lyrahcle/apps/backend/internal/auth"
+	"github.com/mlko01/lyrahcle/apps/backend/internal/config"
+	"github.com/mlko01/lyrahcle/apps/backend/internal/store"
 )
 
 func registerTenantScopeRoutes(r chi.Router, cfg config.Config, scope *store.TenantScopeStore, isTokenRevoked func(context.Context, *auth.Claims) (bool, error)) {
