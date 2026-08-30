@@ -3,21 +3,33 @@
 </p>
 
 <h1 align="center">Lyrahcle</h1>
-<p align="center"><b>Space cybersecurity operations platform.</b></p>
+<p align="center"><b>Space cybersecurity operations for ground stations, SDR fleets, and satellite missions.</b></p>
 
-Lyrahcle combines orbital awareness, RF telemetry, TM/TC decoding, threat intelligence, asset monitoring, and security controls in one operator-focused platform.
+<p align="center">
+  <a href="https://github.com/Lyrahcle/lyrahcle/actions/workflows/ci.yml"><img src="https://github.com/Lyrahcle/lyrahcle/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <a href="https://github.com/Lyrahcle/lyrahcle/releases"><img src="https://img.shields.io/github/v/release/Lyrahcle/lyrahcle?include_prereleases&sort=semver" alt="Release" /></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/badge/license-AGPLv3-blue.svg" alt="License: AGPLv3" /></a>
+  <a href="./.github/workflows/ci.yml"><img src="https://img.shields.io/badge/critical%20coverage-%E2%89%A580%25-brightgreen.svg" alt="Critical coverage gate: 80%" /></a>
+</p>
+
+Teams operating satellites and ground infrastructure often lack the RF and orbital security visibility that terrestrial SOC teams take for granted. Lyrahcle brings RF telemetry, orbital context, threat intelligence, incident response, and hardened SDR-agent operations into one operator-focused platform.
+
+<p align="center">
+  <img src="./docs/screenshots/dashboard.png" alt="Lyrahcle orbital operations dashboard" width="100%" />
+</p>
 
 ## What it includes
 
-- Live satellite tracking with TLE synchronization and SSE updates.
-- RF ingestion, statistical anomaly detection, typed detection rules, orbital-aware incident correlation, agent connectivity, and IQ forensic replay.
-- AX.25, CCSDS, PUS, and CSP decoding.
-- NVD-backed space CVE intelligence with filtering and asset alerts.
-- JWT authentication, Google Authenticator TOTP, WebAuthn security keys, active-session revocation, RBAC, SDR agent mTLS enrollment and certificate lifecycle, audit logging, and request/trace IDs.
-- React dashboard with light/dark mode and EN/ES/FR/DE localization.
-- Prometheus metrics, provisioned Grafana dashboards, optional OpenTelemetry export, release signatures, SBOMs, and build provenance.
+- Live orbital tracking with TLE synchronization, SSE updates, and orbital-aware RF correlation.
+- RF ingestion, anomaly detection, signed detection rules, incident correlation, and IQ forensic replay.
+- AX.25, CCSDS, PUS, and CSP decoding plus NVD-backed space CVE intelligence.
+- Secure SDR fleet management with enrollment, mTLS identity, certificate lifecycle, and signed remote configuration.
+- JWT sessions, Google Authenticator TOTP, WebAuthn security keys, RBAC, audit logging, and request/trace IDs.
+- Prometheus, Grafana, optional OpenTelemetry export, SBOMs, signed releases, and build provenance.
 
 ## Quick start
+
+> **Local evaluation only.** The default development bootstrap credentials must never be used for an Internet-facing or production deployment.
 
 ```bash
 git clone https://github.com/Lyrahcle/lyrahcle.git
@@ -25,68 +37,44 @@ cd lyrahcle
 docker compose up --build
 ```
 
-Open `http://localhost:5173`. For local development only, the bootstrap login is `admin` / `admin` unless overridden with `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD`. The bootstrap account is restricted to password change until a new policy-compliant password is set.
+Open `http://localhost:5173`. Unless overridden, local development starts with `admin` / `admin`; that account is restricted until its password is changed.
 
-To run the observability profile:
+Observability and the mock SDR agent are opt-in profiles:
 
 ```bash
 docker compose --profile observability up --build
-```
-
-To run the mock SDR agent too:
-
-```bash
 docker compose --profile sdr up --build
 ```
 
-## Services
+**Contributions are welcome.** Start with [`CONTRIBUTING.md`](./CONTRIBUTING.md), then check the [development plan](./PLAN.md) and [improvement roadmap](./docs/improvement-roadmap.md).
+
+## Architecture
 
 | Service | Purpose |
 |---|---|
-| `apps/backend` | Go API, auth, orbital/RF logic, alerting, Postgres |
+| `apps/backend` | Go API, identity, RF/orbital correlation, incidents, Postgres/Redis |
 | `apps/frontend` | React/Vite operator dashboard |
-| `apps/sdr-agent` | Edge RF agent and IQ capture/replay |
-| `apps/cve-sync` | NVD ingestion worker and CVE publisher |
+| `apps/sdr-agent` | Edge RF collection, mTLS identity, signed remote configuration, forensics |
+| `apps/cve-sync` | NVD ingestion and CVE publishing |
 
-Lyrahcle also supports mTLS-enrolled SDR agents with independently signed, declarative remote capture configuration and acknowledgements.
+See [`docs/architecture.md`](./docs/architecture.md) for trust boundaries and data flows.
 
-## Documentation
+## Security and documentation
 
-Start with [`docs/README.md`](./docs/README.md).
+The backend enforces authorization; frontend visibility is never treated as a security boundary. SDR agents use individual mTLS identities, remote configuration is signed independently with Ed25519, and CI gates include tests, race detection, vulnerability checks, fuzzing, critical-package coverage, image scanning, SBOM generation, and release signing.
 
-- [Architecture](./docs/architecture.md)
-- [API reference](./docs/api-reference.md)
-- [Configuration](./docs/configuration.md)
-- [SDR agent enrollment and mTLS](./docs/agent-enrollment.md)
-- [Orbital-aware security correlation](./docs/orbital-security-correlation.md)
-- [User administration](./docs/user-administration.md)
-- [Security keys and recovery](./docs/security-keys-and-recovery.md)
-- [Performance testing](./docs/performance-testing.md)
-- [Deployment](./docs/deployment.md)
-- [IQ forensics](./docs/forensics.md)
-- [Observability](./docs/observability.md)
-- [STRIDE threat model](./docs/ieee3536-threat-model.md)
-- [Compliance checklist](./docs/compliance-checklist.md)
-- [Software supply chain](./docs/supply-chain.md)
-- [Security policy](./SECURITY.md)
-- [Security roadmap](./SECURITY_ROADMAP.md)
-- [Contributing](./CONTRIBUTING.md)
-- [Releasing](./RELEASING.md)
+Start at [`docs/README.md`](./docs/README.md). Useful entry points include the [API reference](./docs/api-reference.md), [deployment guide](./docs/deployment.md), [STRIDE threat model](./docs/ieee3536-threat-model.md), [SDR enrollment guide](./docs/agent-enrollment.md), and [orbital security correlation](./docs/orbital-security-correlation.md).
 
 Interactive API documentation is available at `http://localhost:8080/docs` while the backend is running.
 
-## Development checks
+## Roadmap
 
-```bash
-cd apps/backend && go test ./... && go vet ./...
-cd ../frontend && npm test && npm run build
-```
+Lyrahcle is pre-v1.0 and under active hardening. Current priorities are RF/orbital forensics, production validation, security review, load/restore testing, and the v1.0 release gates.
 
-CI also runs integration tests, dependency review, vulnerability checks, SDR fuzzing, an >80% critical-package coverage gate, authentication/Google Authenticator E2E checks, image scanning, and CycloneDX SBOM generation. Tagged releases sign images with Sigstore Cosign and publish GitHub build provenance.
-
-## Status
-
-Pre-v1.0. The core platform is functional and actively being hardened. Real SDR hardware integration remains a major pre-v1 milestone.
+- [Development plan](./PLAN.md)
+- [Improvement roadmap](./docs/improvement-roadmap.md)
+- [Security roadmap](./SECURITY_ROADMAP.md)
+- [Changelog](./CHANGELOG.md)
 
 ## License
 
