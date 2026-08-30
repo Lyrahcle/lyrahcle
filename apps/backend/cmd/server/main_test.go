@@ -64,8 +64,9 @@ func testRouter(t *testing.T) (http.Handler, *pgxpool.Pool, *store.UserStore) {
 	spaceCVEs := store.NewSpaceCVEStore(pool)
 	assetAlerts := store.NewAssetAlertStore(pool)
 	incidents := store.NewIncidentStore(pool)
+	rbac := store.NewRBACStore(pool)
 
-	router := newRouter(cfg, pool, assets, programs, rf, rfAnomalies, satellites, users, agentKeys, auditLog, spaceCVEs, assetAlerts, incidents, nil)
+	router := newRouter(cfg, pool, assets, programs, rf, rfAnomalies, satellites, users, agentKeys, auditLog, spaceCVEs, assetAlerts, incidents, rbac, nil)
 	return router, pool, users
 }
 

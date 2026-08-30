@@ -12,12 +12,19 @@ func TestCriticalTenantScopeQueriesIncludeOrganization(t *testing.T) {
 		t.Fatal(err)
 	}
 	src := string(data)
-	for _, table := range []string{"agents", "assets", "incidents", "audit_log"} {
-		if !strings.Contains(src, "FROM "+table+" WHERE") {
-			t.Fatalf("missing scoped query for %s", table)
-		}
+
+	required := []string{
+		"FROM agent_identities WHERE agent_id=$1 AND organization_id=$2",
+		"FROM assets WHERE id=$1 AND organization_id=$2",
+		"FROM incidents WHERE id=$1 AND organization_id=$2",
+		"FROM agent_identities WHERE organization_id=$1",
+		"FROM assets WHERE organization_id=$1",
+		"FROM incidents WHERE organization_id=$1",
+		"FROM audit_log WHERE organization_id=$1",
 	}
-	if strings.Count(src, "organization_id=$") < 8 {
-		t.Fatalf("critical tenant queries are not consistently organization scoped")
+	for _, query := range required {
+		if !strings.Contains(src, query) {
+			t.Errorf("missing organization-scoped tenant query %q", query)
+		}
 	}
 }

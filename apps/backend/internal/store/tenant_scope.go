@@ -15,9 +15,9 @@ func NewTenantScopeStore(pool *pgxpool.Pool) *TenantScopeStore {
 	return &TenantScopeStore{pool: pool}
 }
 
-func (s *TenantScopeStore) AgentExists(ctx context.Context, organizationID, agentID uuid.UUID) (bool, error) {
+func (s *TenantScopeStore) AgentExists(ctx context.Context, organizationID uuid.UUID, agentID string) (bool, error) {
 	var exists bool
-	err := s.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM agents WHERE id=$1 AND organization_id=$2)`, agentID, organizationID).Scan(&exists)
+	err := s.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM agent_identities WHERE agent_id=$1 AND organization_id=$2)`, agentID, organizationID).Scan(&exists)
 	return exists, err
 }
 
@@ -35,7 +35,7 @@ func (s *TenantScopeStore) IncidentExists(ctx context.Context, organizationID, i
 
 func (s *TenantScopeStore) CountAgents(ctx context.Context, organizationID uuid.UUID) (int64, error) {
 	var n int64
-	err := s.pool.QueryRow(ctx, `SELECT count(*) FROM agents WHERE organization_id=$1`, organizationID).Scan(&n)
+	err := s.pool.QueryRow(ctx, `SELECT count(*) FROM agent_identities WHERE organization_id=$1`, organizationID).Scan(&n)
 	return n, err
 }
 
