@@ -523,7 +523,7 @@ func TestDetectionRuleMatchCooldown(t *testing.T) {
 		t.Fatalf("create actor: %v", err)
 	}
 	rules := NewDetectionRuleStore(pool)
-	rule, err := rules.Create(ctx, detection.Rule{
+	rule, err := rules.CreateInOrganization(ctx, DefaultOrganizationID, detection.Rule{
 		Name: "Cooldown integration rule", Enabled: true, Metric: "power_dbm", Operator: "abs_z_gte",
 		Threshold: 6, Severity: "high", CooldownSeconds: 300, AutoIncident: true,
 	}, actor.ID)
