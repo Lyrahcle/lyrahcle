@@ -175,8 +175,10 @@ func registerAgentIdentityRoutes(
 		return agentID, err
 	}
 	credentialAuth := auth.RequireAgentCredentialOrRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleOperator, keyLookup, certLookup, isTokenRevoked)
+	agentRead := auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "agents.read", isTokenRevoked)
+	agentManage := auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "agents.manage", isTokenRevoked)
 
-	r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleAdmin, isTokenRevoked)).Get("/agents/", func(w http.ResponseWriter, r *http.Request) {
+	r.With(agentRead).Get("/agents/", func(w http.ResponseWriter, r *http.Request) {
 		orgID, ok := requestOrganizationID(w, r)
 		if !ok {
 			return
@@ -190,7 +192,7 @@ func registerAgentIdentityRoutes(
 		json.NewEncoder(w).Encode(items)
 	})
 
-	r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleAdmin, isTokenRevoked)).Post("/agents/enrollment-tokens", func(w http.ResponseWriter, r *http.Request) {
+	r.With(agentManage).Post("/agents/enrollment-tokens", func(w http.ResponseWriter, r *http.Request) {
 		if ca == nil {
 			http.Error(w, "agent enrollment is not configured", http.StatusServiceUnavailable)
 			return
@@ -244,7 +246,7 @@ func registerAgentIdentityRoutes(
 		})
 	})
 
-	r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleAdmin, isTokenRevoked)).Put("/agents/{agentID}/station", func(w http.ResponseWriter, r *http.Request) {
+	r.With(agentManage).Put("/agents/{agentID}/station", func(w http.ResponseWriter, r *http.Request) {
 		agentID := strings.TrimSpace(chi.URLParam(r, "agentID"))
 		if err := validate.AgentID(agentID); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -279,7 +281,7 @@ func registerAgentIdentityRoutes(
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleAdmin, isTokenRevoked)).Patch("/agents/{agentID}/status", func(w http.ResponseWriter, r *http.Request) {
+	r.With(agentManage).Patch("/agents/{agentID}/status", func(w http.ResponseWriter, r *http.Request) {
 		agentID := strings.TrimSpace(chi.URLParam(r, "agentID"))
 		if err := validate.AgentID(agentID); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)

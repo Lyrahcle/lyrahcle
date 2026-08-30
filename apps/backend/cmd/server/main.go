@@ -821,7 +821,7 @@ func newRouter(
 			})
 		})
 
-		registerOrganizationRoutes(r, cfg, organizations, auditLog, isTokenRevoked)
+		registerOrganizationRoutes(r, cfg, organizations, rbac, auditLog, isTokenRevoked)
 		registerTenantScopeRoutes(r, cfg, tenantScope, isTokenRevoked)
 		registerRBACRoutes(r, cfg, rbac, isTokenRevoked)
 
@@ -852,7 +852,7 @@ func newRouter(
 				json.NewEncoder(w).Encode(list)
 			})
 
-			r.Post("/", func(w http.ResponseWriter, r *http.Request) {
+			r.With(agentManage).Post("/", func(w http.ResponseWriter, r *http.Request) {
 				if !requireRequestPermission(w, r, rbac, "users.manage") {
 					return
 				}
@@ -1099,9 +1099,10 @@ func newRouter(
 		})
 
 		r.Route("/agent-keys", func(r chi.Router) {
-			r.Use(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleAdmin, isTokenRevoked))
+			agentRead := auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "agents.read", isTokenRevoked)
+			agentManage := auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "agents.manage", isTokenRevoked)
 
-			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+			r.With(agentRead).Get("/", func(w http.ResponseWriter, r *http.Request) {
 				list, err := func() ([]store.AgentKeySummary, error) {
 					orgID, ok := requestOrganizationID(w, r)
 					if !ok {
@@ -1137,9 +1138,6 @@ func newRouter(
 					return
 				}
 
-				if !requireRequestPermission(w, r, rbac, "incidents.manage") {
-					return
-				}
 				if err := func() error {
 					orgID, ok := requestOrganizationID(w, r)
 					if !ok {
@@ -1167,7 +1165,7 @@ func newRouter(
 				})
 			})
 
-			r.Delete("/{agentID}", func(w http.ResponseWriter, r *http.Request) {
+			r.With(agentManage).Delete("/{agentID}", func(w http.ResponseWriter, r *http.Request) {
 				agentID := chi.URLParam(r, "agentID")
 				if _, err := func() (time.Time, error) {
 					orgID, ok := requestOrganizationID(w, r)
