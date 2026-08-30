@@ -164,3 +164,74 @@ func TestSaveUsesPrivatePermissionsAndBoundsFilename(t *testing.T) {
 		}
 	}
 }
+
+func TestLoadWithinRejectsTraversalAndAbsolutePaths(t *testing.T) {
+	dir := t.TempDir()
+	outside := t.TempDir()
+	outsideMeta := filepath.Join(outside, "outside.json")
+	if err := os.WriteFile(outsideMeta, []byte(`{"format":"cf32"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, _, err := LoadWithin(dir, filepath.Join("..", filepath.Base(outside), "outside.json")); err == nil {
+		t.Fatal("expected traversal path to be rejected")
+	}
+	if _, _, err := LoadWithin(dir, outsideMeta); err == nil {
+		t.Fatal("expected absolute path to be rejected")
+	}
+}
+
+func TestLoadWithinRejectsMetadataSymlink(t *testing.T) {
+	dir := t.TempDir()
+	outside := t.TempDir()
+	outsideMeta := filepath.Join(outside, "outside.json")
+	if err := os.WriteFile(outsideMeta, []byte(`{"format":"cf32"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(dir, "capture.json")
+	if err := os.Symlink(outsideMeta, link); err != nil {
+		t.Skipf("symlink not supported: %v", err)
+	}
+
+	if _, _, err := LoadWithin(dir, "capture.json"); err == nil {
+		t.Fatal("expected metadata symlink to be rejected")
+	}
+}
+
+func TestLoadRejectsSampleSymlink(t *testing.T) {
+	dir := t.TempDir()
+	metaPath := filepath.Join(dir, "capture.json")
+	if err := os.WriteFile(metaPath, []byte(`{"format":"cf32"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	outside := filepath.Join(t.TempDir(), "outside.cf32")
+	if err := os.WriteFile(outside, make([]byte, 8), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, filepath.Join(dir, "capture.cf32")); err != nil {
+		t.Skipf("symlink not supported: %v", err)
+	}
+
+	if _, _, err := Load(metaPath); err == nil {
+		t.Fatal("expected sample symlink to be rejected")
+	}
+}
+
+func TestListSkipsMetadataSymlinks(t *testing.T) {
+	dir := t.TempDir()
+	outside := filepath.Join(t.TempDir(), "outside.json")
+	if err := os.WriteFile(outside, []byte(`{"id":"outside","format":"cf32"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, filepath.Join(dir, "linked.json")); err != nil {
+		t.Skipf("symlink not supported: %v", err)
+	}
+
+	items, err := List(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(items) != 0 {
+		t.Fatalf("List returned %d items, want 0", len(items))
+	}
+}

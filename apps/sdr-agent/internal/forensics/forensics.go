@@ -72,6 +72,9 @@ func Save(dir, agentID string, data *streaming.IQData) (dataPath, metaPath strin
 }
 
 func Load(metaPath string) (Metadata, []complex64, error) {
+	if filepath.Ext(metaPath) != ".json" {
+		return Metadata{}, nil, fmt.Errorf("forensics: metadata path must end in .json")
+	}
 	meta, err := readMetadata(metaPath)
 	if err != nil {
 		return Metadata{}, nil, err
@@ -81,7 +84,7 @@ func Load(metaPath string) (Metadata, []complex64, error) {
 	}
 
 	dataPath := strings.TrimSuffix(metaPath, ".json") + "." + dataFormat
-	raw, err := os.ReadFile(dataPath)
+	raw, err := readRegularFile(dataPath)
 	if err != nil {
 		return Metadata{}, nil, fmt.Errorf("forensics: read samples: %w", err)
 	}
@@ -106,6 +109,17 @@ func Load(metaPath string) (Metadata, []complex64, error) {
 	return meta, samples, nil
 }
 
+// LoadWithin loads a capture metadata file by relative name from baseDir.
+// It rejects absolute paths, traversal and symlinks before reading either
+// metadata or sample data.
+func LoadWithin(baseDir, name string) (Metadata, []complex64, error) {
+	metaPath, err := ResolveWithin(baseDir, name)
+	if err != nil {
+		return Metadata{}, nil, err
+	}
+	return Load(metaPath)
+}
+
 func List(dir string) ([]Metadata, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -117,7 +131,7 @@ func List(dir string) ([]Metadata, error) {
 
 	var out []Metadata
 	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
+		if e.IsDir() || e.Type()&os.ModeSymlink != 0 || !strings.HasSuffix(e.Name(), ".json") {
 			continue
 		}
 		meta, err := readMetadata(filepath.Join(dir, e.Name()))
@@ -131,7 +145,7 @@ func List(dir string) ([]Metadata, error) {
 }
 
 func readMetadata(metaPath string) (Metadata, error) {
-	metaBytes, err := os.ReadFile(metaPath)
+	metaBytes, err := readRegularFile(metaPath)
 	if err != nil {
 		return Metadata{}, fmt.Errorf("forensics: read metadata: %w", err)
 	}

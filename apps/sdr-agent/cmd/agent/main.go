@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"path/filepath"
 	"strconv"
 	"sync/atomic"
 	"time"
@@ -119,7 +120,14 @@ func main() {
 	}
 
 	if replayFile := getEnv("REPLAY_FILE", ""); replayFile != "" {
-		runReplay(replayFile, client)
+		replayRoot := getEnv("REPLAY_ROOT", "")
+		if filepath.IsAbs(replayFile) && replayRoot == "" {
+			log.Fatal("REPLAY_ROOT is required when REPLAY_FILE is absolute")
+		}
+		if replayRoot == "" {
+			replayRoot = "."
+		}
+		runReplay(replayRoot, replayFile, client)
 		return
 	}
 
@@ -199,12 +207,20 @@ func runIQCaptureLoop(captureDir, agentID string, freqHz int64) {
 	}
 }
 
-func runReplay(replayFile string, client *uplink.Client) {
+func runReplay(replayRoot, replayFile string, client *uplink.Client) {
 	windowSamples := getEnvInt("REPLAY_WINDOW_SAMPLES", 65536)
 	delayMs := getEnvInt("REPLAY_DELAY_MS", 300)
 
-	log.Printf("replay: loading capture %s", replayFile)
-	meta, samples, err := forensics.Load(replayFile)
+	replayName := replayFile
+	var err error
+	if filepath.IsAbs(replayFile) {
+		replayName, err = filepath.Rel(replayRoot, replayFile)
+		if err != nil {
+			log.Fatalf("replay: resolve capture path: %v", err)
+		}
+	}
+	log.Printf("replay: loading capture %s within %s", replayName, replayRoot)
+	meta, samples, err := forensics.LoadWithin(replayRoot, replayName)
 	if err != nil {
 		log.Fatalf("replay: %v", err)
 	}

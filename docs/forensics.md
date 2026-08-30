@@ -24,10 +24,13 @@ The default device is currently simulated. Captures therefore validate the pipel
 Run the agent with a saved metadata file:
 
 ```bash
-REPLAY_FILE=/captures/sdr-agent_1735300000000000000.json
+REPLAY_ROOT=/captures
+REPLAY_FILE=sdr-agent_1735300000000000000.json
 REPLAY_WINDOW_SAMPLES=65536
 REPLAY_DELAY_MS=300
 ```
+
+Replay paths are confined to `REPLAY_ROOT`: absolute `REPLAY_FILE` values require an explicit root, traversal (`../`) is rejected, and capture metadata/sample symlinks are not followed.
 
 Replay converts consecutive IQ windows into relative power readings and posts them using reconstructed historical timestamps. This reuses the backend's normal anomaly-detection path.
 
@@ -36,7 +39,7 @@ Power values are relative estimates based on mean sample energy. They are useful
 Run replay as a one-shot container rather than setting `REPLAY_FILE` permanently on a restarting Compose service:
 
 ```bash
-docker compose run --rm -e REPLAY_FILE=/captures/example.json sdr-agent
+docker compose run --rm -e REPLAY_ROOT=/captures -e REPLAY_FILE=example.json sdr-agent
 ```
 
 ## Evidence handling

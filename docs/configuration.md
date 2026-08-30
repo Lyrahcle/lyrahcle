@@ -53,6 +53,7 @@ The frontend is a static Vite build served by nginx. Runtime API routing is cont
 | `IQ_CAPTURE_DIR` | unset | Enables IQ recording |
 | `IQ_CAPTURE_INTERVAL_SECONDS` | `60` | IQ recording interval |
 | `IQ_CAPTURE_SAMPLES` | `8192` | Samples per IQ recording |
+| `REPLAY_ROOT` | `.` for relative paths | Base directory that confines one-shot replay; required for absolute `REPLAY_FILE` |
 | `REPLAY_FILE` | unset | Capture metadata file for one-shot replay |
 | `REPLAY_WINDOW_SAMPLES` | `65536` | Samples reduced into each replay reading |
 | `REPLAY_DELAY_MS` | `300` | Delay between replay uploads |
