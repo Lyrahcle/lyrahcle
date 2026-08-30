@@ -56,7 +56,11 @@ func registerAgentConfigRoutes(
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		item, err := configs.Desired(r.Context(), agentID)
+		orgID, ok := requestOrganizationID(w, r)
+		if !ok {
+			return
+		}
+		item, err := configs.DesiredInOrganization(r.Context(), orgID, agentID)
 		if err != nil {
 			if errors.Is(err, store.ErrAgentConfigNotFound) {
 				w.WriteHeader(http.StatusNoContent)
@@ -75,7 +79,11 @@ func registerAgentConfigRoutes(
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		items, err := configs.History(r.Context(), agentID, 20)
+		orgID, ok := requestOrganizationID(w, r)
+		if !ok {
+			return
+		}
+		items, err := configs.HistoryInOrganization(r.Context(), orgID, agentID, 20)
 		if err != nil {
 			http.Error(w, "failed to read agent config history", http.StatusInternalServerError)
 			return
@@ -109,8 +117,13 @@ func registerAgentConfigRoutes(
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}
+		orgID, err := auth.OrganizationID(claims)
+		if err != nil {
+			http.Error(w, "organization context required", http.StatusForbidden)
+			return
+		}
 		createdBy := claims.UserID
-		item, err := configs.Create(r.Context(), agentID, settings, &createdBy, func(version int64, value store.AgentConfigSettings, issuedAt time.Time) ([]byte, []byte, string, error) {
+		item, err := configs.CreateInOrganization(r.Context(), orgID, agentID, settings, &createdBy, func(version int64, value store.AgentConfigSettings, issuedAt time.Time) ([]byte, []byte, string, error) {
 			envelope, payload, signature, err := signer.Sign(agentID, version, agentconfig.Settings{
 				FrequencyHz:            value.FrequencyHz,
 				CaptureIntervalSeconds: value.CaptureIntervalSeconds,
@@ -176,7 +189,11 @@ func registerAgentConfigRoutes(
 			http.Error(w, "invalid rollback version", http.StatusBadRequest)
 			return
 		}
-		settings, err := configs.SettingsForVersion(r.Context(), agentID, body.Version)
+		orgID, ok := requestOrganizationID(w, r)
+		if !ok {
+			return
+		}
+		settings, err := configs.SettingsForVersionInOrganization(r.Context(), orgID, agentID, body.Version)
 		if err != nil {
 			if errors.Is(err, store.ErrAgentConfigNotFound) {
 				http.Error(w, "config version not found", http.StatusNotFound)

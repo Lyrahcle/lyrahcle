@@ -176,7 +176,11 @@ func registerAgentIdentityRoutes(
 	credentialAuth := auth.RequireAgentCredentialOrRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleOperator, keyLookup, certLookup, isTokenRevoked)
 
 	r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleAdmin, isTokenRevoked)).Get("/agents/", func(w http.ResponseWriter, r *http.Request) {
-		items, err := identities.List(r.Context())
+		orgID, ok := requestOrganizationID(w, r)
+		if !ok {
+			return
+		}
+		items, err := identities.ListByOrganization(r.Context(), orgID)
 		if err != nil {
 			http.Error(w, "failed to list agents", http.StatusInternalServerError)
 			return
@@ -208,7 +212,11 @@ func registerAgentIdentityRoutes(
 			return
 		}
 		expiresAt := time.Now().UTC().Add(cfg.AgentEnrollmentTTL)
-		if err := identities.CreateEnrollmentToken(r.Context(), body.AgentID, tokenHash, expiresAt); err != nil {
+		orgID, ok := requestOrganizationID(w, r)
+		if !ok {
+			return
+		}
+		if err := identities.CreateEnrollmentTokenInOrganization(r.Context(), orgID, body.AgentID, tokenHash, expiresAt); err != nil {
 			if errors.Is(err, store.ErrAgentAlreadyEnrolled) {
 				http.Error(w, "agent is already enrolled; rotate its certificate instead", http.StatusConflict)
 				return
@@ -250,7 +258,11 @@ func registerAgentIdentityRoutes(
 			http.Error(w, "invalid station coordinates", http.StatusBadRequest)
 			return
 		}
-		if err := identities.SetStation(r.Context(), agentID, body); err != nil {
+		orgID, ok := requestOrganizationID(w, r)
+		if !ok {
+			return
+		}
+		if err := identities.SetStationInOrganization(r.Context(), orgID, agentID, body); err != nil {
 			if errors.Is(err, store.ErrAgentIdentityNotFound) {
 				http.Error(w, "agent not found", http.StatusNotFound)
 				return
@@ -284,7 +296,11 @@ func registerAgentIdentityRoutes(
 			http.Error(w, "status must be active, quarantined, or revoked", http.StatusBadRequest)
 			return
 		}
-		if err := identities.SetStatus(r.Context(), agentID, body.Status); err != nil {
+		orgID, ok := requestOrganizationID(w, r)
+		if !ok {
+			return
+		}
+		if err := identities.SetStatusInOrganization(r.Context(), orgID, agentID, body.Status); err != nil {
 			if errors.Is(err, store.ErrAgentIdentityNotFound) {
 				http.Error(w, "agent not found", http.StatusNotFound)
 				return

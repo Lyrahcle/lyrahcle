@@ -1060,7 +1060,13 @@ func newRouter(
 			r.Use(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleAdmin, isTokenRevoked))
 
 			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-				list, err := agentKeys.List(r.Context())
+				list, err := func() ([]store.AgentKeySummary, error) {
+					orgID, ok := requestOrganizationID(w, r)
+					if !ok {
+						return nil, store.ErrAgentKeyNotFound
+					}
+					return agentKeys.ListByOrganization(r.Context(), orgID)
+				}()
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
@@ -1089,7 +1095,13 @@ func newRouter(
 					return
 				}
 
-				if err := agentKeys.Create(r.Context(), body.AgentID, hash); err != nil {
+				if err := func() error {
+					orgID, ok := requestOrganizationID(w, r)
+					if !ok {
+						return store.ErrAgentKeyNotFound
+					}
+					return agentKeys.CreateInOrganization(r.Context(), orgID, body.AgentID, hash)
+				}(); err != nil {
 					if err == store.ErrAgentIDTaken {
 						http.Error(w, "agent_id already has an active key; revoke it first", http.StatusConflict)
 						return
@@ -1112,7 +1124,13 @@ func newRouter(
 
 			r.Delete("/{agentID}", func(w http.ResponseWriter, r *http.Request) {
 				agentID := chi.URLParam(r, "agentID")
-				if _, err := agentKeys.Revoke(r.Context(), agentID); err != nil {
+				if _, err := func() (time.Time, error) {
+					orgID, ok := requestOrganizationID(w, r)
+					if !ok {
+						return time.Time{}, store.ErrAgentKeyNotFound
+					}
+					return agentKeys.RevokeInOrganization(r.Context(), orgID, agentID)
+				}(); err != nil {
 					if err == store.ErrAgentKeyNotFound {
 						http.Error(w, "no active key for that agent_id", http.StatusNotFound)
 						return

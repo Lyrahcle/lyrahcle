@@ -1,3 +1,4 @@
+- v10.4: tenant-isolated agent administration and organization ownership across enrollment, certificates, remote config and legacy agent keys.
 - v10.3: tenant-isolated assets, incidents and audit handlers; corrected v10.2 agent ownership migration to `agent_identities`.
 - v10.2: added mandatory organization ownership and tenant-first indexes for agents, assets, incidents and audit, plus reusable tenant-scope query primitives.
 - v10.1: tenant-scoped user administration with per-organization list/create/role/status/delete controls and last-admin protection.

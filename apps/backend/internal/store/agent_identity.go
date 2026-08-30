@@ -24,6 +24,7 @@ type AgentIdentityStore struct {
 
 type AgentIdentity struct {
 	AgentID         string            `json:"agent_id"`
+	OrganizationID  uuid.UUID         `json:"organization_id"`
 	Status          string            `json:"status"`
 	FirstSeenAt     *time.Time        `json:"first_seen_at"`
 	LastSeenAt      *time.Time        `json:"last_seen_at"`
@@ -450,4 +451,114 @@ func (s *AgentIdentityStore) Status(ctx context.Context, agentID string) (string
 		return "", err
 	}
 	return status, nil
+}
+
+func (s *AgentIdentityStore) ExistsInOrganization(ctx context.Context, organizationID uuid.UUID, agentID string) (bool, error) {
+	var ok bool
+	err := s.pool.QueryRow(ctx, `
+		SELECT EXISTS(
+			SELECT 1 FROM agent_identities
+			WHERE agent_id=$1 AND organization_id=$2
+		)
+	`, agentID, organizationID).Scan(&ok)
+	return ok, err
+}
+
+func (s *AgentIdentityStore) ListByOrganization(ctx context.Context, organizationID uuid.UUID) ([]AgentIdentity, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT agent_id, organization_id, status, first_seen_at, last_seen_at,
+		       coalesce(agent_version,''), coalesce(firmware_version,''),
+		       station_latitude_deg, station_longitude_deg, station_altitude_m
+		FROM agent_identities
+		WHERE organization_id=$1
+		ORDER BY agent_id
+	`, organizationID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []AgentIdentity{}
+	for rows.Next() {
+		var item AgentIdentity
+		var lat, lon, alt *float64
+		if err := rows.Scan(&item.AgentID, &item.OrganizationID, &item.Status, &item.FirstSeenAt, &item.LastSeenAt,
+			&item.AgentVersion, &item.FirmwareVersion, &lat, &lon, &alt); err != nil {
+			return nil, err
+		}
+		if lat != nil && lon != nil && alt != nil {
+			item.Station = &AgentStation{LatitudeDeg: *lat, LongitudeDeg: *lon, AltitudeM: *alt}
+		}
+		items = append(items, item)
+	}
+	return items, rows.Err()
+}
+
+func (s *AgentIdentityStore) CreateEnrollmentTokenInOrganization(ctx context.Context, organizationID uuid.UUID, agentID, tokenHash string, expiresAt time.Time) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	var status string
+	err = tx.QueryRow(ctx, `
+		INSERT INTO agent_identities (agent_id, organization_id, status)
+		VALUES ($1,$2,'pending')
+		ON CONFLICT (agent_id) DO UPDATE SET updated_at=now()
+		RETURNING status
+	`, agentID, organizationID).Scan(&status)
+	if err != nil {
+		return err
+	}
+
+	var owner uuid.UUID
+	if err := tx.QueryRow(ctx, `SELECT organization_id FROM agent_identities WHERE agent_id=$1`, agentID).Scan(&owner); err != nil {
+		return err
+	}
+	if owner != organizationID {
+		return ErrAgentIdentityNotFound
+	}
+	if status == "revoked" || status == "quarantined" {
+		return ErrAgentIdentityInactive
+	}
+	if status == "active" {
+		var active bool
+		if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM agent_certificates WHERE agent_id=$1 AND organization_id=$2 AND status='active' AND not_after>now())`, agentID, organizationID).Scan(&active); err != nil {
+			return err
+		}
+		if active {
+			return ErrAgentAlreadyEnrolled
+		}
+	}
+
+	if _, err := tx.Exec(ctx, `UPDATE agent_enrollment_tokens SET used_at=now() WHERE agent_id=$1 AND organization_id=$2 AND used_at IS NULL`, agentID, organizationID); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(ctx, `INSERT INTO agent_enrollment_tokens (agent_id, organization_id, token_hash, expires_at) VALUES ($1,$2,$3,$4)`,
+		agentID, organizationID, tokenHash, expiresAt); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+func (s *AgentIdentityStore) SetStationInOrganization(ctx context.Context, organizationID uuid.UUID, agentID string, station AgentStation) error {
+	ok, err := s.ExistsInOrganization(ctx, organizationID, agentID)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return ErrAgentIdentityNotFound
+	}
+	return s.SetStation(ctx, agentID, station)
+}
+
+func (s *AgentIdentityStore) SetStatusInOrganization(ctx context.Context, organizationID uuid.UUID, agentID, status string) error {
+	ok, err := s.ExistsInOrganization(ctx, organizationID, agentID)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return ErrAgentIdentityNotFound
+	}
+	return s.SetStatus(ctx, agentID, status)
 }

@@ -162,3 +162,59 @@ func (s *AgentKeyStore) Revoke(ctx context.Context, agentID string) (time.Time, 
 	}
 	return revokedAt, nil
 }
+
+func (s *AgentKeyStore) ListByOrganization(ctx context.Context, organizationID uuid.UUID) ([]AgentKeySummary, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT agent_id, created_at, last_used_at, revoked_at IS NOT NULL,
+		       device_driver, device_hardware, device_manufacturer, device_product,
+		       device_serial, device_rx, device_tx, device_reported_at
+		FROM agent_keys
+		WHERE organization_id=$1
+		ORDER BY created_at DESC
+	`, organizationID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []AgentKeySummary
+	for rows.Next() {
+		var summary AgentKeySummary
+		var driver, hardware, manufacturer, product, serial *string
+		var rx, tx *bool
+		var reportedAt *time.Time
+		if err := rows.Scan(&summary.AgentID, &summary.CreatedAt, &summary.LastUsedAt, &summary.Revoked,
+			&driver, &hardware, &manufacturer, &product, &serial, &rx, &tx, &reportedAt); err != nil {
+			return nil, err
+		}
+		if reportedAt != nil {
+			summary.Device = &AgentDeviceInfo{Driver: deref(driver), Hardware: deref(hardware), Manufacturer: deref(manufacturer),
+				Product: deref(product), Serial: deref(serial), RX: rx != nil && *rx, TX: tx != nil && *tx, ReportedAt: *reportedAt}
+		}
+		out = append(out, summary)
+	}
+	return out, rows.Err()
+}
+
+func (s *AgentKeyStore) CreateInOrganization(ctx context.Context, organizationID uuid.UUID, agentID, keyHash string) error {
+	_, err := s.pool.Exec(ctx, `INSERT INTO agent_keys (organization_id, agent_id, key_hash) VALUES ($1,$2,$3)`, organizationID, agentID, keyHash)
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return ErrAgentIDTaken
+		}
+	}
+	return err
+}
+
+func (s *AgentKeyStore) RevokeInOrganization(ctx context.Context, organizationID uuid.UUID, agentID string) (time.Time, error) {
+	var revokedAt time.Time
+	err := s.pool.QueryRow(ctx, `
+		UPDATE agent_keys SET revoked_at=now()
+		WHERE agent_id=$1 AND organization_id=$2 AND revoked_at IS NULL
+		RETURNING revoked_at
+	`, agentID, organizationID).Scan(&revokedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return time.Time{}, ErrAgentKeyNotFound
+	}
+	return revokedAt, err
+}

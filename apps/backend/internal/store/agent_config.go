@@ -224,3 +224,47 @@ func (s *AgentConfigStore) Ack(ctx context.Context, agentID string, version int6
 	}
 	return tx.Commit(ctx)
 }
+
+func (s *AgentConfigStore) DesiredInOrganization(ctx context.Context, organizationID uuid.UUID, agentID string) (AgentConfigVersion, error) {
+	var ok bool
+	if err := s.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM agent_identities WHERE agent_id=$1 AND organization_id=$2)`, agentID, organizationID).Scan(&ok); err != nil {
+		return AgentConfigVersion{}, err
+	}
+	if !ok {
+		return AgentConfigVersion{}, ErrAgentIdentityNotFound
+	}
+	return s.Desired(ctx, agentID)
+}
+
+func (s *AgentConfigStore) HistoryInOrganization(ctx context.Context, organizationID uuid.UUID, agentID string, limit int) ([]AgentConfigVersion, error) {
+	var ok bool
+	if err := s.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM agent_identities WHERE agent_id=$1 AND organization_id=$2)`, agentID, organizationID).Scan(&ok); err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, ErrAgentIdentityNotFound
+	}
+	return s.History(ctx, agentID, limit)
+}
+
+func (s *AgentConfigStore) SettingsForVersionInOrganization(ctx context.Context, organizationID uuid.UUID, agentID string, version int64) (AgentConfigSettings, error) {
+	var ok bool
+	if err := s.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM agent_identities WHERE agent_id=$1 AND organization_id=$2)`, agentID, organizationID).Scan(&ok); err != nil {
+		return AgentConfigSettings{}, err
+	}
+	if !ok {
+		return AgentConfigSettings{}, ErrAgentIdentityNotFound
+	}
+	return s.SettingsForVersion(ctx, agentID, version)
+}
+
+func (s *AgentConfigStore) CreateInOrganization(ctx context.Context, organizationID uuid.UUID, agentID string, settings AgentConfigSettings, createdBy *uuid.UUID, sign AgentConfigSignFunc) (AgentConfigVersion, error) {
+	var ok bool
+	if err := s.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM agent_identities WHERE agent_id=$1 AND organization_id=$2)`, agentID, organizationID).Scan(&ok); err != nil {
+		return AgentConfigVersion{}, err
+	}
+	if !ok {
+		return AgentConfigVersion{}, ErrAgentIdentityNotFound
+	}
+	return s.Create(ctx, agentID, settings, createdBy, sign)
+}
