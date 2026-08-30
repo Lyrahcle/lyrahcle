@@ -38,6 +38,6 @@ BEGIN
 END $$;
 
 CREATE INDEX IF NOT EXISTS agent_identities_org_seen_idx ON agent_identities (organization_id, last_seen_at DESC);
-CREATE INDEX IF NOT EXISTS assets_org_created_idx ON assets (organization_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS assets_org_last_seen_idx ON assets (organization_id, last_seen DESC);
 CREATE INDEX IF NOT EXISTS incidents_org_created_idx ON incidents (organization_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS audit_log_org_created_idx ON audit_log (organization_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS audit_log_org_occurred_idx ON audit_log (organization_id, occurred_at DESC);
