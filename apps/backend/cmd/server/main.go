@@ -2272,11 +2272,11 @@ func detectRFAnomalies(ctx context.Context, anomalies *store.AnomalyStore, rules
 			log.Printf("anomaly: failed to record %s anomaly for agent %s: %v", result.Metric, reading.AgentID, err)
 			continue
 		}
-		correlateRFDetectionRules(ctx, rules, incidents, auditLog, satellites, identities, spaceCVEs, reading, created)
+		correlateRFDetectionRules(ctx, rules, incidents, auditLog, satellites, identities, spaceCVEs, policy, orbitalAutoEscalation, reading, created)
 	}
 }
 
-func correlateRFDetectionRules(ctx context.Context, rules *store.DetectionRuleStore, incidents *store.IncidentStore, auditLog *store.AuditStore, satellites *store.SatelliteStore, identities *store.AgentIdentityStore, spaceCVEs *store.SpaceCVEStore, reading store.RFReading, anomalyRecord store.RFAnomaly) {
+func correlateRFDetectionRules(ctx context.Context, rules *store.DetectionRuleStore, incidents *store.IncidentStore, auditLog *store.AuditStore, satellites *store.SatelliteStore, identities *store.AgentIdentityStore, spaceCVEs *store.SpaceCVEStore, policy tlequality.Policy, orbitalAutoEscalation bool, reading store.RFReading, anomalyRecord store.RFAnomaly) {
 	enabledRules, err := rules.ListEnabled(ctx)
 	if err != nil {
 		log.Printf("detection: failed to load rules: %v", err)
