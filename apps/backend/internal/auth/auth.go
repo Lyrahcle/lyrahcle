@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -142,5 +143,5 @@ func RoleAtLeast(role Role, minimum Role) bool {
 }
 
 func WithClaims(ctx context.Context, claims *Claims) context.Context {
-	return context.WithValue(ctx, claimsContextKey{}, claims)
+	return context.WithValue(ctx, claimsContextKey, claims)
 }
