@@ -32,6 +32,7 @@ func ValidRole(r string) bool {
 
 type Claims struct {
 	UserID                 uuid.UUID `json:"user_id"`
+	OrganizationID         uuid.UUID `json:"organization_id,omitempty"`
 	Role                   Role      `json:"role"`
 	SessionIssuedAt        int64     `json:"session_iat_ns"`
 	PasswordChangeRequired bool      `json:"password_change_required,omitempty"`
@@ -62,9 +63,14 @@ func IssueUserTokenWithClaims(secret []byte, userID uuid.UUID, role Role, passwo
 }
 
 func IssueUserTokenWithState(secret []byte, userID uuid.UUID, role Role, passwordChangeRequired bool, authVersion int64, ttl time.Duration) (string, *Claims, error) {
+	return IssueOrganizationUserTokenWithState(secret, userID, uuid.Nil, role, passwordChangeRequired, authVersion, ttl)
+}
+
+func IssueOrganizationUserTokenWithState(secret []byte, userID, organizationID uuid.UUID, role Role, passwordChangeRequired bool, authVersion int64, ttl time.Duration) (string, *Claims, error) {
 	now := time.Now()
 	claims := &Claims{
 		UserID:                 userID,
+		OrganizationID:         organizationID,
 		Role:                   role,
 		SessionIssuedAt:        now.UnixNano(),
 		PasswordChangeRequired: passwordChangeRequired,

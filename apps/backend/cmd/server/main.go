@@ -189,6 +189,7 @@ func newRouter(
 	agentIdentities := store.NewAgentIdentityStore(pool)
 	agentConfigs := store.NewAgentConfigStore(pool)
 	orbitalEvents := store.NewOrbitalEventStore(pool)
+	organizations := store.NewOrganizationStore(pool)
 	agentCA, err := buildAgentCA(cfg)
 	if err != nil {
 		panic(fmt.Sprintf("agent CA configuration: %v", err))
@@ -209,6 +210,9 @@ func newRouter(
 			return false, err
 		}
 		if !user.Enabled || user.Role != string(claims.Role) || user.AuthVersion != claims.AuthVersion {
+			return true, nil
+		}
+		if claims.OrganizationID != uuid.Nil && user.OrganizationID != claims.OrganizationID {
 			return true, nil
 		}
 		if user.MustChangePassword != claims.PasswordChangeRequired {
@@ -434,7 +438,7 @@ func newRouter(
 					}
 				}
 
-				token, tokenClaims, err := auth.IssueUserTokenWithState(cfg.JWTSecret, user.ID, auth.Role(user.Role), user.MustChangePassword, user.AuthVersion, cfg.JWTAccessTTL)
+				token, tokenClaims, err := auth.IssueOrganizationUserTokenWithState(cfg.JWTSecret, user.ID, user.OrganizationID, auth.Role(user.Role), user.MustChangePassword, user.AuthVersion, cfg.JWTAccessTTL)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
@@ -781,6 +785,8 @@ func newRouter(
 				w.WriteHeader(http.StatusNoContent)
 			})
 		})
+
+		registerOrganizationRoutes(r, cfg, organizations, auditLog, isTokenRevoked)
 
 		r.Route("/users", func(r chi.Router) {
 			r.Use(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleAdmin, isTokenRevoked))

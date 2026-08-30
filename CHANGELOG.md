@@ -1,3 +1,4 @@
+- v10.0: Organizations / multi-tenancy foundation with default-org migration, user membership, JWT organization context and admin organization API.
 # Changelog
 
 

@@ -129,7 +129,7 @@ func registerWebAuthnRoutes(r chi.Router, cfg config.Config, handler *webauthn.W
 			http.Error(w, "credential update failed", http.StatusInternalServerError)
 			return
 		}
-		token, claims, err := auth.IssueUserTokenWithState(cfg.JWTSecret, user.ID, auth.Role(user.Role), user.MustChangePassword, user.AuthVersion, cfg.JWTAccessTTL)
+		token, claims, err := auth.IssueOrganizationUserTokenWithState(cfg.JWTSecret, user.ID, user.OrganizationID, auth.Role(user.Role), user.MustChangePassword, user.AuthVersion, cfg.JWTAccessTTL)
 		if err != nil {
 			http.Error(w, "token issuance failed", http.StatusInternalServerError)
 			return

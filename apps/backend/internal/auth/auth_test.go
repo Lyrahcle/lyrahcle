@@ -152,3 +152,19 @@ func TestIssueUserTokenWithPasswordChangeRequirement(t *testing.T) {
 		t.Fatal("PasswordChangeRequired = false, want true")
 	}
 }
+
+func TestOrganizationClaimRoundTrip(t *testing.T) {
+	secret := []byte("organization-claim-test-secret-123456")
+	userID, organizationID := uuid.New(), uuid.New()
+	token, _, err := IssueOrganizationUserTokenWithState(secret, userID, organizationID, RoleAdmin, false, 3, time.Hour)
+	if err != nil {
+		t.Fatalf("IssueOrganizationUserTokenWithState: %v", err)
+	}
+	claims, err := ParseToken(secret, token)
+	if err != nil {
+		t.Fatalf("ParseToken: %v", err)
+	}
+	if claims.OrganizationID != organizationID {
+		t.Fatalf("organization_id = %s, want %s", claims.OrganizationID, organizationID)
+	}
+}

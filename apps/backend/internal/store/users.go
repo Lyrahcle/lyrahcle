@@ -19,6 +19,7 @@ var usernameSanitizer = regexp.MustCompile(`[^a-z0-9_.-]`)
 
 type User struct {
 	ID                 uuid.UUID `json:"id"`
+	OrganizationID     uuid.UUID `json:"organization_id"`
 	Email              string    `json:"email"`
 	Username           string    `json:"username"`
 	PasswordHash       string    `json:"-"`
@@ -56,8 +57,8 @@ func (s *UserStore) Create(ctx context.Context, email, passwordHash, role string
 		err := s.pool.QueryRow(ctx, `
 			INSERT INTO users (email, username, password_hash, role)
 			VALUES ($1, $2, $3, $4)
-			RETURNING id, email, username, password_hash, role, coalesce(totp_secret, ''), totp_enabled, enabled, must_change_password, auth_version
-		`, email, username, passwordHash, role).Scan(&u.ID, &u.Email, &u.Username, &u.PasswordHash, &u.Role, &u.TOTPSecret, &u.TOTPEnabled, &u.Enabled, &u.MustChangePassword, &u.AuthVersion)
+			RETURNING id, organization_id, email, username, password_hash, role, coalesce(totp_secret, ''), totp_enabled, enabled, must_change_password, auth_version
+		`, email, username, passwordHash, role).Scan(&u.ID, &u.OrganizationID, &u.Email, &u.Username, &u.PasswordHash, &u.Role, &u.TOTPSecret, &u.TOTPEnabled, &u.Enabled, &u.MustChangePassword, &u.AuthVersion)
 		if err == nil {
 			return u, nil
 		}
@@ -89,8 +90,8 @@ func (s *UserStore) CreateProvisioned(ctx context.Context, email, passwordHash, 
 func (s *UserStore) GetByEmail(ctx context.Context, email string) (User, error) {
 	var u User
 	err := s.pool.QueryRow(ctx, `
-		SELECT id, email, username, password_hash, role, coalesce(totp_secret, ''), totp_enabled, enabled, must_change_password, auth_version FROM users WHERE email = $1 AND deleted_at IS NULL
-	`, email).Scan(&u.ID, &u.Email, &u.Username, &u.PasswordHash, &u.Role, &u.TOTPSecret, &u.TOTPEnabled, &u.Enabled, &u.MustChangePassword, &u.AuthVersion)
+		SELECT id, organization_id, email, username, password_hash, role, coalesce(totp_secret, ''), totp_enabled, enabled, must_change_password, auth_version FROM users WHERE email = $1 AND deleted_at IS NULL
+	`, email).Scan(&u.ID, &u.OrganizationID, &u.Email, &u.Username, &u.PasswordHash, &u.Role, &u.TOTPSecret, &u.TOTPEnabled, &u.Enabled, &u.MustChangePassword, &u.AuthVersion)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return User{}, ErrUserNotFound
@@ -103,9 +104,9 @@ func (s *UserStore) GetByEmail(ctx context.Context, email string) (User, error) 
 func (s *UserStore) GetByIdentifier(ctx context.Context, identifier string) (User, error) {
 	var u User
 	err := s.pool.QueryRow(ctx, `
-		SELECT id, email, username, password_hash, role, coalesce(totp_secret, ''), totp_enabled, enabled, must_change_password, auth_version FROM users
+		SELECT id, organization_id, email, username, password_hash, role, coalesce(totp_secret, ''), totp_enabled, enabled, must_change_password, auth_version FROM users
 		WHERE (email = $1 OR username = $1) AND deleted_at IS NULL
-	`, identifier).Scan(&u.ID, &u.Email, &u.Username, &u.PasswordHash, &u.Role, &u.TOTPSecret, &u.TOTPEnabled, &u.Enabled, &u.MustChangePassword, &u.AuthVersion)
+	`, identifier).Scan(&u.ID, &u.OrganizationID, &u.Email, &u.Username, &u.PasswordHash, &u.Role, &u.TOTPSecret, &u.TOTPEnabled, &u.Enabled, &u.MustChangePassword, &u.AuthVersion)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return User{}, ErrUserNotFound
@@ -118,8 +119,8 @@ func (s *UserStore) GetByIdentifier(ctx context.Context, identifier string) (Use
 func (s *UserStore) GetByID(ctx context.Context, id uuid.UUID) (User, error) {
 	var u User
 	err := s.pool.QueryRow(ctx, `
-		SELECT id, email, username, password_hash, role, coalesce(totp_secret, ''), totp_enabled, enabled, must_change_password, auth_version FROM users WHERE id = $1 AND deleted_at IS NULL
-	`, id).Scan(&u.ID, &u.Email, &u.Username, &u.PasswordHash, &u.Role, &u.TOTPSecret, &u.TOTPEnabled, &u.Enabled, &u.MustChangePassword, &u.AuthVersion)
+		SELECT id, organization_id, email, username, password_hash, role, coalesce(totp_secret, ''), totp_enabled, enabled, must_change_password, auth_version FROM users WHERE id = $1 AND deleted_at IS NULL
+	`, id).Scan(&u.ID, &u.OrganizationID, &u.Email, &u.Username, &u.PasswordHash, &u.Role, &u.TOTPSecret, &u.TOTPEnabled, &u.Enabled, &u.MustChangePassword, &u.AuthVersion)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return User{}, ErrUserNotFound
@@ -142,7 +143,7 @@ func (s *UserStore) UpdatePassword(ctx context.Context, id uuid.UUID, newHash st
 
 func (s *UserStore) List(ctx context.Context) ([]User, error) {
 	rows, err := s.pool.Query(ctx, `
-		SELECT id, email, username, password_hash, role, coalesce(totp_secret, ''), totp_enabled, enabled, must_change_password, auth_version FROM users WHERE deleted_at IS NULL ORDER BY created_at ASC
+		SELECT id, organization_id, email, username, password_hash, role, coalesce(totp_secret, ''), totp_enabled, enabled, must_change_password, auth_version FROM users WHERE deleted_at IS NULL ORDER BY created_at ASC
 	`)
 	if err != nil {
 		return nil, err
@@ -152,7 +153,7 @@ func (s *UserStore) List(ctx context.Context) ([]User, error) {
 	var out []User
 	for rows.Next() {
 		var u User
-		if err := rows.Scan(&u.ID, &u.Email, &u.Username, &u.PasswordHash, &u.Role, &u.TOTPSecret, &u.TOTPEnabled, &u.Enabled, &u.MustChangePassword, &u.AuthVersion); err != nil {
+		if err := rows.Scan(&u.ID, &u.OrganizationID, &u.Email, &u.Username, &u.PasswordHash, &u.Role, &u.TOTPSecret, &u.TOTPEnabled, &u.Enabled, &u.MustChangePassword, &u.AuthVersion); err != nil {
 			return nil, err
 		}
 		out = append(out, u)
@@ -164,8 +165,8 @@ func (s *UserStore) UpdateRole(ctx context.Context, id uuid.UUID, role string) (
 	var u User
 	err := s.pool.QueryRow(ctx, `
 		UPDATE users SET role = $1, auth_version = auth_version + 1 WHERE id = $2 AND deleted_at IS NULL
-		RETURNING id, email, username, password_hash, role, coalesce(totp_secret, ''), totp_enabled, enabled, must_change_password, auth_version
-	`, role, id).Scan(&u.ID, &u.Email, &u.Username, &u.PasswordHash, &u.Role, &u.TOTPSecret, &u.TOTPEnabled, &u.Enabled, &u.MustChangePassword, &u.AuthVersion)
+		RETURNING id, organization_id, email, username, password_hash, role, coalesce(totp_secret, ''), totp_enabled, enabled, must_change_password, auth_version
+	`, role, id).Scan(&u.ID, &u.OrganizationID, &u.Email, &u.Username, &u.PasswordHash, &u.Role, &u.TOTPSecret, &u.TOTPEnabled, &u.Enabled, &u.MustChangePassword, &u.AuthVersion)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return User{}, ErrUserNotFound
@@ -218,8 +219,8 @@ func (s *UserStore) SetEnabled(ctx context.Context, id uuid.UUID, enabled bool) 
 	var u User
 	err := s.pool.QueryRow(ctx, `
 		UPDATE users SET enabled = $1, auth_version = auth_version + 1 WHERE id = $2 AND deleted_at IS NULL
-		RETURNING id, email, username, password_hash, role, coalesce(totp_secret, ''), totp_enabled, enabled, must_change_password, auth_version
-	`, enabled, id).Scan(&u.ID, &u.Email, &u.Username, &u.PasswordHash, &u.Role, &u.TOTPSecret, &u.TOTPEnabled, &u.Enabled, &u.MustChangePassword, &u.AuthVersion)
+		RETURNING id, organization_id, email, username, password_hash, role, coalesce(totp_secret, ''), totp_enabled, enabled, must_change_password, auth_version
+	`, enabled, id).Scan(&u.ID, &u.OrganizationID, &u.Email, &u.Username, &u.PasswordHash, &u.Role, &u.TOTPSecret, &u.TOTPEnabled, &u.Enabled, &u.MustChangePassword, &u.AuthVersion)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return User{}, ErrUserNotFound
 	}
