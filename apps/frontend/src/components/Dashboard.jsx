@@ -20,6 +20,7 @@ import AuditLogPanel from './AuditLogPanel.jsx'
 import UsersPanel from './UsersPanel.jsx'
 import SettingsPanel from './SettingsPanel.jsx'
 import PlatformOrganizationsPanel from './PlatformOrganizationsPanel.jsx'
+import RBACPanel from './RBACPanel.jsx'
 import Footer from './Footer.jsx'
 import { AnomalyTimelineChart, CVESeverityChart, CVETimelineChart, IncidentSeverityChart, IncidentTimelineChart, OrbitalAltitudeChart, RFPowerChart, RFSpectrumChart, RFStationMapChart } from './TelemetryCharts.jsx'
 import { hasPermission } from '../lib/permissions.js'
@@ -40,6 +41,8 @@ import {
   fetchUsers,
   fetchPlatformAccess,
   fetchOrganizations,
+  fetchRBACPermissions,
+  fetchRBACRoles,
   subscribeSatellites,
   subscribeIncidents,
   UnauthorizedError,
@@ -65,6 +68,8 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
   const [users, setUsers] = useState(null)
   const [platformAdmin, setPlatformAdmin] = useState(false)
   const [organizations, setOrganizations] = useState(null)
+  const [rbacPermissions, setRbacPermissions] = useState(null)
+  const [rbacRoles, setRbacRoles] = useState(null)
   const [backendStatus, setBackendStatus] = useState('checking')
   const [dbStatus, setDbStatus] = useState('checking')
 
@@ -105,7 +110,11 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
   }, [incidentFilters])
 
   const admin = hasPermission('users.manage')
+  const usersRead = hasPermission('users.read')
   const auditAccess = hasPermission('audit.read')
+  const rbacRead = hasPermission('rbac.read')
+  const rbacManage = hasPermission('rbac.manage')
+  const adminAccess = admin || usersRead || auditAccess || rbacRead || rbacManage
   const tabs = [
     { id: 'orbital', label: t('tabs.orbital') },
     { id: 'assets', label: t('tabs.assets') },
@@ -114,7 +123,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
     { id: 'intel', label: t('tabs.intel') },
     { id: 'decoder', label: t('tabs.decoder') },
     { id: 'connectivity', label: t('tabs.connectivity') },
-    ...(auditAccess ? [{ id: 'admin', label: admin ? t('tabs.admin') : t('panels.auditLog') }] : []),
+    ...(adminAccess ? [{ id: 'admin', label: t('tabs.admin') }] : []),
     ...(platformAdmin ? [{ id: 'platform', label: t('tabs.platform') }] : []),
   ]
 
@@ -233,15 +242,20 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
         return
       }
 
-      if (activeTab === 'admin' && auditAccess) {
-        const requests = [
-          safeFetch(
+      if (activeTab === 'admin' && adminAccess) {
+        const requests = []
+        if (auditAccess) {
+          requests.push(safeFetch(
             () => fetchAuditLog(PAGE_LIMIT, auditOffsetRef.current),
             setAuditEntries,
             { items: [], total: 0, limit: PAGE_LIMIT, offset: 0 },
-          ),
-        ]
-        if (admin) requests.push(safeFetch(fetchUsers, setUsers))
+          ))
+        }
+        if (usersRead || admin) requests.push(safeFetch(fetchUsers, setUsers))
+        if (rbacRead) {
+          requests.push(safeFetch(fetchRBACPermissions, setRbacPermissions))
+          requests.push(safeFetch(fetchRBACRoles, setRbacRoles))
+        }
         await Promise.all(requests)
       }
     }
@@ -252,7 +266,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
       cancelled = true
       clearInterval(id)
     }
-  }, [onSessionExpired, activeTab, admin, auditAccess, assetsOffset, cvesOffset, cveFilters, auditOffset, incidentsOffset, incidentFilters, platformAdmin])
+  }, [onSessionExpired, activeTab, admin, auditAccess, assetsOffset, cvesOffset, cveFilters, auditOffset, incidentsOffset, incidentFilters, platformAdmin, adminAccess, usersRead, rbacRead])
 
   useEffect(() => {
     if (activeTab !== 'orbital') {
@@ -311,6 +325,14 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
   }
   function reloadOrganizations() {
     fetchOrganizations().then(setOrganizations).catch(() => {})
+  }
+  function reloadRBAC() {
+    Promise.all([fetchRBACPermissions(), fetchRBACRoles()])
+      .then(([permissions, roles]) => {
+        setRbacPermissions(permissions)
+        setRbacRoles(roles)
+      })
+      .catch(() => {})
   }
   function reloadAssetAlerts() {
     fetchAssetAlerts(PAGE_LIMIT, alertsOffsetRef.current).then(setAssetAlerts).catch(() => {})
@@ -511,24 +533,35 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
           </Panel>
         )}
 
-{activeTab === 'admin' && auditAccess && (
+        {activeTab === 'admin' && adminAccess && (
           <div className="grid gap-6">
             {admin && (
               <Panel eyebrow={t('panels.accessControl')} title={t('panels.usersAndRoles')}>
                 {users === null ? <Skeleton /> : <UsersPanel users={users} onChanged={reloadUsers} />}
               </Panel>
             )}
-            <Panel eyebrow={t('panels.security')} title={t('panels.auditLog')}>
-              {auditEntries === null ? (
-                <Skeleton />
-              ) : (
-                <AuditLogPanel
-                  page={auditEntries}
-                  onPrev={() => setAuditOffset((o) => Math.max(0, o - PAGE_LIMIT))}
-                  onNext={() => setAuditOffset((o) => o + PAGE_LIMIT)}
-                />
-              )}
-            </Panel>
+            {rbacRead && (
+              <Panel eyebrow={t('panels.accessControl')} title={t('rbac.title')}>
+                {rbacPermissions === null || rbacRoles === null || ((usersRead || admin) && users === null) ? (
+                  <Skeleton />
+                ) : (
+                  <RBACPanel permissions={rbacPermissions} roles={rbacRoles} users={users ?? []} onChanged={reloadRBAC} />
+                )}
+              </Panel>
+            )}
+            {auditAccess && (
+              <Panel eyebrow={t('panels.security')} title={t('panels.auditLog')}>
+                {auditEntries === null ? (
+                  <Skeleton />
+                ) : (
+                  <AuditLogPanel
+                    page={auditEntries}
+                    onPrev={() => setAuditOffset((o) => Math.max(0, o - PAGE_LIMIT))}
+                    onNext={() => setAuditOffset((o) => o + PAGE_LIMIT)}
+                  />
+                )}
+              </Panel>
+            )}
           </div>
         )}
 

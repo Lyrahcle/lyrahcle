@@ -1516,3 +1516,12 @@ for (const [language, extra] of Object.entries(platformTranslations)) {
   Object.assign(translations[language].tabs, extra.tabs)
   translations[language].platform = extra.platform
 }
+
+
+const rbacTranslations = {
+  en: { rbac: { title: 'Roles & capabilities', roleName: 'Role name', description: 'Description', capabilities: 'Capabilities', createRole: 'Create custom role', roles: 'Available roles', role: 'Role', type: 'Type', system: 'System', custom: 'Custom', user: 'User', selectUser: 'Select user to assign roles' } },
+  es: { rbac: { title: 'Roles y capacidades', roleName: 'Nombre del rol', description: 'Descripción', capabilities: 'Capacidades', createRole: 'Crear rol personalizado', roles: 'Roles disponibles', role: 'Rol', type: 'Tipo', system: 'Sistema', custom: 'Personalizado', user: 'Usuario', selectUser: 'Selecciona usuario para asignar roles' } },
+  fr: { rbac: { title: 'Rôles et capacités', roleName: 'Nom du rôle', description: 'Description', capabilities: 'Capacités', createRole: 'Créer un rôle personnalisé', roles: 'Rôles disponibles', role: 'Rôle', type: 'Type', system: 'Système', custom: 'Personnalisé', user: 'Utilisateur', selectUser: 'Sélectionner un utilisateur' } },
+  de: { rbac: { title: 'Rollen & Berechtigungen', roleName: 'Rollenname', description: 'Beschreibung', capabilities: 'Berechtigungen', createRole: 'Benutzerdefinierte Rolle erstellen', roles: 'Verfügbare Rollen', role: 'Rolle', type: 'Typ', system: 'System', custom: 'Benutzerdefiniert', user: 'Benutzer', selectUser: 'Benutzer zur Rollenzuweisung auswählen' } },
+}
+for (const [language, extra] of Object.entries(rbacTranslations)) translations[language].rbac = extra.rbac

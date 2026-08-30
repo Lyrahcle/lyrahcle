@@ -210,6 +210,35 @@ func (s *RBACStore) AssignRole(ctx context.Context, organizationID, userID, role
 	return nil
 }
 
+func (s *RBACStore) AssignedRoles(ctx context.Context, organizationID, userID uuid.UUID) ([]OrganizationRole, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT r.id,r.organization_id,r.name,r.description,r.system
+		FROM organization_membership_roles umr
+		JOIN organization_roles r ON r.id=umr.organization_role_id AND r.organization_id=umr.organization_id
+		WHERE umr.user_id=$1 AND umr.organization_id=$2
+		ORDER BY r.system DESC,r.name
+	`, userID, organizationID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := []OrganizationRole{}
+	for rows.Next() {
+		var role OrganizationRole
+		if err := rows.Scan(&role.ID, &role.OrganizationID, &role.Name, &role.Description, &role.System); err != nil {
+			return nil, err
+		}
+		perms, err := s.permissionsForRole(ctx, role.ID)
+		if err != nil {
+			return nil, err
+		}
+		role.Permissions = perms
+		out = append(out, role)
+	}
+	return out, rows.Err()
+}
+
 func (s *RBACStore) RemoveRole(ctx context.Context, organizationID, userID, roleID uuid.UUID) error {
 	tag, err := s.pool.Exec(ctx, `
 		DELETE FROM organization_membership_roles

@@ -621,3 +621,42 @@ export async function createOrganization(slug, name) {
   if (!res.ok) throw new Error(await readErrorText(res, 'failed to create organization'))
   return res.json()
 }
+
+
+export async function fetchRBACPermissions() {
+  const res = await authedFetch('/api/v1/rbac/permissions')
+  if (!res.ok) throw new Error(await readErrorText(res, 'failed to fetch RBAC permissions'))
+  return res.json()
+}
+
+export async function fetchRBACRoles() {
+  const res = await authedFetch('/api/v1/rbac/roles')
+  if (!res.ok) throw new Error(await readErrorText(res, 'failed to fetch RBAC roles'))
+  return res.json()
+}
+
+export async function createRBACRole(name, description, permissions) {
+  const res = await authedFetch('/api/v1/rbac/roles', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, description, permissions }),
+  })
+  if (!res.ok) throw new Error(await readErrorText(res, 'failed to create RBAC role'))
+  return res.json()
+}
+
+export async function fetchUserRBACRoles(userId) {
+  const res = await authedFetch(`/api/v1/rbac/users/${encodeURIComponent(userId)}/roles`)
+  if (!res.ok) throw new Error(await readErrorText(res, 'failed to fetch user roles'))
+  return res.json()
+}
+
+export async function assignUserRBACRole(userId, roleId) {
+  const res = await authedFetch(`/api/v1/rbac/users/${encodeURIComponent(userId)}/roles/${encodeURIComponent(roleId)}`, { method: 'POST' })
+  if (!res.ok) throw new Error(await readErrorText(res, 'failed to assign role'))
+}
+
+export async function removeUserRBACRole(userId, roleId) {
+  const res = await authedFetch(`/api/v1/rbac/users/${encodeURIComponent(userId)}/roles/${encodeURIComponent(roleId)}`, { method: 'DELETE' })
+  if (!res.ok) throw new Error(await readErrorText(res, 'failed to remove role'))
+}

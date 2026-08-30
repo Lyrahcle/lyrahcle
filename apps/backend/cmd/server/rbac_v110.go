@@ -103,6 +103,27 @@ func registerRBACRoutes(r chi.Router, cfg config.Config, rbac *store.RBACStore, 
 			writeRBACJSON(w, http.StatusOK, map[string]interface{}{"organization_id": claims.OrganizationID, "permissions": perms})
 		})
 
+		r.Get("/users/{userID}/roles", func(w http.ResponseWriter, r *http.Request) {
+			if !requireRequestPermission(w, r, rbac, "rbac.read") {
+				return
+			}
+			orgID, ok := requestOrganizationID(w, r)
+			if !ok {
+				return
+			}
+			userID, err := uuid.Parse(chi.URLParam(r, "userID"))
+			if err != nil {
+				http.Error(w, "invalid user id", http.StatusBadRequest)
+				return
+			}
+			items, err := rbac.AssignedRoles(r.Context(), orgID, userID)
+			if err != nil {
+				http.Error(w, "role assignments unavailable", http.StatusInternalServerError)
+				return
+			}
+			writeRBACJSON(w, http.StatusOK, items)
+		})
+
 		r.Post("/users/{userID}/roles/{roleID}", func(w http.ResponseWriter, r *http.Request) {
 			if !requireRequestPermission(w, r, rbac, "rbac.manage") {
 				return
