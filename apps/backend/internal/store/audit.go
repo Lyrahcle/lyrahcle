@@ -9,13 +9,14 @@ import (
 )
 
 type AuditEntry struct {
-	ID         uuid.UUID              `json:"id"`
-	OccurredAt time.Time              `json:"occurred_at"`
-	ActorType  string                 `json:"actor_type"`
-	ActorID    string                 `json:"actor_id"`
-	Action     string                 `json:"action"`
-	IP         string                 `json:"ip"`
-	Details    map[string]interface{} `json:"details"`
+	ID             uuid.UUID              `json:"id"`
+	OrganizationID uuid.UUID              `json:"organization_id"`
+	OccurredAt     time.Time              `json:"occurred_at"`
+	ActorType      string                 `json:"actor_type"`
+	ActorID        string                 `json:"actor_id"`
+	Action         string                 `json:"action"`
+	IP             string                 `json:"ip"`
+	Details        map[string]interface{} `json:"details"`
 }
 
 type AuditStore struct {
@@ -95,4 +96,43 @@ func (s *AuditStore) RecentByActor(ctx context.Context, actorType, actorID strin
 		items = append(items, e)
 	}
 	return items, rows.Err()
+}
+
+func (s *AuditStore) InsertInOrganization(ctx context.Context, organizationID uuid.UUID, actorType, actorID, action, ip string, details map[string]interface{}) error {
+	if details == nil {
+		details = map[string]interface{}{}
+	}
+	_, err := s.pool.Exec(ctx, `
+		INSERT INTO audit_log (organization_id, actor_type, actor_id, action, ip, details)
+		VALUES ($1,$2,$3,$4,$5,$6)
+	`, organizationID, actorType, actorID, action, ip, details)
+	return err
+}
+
+func (s *AuditStore) ListByOrganization(ctx context.Context, organizationID uuid.UUID, limit, offset int) (Page[AuditEntry], error) {
+	limit, offset = ClampPageParams(limit, offset)
+	var total int
+	if err := s.pool.QueryRow(ctx, `SELECT count(*) FROM audit_log WHERE organization_id=$1`, organizationID).Scan(&total); err != nil {
+		return Page[AuditEntry]{}, err
+	}
+	rows, err := s.pool.Query(ctx, `
+		SELECT id, organization_id, occurred_at, actor_type, actor_id, action, ip, details
+		FROM audit_log
+		WHERE organization_id=$1
+		ORDER BY occurred_at DESC
+		LIMIT $2 OFFSET $3
+	`, organizationID, limit, offset)
+	if err != nil {
+		return Page[AuditEntry]{}, err
+	}
+	defer rows.Close()
+	items := []AuditEntry{}
+	for rows.Next() {
+		var e AuditEntry
+		if err := rows.Scan(&e.ID, &e.OrganizationID, &e.OccurredAt, &e.ActorType, &e.ActorID, &e.Action, &e.IP, &e.Details); err != nil {
+			return Page[AuditEntry]{}, err
+		}
+		items = append(items, e)
+	}
+	return Page[AuditEntry]{Items: items, Total: total, Limit: limit, Offset: offset}, rows.Err()
 }

@@ -1,28 +1,29 @@
 # Organizations and multi-tenancy
 
 ## v10.0 — foundation
-Organizations, default-organization migration, user membership and JWT organization context.
+Organizations, default migration, user membership and JWT organization context.
 
 ## v10.1 — user administration isolation
-User list/create/role/status/delete operations are restricted to the authenticated organization and last-admin protection is tenant-local.
+Administrative user operations are restricted to the authenticated organization.
 
-## v10.2 — critical-domain tenant boundary
+## v10.2 — critical-domain schema boundary
+Organization ownership was added for agent identities, assets, incidents and audit.
 
-The database now carries mandatory `organization_id` ownership for:
+## v10.3 — operational handler isolation
 
-- agents
-- assets
-- incidents
-- audit events
+Production-facing handlers now enforce tenant scope for:
 
-Existing rows are backfilled into the stable default organization. Foreign keys and tenant-first indexes make the ownership boundary explicit.
+- asset listing and upsert;
+- incident list, SSE stream, detail, update, notes and evidence;
+- incident assignment to users in the same organization;
+- audit-log listing.
 
-A reusable tenant-scope store performs organization-keyed existence/count queries, and the admin-only `/api/v1/organization-scope/summary` endpoint provides a safe tenant-local diagnostic view.
+Known UUIDs from another tenant are treated as not found by scoped incident/store operations. Asset uniqueness is tenant-local.
 
-### Important isolation gate
+The v10.2 migration was also corrected to target the real mTLS agent table, `agent_identities`, rather than a non-existent `agents` table.
 
-v10.2 establishes the schema and query primitives; it does **not** yet claim that every legacy agent/asset/incident/audit handler has been migrated. Those handlers must be converted to organization-scoped store methods before production multi-tenancy is enabled.
+## Remaining gate
 
-## Next
+Agent enrollment/status/station/config/certificate flows span `agent_identities`, enrollment tokens, certificates, remote configuration and legacy keys. They are intentionally isolated in the next release rather than partially tenant-scoping the credential chain.
 
-v10.3 migrates the actual critical-domain read/write handlers and adds negative Org-A/Org-B integration tests. RF, orbital, programs, CVE relationships, background jobs, search and SSE follow after that gate.
+After agent isolation, search, RF/orbital/program/CVE relationships, background jobs and remaining SSE surfaces still require explicit organization boundaries.

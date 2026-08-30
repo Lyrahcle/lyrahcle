@@ -19,6 +19,7 @@ var (
 
 type Incident struct {
 	ID               uuid.UUID  `json:"id"`
+	OrganizationID   uuid.UUID  `json:"organization_id"`
 	Reference        string     `json:"reference"`
 	Title            string     `json:"title"`
 	Description      string     `json:"description"`
@@ -74,6 +75,7 @@ type IncidentFilter struct {
 }
 
 type CreateIncidentInput struct {
+	OrganizationID  uuid.UUID
 	Title           string
 	Description     string
 	Severity        string
@@ -180,13 +182,13 @@ func (s *IncidentStore) Create(ctx context.Context, input CreateIncidentInput) (
 	var incident Incident
 	err = tx.QueryRow(ctx, `
 		INSERT INTO incidents (
-			reference, title, description, severity, source_type, satellite_id, agent_id,
+			organization_id, reference, title, description, severity, source_type, satellite_id, agent_id,
 			source_anomaly_id, assigned_to, created_by, idempotency_key
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, nullif($7, ''), $8, $9, $10, nullif($11, ''))
+		VALUES ($1, $2, $3, $4, $5, $6, $7, nullif($8, ''), $9, $10, $11, nullif($12, ''))
 		RETURNING id, reference, title, description, severity, status, source_type, satellite_id,
 		          coalesce(agent_id, ''), source_anomaly_id, assigned_to, created_by, created_at, updated_at, resolved_at
-	`, reference, input.Title, input.Description, input.Severity, input.SourceType, input.SatelliteID,
+	`, incidentOrganizationID(input.OrganizationID), reference, input.Title, input.Description, input.Severity, input.SourceType, input.SatelliteID,
 		input.AgentID, input.SourceAnomalyID, input.AssignedTo, input.CreatedBy, input.IdempotencyKey).Scan(
 		&incident.ID, &incident.Reference, &incident.Title, &incident.Description, &incident.Severity,
 		&incident.Status, &incident.SourceType, &incident.SatelliteID, &incident.AgentID,
@@ -491,6 +493,127 @@ func allowedIncidentTransition(from, to string) bool {
 
 type incidentScanner interface {
 	Scan(dest ...interface{}) error
+}
+
+func incidentOrganizationID(id uuid.UUID) uuid.UUID {
+	if id == uuid.Nil {
+		return DefaultOrganizationID
+	}
+	return id
+}
+
+func (s *IncidentStore) ExistsInOrganization(ctx context.Context, organizationID, id uuid.UUID) (bool, error) {
+	var ok bool
+	err := s.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM incidents WHERE id=$1 AND organization_id=$2)`, id, organizationID).Scan(&ok)
+	return ok, err
+}
+
+func (s *IncidentStore) ListByOrganization(ctx context.Context, organizationID uuid.UUID, limit, offset int, filter IncidentFilter) (Page[Incident], error) {
+	limit, offset = ClampPageParams(limit, offset)
+	assigned := uuid.Nil
+	if filter.AssignedTo != nil {
+		assigned = *filter.AssignedTo
+	}
+	satellite := uuid.Nil
+	if filter.SatelliteID != nil {
+		satellite = *filter.SatelliteID
+	}
+
+	var total int
+	if err := s.pool.QueryRow(ctx, `
+		SELECT count(*) FROM incidents i
+		WHERE i.organization_id=$1
+		  AND ($2='' OR i.status=$2)
+		  AND ($3='' OR i.severity=$3)
+		  AND ($4='' OR i.agent_id=$4)
+		  AND ($5::uuid='00000000-0000-0000-0000-000000000000'::uuid OR i.assigned_to=$5)
+		  AND ($6::uuid='00000000-0000-0000-0000-000000000000'::uuid OR i.satellite_id=$6)
+	`, organizationID, filter.Status, filter.Severity, filter.AgentID, assigned, satellite).Scan(&total); err != nil {
+		return Page[Incident]{}, err
+	}
+
+	rows, err := s.pool.Query(ctx, `
+		SELECT i.id, i.reference, i.title, i.description, i.severity, i.status, i.source_type,
+		       i.satellite_id, coalesce(s.name,''), coalesce(i.agent_id,''), i.source_anomaly_id,
+		       i.assigned_to, coalesce(u.username,''), i.created_by, i.created_at, i.updated_at, i.resolved_at
+		FROM incidents i
+		LEFT JOIN satellites s ON s.id=i.satellite_id
+		LEFT JOIN users u ON u.id=i.assigned_to AND u.organization_id=i.organization_id
+		WHERE i.organization_id=$1
+		  AND ($2='' OR i.status=$2)
+		  AND ($3='' OR i.severity=$3)
+		  AND ($4='' OR i.agent_id=$4)
+		  AND ($5::uuid='00000000-0000-0000-0000-000000000000'::uuid OR i.assigned_to=$5)
+		  AND ($6::uuid='00000000-0000-0000-0000-000000000000'::uuid OR i.satellite_id=$6)
+		ORDER BY i.created_at DESC LIMIT $7 OFFSET $8
+	`, organizationID, filter.Status, filter.Severity, filter.AgentID, assigned, satellite, limit, offset)
+	if err != nil {
+		return Page[Incident]{}, err
+	}
+	defer rows.Close()
+
+	items := []Incident{}
+	for rows.Next() {
+		item, err := scanIncident(rows)
+		if err != nil {
+			return Page[Incident]{}, err
+		}
+		item.OrganizationID = organizationID
+		items = append(items, item)
+	}
+	return Page[Incident]{Items: items, Total: total, Limit: limit, Offset: offset}, rows.Err()
+}
+
+func (s *IncidentStore) GetByOrganization(ctx context.Context, organizationID, id uuid.UUID) (IncidentDetail, error) {
+	ok, err := s.ExistsInOrganization(ctx, organizationID, id)
+	if err != nil {
+		return IncidentDetail{}, err
+	}
+	if !ok {
+		return IncidentDetail{}, ErrIncidentNotFound
+	}
+	out, err := s.Get(ctx, id)
+	if err == nil {
+		out.Incident.OrganizationID = organizationID
+	}
+	return out, err
+}
+
+func (s *IncidentStore) UpdateByOrganization(ctx context.Context, organizationID, id uuid.UUID, input UpdateIncidentInput) (Incident, error) {
+	ok, err := s.ExistsInOrganization(ctx, organizationID, id)
+	if err != nil {
+		return Incident{}, err
+	}
+	if !ok {
+		return Incident{}, ErrIncidentNotFound
+	}
+	out, err := s.Update(ctx, id, input)
+	if err == nil {
+		out.OrganizationID = organizationID
+	}
+	return out, err
+}
+
+func (s *IncidentStore) AddNoteByOrganization(ctx context.Context, organizationID, id, actorID uuid.UUID, message string) error {
+	ok, err := s.ExistsInOrganization(ctx, organizationID, id)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return ErrIncidentNotFound
+	}
+	return s.AddNote(ctx, id, actorID, message)
+}
+
+func (s *IncidentStore) AddEvidenceByOrganization(ctx context.Context, organizationID, incidentID uuid.UUID, input CreateIncidentEvidenceInput) (IncidentEvidence, error) {
+	ok, err := s.ExistsInOrganization(ctx, organizationID, incidentID)
+	if err != nil {
+		return IncidentEvidence{}, err
+	}
+	if !ok {
+		return IncidentEvidence{}, ErrIncidentNotFound
+	}
+	return s.AddEvidence(ctx, incidentID, input)
 }
 
 func scanIncident(row incidentScanner) (Incident, error) {

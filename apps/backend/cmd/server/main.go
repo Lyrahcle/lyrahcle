@@ -306,7 +306,11 @@ func newRouter(
 		r.Route("/assets", func(r chi.Router) {
 			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)).Get("/", func(w http.ResponseWriter, r *http.Request) {
 				limit, offset := pageParams(r)
-				page, err := assets.List(r.Context(), limit, offset)
+				orgID, ok := requestOrganizationID(w, r)
+				if !ok {
+					return
+				}
+				page, err := assets.ListByOrganization(r.Context(), orgID, limit, offset)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
@@ -341,7 +345,11 @@ func newRouter(
 					return
 				}
 
-				if err := assets.Upsert(r.Context(), programID, body.Kind, body.Value); err != nil {
+				orgID, ok := requestOrganizationID(w, r)
+				if !ok {
+					return
+				}
+				if err := assets.UpsertInOrganization(r.Context(), orgID, programID, body.Kind, body.Value); err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
 				}
@@ -1624,7 +1632,11 @@ func newRouter(
 
 		r.With(auth.RequireAnyRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, []auth.Role{auth.RoleAuditor, auth.RoleAdmin}, isTokenRevoked)).Get("/audit-log", func(w http.ResponseWriter, r *http.Request) {
 			limit, offset := pageParams(r)
-			page, err := auditLog.List(r.Context(), limit, offset)
+			orgID, ok := requestOrganizationID(w, r)
+			if !ok {
+				return
+			}
+			page, err := auditLog.ListByOrganization(r.Context(), orgID, limit, offset)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -1685,7 +1697,11 @@ func newRouter(
 					http.Error(w, err.Error(), http.StatusBadRequest)
 					return
 				}
-				page, err := incidents.List(r.Context(), limit, offset, filter)
+				orgID, ok := requestOrganizationID(w, r)
+				if !ok {
+					return
+				}
+				page, err := incidents.ListByOrganization(r.Context(), orgID, limit, offset, filter)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
@@ -1711,7 +1727,11 @@ func newRouter(
 				ticker := time.NewTicker(5 * time.Second)
 				defer ticker.Stop()
 				send := func() bool {
-					page, err := incidents.List(r.Context(), 50, 0, store.IncidentFilter{})
+					orgID, ok := requestOrganizationID(w, r)
+					if !ok {
+						return false
+					}
+					page, err := incidents.ListByOrganization(r.Context(), orgID, 50, 0, store.IncidentFilter{})
 					if err != nil {
 						return true
 					}
@@ -1802,12 +1822,17 @@ func newRouter(
 					http.Error(w, "unauthorized", http.StatusUnauthorized)
 					return
 				}
+				orgID, err := auth.OrganizationID(claims)
+				if err != nil {
+					http.Error(w, "organization context required", http.StatusForbidden)
+					return
+				}
 				if assignedTo != nil && claims.Role != auth.RoleAdmin {
 					http.Error(w, "only admins can assign incidents", http.StatusForbidden)
 					return
 				}
 				if assignedTo != nil {
-					if _, err := users.GetByID(r.Context(), *assignedTo); err != nil {
+					if _, err := users.GetByIDInOrganization(r.Context(), orgID, *assignedTo); err != nil {
 						if err == store.ErrUserNotFound {
 							http.Error(w, "assigned user not found", http.StatusBadRequest)
 							return
@@ -1822,7 +1847,7 @@ func newRouter(
 					return
 				}
 				incident, err := incidents.Create(r.Context(), store.CreateIncidentInput{
-					Title: body.Title, Description: body.Description, Severity: body.Severity, SourceType: "manual",
+					OrganizationID: orgID, Title: body.Title, Description: body.Description, Severity: body.Severity, SourceType: "manual",
 					SatelliteID: satelliteID, AgentID: body.AgentID, AssignedTo: assignedTo, CreatedBy: &claims.UserID, IdempotencyKey: idempotencyKey,
 				})
 				if err != nil {
@@ -1841,7 +1866,11 @@ func newRouter(
 					http.Error(w, "incidentID must be a valid UUID", http.StatusBadRequest)
 					return
 				}
-				detail, err := incidents.Get(r.Context(), incidentID)
+				orgID, ok := requestOrganizationID(w, r)
+				if !ok {
+					return
+				}
+				detail, err := incidents.GetByOrganization(r.Context(), orgID, incidentID)
 				if err != nil {
 					if err == store.ErrIncidentNotFound {
 						http.Error(w, "incident not found", http.StatusNotFound)
@@ -1903,12 +1932,17 @@ func newRouter(
 					http.Error(w, "unauthorized", http.StatusUnauthorized)
 					return
 				}
+				orgID, err := auth.OrganizationID(claims)
+				if err != nil {
+					http.Error(w, "organization context required", http.StatusForbidden)
+					return
+				}
 				if input.UpdateAssignment && claims.Role != auth.RoleAdmin {
 					http.Error(w, "only admins can assign incidents", http.StatusForbidden)
 					return
 				}
 				if input.AssignedTo != nil {
-					if _, err := users.GetByID(r.Context(), *input.AssignedTo); err != nil {
+					if _, err := users.GetByIDInOrganization(r.Context(), orgID, *input.AssignedTo); err != nil {
 						if err == store.ErrUserNotFound {
 							http.Error(w, "assigned user not found", http.StatusBadRequest)
 							return
@@ -1918,7 +1952,7 @@ func newRouter(
 					}
 				}
 				input.ActorID = claims.UserID
-				incident, err := incidents.Update(r.Context(), incidentID, input)
+				incident, err := incidents.UpdateByOrganization(r.Context(), orgID, incidentID, input)
 				if err != nil {
 					if errors.Is(err, store.ErrInvalidIncidentTransition) {
 						http.Error(w, "invalid incident status transition", http.StatusConflict)
@@ -1959,7 +1993,13 @@ func newRouter(
 					http.Error(w, "unauthorized", http.StatusUnauthorized)
 					return
 				}
-				if err := incidents.AddNote(r.Context(), incidentID, claims.UserID, body.Message); err != nil {
+				if err := func() error {
+					orgID, ok := requestOrganizationID(w, r)
+					if !ok {
+						return store.ErrIncidentNotFound
+					}
+					return incidents.AddNoteByOrganization(r.Context(), orgID, incidentID, claims.UserID, body.Message)
+				}(); err != nil {
 					if err == store.ErrIncidentNotFound {
 						http.Error(w, "incident not found", http.StatusNotFound)
 						return
@@ -2006,9 +2046,15 @@ func newRouter(
 					http.Error(w, "unauthorized", http.StatusUnauthorized)
 					return
 				}
-				evidence, err := incidents.AddEvidence(r.Context(), incidentID, store.CreateIncidentEvidenceInput{
-					EvidenceType: body.EvidenceType, EvidenceRef: body.EvidenceRef, Label: body.Label, CreatedBy: &claims.UserID,
-				})
+				evidence, err := func() (store.IncidentEvidence, error) {
+					orgID, ok := requestOrganizationID(w, r)
+					if !ok {
+						return store.IncidentEvidence{}, store.ErrIncidentNotFound
+					}
+					return incidents.AddEvidenceByOrganization(r.Context(), orgID, incidentID, store.CreateIncidentEvidenceInput{
+						EvidenceType: body.EvidenceType, EvidenceRef: body.EvidenceRef, Label: body.Label, CreatedBy: &claims.UserID,
+					})
+				}()
 				if err != nil {
 					if errors.Is(err, store.ErrIncidentNotFound) {
 						http.Error(w, "incident not found", http.StatusNotFound)
