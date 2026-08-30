@@ -1503,3 +1503,16 @@ for (const [language, extra] of Object.entries(v92Translations)) {
 }
 
 export const supportedLanguages = Object.keys(translations)
+
+
+const platformTranslations = {
+  en: { tabs: { platform: 'Platform' }, platform: { eyebrow: 'Control Plane', title: 'Organizations', slug: 'Slug', name: 'Name', namePlaceholder: 'Organization name', create: 'Create organization', empty: 'No organizations found.' } },
+  es: { tabs: { platform: 'Plataforma' }, platform: { eyebrow: 'Plano de Control', title: 'Organizaciones', slug: 'Slug', name: 'Nombre', namePlaceholder: 'Nombre de la organización', create: 'Crear organización', empty: 'No se encontraron organizaciones.' } },
+  fr: { tabs: { platform: 'Plateforme' }, platform: { eyebrow: 'Plan de Contrôle', title: 'Organisations', slug: 'Slug', name: 'Nom', namePlaceholder: "Nom de l’organisation", create: 'Créer une organisation', empty: 'Aucune organisation trouvée.' } },
+  de: { tabs: { platform: 'Plattform' }, platform: { eyebrow: 'Kontrollebene', title: 'Organisationen', slug: 'Slug', name: 'Name', namePlaceholder: 'Organisationsname', create: 'Organisation erstellen', empty: 'Keine Organisationen gefunden.' } },
+}
+
+for (const [language, extra] of Object.entries(platformTranslations)) {
+  Object.assign(translations[language].tabs, extra.tabs)
+  translations[language].platform = extra.platform
+}

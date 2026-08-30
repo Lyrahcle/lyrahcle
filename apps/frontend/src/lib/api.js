@@ -598,3 +598,26 @@ export async function rollbackAgentConfig(agentId, version) {
   if (!res.ok) throw new Error(await readErrorText(res, 'failed to rollback agent config'))
   return res.json()
 }
+
+
+export async function fetchPlatformAccess() {
+  const res = await authedFetch('/api/v1/organizations/me')
+  if (!res.ok) throw new Error(await readErrorText(res, 'failed to check platform access'))
+  return res.json()
+}
+
+export async function fetchOrganizations() {
+  const res = await authedFetch('/api/v1/organizations/')
+  if (!res.ok) throw new Error(await readErrorText(res, 'failed to fetch organizations'))
+  return res.json()
+}
+
+export async function createOrganization(slug, name) {
+  const res = await authedFetch('/api/v1/organizations/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ slug, name }),
+  })
+  if (!res.ok) throw new Error(await readErrorText(res, 'failed to create organization'))
+  return res.json()
+}

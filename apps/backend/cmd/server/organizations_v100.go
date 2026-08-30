@@ -19,6 +19,20 @@ var organizationSlugPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{1,62}$`)
 
 func registerOrganizationRoutes(r chi.Router, cfg config.Config, organizations *store.OrganizationStore, users *store.UserStore, auditLog *store.AuditStore, isTokenRevoked func(context.Context, *auth.Claims) (bool, error)) {
 	r.Route("/organizations", func(r chi.Router) {
+		r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)).Get("/me", func(w http.ResponseWriter, r *http.Request) {
+			claims, ok := auth.FromContext(r.Context())
+			if !ok {
+				http.Error(w, "unauthorized", http.StatusUnauthorized)
+				return
+			}
+			allowed, err := users.IsPlatformAdministrator(r.Context(), claims.UserID)
+			if err != nil {
+				http.Error(w, "platform authorization unavailable", http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]bool{"platform_admin": allowed})
+		})
 		requirePlatformAdmin := func(next http.Handler) http.Handler {
 			return auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				claims, ok := auth.FromContext(r.Context())

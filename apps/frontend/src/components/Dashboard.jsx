@@ -19,6 +19,7 @@ import ConnectivityPanel from './ConnectivityPanel.jsx'
 import AuditLogPanel from './AuditLogPanel.jsx'
 import UsersPanel from './UsersPanel.jsx'
 import SettingsPanel from './SettingsPanel.jsx'
+import PlatformOrganizationsPanel from './PlatformOrganizationsPanel.jsx'
 import Footer from './Footer.jsx'
 import { AnomalyTimelineChart, CVESeverityChart, CVETimelineChart, IncidentSeverityChart, IncidentTimelineChart, OrbitalAltitudeChart, RFPowerChart, RFSpectrumChart, RFStationMapChart } from './TelemetryCharts.jsx'
 import { hasPermission } from '../lib/permissions.js'
@@ -37,6 +38,8 @@ import {
   fetchSatellites,
   fetchSpaceCVEs,
   fetchUsers,
+  fetchPlatformAccess,
+  fetchOrganizations,
   subscribeSatellites,
   subscribeIncidents,
   UnauthorizedError,
@@ -60,6 +63,8 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
   const [agentIdentities, setAgentIdentities] = useState(null)
   const [auditEntries, setAuditEntries] = useState(null)
   const [users, setUsers] = useState(null)
+  const [platformAdmin, setPlatformAdmin] = useState(false)
+  const [organizations, setOrganizations] = useState(null)
   const [backendStatus, setBackendStatus] = useState('checking')
   const [dbStatus, setDbStatus] = useState('checking')
 
@@ -110,7 +115,21 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
     { id: 'decoder', label: t('tabs.decoder') },
     { id: 'connectivity', label: t('tabs.connectivity') },
     ...(auditAccess ? [{ id: 'admin', label: admin ? t('tabs.admin') : t('panels.auditLog') }] : []),
+    ...(platformAdmin ? [{ id: 'platform', label: t('tabs.platform') }] : []),
   ]
+
+  useEffect(() => {
+    let cancelled = false
+    fetchPlatformAccess()
+      .then((result) => {
+        if (!cancelled) setPlatformAdmin(Boolean(result?.platform_admin))
+      })
+      .catch((err) => {
+        if (err instanceof UnauthorizedError) onSessionExpired()
+        else if (!cancelled) setPlatformAdmin(false)
+      })
+    return () => { cancelled = true }
+  }, [onSessionExpired])
 
   useEffect(() => {
     let cancelled = false
@@ -209,6 +228,11 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
         return
       }
 
+      if (activeTab === 'platform' && platformAdmin) {
+        await safeFetch(fetchOrganizations, setOrganizations)
+        return
+      }
+
       if (activeTab === 'admin' && auditAccess) {
         const requests = [
           safeFetch(
@@ -228,7 +252,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
       cancelled = true
       clearInterval(id)
     }
-  }, [onSessionExpired, activeTab, admin, auditAccess, assetsOffset, cvesOffset, cveFilters, auditOffset, incidentsOffset, incidentFilters])
+  }, [onSessionExpired, activeTab, admin, auditAccess, assetsOffset, cvesOffset, cveFilters, auditOffset, incidentsOffset, incidentFilters, platformAdmin])
 
   useEffect(() => {
     if (activeTab !== 'orbital') {
@@ -284,6 +308,9 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
   }
   function reloadUsers() {
     fetchUsers().then(setUsers).catch(() => {})
+  }
+  function reloadOrganizations() {
+    fetchOrganizations().then(setOrganizations).catch(() => {})
   }
   function reloadAssetAlerts() {
     fetchAssetAlerts(PAGE_LIMIT, alertsOffsetRef.current).then(setAssetAlerts).catch(() => {})
@@ -478,7 +505,13 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
           />
         )}
 
-        {activeTab === 'admin' && auditAccess && (
+                {activeTab === 'platform' && platformAdmin && (
+          <Panel eyebrow={t('platform.eyebrow')} title={t('platform.title')} uppercase>
+            {organizations === null ? <Skeleton /> : <PlatformOrganizationsPanel organizations={organizations} onChanged={reloadOrganizations} />}
+          </Panel>
+        )}
+
+{activeTab === 'admin' && auditAccess && (
           <div className="grid gap-6">
             {admin && (
               <Panel eyebrow={t('panels.accessControl')} title={t('panels.usersAndRoles')}>
