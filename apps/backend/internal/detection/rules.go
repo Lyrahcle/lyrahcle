@@ -8,7 +8,8 @@ import (
 )
 
 type Rule struct {
-	ID              uuid.UUID  `json:"id"`
+	ID              uuid.UUID
+	OrganizationID  uuid.UUID  `json:"id"`
 	Name            string     `json:"name"`
 	Description     string     `json:"description"`
 	Enabled         bool       `json:"enabled"`

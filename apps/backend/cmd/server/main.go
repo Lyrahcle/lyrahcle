@@ -311,7 +311,7 @@ func newRouter(
 		})
 
 		r.Route("/assets", func(r chi.Router) {
-			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)).Get("/", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked), auth.RequirePermission(rbac, "orbital.read")).Get("/", func(w http.ResponseWriter, r *http.Request) {
 				limit, offset := pageParams(r)
 				orgID, ok := requestOrganizationID(w, r)
 				if !ok {
@@ -329,7 +329,7 @@ func newRouter(
 				json.NewEncoder(w).Encode(page)
 			})
 
-			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleOperator, isTokenRevoked)).Post("/", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked), auth.RequirePermission(rbac, "orbital.manage")).Post("/", func(w http.ResponseWriter, r *http.Request) {
 				var body struct {
 					ProgramID string `json:"program_id"`
 					Kind      string `json:"kind"`
@@ -1238,7 +1238,14 @@ func newRouter(
 		r.Route("/detection-rules", func(r chi.Router) {
 			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)).Get("/", func(w http.ResponseWriter, r *http.Request) {
 				limit, offset := pageParams(r)
-				page, err := detectionRules.List(r.Context(), limit, offset)
+				orgID, ok := requestOrganizationID(w, r)
+				if !ok {
+					return
+				}
+				if !requireRequestPermission(w, r, rbac, "detections.read") {
+					return
+				}
+				page, err := detectionRules.ListByOrganization(r.Context(), orgID, limit, offset)
 				if err != nil {
 					http.Error(w, "failed to fetch detection rules", http.StatusInternalServerError)
 					return
@@ -1247,7 +1254,7 @@ func newRouter(
 				json.NewEncoder(w).Encode(page)
 			})
 
-			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleAdmin, isTokenRevoked)).Post("/", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)).Post("/", func(w http.ResponseWriter, r *http.Request) {
 				var body struct {
 					Name            string  `json:"name"`
 					Description     string  `json:"description"`
@@ -1277,12 +1284,20 @@ func newRouter(
 					http.Error(w, "unauthorized", http.StatusUnauthorized)
 					return
 				}
+				orgID, err := auth.OrganizationID(claims)
+				if err != nil {
+					http.Error(w, "organization context required", http.StatusForbidden)
+					return
+				}
+				if !requireRequestPermission(w, r, rbac, "detections.manage") {
+					return
+				}
 				enabled := true
 				if body.Enabled != nil {
 					enabled = *body.Enabled
 				}
 				if enabled {
-					count, err := detectionRules.EnabledCount(r.Context())
+					count, err := detectionRules.EnabledCountByOrganization(r.Context(), orgID)
 					if err != nil {
 						http.Error(w, "failed to validate detection rule capacity", http.StatusInternalServerError)
 						return
@@ -1296,7 +1311,7 @@ func newRouter(
 				if body.AutoIncident != nil {
 					autoIncident = *body.AutoIncident
 				}
-				rule, err := detectionRules.Create(r.Context(), detection.Rule{
+				rule, err := detectionRules.CreateInOrganization(r.Context(), orgID, detection.Rule{
 					Name: body.Name, Description: body.Description, Enabled: enabled, Metric: body.Metric,
 					Operator: body.Operator, Threshold: body.Threshold, Severity: body.Severity,
 					CooldownSeconds: body.CooldownSeconds, AutoIncident: autoIncident,
@@ -1305,19 +1320,26 @@ func newRouter(
 					http.Error(w, "failed to create detection rule", http.StatusConflict)
 					return
 				}
-				logAudit(r.Context(), auditLog, audit.ActorUser, claims.UserID.String(), audit.ActionDetectionRuleCreated, clientIP(r), map[string]interface{}{"rule_id": rule.ID.String(), "name": rule.Name})
+				logAudit(r.Context(), auditLog, audit.ActorUser, claims.UserID.String(), audit.ActionDetectionRuleCreated, clientIP(r), map[string]interface{}{"organization_id": orgID.String(), "rule_id": rule.ID.String(), "name": rule.Name})
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusCreated)
 				json.NewEncoder(w).Encode(rule)
 			})
 
-			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleAdmin, isTokenRevoked)).Patch("/{ruleID}", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)).Patch("/{ruleID}", func(w http.ResponseWriter, r *http.Request) {
 				ruleID, err := uuid.Parse(chi.URLParam(r, "ruleID"))
 				if err != nil {
 					http.Error(w, "ruleID must be a valid UUID", http.StatusBadRequest)
 					return
 				}
-				rule, err := detectionRules.Get(r.Context(), ruleID)
+				orgID, ok := requestOrganizationID(w, r)
+				if !ok {
+					return
+				}
+				if !requireRequestPermission(w, r, rbac, "detections.manage") {
+					return
+				}
+				rule, err := detectionRules.GetByOrganization(r.Context(), orgID, ruleID)
 				if err != nil {
 					if err == store.ErrDetectionRuleNotFound {
 						http.Error(w, "detection rule not found", http.StatusNotFound)
@@ -1374,7 +1396,7 @@ func newRouter(
 					return
 				}
 				if rule.Enabled && !wasEnabled {
-					count, err := detectionRules.EnabledCount(r.Context())
+					count, err := detectionRules.EnabledCountByOrganization(r.Context(), orgID)
 					if err != nil {
 						http.Error(w, "failed to validate detection rule capacity", http.StatusInternalServerError)
 						return
@@ -1389,12 +1411,12 @@ func newRouter(
 					http.Error(w, "unauthorized", http.StatusUnauthorized)
 					return
 				}
-				rule, err = detectionRules.Update(r.Context(), rule, claims.UserID)
+				rule, err = detectionRules.UpdateInOrganization(r.Context(), orgID, rule, claims.UserID)
 				if err != nil {
 					http.Error(w, "failed to update detection rule", http.StatusInternalServerError)
 					return
 				}
-				logAudit(r.Context(), auditLog, audit.ActorUser, claims.UserID.String(), audit.ActionDetectionRuleUpdated, clientIP(r), map[string]interface{}{"rule_id": rule.ID.String(), "name": rule.Name, "enabled": rule.Enabled})
+				logAudit(r.Context(), auditLog, audit.ActorUser, claims.UserID.String(), audit.ActionDetectionRuleUpdated, clientIP(r), map[string]interface{}{"organization_id": orgID.String(), "rule_id": rule.ID.String(), "name": rule.Name, "enabled": rule.Enabled})
 				w.Header().Set("Content-Type", "application/json")
 				json.NewEncoder(w).Encode(rule)
 			})
@@ -1530,7 +1552,7 @@ func newRouter(
 		})
 
 		r.Route("/satellites", func(r chi.Router) {
-			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)).Get("/{satelliteID}/passes", handleSatellitePassPrediction(satellites, tlePolicy(cfg)))
+			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked), auth.RequirePermission(rbac, "orbital.read")).Get("/{satelliteID}/passes", handleSatellitePassPrediction(satellites, tlePolicy(cfg)))
 			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked), auth.RequirePermission(rbac, "orbital.read")).Get("/{satelliteID}/orbital-events", handleListOrbitalEvents(orbitalEvents, satellites))
 			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked), auth.RequirePermission(rbac, "orbital.manage")).Post("/{satelliteID}/orbital-events", handleCreateOrbitalEvent(orbitalEvents, satellites, auditLog))
 
@@ -1545,7 +1567,7 @@ func newRouter(
 			})
 
 			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)).Get("/stream", func(w http.ResponseWriter, r *http.Request) {
-				if !requireRequestPermission(w, r, rbac, "incidents.read") {
+				if !requireRequestPermission(w, r, rbac, "orbital.read") {
 					return
 				}
 				flusher, ok := w.(http.Flusher)
@@ -2105,6 +2127,9 @@ func newRouter(
 					http.Error(w, "unauthorized", http.StatusUnauthorized)
 					return
 				}
+				if !requireRequestPermission(w, r, rbac, "incidents.manage") {
+					return
+				}
 				if err := func() error {
 					orgID, ok := requestOrganizationID(w, r)
 					if !ok {
@@ -2188,6 +2213,9 @@ func newRouter(
 		r.Route("/asset-alerts", func(r chi.Router) {
 			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)).Get("/", func(w http.ResponseWriter, r *http.Request) {
 				limit, offset := pageParams(r)
+				if !requireRequestPermission(w, r, rbac, "alerts.read") {
+					return
+				}
 				orgID, ok := requestOrganizationID(w, r)
 				if !ok {
 					return
@@ -2201,7 +2229,7 @@ func newRouter(
 				json.NewEncoder(w).Encode(page)
 			})
 
-			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleOperator, isTokenRevoked)).Post("/{alertID}/acknowledge", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)).Post("/{alertID}/acknowledge", func(w http.ResponseWriter, r *http.Request) {
 				alertID, err := uuid.Parse(chi.URLParam(r, "alertID"))
 				if err != nil {
 					http.Error(w, "alertID must be a valid UUID", http.StatusBadRequest)
@@ -2211,6 +2239,9 @@ func newRouter(
 				claims, ok := auth.FromContext(r.Context())
 				if !ok {
 					http.Error(w, "unauthorized", http.StatusUnauthorized)
+					return
+				}
+				if !requireRequestPermission(w, r, rbac, "alerts.manage") {
 					return
 				}
 
@@ -2478,7 +2509,7 @@ func detectRFAnomalies(ctx context.Context, anomalies *store.AnomalyStore, rules
 }
 
 func correlateRFDetectionRules(ctx context.Context, rules *store.DetectionRuleStore, incidents *store.IncidentStore, auditLog *store.AuditStore, assetAlerts *store.AssetAlertStore, satellites *store.SatelliteStore, identities *store.AgentIdentityStore, spaceCVEs *store.SpaceCVEStore, orbitalEvents *store.OrbitalEventStore, policy tlequality.Policy, orbitalAutoEscalation bool, reading store.RFReading, anomalyRecord store.RFAnomaly) {
-	enabledRules, err := rules.ListEnabled(ctx)
+	enabledRules, err := rules.ListEnabledByOrganization(ctx, anomalyRecord.OrganizationID)
 	if err != nil {
 		log.Printf("detection: failed to load rules: %v", err)
 		return
@@ -2496,7 +2527,7 @@ func correlateRFDetectionRules(ctx context.Context, rules *store.DetectionRuleSt
 		if !detection.Matches(rule, detection.Signal{Metric: anomalyRecord.Metric, ZScore: anomalyRecord.ZScore}) {
 			continue
 		}
-		match, created, err := rules.RecordMatchIfAllowed(ctx, rule, anomalyRecord.ID, anomalyRecord.AgentID, anomalyRecord.Metric, anomalyRecord.ZScore)
+		match, created, err := rules.RecordMatchIfAllowed(ctx, anomalyRecord.OrganizationID, rule, anomalyRecord.ID, anomalyRecord.AgentID, anomalyRecord.Metric, anomalyRecord.ZScore)
 		if err != nil {
 			log.Printf("detection: failed to record rule %s match: %v", rule.ID, err)
 			continue
@@ -2564,7 +2595,7 @@ func correlateRFDetectionRules(ctx context.Context, rules *store.DetectionRuleSt
 	}); err != nil {
 		log.Printf("detection: failed to attach anomaly evidence to incident %s: %v", incident.ID, err)
 	}
-	if err := rules.AttachIncident(ctx, matchIDs, incident.ID); err != nil {
+	if err := rules.AttachIncidentInOrganization(ctx, anomalyRecord.OrganizationID, matchIDs, incident.ID); err != nil {
 		log.Printf("detection: failed to link matches to incident %s: %v", incident.ID, err)
 	}
 	attachOrbitalSecurityEvidence(ctx, incidents, incident.ID.String(), orbitalSecurity)

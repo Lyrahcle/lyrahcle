@@ -549,11 +549,11 @@ func TestDetectionRuleMatchCooldown(t *testing.T) {
 	}
 
 	first := newAnomaly(-10)
-	if _, created, err := rules.RecordMatchIfAllowed(ctx, rule, first.ID, first.AgentID, first.Metric, first.ZScore); err != nil || !created {
+	if _, created, err := rules.RecordMatchIfAllowed(ctx, DefaultOrganizationID, rule, first.ID, first.AgentID, first.Metric, first.ZScore); err != nil || !created {
 		t.Fatalf("first match: created=%v err=%v", created, err)
 	}
 	second := newAnomaly(-9)
-	if _, created, err := rules.RecordMatchIfAllowed(ctx, rule, second.ID, second.AgentID, second.Metric, second.ZScore); err != nil || created {
+	if _, created, err := rules.RecordMatchIfAllowed(ctx, DefaultOrganizationID, rule, second.ID, second.AgentID, second.Metric, second.ZScore); err != nil || created {
 		t.Fatalf("second match inside cooldown: created=%v err=%v", created, err)
 	}
 }
