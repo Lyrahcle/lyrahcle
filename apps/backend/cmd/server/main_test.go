@@ -787,12 +787,19 @@ func TestIncidentRBACAndTimeline(t *testing.T) {
 		t.Fatalf("get viewer: %v", err)
 	}
 	operatorAssignedCreate := doJSON(t, router, http.MethodPost, "/api/v1/incidents/", operatorToken, map[string]string{
-		"title":       "Assignment should be denied",
+		"title":       "Capability-based assignment",
 		"severity":    "medium",
 		"assigned_to": viewerUser.ID.String(),
 	})
-	if operatorAssignedCreate.Code != http.StatusForbidden {
-		t.Fatalf("operator assignment on create: status = %d, body = %s", operatorAssignedCreate.Code, operatorAssignedCreate.Body.String())
+	if operatorAssignedCreate.Code != http.StatusCreated {
+		t.Fatalf("operator with incidents.manage assignment on create: status = %d, body = %s", operatorAssignedCreate.Code, operatorAssignedCreate.Body.String())
+	}
+	var assignedIncident store.Incident
+	if err := json.Unmarshal(operatorAssignedCreate.Body.Bytes(), &assignedIncident); err != nil {
+		t.Fatalf("decode assigned incident: %v", err)
+	}
+	if assignedIncident.AssignedTo == nil || *assignedIncident.AssignedTo != viewerUser.ID {
+		t.Fatalf("assigned_to = %v, want %s", assignedIncident.AssignedTo, viewerUser.ID)
 	}
 
 	created := doJSON(t, router, http.MethodPost, "/api/v1/incidents/", operatorToken, map[string]string{
