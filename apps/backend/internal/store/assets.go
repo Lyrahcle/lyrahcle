@@ -57,13 +57,7 @@ func (s *AssetStore) List(ctx context.Context, limit, offset int) (Page[Asset], 
 }
 
 func (s *AssetStore) Upsert(ctx context.Context, programID uuid.UUID, kind, value string) error {
-	_, err := s.pool.Exec(ctx, `
-		INSERT INTO assets (program_id, kind, value)
-		VALUES ($1, $2, $3)
-		ON CONFLICT (program_id, kind, value)
-		DO UPDATE SET last_seen = now()
-	`, programID, kind, value)
-	return err
+	return s.UpsertInOrganization(ctx, DefaultOrganizationID, programID, kind, value)
 }
 
 func (s *AssetStore) ListByKinds(ctx context.Context, kinds []string) ([]Asset, error) {

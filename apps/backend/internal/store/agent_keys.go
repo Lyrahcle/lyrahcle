@@ -115,18 +115,7 @@ func (s *AgentKeyStore) ReportDevice(ctx context.Context, agentID string, info A
 }
 
 func (s *AgentKeyStore) Create(ctx context.Context, agentID, keyHash string) error {
-	_, err := s.pool.Exec(ctx, `
-		INSERT INTO agent_keys (agent_id, key_hash)
-		VALUES ($1, $2)
-	`, agentID, keyHash)
-	if err != nil {
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-			return ErrAgentIDTaken
-		}
-		return err
-	}
-	return nil
+	return s.CreateInOrganization(ctx, DefaultOrganizationID, agentID, keyHash)
 }
 
 func (s *AgentKeyStore) AgentIDForHash(ctx context.Context, keyHash string) (string, error) {

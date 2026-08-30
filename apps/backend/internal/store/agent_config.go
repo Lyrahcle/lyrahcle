@@ -55,8 +55,9 @@ func (s *AgentConfigStore) Create(ctx context.Context, agentID string, settings 
 	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtext($1))`, "agent-config:"+agentID); err != nil {
 		return AgentConfigVersion{}, err
 	}
+	var organizationID uuid.UUID
 	var status string
-	if err := tx.QueryRow(ctx, `SELECT status FROM agent_identities WHERE agent_id = $1 FOR UPDATE`, agentID).Scan(&status); err != nil {
+	if err := tx.QueryRow(ctx, `SELECT organization_id, status FROM agent_identities WHERE agent_id = $1 FOR UPDATE`, agentID).Scan(&organizationID, &status); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return AgentConfigVersion{}, ErrAgentIdentityNotFound
 		}
@@ -66,7 +67,7 @@ func (s *AgentConfigStore) Create(ctx context.Context, agentID string, settings 
 		return AgentConfigVersion{}, ErrAgentConfigInactive
 	}
 	var version int64
-	if err := tx.QueryRow(ctx, `SELECT COALESCE(MAX(version), 0) + 1 FROM agent_config_versions WHERE agent_id = $1`, agentID).Scan(&version); err != nil {
+	if err := tx.QueryRow(ctx, `SELECT COALESCE(MAX(version), 0) + 1 FROM agent_config_versions WHERE agent_id = $1 AND organization_id = $2`, agentID, organizationID).Scan(&version); err != nil {
 		return AgentConfigVersion{}, err
 	}
 	issuedAt := time.Now().UTC()
@@ -84,23 +85,24 @@ func (s *AgentConfigStore) Create(ctx context.Context, agentID string, settings 
 	item.CreatedBy = createdBy
 	if err := tx.QueryRow(ctx, `
 		INSERT INTO agent_config_versions (
-			agent_id, version, frequency_hz, capture_interval_seconds, satellite_id, payload, signature, checksum_sha256, created_by, created_at
-		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+			organization_id, agent_id, version, frequency_hz, capture_interval_seconds, satellite_id, payload, signature, checksum_sha256, created_by, created_at
+		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
 		RETURNING id, created_at
-	`, agentID, version, settings.FrequencyHz, settings.CaptureIntervalSeconds, settings.SatelliteID, payload, signature, checksum, createdBy, issuedAt).Scan(&item.ID, &item.CreatedAt); err != nil {
+	`, organizationID, agentID, version, settings.FrequencyHz, settings.CaptureIntervalSeconds, settings.SatelliteID, payload, signature, checksum, createdBy, issuedAt).Scan(&item.ID, &item.CreatedAt); err != nil {
 		return AgentConfigVersion{}, err
 	}
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO agent_config_state (agent_id, desired_version, acknowledged_version, ack_status, ack_message, acked_at, updated_at)
-		VALUES ($1, $2, NULL, 'pending', '', NULL, now())
+		INSERT INTO agent_config_state (organization_id, agent_id, desired_version, acknowledged_version, ack_status, ack_message, acked_at, updated_at)
+		VALUES ($1, $2, $3, NULL, 'pending', '', NULL, now())
 		ON CONFLICT (agent_id) DO UPDATE SET
+			organization_id = EXCLUDED.organization_id,
 			desired_version = EXCLUDED.desired_version,
 			acknowledged_version = NULL,
 			ack_status = 'pending',
 			ack_message = '',
 			acked_at = NULL,
 			updated_at = now()
-	`, agentID, version); err != nil {
+	`, organizationID, agentID, version); err != nil {
 		return AgentConfigVersion{}, err
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -185,11 +187,12 @@ func (s *AgentConfigStore) Ack(ctx context.Context, agentID string, version int6
 	}
 	defer tx.Rollback(ctx)
 
+	var organizationID uuid.UUID
 	var expectedChecksum string
 	if err := tx.QueryRow(ctx, `
-		SELECT checksum_sha256 FROM agent_config_versions
+		SELECT organization_id, checksum_sha256 FROM agent_config_versions
 		WHERE agent_id = $1 AND version = $2
-	`, agentID, version).Scan(&expectedChecksum); err != nil {
+	`, agentID, version).Scan(&organizationID, &expectedChecksum); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrAgentConfigNotFound
 		}
@@ -210,16 +213,16 @@ func (s *AgentConfigStore) Ack(ctx context.Context, agentID string, version int6
 		return err
 	}
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO agent_config_acks (agent_id, version, status, message, checksum_sha256)
-		VALUES ($1,$2,$3,$4,$5)
-	`, agentID, version, status, message, checksum); err != nil {
+		INSERT INTO agent_config_acks (organization_id, agent_id, version, status, message, checksum_sha256)
+		VALUES ($1,$2,$3,$4,$5,$6)
+	`, organizationID, agentID, version, status, message, checksum); err != nil {
 		return err
 	}
 	if _, err := tx.Exec(ctx, `
 		UPDATE agent_config_state
 		SET acknowledged_version = $2, ack_status = $3, ack_message = $4, acked_at = now(), updated_at = now()
-		WHERE agent_id = $1 AND desired_version = $2
-	`, agentID, version, status, message); err != nil {
+		WHERE agent_id = $1 AND desired_version = $2 AND organization_id = $5
+	`, agentID, version, status, message, organizationID); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)

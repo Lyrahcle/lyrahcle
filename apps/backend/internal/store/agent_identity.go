@@ -58,68 +58,7 @@ func NewAgentIdentityStore(pool *pgxpool.Pool) *AgentIdentityStore {
 }
 
 func (s *AgentIdentityStore) CreateEnrollmentToken(ctx context.Context, agentID, tokenHash string, expiresAt time.Time) error {
-	tx, err := s.pool.Begin(ctx)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback(ctx)
-
-	var status string
-	err = tx.QueryRow(ctx, `
-		INSERT INTO agent_identities (agent_id, status)
-		VALUES ($1, 'pending')
-		ON CONFLICT (agent_id) DO UPDATE SET updated_at = now()
-		RETURNING status
-	`, agentID).Scan(&status)
-	if err != nil {
-		return err
-	}
-	if status == "revoked" || status == "quarantined" {
-		return ErrAgentIdentityInactive
-	}
-	if status == "active" {
-		var hasValidCertificate bool
-		if err := tx.QueryRow(ctx, `
-			SELECT EXISTS (
-				SELECT 1 FROM agent_certificates
-				WHERE agent_id = $1 AND status = 'active' AND not_after > now()
-			)
-		`, agentID).Scan(&hasValidCertificate); err != nil {
-			return err
-		}
-		if hasValidCertificate {
-			return ErrAgentAlreadyEnrolled
-		}
-		if _, err := tx.Exec(ctx, `
-			UPDATE agent_certificates
-			SET status = 'superseded', superseded_at = now()
-			WHERE agent_id = $1 AND status = 'active'
-		`, agentID); err != nil {
-			return err
-		}
-		if _, err := tx.Exec(ctx, `UPDATE agent_identities SET status = 'pending', updated_at = now() WHERE agent_id = $1`, agentID); err != nil {
-			return err
-		}
-	}
-
-	_, err = tx.Exec(ctx, `
-		UPDATE agent_enrollment_tokens
-		SET used_at = now()
-		WHERE agent_id = $1 AND used_at IS NULL
-	`, agentID)
-	if err != nil {
-		return err
-	}
-
-	_, err = tx.Exec(ctx, `
-		INSERT INTO agent_enrollment_tokens (agent_id, token_hash, expires_at)
-		VALUES ($1, $2, $3)
-	`, agentID, tokenHash, expiresAt)
-	if err != nil {
-		return err
-	}
-
-	return tx.Commit(ctx)
+	return s.CreateEnrollmentTokenInOrganization(ctx, DefaultOrganizationID, agentID, tokenHash, expiresAt)
 }
 
 func (s *AgentIdentityStore) AgentIDForEnrollmentToken(ctx context.Context, tokenHash string) (string, error) {
@@ -148,14 +87,15 @@ func (s *AgentIdentityStore) ConsumeEnrollmentToken(ctx context.Context, tokenHa
 	defer tx.Rollback(ctx)
 
 	var agentID string
+	var organizationID uuid.UUID
 	var status string
 	err = tx.QueryRow(ctx, `
-		SELECT t.agent_id, i.status
+		SELECT t.agent_id, t.organization_id, i.status
 		FROM agent_enrollment_tokens t
 		JOIN agent_identities i ON i.agent_id = t.agent_id
 		WHERE t.token_hash = $1 AND t.used_at IS NULL AND t.expires_at > now()
 		FOR UPDATE OF t, i
-	`, tokenHash).Scan(&agentID, &status)
+	`, tokenHash).Scan(&agentID, &organizationID, &status)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return "", ErrAgentEnrollmentInvalid
@@ -167,7 +107,7 @@ func (s *AgentIdentityStore) ConsumeEnrollmentToken(ctx context.Context, tokenHa
 	}
 
 	cert.AgentID = agentID
-	if err := insertAgentCertificate(ctx, tx, cert); err != nil {
+	if err := insertAgentCertificate(ctx, tx, organizationID, cert); err != nil {
 		return "", err
 	}
 
@@ -205,8 +145,9 @@ func (s *AgentIdentityStore) RotateCertificate(ctx context.Context, agentID, cur
 	}
 	defer tx.Rollback(ctx)
 
+	var organizationID uuid.UUID
 	var status string
-	err = tx.QueryRow(ctx, `SELECT status FROM agent_identities WHERE agent_id = $1 FOR UPDATE`, agentID).Scan(&status)
+	err = tx.QueryRow(ctx, `SELECT organization_id, status FROM agent_identities WHERE agent_id = $1 FOR UPDATE`, agentID).Scan(&organizationID, &status)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrAgentIdentityNotFound
@@ -240,7 +181,7 @@ func (s *AgentIdentityStore) RotateCertificate(ctx context.Context, agentID, cur
 	}
 
 	cert.AgentID = agentID
-	if err := insertAgentCertificate(ctx, tx, cert); err != nil {
+	if err := insertAgentCertificate(ctx, tx, organizationID, cert); err != nil {
 		return err
 	}
 
@@ -251,12 +192,12 @@ func (s *AgentIdentityStore) RotateCertificate(ctx context.Context, agentID, cur
 	return tx.Commit(ctx)
 }
 
-func insertAgentCertificate(ctx context.Context, tx pgx.Tx, cert AgentCertificate) error {
+func insertAgentCertificate(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, cert AgentCertificate) error {
 	_, err := tx.Exec(ctx, `
 		INSERT INTO agent_certificates (
-			agent_id, serial_number, fingerprint_sha256, certificate_pem, not_before, not_after, status
-		) VALUES ($1, $2, $3, $4, $5, $6, 'active')
-	`, cert.AgentID, cert.SerialNumber, cert.FingerprintSHA256, cert.CertificatePEM, cert.NotBefore, cert.NotAfter)
+			organization_id, agent_id, serial_number, fingerprint_sha256, certificate_pem, not_before, not_after, status
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, 'active')
+	`, organizationID, cert.AgentID, cert.SerialNumber, cert.FingerprintSHA256, cert.CertificatePEM, cert.NotBefore, cert.NotAfter)
 	return err
 }
 
