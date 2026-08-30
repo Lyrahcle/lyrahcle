@@ -42,7 +42,8 @@ Status values: **Shipped**, **Partial**, **Next**, and **Later**.
 | Orbital-aware RF detection and TLE freshness gating | Shipped | v9.2/v9.2.2 |
 | Physical SDR validation of Doppler/visibility correlation | Next | Before auto-escalation/v1.0 |
 | Pass prediction and AOS/LOS scheduling | Shipped | v9.3 |
-| Maneuver and conjunction anomaly context | Next | v9.x |
+| Maneuver/conjunction context persistence and candidate-only correlation | Shipped | v9.5 |
+| Automatic maneuver inference and trusted conjunction screening feeds | Next | v9.x |
 | More threat-intelligence sources | Later | v9 |
 | ML-assisted anomaly detection | Later | Post-v1 |
 | Advanced/proprietary RF decoders | Later | Enterprise |

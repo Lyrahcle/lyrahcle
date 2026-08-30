@@ -29,6 +29,7 @@ const (
 	ActionAgentConfigRollback        = "agent.config_rollback"
 	ActionAgentConfigAcknowledged    = "agent.config_acknowledged"
 	ActionSatelliteUpserted          = "satellite.upserted"
+	ActionOrbitalEventCreated        = "orbital_event.created"
 	ActionRoleChanged                = "user.role_changed"
 	ActionUserStatusChanged          = "user.status_changed"
 	ActionUserDeleted                = "user.deleted"

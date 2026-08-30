@@ -794,6 +794,87 @@ paths:
           description: Satellite not found
         '422':
           description: TLE is stale/unusable or propagation failed
+  /api/v1/satellites/{satelliteID}/orbital-events:
+    get:
+      tags:
+      - Satellites
+      summary: List maneuver and conjunction context for a satellite
+      description: 'Requires role: viewer or higher. Returns persisted operator/trusted-integration orbital operations context. Events are candidate-only evidence and do not directly change incident severity.'
+      parameters:
+      - name: satelliteID
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: hours
+        in: query
+        required: false
+        schema:
+          type: number
+          format: double
+          default: 168
+          exclusiveMinimum: true
+          minimum: 0
+          maximum: 2160
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 50
+          minimum: 1
+          maximum: 200
+      responses:
+        '200':
+          description: Orbital operations context
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OrbitalEvent'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Satellite not found
+    post:
+      tags:
+      - Satellites
+      summary: Ingest maneuver or conjunction context
+      description: 'Requires role: operator or higher. Stores trusted/operator-provided orbital context for correlation. This endpoint does not claim automatic maneuver detection or conjunction screening.'
+      parameters:
+      - name: satelliteID
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrbitalEventRequest'
+      responses:
+        '201':
+          description: Orbital event created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrbitalEvent'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Satellite not found
   /api/v1/satellites/stream:
     get:
       tags:
@@ -2287,6 +2368,45 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/SatellitePass'
+    OrbitalEvent:
+      type: object
+      required: [id, satellite_id, event_type, event_time, source, confidence, severity, metadata, created_at]
+      properties:
+        id: {type: string, format: uuid}
+        satellite_id: {type: string, format: uuid}
+        event_type:
+          type: string
+          enum: [maneuver, conjunction]
+        event_time: {type: string, format: date-time}
+        source: {type: string}
+        confidence: {type: number, format: double, minimum: 0, maximum: 1}
+        severity:
+          type: string
+          enum: [info, low, medium, high, critical]
+        metadata:
+          type: object
+          additionalProperties: true
+        created_by: {type: string, format: uuid}
+        created_at: {type: string, format: date-time}
+    CreateOrbitalEventRequest:
+      type: object
+      required: [event_type, event_time, source, confidence, severity]
+      properties:
+        event_type:
+          type: string
+          enum: [maneuver, conjunction]
+        event_time: {type: string, format: date-time}
+        source:
+          type: string
+          minLength: 1
+          maxLength: 160
+        confidence: {type: number, format: double, minimum: 0, maximum: 1}
+        severity:
+          type: string
+          enum: [info, low, medium, high, critical]
+        metadata:
+          type: object
+          additionalProperties: true
     RegisterSatelliteRequest:
       type: object
       required:

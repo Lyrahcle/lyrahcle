@@ -37,3 +37,22 @@ func TestEvaluateAgentPostureCanRaiseCandidateOnly(t *testing.T) {
 		t.Fatalf("missing agent_posture domain: %#v", got.CorroboratingDomains)
 	}
 }
+
+func TestEvaluateOrbitalOperationsContext(t *testing.T) {
+	result := Evaluate(Input{
+		DetectionRuleCount: 1, ManeuverEvents: 1, ConjunctionEvents: 1,
+		OrbitalOpsConfidence: 0.9, OrbitalOpsSeverity: "high",
+	})
+	if result.CandidateSeverity != "high" {
+		t.Fatalf("candidate severity = %q, want high", result.CandidateSeverity)
+	}
+	found := false
+	for _, domain := range result.CorroboratingDomains {
+		if domain == "orbital_operations" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("orbital_operations domain missing")
+	}
+}

@@ -9,6 +9,10 @@ type Input struct {
 	AgentStatus              string
 	RecentAgentAuditEvents   int
 	ContextAssetAlerts       int
+	ManeuverEvents           int
+	ConjunctionEvents        int
+	OrbitalOpsConfidence     float64
+	OrbitalOpsSeverity       string
 }
 
 type Result struct {
@@ -43,6 +47,19 @@ func Evaluate(in Input) Result {
 		reasons = append(reasons, "agent identity posture is not active")
 		candidate = higherSeverity(candidate, "critical")
 	}
+
+	if in.ManeuverEvents > 0 || in.ConjunctionEvents > 0 {
+		confidence += 0.15 * clamp01(in.OrbitalOpsConfidence)
+		domains = append(domains, "orbital_operations")
+		if in.ManeuverEvents > 0 {
+			reasons = append(reasons, "recent maneuver context is available for the affected satellite")
+		}
+		if in.ConjunctionEvents > 0 {
+			reasons = append(reasons, "recent or upcoming conjunction context is available for the affected satellite")
+		}
+		candidate = higherSeverity(candidate, in.OrbitalOpsSeverity)
+	}
+
 	if in.RecentAgentAuditEvents > 0 {
 		confidence += math.Min(0.10, float64(in.RecentAgentAuditEvents)*0.02)
 		domains = append(domains, "audit")

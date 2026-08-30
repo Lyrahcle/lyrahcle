@@ -188,6 +188,7 @@ func newRouter(
 	searchStore := store.NewSearchStore(pool)
 	agentIdentities := store.NewAgentIdentityStore(pool)
 	agentConfigs := store.NewAgentConfigStore(pool)
+	orbitalEvents := store.NewOrbitalEventStore(pool)
 	agentCA, err := buildAgentCA(cfg)
 	if err != nil {
 		panic(fmt.Sprintf("agent CA configuration: %v", err))
@@ -1375,7 +1376,7 @@ func newRouter(
 					return
 				}
 
-				detectRFAnomalies(r.Context(), rfAnomalies, detectionRules, incidents, auditLog, assetAlerts, satellites, agentIdentities, spaceCVEs, tlePolicy(cfg), cfg.OrbitalAutoEscalation, reading, history)
+				detectRFAnomalies(r.Context(), rfAnomalies, detectionRules, incidents, auditLog, assetAlerts, satellites, agentIdentities, spaceCVEs, orbitalEvents, tlePolicy(cfg), cfg.OrbitalAutoEscalation, reading, history)
 
 				w.WriteHeader(http.StatusCreated)
 			})
@@ -1403,6 +1404,8 @@ func newRouter(
 
 		r.Route("/satellites", func(r chi.Router) {
 			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)).Get("/{satelliteID}/passes", handleSatellitePassPrediction(satellites, tlePolicy(cfg)))
+			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)).Get("/{satelliteID}/orbital-events", handleListOrbitalEvents(orbitalEvents, satellites))
+			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleOperator, isTokenRevoked)).Post("/{satelliteID}/orbital-events", handleCreateOrbitalEvent(orbitalEvents, satellites, auditLog))
 
 			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)).Get("/", func(w http.ResponseWriter, r *http.Request) {
 				out, err := satellitesWithPositions(r.Context(), satellites, cache, tlePolicy(cfg))
@@ -2241,7 +2244,7 @@ func refreshTLEMetrics(ctx context.Context, satellites *store.SatelliteStore, po
 
 const anomalyHistoryWindow = 20
 
-func detectRFAnomalies(ctx context.Context, anomalies *store.AnomalyStore, rules *store.DetectionRuleStore, incidents *store.IncidentStore, auditLog *store.AuditStore, assetAlerts *store.AssetAlertStore, satellites *store.SatelliteStore, identities *store.AgentIdentityStore, spaceCVEs *store.SpaceCVEStore, policy tlequality.Policy, orbitalAutoEscalation bool, reading store.RFReading, history []store.RFReading) {
+func detectRFAnomalies(ctx context.Context, anomalies *store.AnomalyStore, rules *store.DetectionRuleStore, incidents *store.IncidentStore, auditLog *store.AuditStore, assetAlerts *store.AssetAlertStore, satellites *store.SatelliteStore, identities *store.AgentIdentityStore, spaceCVEs *store.SpaceCVEStore, orbitalEvents *store.OrbitalEventStore, policy tlequality.Policy, orbitalAutoEscalation bool, reading store.RFReading, history []store.RFReading) {
 	powerHistory := make([]float64, len(history))
 	freqHistory := make([]float64, len(history))
 	for i, h := range history {
@@ -2274,11 +2277,11 @@ func detectRFAnomalies(ctx context.Context, anomalies *store.AnomalyStore, rules
 			log.Printf("anomaly: failed to record %s anomaly for agent %s: %v", result.Metric, reading.AgentID, err)
 			continue
 		}
-		correlateRFDetectionRules(ctx, rules, incidents, auditLog, assetAlerts, satellites, identities, spaceCVEs, policy, orbitalAutoEscalation, reading, created)
+		correlateRFDetectionRules(ctx, rules, incidents, auditLog, assetAlerts, satellites, identities, spaceCVEs, orbitalEvents, policy, orbitalAutoEscalation, reading, created)
 	}
 }
 
-func correlateRFDetectionRules(ctx context.Context, rules *store.DetectionRuleStore, incidents *store.IncidentStore, auditLog *store.AuditStore, assetAlerts *store.AssetAlertStore, satellites *store.SatelliteStore, identities *store.AgentIdentityStore, spaceCVEs *store.SpaceCVEStore, policy tlequality.Policy, orbitalAutoEscalation bool, reading store.RFReading, anomalyRecord store.RFAnomaly) {
+func correlateRFDetectionRules(ctx context.Context, rules *store.DetectionRuleStore, incidents *store.IncidentStore, auditLog *store.AuditStore, assetAlerts *store.AssetAlertStore, satellites *store.SatelliteStore, identities *store.AgentIdentityStore, spaceCVEs *store.SpaceCVEStore, orbitalEvents *store.OrbitalEventStore, policy tlequality.Policy, orbitalAutoEscalation bool, reading store.RFReading, anomalyRecord store.RFAnomaly) {
 	enabledRules, err := rules.ListEnabled(ctx)
 	if err != nil {
 		log.Printf("detection: failed to load rules: %v", err)
@@ -2368,7 +2371,7 @@ func correlateRFDetectionRules(ctx context.Context, rules *store.DetectionRuleSt
 		log.Printf("detection: failed to link matches to incident %s: %v", incident.ID, err)
 	}
 	attachOrbitalSecurityEvidence(ctx, incidents, incident.ID.String(), orbitalSecurity)
-	attachCrossDomainCorrelationEvidence(ctx, incidents, auditLog, assetAlerts, incident.ID, anomalyRecord.AgentID, len(matched), orbitalSecurity)
+	attachCrossDomainCorrelationEvidence(ctx, incidents, auditLog, assetAlerts, orbitalEvents, incident.ID, anomalyRecord.AgentID, anomalyRecord.SatelliteID, len(matched), orbitalSecurity)
 	logAudit(ctx, auditLog, audit.ActorSystem, "correlation-engine", audit.ActionIncidentCreated, "", map[string]interface{}{
 		"incident_id": incident.ID.String(),
 		"reference":   incident.Reference,

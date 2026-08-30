@@ -15,6 +15,7 @@ This directory contains the technical documentation for Lyrahcle. The root `READ
 | [SDR agent enrollment and mTLS](./agent-enrollment.md) | Enrollment, certificate rotation, quarantine, revocation, legacy-key migration |
 | [Signed remote agent configuration](./agent-remote-configuration.md) | v9.1 immutable signed configuration and rollback |
 | [Orbital-aware security correlation](./orbital-security-correlation.md) | v9.2/v9.2.2 orbital/RF evidence, severity gating, operator workflow |
+| [Orbital operations context](./orbital-operations-context.md) | v9.5 maneuver/conjunction persistence, trust model, and candidate-only correlation |
 | [Cross-domain correlation](./cross-domain-correlation.md) | v9.4 explainable incident correlation across RF, orbital, agent posture, audit, and context-only asset alerts |
 | [Satellite pass prediction](./pass-prediction.md) | v9.3 AOS/LOS, peak elevation, prediction windows, and TLE safety |
 | [TLE data quality](./tle-data-quality.md) | Fresh/aging/stale/unusable policy and safe orbital-escalation defaults |

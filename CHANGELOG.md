@@ -3,6 +3,10 @@
 
 ## Unreleased
 
+- Added v9.5 maneuver/conjunction context persistence and bounded viewer/operator API endpoints; events remain candidate-only evidence.
+- Extended cross-domain correlation with satellite-specific orbital-operations evidence while preserving severity safety gates.
+- Fixed v9.4 automatic evidence persistence to use the database-supported `external` evidence type instead of silently rejected custom types.
+
 ### v9.4 cross-domain correlation
 
 - Added an explainable cross-domain correlation summary to automatically generated RF detection incidents.

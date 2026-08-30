@@ -768,3 +768,41 @@ func TestAgentIdentityRevocationIsIrreversible(t *testing.T) {
 		t.Fatalf("reactivating revoked agent err = %v, want ErrAgentStatusTransition", err)
 	}
 }
+
+func TestOrbitalEventStoreCreateAndRecentForSatellite(t *testing.T) {
+	pool := testPool(t)
+	ctx := context.Background()
+	satellites := NewSatelliteStore(pool)
+	events := NewOrbitalEventStore(pool)
+
+	line1 := "1 25544U 98067A   26239.14379413  .00008717  00000+0  16243-3 0  9995"
+	line2 := "2 25544  51.6326 308.8886 0007697  87.8986 272.2885 15.49649978582754"
+	if err := satellites.Upsert(ctx, 25544, "ISS (ZARYA)", line1, line2); err != nil {
+		t.Fatalf("satellite upsert: %v", err)
+	}
+	list, err := satellites.List(ctx)
+	if err != nil || len(list) != 1 {
+		t.Fatalf("satellite list: len=%d err=%v", len(list), err)
+	}
+
+	eventTime := time.Now().UTC().Add(2 * time.Hour).Truncate(time.Second)
+	created, err := events.Create(ctx, CreateOrbitalEventInput{
+		SatelliteID: list[0].ID, EventType: "conjunction", EventTime: eventTime,
+		Source: "test-feed", Confidence: 0.8, Severity: "medium",
+		Metadata: map[string]interface{}{"miss_distance_km": 12.5},
+	})
+	if err != nil {
+		t.Fatalf("Create returned error: %v", err)
+	}
+	if created.EventType != "conjunction" || created.Source != "test-feed" {
+		t.Fatalf("unexpected created event: %#v", created)
+	}
+
+	recent, err := events.RecentForSatellite(ctx, list[0].ID, time.Now().UTC().Add(-time.Hour), 10)
+	if err != nil {
+		t.Fatalf("RecentForSatellite returned error: %v", err)
+	}
+	if len(recent) != 1 || recent[0].ID != created.ID {
+		t.Fatalf("recent events = %#v", recent)
+	}
+}

@@ -18,8 +18,10 @@ func attachCrossDomainCorrelationEvidence(
 	incidents *store.IncidentStore,
 	auditLog *store.AuditStore,
 	assetAlerts *store.AssetAlertStore,
+	orbitalEvents *store.OrbitalEventStore,
 	incidentID uuid.UUID,
 	agentID string,
+	satelliteID *uuid.UUID,
 	ruleCount int,
 	orbital orbitalSecurityContext,
 ) {
@@ -33,6 +35,26 @@ func attachCrossDomainCorrelationEvidence(
 		contextualAlerts, _ = assetAlerts.RecentUnacknowledged(ctx, time.Now().UTC().Add(-7*24*time.Hour), 5)
 	}
 
+	var operationalEvents []store.OrbitalEvent
+	if orbitalEvents != nil && satelliteID != nil {
+		operationalEvents, _ = orbitalEvents.RecentForSatellite(ctx, *satelliteID, time.Now().UTC().Add(-7*24*time.Hour), 20)
+	}
+	maneuverCount, conjunctionCount := 0, 0
+	orbitalOpsConfidence := 0.0
+	orbitalOpsSeverity := ""
+	for _, event := range operationalEvents {
+		switch event.EventType {
+		case "maneuver":
+			maneuverCount++
+		case "conjunction":
+			conjunctionCount++
+		}
+		if event.Confidence > orbitalOpsConfidence {
+			orbitalOpsConfidence = event.Confidence
+		}
+		orbitalOpsSeverity = detectionHigherSeverity(orbitalOpsSeverity, event.Severity)
+	}
+
 	result := correlation.Evaluate(correlation.Input{
 		DetectionRuleCount:       ruleCount,
 		OrbitalCandidateSeverity: stringValue(orbital.Metadata["candidate_orbital_severity"]),
@@ -40,10 +62,14 @@ func attachCrossDomainCorrelationEvidence(
 		AgentStatus:              stringValue(orbital.Metadata["agent_status"]),
 		RecentAgentAuditEvents:   len(recentAudit),
 		ContextAssetAlerts:       len(contextualAlerts),
+		ManeuverEvents:           maneuverCount,
+		ConjunctionEvents:        conjunctionCount,
+		OrbitalOpsConfidence:     orbitalOpsConfidence,
+		OrbitalOpsSeverity:       orbitalOpsSeverity,
 	})
 
 	_, _ = incidents.AddEvidence(ctx, incidentID, store.CreateIncidentEvidenceInput{
-		EvidenceType: "correlation",
+		EvidenceType: "external",
 		EvidenceRef:  "cross-domain-v9.4",
 		Label:        "Cross-domain correlation summary",
 		Metadata: map[string]interface{}{
@@ -66,11 +92,27 @@ func attachCrossDomainCorrelationEvidence(
 			})
 		}
 		_, _ = incidents.AddEvidence(ctx, incidentID, store.CreateIncidentEvidenceInput{
-			EvidenceType: "audit",
+			EvidenceType: "external",
 			EvidenceRef:  agentID,
 			Label:        "Recent agent audit activity",
 			Metadata: map[string]interface{}{
 				"window_hours": 24, "items": items,
+			},
+		})
+	}
+
+	if len(operationalEvents) > 0 {
+		items := make([]map[string]interface{}, 0, len(operationalEvents))
+		for _, event := range operationalEvents {
+			items = append(items, map[string]interface{}{
+				"id": event.ID.String(), "event_type": event.EventType, "event_time": event.EventTime,
+				"source": event.Source, "confidence": event.Confidence, "severity": event.Severity,
+			})
+		}
+		_, _ = incidents.AddEvidence(ctx, incidentID, store.CreateIncidentEvidenceInput{
+			EvidenceType: "external", EvidenceRef: "orbital-operations-v9.5", Label: "Maneuver/conjunction context",
+			Metadata: map[string]interface{}{
+				"candidate_only": true, "severity_applied": false, "window_days": 7, "items": items,
 			},
 		})
 	}
@@ -84,7 +126,7 @@ func attachCrossDomainCorrelationEvidence(
 			})
 		}
 		_, _ = incidents.AddEvidence(ctx, incidentID, store.CreateIncidentEvidenceInput{
-			EvidenceType: "asset_alert_context",
+			EvidenceType: "external",
 			EvidenceRef:  "unacknowledged-7d",
 			Label:        "Recent unacknowledged asset CVE alerts",
 			Metadata: map[string]interface{}{
@@ -107,4 +149,12 @@ func floatValue(value interface{}) float64 {
 	default:
 		return 0
 	}
+}
+
+func detectionHigherSeverity(a, b string) string {
+	rank := map[string]int{"": 0, "info": 1, "low": 2, "medium": 3, "high": 4, "critical": 5}
+	if rank[b] > rank[a] {
+		return b
+	}
+	return a
 }
