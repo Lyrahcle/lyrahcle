@@ -20,6 +20,7 @@ import AuditLogPanel from './AuditLogPanel.jsx'
 import UsersPanel from './UsersPanel.jsx'
 import SettingsPanel from './SettingsPanel.jsx'
 import Footer from './Footer.jsx'
+import { CVESeverityChart, IncidentSeverityChart, RFPowerChart } from './TelemetryCharts.jsx'
 import { canAudit, canWrite, isAdmin } from '../lib/auth.js'
 import { useI18n } from '../lib/I18nContext.jsx'
 import {
@@ -357,13 +358,19 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
                 onNext={() => setAssetsOffset((o) => o + PAGE_LIMIT)}
               />
             )}
-          </Panel>
+            </Panel>
+          </div>
         )}
 
         {activeTab === 'signal' && (
           <div className="grid gap-6">
             <Panel eyebrow={t('panels.signalIntelligence')} title={t('panels.rfSpectrum')}>
-              {rfReadings === null ? <Skeleton /> : <RfPanel readings={rfReadings} />}
+              {rfReadings === null ? <Skeleton /> : (
+                <div className="grid gap-6">
+                  <RFPowerChart readings={rfReadings} />
+                  <RfPanel readings={rfReadings} />
+                </div>
+              )}
             </Panel>
             <Panel eyebrow={t('panels.anomalyDetection')} title={t('panels.flaggedAnomalies')}>
               {rfAnomalies === null ? <Skeleton /> : <AnomaliesPanel anomalies={rfAnomalies} />}
@@ -375,7 +382,11 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
         )}
 
         {activeTab === 'incidents' && (
-          <Panel eyebrow={t('panels.incidentResponse')} title={t('panels.securityIncidents')}>
+          <div className="grid gap-6">
+            <Panel eyebrow={t('panels.incidentResponse')} title="Incident overview">
+              {incidents === null ? <Skeleton /> : <IncidentSeverityChart incidents={incidents.items ?? []} />}
+            </Panel>
+            <Panel eyebrow={t('panels.incidentResponse')} title={t('panels.securityIncidents')}>
             {incidents === null ? (
               <Skeleton />
             ) : (
@@ -395,6 +406,9 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
 
         {activeTab === 'intel' && (
           <div className="grid gap-6">
+            <Panel eyebrow={t('panels.threatIntelligence')} title="CVE severity overview">
+              {spaceCVEs === null ? <Skeleton /> : <CVESeverityChart cves={spaceCVEs.items ?? []} />}
+            </Panel>
             <Panel eyebrow={t('panels.threatIntelligence')} title={t('panels.spaceCves')}>
               <ThreatIntelPanel
                 page={spaceCVEs}
