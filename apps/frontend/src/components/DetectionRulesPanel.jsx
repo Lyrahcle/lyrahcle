@@ -2,7 +2,7 @@ import { useState } from 'react'
 import SeverityBadge from './SeverityBadge.jsx'
 import TableScroll from './TableScroll.jsx'
 import { createDetectionRule, updateDetectionRule } from '../lib/api.js'
-import { isAdmin } from '../lib/auth.js'
+import { hasPermission } from '../lib/permissions.js'
 import { useI18n } from '../lib/I18nContext.jsx'
 
 const METRICS = ['any', 'power_dbm', 'frequency_hz', 'power_dbm_trend', 'frequency_hz_trend']
@@ -11,7 +11,7 @@ const SEVERITIES = ['critical', 'high', 'medium', 'low', 'info']
 
 export default function DetectionRulesPanel({ page, onChanged }) {
   const { t } = useI18n()
-  const admin = isAdmin()
+  const canManage = hasPermission('detections.manage')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [form, setForm] = useState({
@@ -63,7 +63,7 @@ export default function DetectionRulesPanel({ page, onChanged }) {
     <div className="grid gap-5">
       {error && <p role="alert" className="text-sm text-lyra-bad">{error}</p>}
 
-      {admin && (
+      {canManage && (
         <form onSubmit={handleCreate} className="grid gap-3 rounded border border-lyra-borderSoft p-4">
           <div className="grid gap-3 md:grid-cols-2">
             <input required maxLength={120} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder={t('detections.namePlaceholder')} className="rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 text-sm text-lyra-text" />
@@ -112,7 +112,7 @@ export default function DetectionRulesPanel({ page, onChanged }) {
                   <td className="py-3 pr-4 font-mono text-xs text-lyra-muted">{rule.cooldown_seconds}s</td>
                   <td className="py-3 pr-4 font-mono text-xs text-lyra-muted">{rule.auto_incident ? t('detections.yes') : t('detections.no')}</td>
                   <td className="py-3">
-                    {admin ? (
+                    {canManage ? (
                       <button type="button" disabled={saving} onClick={() => toggleRule(rule)} className="rounded border border-lyra-border px-2 py-1 font-mono text-[11px] uppercase text-lyra-goldBright disabled:opacity-50">
                         {rule.enabled ? t('detections.enabled') : t('detections.disabled')}
                       </button>

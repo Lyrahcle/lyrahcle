@@ -21,7 +21,7 @@ import UsersPanel from './UsersPanel.jsx'
 import SettingsPanel from './SettingsPanel.jsx'
 import Footer from './Footer.jsx'
 import { AnomalyTimelineChart, CVESeverityChart, CVETimelineChart, IncidentSeverityChart, IncidentTimelineChart, OrbitalAltitudeChart, RFPowerChart, RFSpectrumChart, RFStationMapChart } from './TelemetryCharts.jsx'
-import { canAudit, canWrite, isAdmin } from '../lib/auth.js'
+import { hasPermission } from '../lib/permissions.js'
 import { useI18n } from '../lib/I18nContext.jsx'
 import {
   fetchAgentKeys,
@@ -99,8 +99,8 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
     incidentFiltersRef.current = incidentFilters
   }, [incidentFilters])
 
-  const admin = isAdmin()
-  const auditAccess = canAudit()
+  const admin = hasPermission('users.manage')
+  const auditAccess = hasPermission('audit.read')
   const tabs = [
     { id: 'orbital', label: t('tabs.orbital') },
     { id: 'assets', label: t('tabs.assets') },
@@ -344,7 +344,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
               {satellites === null ? <Skeleton /> : <OrbitalAltitudeChart satellites={satellites} />}
             </Panel>
             <Panel eyebrow={t('panels.orbitalTracking')} title={t('panels.trackedSatellites')} uppercase>
-              {canWrite() && <NewSatelliteForm onCreated={reloadSatellites} />}
+              {hasPermission('orbital.manage') && <NewSatelliteForm onCreated={reloadSatellites} />}
               {satellites === null ? <Skeleton /> : <SatellitesPanel satellites={satellites} />}
             </Panel>
           </div>
@@ -352,7 +352,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
 
         {activeTab === 'assets' && (
           <Panel eyebrow={t('panels.assetInventory')} title={t('panels.trackedAssets')}>
-            {canWrite() && <NewAssetForm onCreated={reloadAssets} />}
+            {hasPermission('assets.manage') && <NewAssetForm onCreated={reloadAssets} />}
             {assets === null ? (
               <Skeleton />
             ) : (

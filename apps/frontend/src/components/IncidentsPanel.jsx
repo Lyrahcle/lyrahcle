@@ -3,7 +3,7 @@ import Pagination from './Pagination.jsx'
 import SeverityBadge from './SeverityBadge.jsx'
 import TableScroll from './TableScroll.jsx'
 import { addIncidentEvidence, addIncidentNote, createIncident, fetchIncident, updateIncident } from '../lib/api.js'
-import { canInvestigate, canWrite, isAdmin } from '../lib/auth.js'
+import { hasPermission } from '../lib/permissions.js'
 import { useI18n } from '../lib/I18nContext.jsx'
 
 const STATUSES = ['new', 'investigating', 'contained', 'resolved', 'false_positive']
@@ -27,7 +27,8 @@ export default function IncidentsPanel({ page, filters, onFiltersChange, onPrev,
   const [evidence, setEvidence] = useState({ type: 'request', reference: '', label: '' })
   const [form, setForm] = useState({ title: '', description: '', severity: 'medium', satelliteId: '', agentId: '', assignedTo: '' })
   const incidents = page?.items ?? []
-  const admin = isAdmin()
+  const canManage = hasPermission('incidents.manage')
+  const canManageUsers = hasPermission('users.manage')
 
   useEffect(() => {
     if (!selectedId) {
@@ -61,7 +62,7 @@ export default function IncidentsPanel({ page, filters, onFiltersChange, onPrev,
         severity: form.severity,
         satelliteId: form.satelliteId,
         agentId: form.agentId,
-        assignedTo: admin ? form.assignedTo : '',
+        assignedTo: canManageUsers ? form.assignedTo : '',
       })
       setForm({ title: '', description: '', severity: 'medium', satelliteId: '', agentId: '', assignedTo: '' })
       onChanged()
@@ -156,7 +157,7 @@ export default function IncidentsPanel({ page, filters, onFiltersChange, onPrev,
         </label>
       </div>
 
-      {canWrite() && (
+      {canManage && (
         <form onSubmit={handleCreate} className="grid gap-3 rounded border border-lyra-borderSoft bg-lyra-bgSoft/40 p-4">
           <div className="grid gap-3 md:grid-cols-3">
             <input aria-label={t('incidents.title')} required maxLength={160} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder={t('incidents.titlePlaceholder')} className="rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 text-sm text-lyra-text md:col-span-2" />
@@ -171,7 +172,7 @@ export default function IncidentsPanel({ page, filters, onFiltersChange, onPrev,
               {satellites.map((satellite) => <option key={satellite.id} value={satellite.id}>{satellite.name}</option>)}
             </select>
             <input aria-label={t('incidents.agent')} maxLength={128} value={form.agentId} onChange={(e) => setForm({ ...form, agentId: e.target.value })} placeholder={t('incidents.agentPlaceholder')} className="rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 text-sm text-lyra-text" />
-            {admin ? (
+            {canManageUsers ? (
               <select aria-label={t('incidents.unassigned')} value={form.assignedTo} onChange={(e) => setForm({ ...form, assignedTo: e.target.value })} className="rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 text-sm text-lyra-text">
                 <option value="">{t('incidents.unassigned')}</option>
                 {orderedUsers.map((user) => <option key={user.id} value={user.id}>{user.username || user.email}</option>)}
@@ -222,7 +223,7 @@ export default function IncidentsPanel({ page, filters, onFiltersChange, onPrev,
             <SeverityBadge severity={selected.severity} />
           </div>
 
-          {canInvestigate() && (
+          {canManage && (
             <div className="grid gap-3 sm:grid-cols-3">
               <select aria-label={t('incidents.status')} value={selected.status} disabled={saving} onChange={(e) => applyUpdate({ status: e.target.value })} className="rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 text-sm text-lyra-text">
                 {(NEXT_STATUSES[selected.status] || [selected.status]).map((status) => <option key={status} value={status}>{t(`incidents.statuses.${status}`)}</option>)}
@@ -230,7 +231,7 @@ export default function IncidentsPanel({ page, filters, onFiltersChange, onPrev,
               <select aria-label={t('incidents.severity')} value={selected.severity} disabled={saving} onChange={(e) => applyUpdate({ severity: e.target.value })} className="rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 text-sm text-lyra-text">
                 {SEVERITIES.map((severity) => <option key={severity} value={severity}>{severity}</option>)}
               </select>
-              {admin && (
+              {canManageUsers && (
                 <select aria-label={t('incidents.unassigned')} value={selected.assigned_to || ''} disabled={saving} onChange={(e) => applyUpdate({ assignedTo: e.target.value })} className="rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 text-sm text-lyra-text">
                   <option value="">{t('incidents.unassigned')}</option>
                   {orderedUsers.map((user) => <option key={user.id} value={user.id}>{user.username || user.email}</option>)}
@@ -271,7 +272,7 @@ export default function IncidentsPanel({ page, filters, onFiltersChange, onPrev,
             </div>
           </div>
 
-          {canInvestigate() && (
+          {canManage && (
             <form onSubmit={handleEvidence} className="grid gap-2 sm:grid-cols-[160px_1fr_1fr_auto]">
               <select value={evidence.type} onChange={(e) => setEvidence({ ...evidence, type: e.target.value })} className="rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 text-sm text-lyra-text">
                 {EVIDENCE_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
@@ -282,7 +283,7 @@ export default function IncidentsPanel({ page, filters, onFiltersChange, onPrev,
             </form>
           )}
 
-          {canInvestigate() && (
+          {canManage && (
             <form onSubmit={handleNote} className="flex gap-2">
               <input aria-label={t('incidents.notePlaceholder')} value={note} onChange={(e) => setNote(e.target.value)} maxLength={2000} placeholder={t('incidents.notePlaceholder')} className="min-w-0 flex-1 rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 text-sm text-lyra-text" />
               <button disabled={saving || !note.trim()} className="rounded border border-lyra-border px-3 py-2 font-mono text-xs uppercase text-lyra-goldBright disabled:opacity-50">{t('incidents.addNote')}</button>

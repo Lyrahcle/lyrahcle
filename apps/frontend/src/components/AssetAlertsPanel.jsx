@@ -3,7 +3,7 @@ import SeverityBadge from './SeverityBadge.jsx'
 import TableScroll from './TableScroll.jsx'
 import Pagination from './Pagination.jsx'
 import { acknowledgeAssetAlert } from '../lib/api.js'
-import { canWrite } from '../lib/auth.js'
+import { hasPermission } from '../lib/permissions.js'
 import { useI18n } from '../lib/I18nContext.jsx'
 
 export default function AssetAlertsPanel({ page, onPrev, onNext, onChanged }) {
@@ -97,7 +97,7 @@ export default function AssetAlertsPanel({ page, onPrev, onNext, onChanged }) {
                   )}
                 </td>
                 <td className="py-3 text-right">
-                  {!a.acknowledged && canWrite() && (
+                  {!a.acknowledged && hasPermission('alerts.manage') && (
                     <button
                       onClick={() => handleAcknowledge(a.id)}
                       disabled={ackingId === a.id}
