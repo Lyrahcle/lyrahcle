@@ -523,7 +523,8 @@ func TestDetectionRuleMatchCooldown(t *testing.T) {
 		t.Fatalf("create actor: %v", err)
 	}
 	rules := NewDetectionRuleStore(pool)
-	rule, err := rules.CreateInOrganization(ctx, DefaultOrganizationID, detection.Rule{
+	organizationID := actor.OrganizationID
+	rule, err := rules.CreateInOrganization(ctx, organizationID, detection.Rule{
 		Name: "Cooldown integration rule", Enabled: true, Metric: "power_dbm", Operator: "abs_z_gte",
 		Threshold: 6, Severity: "high", CooldownSeconds: 300, AutoIncident: true,
 	}, actor.ID)
@@ -534,12 +535,12 @@ func TestDetectionRuleMatchCooldown(t *testing.T) {
 	rf := NewRFStore(pool)
 	anomalies := NewAnomalyStore(pool)
 	newAnomaly := func(power float64) RFAnomaly {
-		reading := RFReading{AgentID: "cooldown-agent", FrequencyHz: 437500000, PowerDbm: power, CapturedAt: time.Now().UTC()}
+		reading := RFReading{OrganizationID: organizationID, AgentID: "cooldown-agent", FrequencyHz: 437500000, PowerDbm: power, CapturedAt: time.Now().UTC()}
 		if err := rf.Insert(ctx, &reading); err != nil {
 			t.Fatalf("insert reading: %v", err)
 		}
 		anomaly, err := anomalies.InsertReturning(ctx, RFAnomaly{
-			ReadingID: reading.ID, AgentID: reading.AgentID, Metric: "power_dbm", Value: power,
+			OrganizationID: organizationID, ReadingID: reading.ID, AgentID: reading.AgentID, Metric: "power_dbm", Value: power,
 			BaselineMean: -60, BaselineStddev: 2, ZScore: 9,
 		})
 		if err != nil {
@@ -549,11 +550,11 @@ func TestDetectionRuleMatchCooldown(t *testing.T) {
 	}
 
 	first := newAnomaly(-10)
-	if _, created, err := rules.RecordMatchIfAllowed(ctx, DefaultOrganizationID, rule, first.ID, first.AgentID, first.Metric, first.ZScore); err != nil || !created {
+	if _, created, err := rules.RecordMatchIfAllowed(ctx, organizationID, rule, first.ID, first.AgentID, first.Metric, first.ZScore); err != nil || !created {
 		t.Fatalf("first match: created=%v err=%v", created, err)
 	}
 	second := newAnomaly(-9)
-	if _, created, err := rules.RecordMatchIfAllowed(ctx, DefaultOrganizationID, rule, second.ID, second.AgentID, second.Metric, second.ZScore); err != nil || created {
+	if _, created, err := rules.RecordMatchIfAllowed(ctx, organizationID, rule, second.ID, second.AgentID, second.Metric, second.ZScore); err != nil || created {
 		t.Fatalf("second match inside cooldown: created=%v err=%v", created, err)
 	}
 }
