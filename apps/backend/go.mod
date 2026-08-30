@@ -1,6 +1,8 @@
 module github.com/mlko01/lyrahcle/apps/backend
 
-go 1.25.0
+go 1.26.0
+
+toolchain go1.26.7
 
 require (
 	github.com/go-chi/chi/v5 v5.0.12

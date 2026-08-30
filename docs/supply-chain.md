@@ -1,5 +1,18 @@
 # Software Supply Chain
 
+## Go toolchain policy
+
+Lyrahcle pins Go **1.26.7** for v1 development and release builds. Each Go module declares language baseline `go 1.26.0` plus `toolchain go1.26.7`; GitHub Actions and all Go Docker builders use the same patch release. Floating values such as `stable`, `golang:1-alpine`, or an unpatched `.0` toolchain are not allowed.
+
+The repository contract can be run locally with:
+
+```bash
+python3 -m unittest scripts/test_check_go_toolchain.py
+python3 scripts/check-go-toolchain.py .
+```
+
+Go patch upgrades are security maintenance: update all three `go.mod` files, CI/release workflows, and Docker builders in the same change, then run the contract and all Go test suites. Major/minor upgrades should be handled separately from release-critical feature changes.
+
 ## SBOM
 
 Lyrahcle generates CycloneDX JSON SBOMs for the backend, CVE worker, SDR agent, and frontend.
