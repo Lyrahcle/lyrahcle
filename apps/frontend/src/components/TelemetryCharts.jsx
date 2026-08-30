@@ -119,3 +119,103 @@ export function CVESeverityChart({ cves }) {
     </figure>
   )
 }
+
+export function RFSpectrumChart({ readings }) {
+  const buckets = new Map()
+  for (const reading of readings ?? []) {
+    const hz = Number(reading.frequency_hz)
+    const power = Number(reading.power_dbm)
+    if (!Number.isFinite(hz) || !Number.isFinite(power)) continue
+    const mhz = hz / 1e6
+    const key = mhz.toFixed(3)
+    const current = buckets.get(key)
+    if (!current || power > current.power) buckets.set(key, { frequency: mhz, power })
+  }
+  const rows = [...buckets.values()].sort((a, b) => a.frequency - b.frequency).slice(-48)
+  if (!rows.length) return <EmptyChart>No RF spectrum data yet.</EmptyChart>
+  const minPower = Math.min(...rows.map((row) => row.power))
+  const maxPower = Math.max(...rows.map((row) => row.power))
+  const span = maxPower - minPower || 1
+
+  return (
+    <figure>
+      <div className="mb-4 flex items-end justify-between gap-4">
+        <figcaption className="text-xs uppercase tracking-[0.16em] text-lyra-mutedDim">RF spectrum snapshot</figcaption>
+        <span className="font-mono text-xs text-lyra-mutedDim">{rows[0].frequency.toFixed(3)}–{rows.at(-1).frequency.toFixed(3)} MHz</span>
+      </div>
+      <div className="flex h-44 items-end gap-1" role="img" aria-label="RF spectrum power by frequency">
+        {rows.map((row) => (
+          <div key={row.frequency} className="group flex min-w-0 flex-1 items-end self-stretch">
+            <div
+              className="w-full rounded-t-sm bg-lyra-gold/70"
+              style={{ height: `${Math.max(3, ((row.power - minPower) / span) * 100)}%` }}
+              title={`${row.frequency.toFixed(3)} MHz · ${row.power.toFixed(1)} dBm`}
+            />
+          </div>
+        ))}
+      </div>
+      <div className="mt-2 flex justify-between font-mono text-[10px] text-lyra-mutedDim">
+        <span>{rows[0].frequency.toFixed(3)} MHz</span>
+        <span>{rows.at(-1).frequency.toFixed(3)} MHz</span>
+      </div>
+    </figure>
+  )
+}
+
+export function AnomalyTimelineChart({ anomalies }) {
+  const ordered = [...(anomalies ?? [])]
+    .filter((item) => item.detected_at)
+    .sort((a, b) => new Date(a.detected_at) - new Date(b.detected_at))
+    .slice(-36)
+    .map((item) => ({
+      value: Math.abs(Number(item.z_score) || 0),
+      label: `${item.agent_id} · ${new Date(item.detected_at).toLocaleTimeString()}`,
+    }))
+  return <SparkLine values={ordered} label="Anomaly intensity trend" suffix="σ" />
+}
+
+function dayKey(value) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return null
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
+function shortDayLabel(key) {
+  const [year, month, day] = key.split('-').map(Number)
+  return new Date(year, month - 1, day).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+}
+
+function TimeBucketBars({ items, timestampKey, label, emptyText }) {
+  const counts = new Map()
+  for (const item of items ?? []) {
+    const key = dayKey(item?.[timestampKey])
+    if (!key) continue
+    counts.set(key, (counts.get(key) ?? 0) + 1)
+  }
+  const rows = [...counts.entries()].sort(([a], [b]) => a.localeCompare(b)).slice(-14)
+  if (!rows.length) return <EmptyChart>{emptyText}</EmptyChart>
+  const max = Math.max(1, ...rows.map(([, count]) => count))
+  return (
+    <figure>
+      <figcaption className="mb-4 text-xs uppercase tracking-[0.16em] text-lyra-mutedDim">{label}</figcaption>
+      <div className="flex h-44 items-end gap-2" role="img" aria-label={label}>
+        {rows.map(([key, count]) => (
+          <div key={key} className="flex min-w-0 flex-1 flex-col justify-end gap-2 self-stretch">
+            <div className="flex min-h-0 flex-1 items-end">
+              <div className="w-full rounded-t-sm bg-lyra-gold/70" style={{ height: `${Math.max(4, (count / max) * 100)}%` }} title={`${shortDayLabel(key)} · ${count}`} />
+            </div>
+            <span className="truncate text-center font-mono text-[9px] text-lyra-mutedDim">{shortDayLabel(key)}</span>
+          </div>
+        ))}
+      </div>
+    </figure>
+  )
+}
+
+export function IncidentTimelineChart({ incidents }) {
+  return <TimeBucketBars items={incidents} timestampKey="created_at" label="Incidents created over time" emptyText="No incident timeline data yet." />
+}
+
+export function CVETimelineChart({ cves }) {
+  return <TimeBucketBars items={cves} timestampKey="published" label="CVE publication timeline" emptyText="No CVE timeline data in the current result set." />
+}

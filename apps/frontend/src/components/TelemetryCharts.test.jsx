@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import { CVESeverityChart, IncidentSeverityChart, RFPowerChart } from './TelemetryCharts.jsx'
+import { AnomalyTimelineChart, CVESeverityChart, CVETimelineChart, IncidentSeverityChart, IncidentTimelineChart, RFPowerChart, RFSpectrumChart } from './TelemetryCharts.jsx'
 
 describe('TelemetryCharts', () => {
   it('renders RF power telemetry', () => {
@@ -21,5 +21,27 @@ describe('TelemetryCharts', () => {
   it('groups visible CVEs by severity', () => {
     render(<CVESeverityChart cves={[{ severity: 'critical' }, { severity: 'medium' }]} />)
     expect(screen.getByText('Visible CVEs by severity')).toBeInTheDocument()
+  })
+
+  it('renders RF spectrum frequencies', () => {
+    render(<RFSpectrumChart readings={[
+      { frequency_hz: 437500000, power_dbm: -65 },
+      { frequency_hz: 437600000, power_dbm: -55 },
+    ]} />)
+    expect(screen.getByText('RF spectrum snapshot')).toBeInTheDocument()
+  })
+
+  it('renders anomaly timeline', () => {
+    render(<AnomalyTimelineChart anomalies={[
+      { agent_id: 'sdr-1', z_score: 4.5, detected_at: '2026-08-30T10:00:00Z' },
+    ]} />)
+    expect(screen.getByText('Anomaly intensity trend')).toBeInTheDocument()
+  })
+
+  it('renders incident and CVE timelines', () => {
+    const { rerender } = render(<IncidentTimelineChart incidents={[{ created_at: '2026-08-30T10:00:00Z' }]} />)
+    expect(screen.getByText('Incidents created over time')).toBeInTheDocument()
+    rerender(<CVETimelineChart cves={[{ published: '2026-08-29T10:00:00Z' }]} />)
+    expect(screen.getByText('CVE publication timeline')).toBeInTheDocument()
   })
 })
