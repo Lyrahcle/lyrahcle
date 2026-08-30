@@ -1,0 +1,2893 @@
+openapi: 3.0.3
+info:
+  title: Lyrahcle API
+  description: Space cybersecurity operations API for assets, orbital tracking, RF telemetry, incident response, TM/TC decoding,
+    threat intelligence, and security administration.
+  version: 0.12.0
+  contact:
+    name: Lyrahcle
+  license:
+    name: AGPLv3
+    url: https://github.com/Lyrahcle/lyrahcle/blob/main/LICENSE
+servers:
+- url: http://localhost:8080
+  description: Local development
+tags:
+- name: System
+- name: Auth
+- name: Users
+- name: Assets
+- name: Programs
+- name: Satellites
+- name: RF
+- name: Detection
+- name: Agents
+- name: Legacy Agent Keys
+- name: TM/TC
+- name: Incidents
+- name: Threat Intel
+- name: Audit
+security:
+- bearerAuth: []
+paths:
+  /healthz:
+    get:
+      tags:
+      - System
+      summary: Liveness check
+      security: []
+      responses:
+        '200':
+          description: Service is up
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+  /readyz:
+    get:
+      tags:
+      - System
+      summary: Readiness check
+      description: Verifies required runtime dependencies without exposing dependency details.
+      security: []
+      responses:
+        '200':
+          description: Service is ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadinessStatus'
+        '503':
+          description: Service is not ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadinessStatus'
+  /metrics:
+    get:
+      tags:
+      - System
+      summary: Prometheus metrics
+      security: []
+      responses:
+        '200':
+          description: Prometheus text exposition format
+          content:
+            text/plain: {}
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+  /openapi.yaml:
+    get:
+      tags:
+      - System
+      summary: OpenAPI specification
+      security: []
+      responses:
+        '200':
+          description: OpenAPI YAML
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+  /docs:
+    get:
+      tags:
+      - System
+      summary: Swagger UI
+      security: []
+      responses:
+        '200':
+          description: Interactive API documentation
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+  /api/v1/ping:
+    get:
+      tags:
+      - System
+      summary: Backend reachability check
+      security: []
+      responses:
+        '200':
+          description: Pong
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PingResponse'
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+  /api/v1/system-info:
+    get:
+      tags:
+      - System
+      summary: Runtime system information
+      description: 'Requires role: viewer or higher.'
+      responses:
+        '200':
+          description: System information
+          content:
+            application/json:
+              schema:
+                type: object
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/auth/login:
+    post:
+      tags:
+      - Auth
+      summary: Authenticate with email or username
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+        '401':
+          description: Invalid credentials, invalid TOTP, or TOTP required
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+        '429':
+          description: Too many login attempts
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+      description: Rate limited independently from normal API traffic. If TOTP is enabled, include totp_code.
+  /api/v1/auth/sessions/:
+    get:
+      tags:
+      - Auth
+      summary: List active sessions for the current user
+      description: Requires Redis-backed session tracking and role viewer or higher.
+      responses:
+        '200':
+          description: Active sessions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SessionSummary'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          description: Session management unavailable
+    delete:
+      tags:
+      - Auth
+      summary: Revoke all sessions for the current user
+      responses:
+        '204':
+          description: All sessions revoked
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          description: Session management unavailable
+  /api/v1/auth/sessions/{sessionID}:
+    delete:
+      tags:
+      - Auth
+      summary: Revoke one session owned by the current user
+      parameters:
+      - name: sessionID
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '204':
+          description: Session revoked
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Session not found
+        '503':
+          description: Session management unavailable
+  /api/v1/auth/me:
+    get:
+      tags:
+      - Auth
+      summary: Get current account
+      description: 'Requires role: viewer or higher.'
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSummary'
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/auth/logout:
+    post:
+      tags:
+      - Auth
+      summary: Log out and revoke current token
+      description: Requires Redis for immediate token revocation. The request still succeeds if Redis is unavailable.
+      responses:
+        '204':
+          description: Logged out
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/auth/change-password:
+    post:
+      tags:
+      - Auth
+      summary: Change your own password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+      responses:
+        '204':
+          description: Password changed
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/auth/totp/setup:
+    post:
+      tags:
+      - Auth
+      summary: Create a pending Google Authenticator TOTP secret
+      responses:
+        '200':
+          description: TOTP setup data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TOTPSetupResponse'
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+        '409':
+          description: TOTP already enabled
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+  /api/v1/auth/totp/enable:
+    post:
+      tags:
+      - Auth
+      summary: Enable Google Authenticator TOTP
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TOTPCodeRequest'
+      responses:
+        '204':
+          description: TOTP enabled
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/auth/totp/disable:
+    post:
+      tags:
+      - Auth
+      summary: Disable Google Authenticator TOTP
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TOTPDisableRequest'
+      responses:
+        '204':
+          description: TOTP disabled
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/auth/webauthn/login/start:
+    post:
+      tags: [Auth]
+      summary: Start password plus WebAuthn security-key login
+      security: []
+      responses:
+        '200': {description: WebAuthn assertion options}
+        '401': {description: Invalid credentials}
+        '409': {description: Security key not configured}
+        '429': {description: Too many authentication attempts}
+  /api/v1/auth/webauthn/login/finish:
+    post:
+      tags: [Auth]
+      summary: Finish WebAuthn security-key login
+      security: []
+      responses:
+        '200': {description: Authenticated}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {description: Invalid or expired security-key ceremony}
+  /api/v1/auth/webauthn/credentials/:
+    get:
+      tags: [Auth]
+      summary: List security keys owned by the current user
+      responses:
+        '200': {description: Security-key metadata}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+  /api/v1/auth/webauthn/credentials/register/start:
+    post:
+      tags: [Auth]
+      summary: Start security-key enrollment
+      description: Requires the current password and a viewer-or-higher bearer session. Only cross-platform authenticators with user verification are accepted.
+      responses:
+        '200': {description: WebAuthn creation options}
+        '401': {description: Current password verification failed}
+  /api/v1/auth/webauthn/credentials/register/finish:
+    post:
+      tags: [Auth]
+      summary: Finish security-key enrollment
+      description: Consumes a short-lived one-time ceremony and invalidates existing user sessions after enrollment.
+      responses:
+        '204': {description: Security key enrolled}
+        '401': {description: Invalid or expired ceremony}
+        '409': {description: Credential already registered}
+  /api/v1/auth/webauthn/credentials/{credentialID}:
+    delete:
+      tags: [Auth]
+      summary: Remove one security key owned by the current user
+      description: Requires the current password and invalidates existing sessions after removal.
+      parameters:
+      - name: credentialID
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      responses:
+        '204': {description: Security key removed}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {description: Current password verification failed}
+        '404': {description: Security key not found}
+  /api/v1/auth/password-reset/request:
+    post:
+      tags: [Auth]
+      summary: Request a password reset link
+      description: Feature-flagged. Always returns an accepted response to reduce account enumeration. Tokens are random, hashed at rest, single-use, and expire after 15 minutes.
+      security: []
+      responses:
+        '202': {description: Request accepted}
+        '429': {description: Too many recovery attempts}
+  /api/v1/auth/password-reset/complete:
+    post:
+      tags: [Auth]
+      summary: Complete password recovery
+      description: Requires Google Authenticator when TOTP is enabled. Accounts protected by a WebAuthn security key require administrator-assisted recovery instead of bypassing the key.
+      security: []
+      responses:
+        '204': {description: Password reset completed}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {description: Invalid token or second-factor verification}
+        '409': {description: Administrator-assisted recovery required}
+  /api/v1/search:
+    get:
+      tags: [System]
+      summary: Search satellites, assets, CVEs, and incidents
+      description: Requires role viewer or higher. Query length is limited and SQL is parameterized.
+      parameters:
+      - name: q
+        in: query
+        required: true
+        schema: {type: string, minLength: 2, maxLength: 96}
+      responses:
+        '200': {description: Search results}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+  /api/v1/users/:
+    get:
+      tags:
+      - Users
+      summary: List active and disabled non-deleted users
+      description: 'Requires role: admin.'
+      responses:
+        '200':
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserSummary'
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags:
+      - Users
+      summary: Create a user
+      description: 'Requires role: admin. Public self-registration is disabled.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSummary'
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Email already registered
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+  /api/v1/users/{userID}/role:
+    patch:
+      tags:
+      - Users
+      summary: Change a user's role
+      description: 'Requires role: admin. Blocks demoting the last remaining active admin.
+
+        '
+      parameters:
+      - $ref: '#/components/parameters/UserID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRoleRequest'
+      responses:
+        '200':
+          description: Role updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSummary'
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: User not found
+          content:
+            text/plain: {}
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+        '409':
+          description: Would demote the last remaining admin
+          content:
+            text/plain: {}
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+  /api/v1/programs/:
+    get:
+      tags:
+      - Programs
+      summary: List programs
+      description: 'Requires role: viewer or higher.'
+      responses:
+        '200':
+          description: List of programs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Program'
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+    post:
+      tags:
+      - Programs
+      summary: Create a program
+      description: 'Requires role: operator or higher.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - name
+              properties:
+                name:
+                  type: string
+                  example: Constellation Alpha
+      responses:
+        '201':
+          description: Program created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Program'
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/assets/:
+    get:
+      tags:
+      - Assets
+      summary: List tracked assets
+      description: 'Requires role: viewer or higher.'
+      parameters:
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: Paginated list of assets
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssetPage'
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+    post:
+      tags:
+      - Assets
+      summary: Create or update an asset
+      description: 'Requires role: operator or higher.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAssetRequest'
+      responses:
+        '201':
+          description: Asset created
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/satellites/:
+    get:
+      tags:
+      - Satellites
+      summary: List tracked satellites with live computed position
+      description: 'Requires role: viewer or higher.'
+      responses:
+        '200':
+          description: List of satellites
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SatelliteWithPosition'
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+    post:
+      tags:
+      - Satellites
+      summary: Register a satellite by NORAD ID and TLE
+      description: 'Requires role: operator or higher.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterSatelliteRequest'
+      responses:
+        '201':
+          description: Satellite registered
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/satellites/stream:
+    get:
+      tags:
+      - Satellites
+      summary: Stream live satellite positions
+      description: 'Requires role: viewer or higher. Server-Sent Events; sends an initial satellites event and refreshes every
+        five seconds.'
+      responses:
+        '200':
+          description: SSE stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/users/{userID}/status:
+    patch:
+      tags:
+      - Users
+      summary: Enable or disable a user account
+      description: 'Requires role: admin. Disabling revokes authorization state. The current user and last active admin cannot be disabled.'
+      parameters:
+      - $ref: '#/components/parameters/UserID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - enabled
+              properties:
+                enabled:
+                  type: boolean
+      responses:
+        '200':
+          description: User status updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSummary'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: User not found
+        '409':
+          description: Self-lockout or last-admin protection
+  /api/v1/users/{userID}:
+    delete:
+      tags:
+      - Users
+      summary: Soft-delete a user account
+      description: 'Requires role: admin. Removes login identifiers and TOTP material while preserving audit-linked identity. The current user and last active admin cannot be deleted.'
+      parameters:
+      - $ref: '#/components/parameters/UserID'
+      responses:
+        '204':
+          description: User deleted
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: User not found
+        '409':
+          description: Self-lockout or last-admin protection
+  /api/v1/agent-keys/:
+    get:
+      tags:
+      - Legacy Agent Keys
+      summary: List legacy issued agent keys
+      description: 'Requires role: admin.'
+      responses:
+        '200':
+          description: List of agent key summaries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AgentKeySummary'
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+    post:
+      tags:
+      - Legacy Agent Keys
+      summary: Create a legacy API key scoped to one agent_id
+      description: 'Requires role: admin. The plaintext key is returned once, at creation time — only its SHA-256 hash is
+        stored.
+
+        '
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - agent_id
+              properties:
+                agent_id:
+                  type: string
+                  example: sdr-agent-madrid
+      responses:
+        '201':
+          description: Key created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentKeyCreated'
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: agent_id already has an active key
+          content:
+            text/plain: {}
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+  /api/v1/agent-keys/{agentID}:
+    delete:
+      tags:
+      - Legacy Agent Keys
+      summary: Revoke that agent's key
+      description: 'Requires role: admin.'
+      parameters:
+      - name: agentID
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          description: Key revoked
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+        '404':
+          description: No active key for that agent_id
+          content:
+            text/plain: {}
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+  /api/v1/agents/me/device:
+    post:
+      tags:
+      - Legacy Agent Keys
+      summary: Report authenticated agent device metadata
+      description: Long-running agents should authenticate with an active mTLS client certificate. Legacy X-Agent-Key remains accepted for migration. Agent identity is derived from the authenticated machine credential and cannot be selected by the request body. OpenAPI 3.0 does not model the TLS client-certificate check as a security scheme.
+      security:
+      - agentKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentDeviceInfo'
+      responses:
+        '204':
+          description: Device metadata stored
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/rf/ingest:
+    post:
+      tags:
+      - RF
+      summary: Ingest an RF reading
+      description: 'Used by sdr-agent. Active mTLS client certificates are the preferred unattended-agent credential. Legacy `X-Agent-Key` credentials remain accepted for migration, and operator-or-higher bearer tokens are supported for human operational ingestion. Each reading is checked against that agent''s recent baseline and flagged as an anomaly on statistical outliers. OpenAPI 3.0 does not model the TLS client-certificate check as a security scheme.'
+      security:
+      - bearerAuth: []
+      - agentKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RFReadingInput'
+      responses:
+        '201':
+          description: Reading ingested
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          description: agent_id does not match the authenticated agent key
+          content:
+            text/plain: {}
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+  /api/v1/rf/readings:
+    get:
+      tags:
+      - RF
+      summary: List recent RF readings
+      description: 'Requires role: viewer or higher. Returns up to 100 most recent.'
+      responses:
+        '200':
+          description: List of RF readings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RFReading'
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+  /api/v1/rf/anomalies:
+    get:
+      tags:
+      - RF
+      summary: List recent RF anomalies
+      description: 'Requires role: viewer or higher. Returns recent anomalies produced by robust spot and trend baselines.'
+      responses:
+        '200':
+          description: List of RF anomalies
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RFAnomaly'
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+  /api/v1/tmtc/decode/ax25:
+    post:
+      tags:
+      - TM/TC
+      summary: Decode a hex-encoded AX.25 UI frame
+      description: 'Requires role: viewer or higher.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - frame_hex
+              properties:
+                frame_hex:
+                  type: string
+                  example: 82A0A4A6404060AE8482646860E103F0...
+      responses:
+        '200':
+          description: Decoded frame
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AX25Frame'
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /api/v1/tmtc/decode/ccsds:
+    post:
+      tags:
+      - TM/TC
+      summary: Decode a hex-encoded CCSDS Space Packet
+      description: 'Requires role: viewer or higher.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - packet_hex
+              properties:
+                packet_hex:
+                  type: string
+      responses:
+        '200':
+          description: Decoded packet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CCSDSPacket'
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /api/v1/tmtc/decode/pus:
+    post:
+      tags:
+      - TM/TC
+      summary: Decode a hex-encoded PUS packet
+      description: 'Built on the CCSDS Space Packet header. Requires role: viewer or higher.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - packet_hex
+              properties:
+                packet_hex:
+                  type: string
+      responses:
+        '200':
+          description: Decoded packet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PUSPacket'
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /api/v1/tmtc/decode/csp:
+    post:
+      tags:
+      - TM/TC
+      summary: Decode a hex-encoded CubeSat Space Protocol (CSP v1) packet
+      description: 'Requires role: viewer or higher.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - packet_hex
+              properties:
+                packet_hex:
+                  type: string
+      responses:
+        '200':
+          description: Decoded packet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CSPPacket'
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /api/v1/threat-intel/space-cves:
+    get:
+      tags:
+      - Threat Intel
+      summary: List space-related CVEs synced from the NVD
+      description: 'Requires role: viewer or higher. Supports severity, keyword, publication-date, and sort filters.'
+      parameters:
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Offset'
+      - name: severity
+        in: query
+        schema:
+          type: string
+      - name: keyword
+        in: query
+        schema:
+          type: string
+      - name: published_from
+        in: query
+        schema:
+          type: string
+          format: date
+      - name: published_to
+        in: query
+        schema:
+          type: string
+          format: date
+      - name: sort
+        in: query
+        schema:
+          type: string
+      - name: order
+        in: query
+        schema:
+          type: string
+          enum:
+          - asc
+          - desc
+          default: desc
+      responses:
+        '200':
+          description: Paginated list of CVEs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpaceCVEPage'
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+  /api/v1/threat-intel/space-cves/keywords:
+    get:
+      tags:
+      - Threat Intel
+      summary: List distinct CVE keywords
+      description: 'Requires role: viewer or higher.'
+      responses:
+        '200':
+          description: Keywords
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+  /api/v1/asset-alerts/:
+    get:
+      tags:
+      - Threat Intel
+      summary: List CVE-to-asset alerts
+      description: 'Requires role: viewer or higher. Raised automatically by a background worker when a synced CVE''s search
+        keyword is relevant to a tracked asset''s kind (e.g. a "satellite"-keyword CVE against every satellite asset). Sorted
+        unacknowledged-first, then most recent.
+
+        '
+      parameters:
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: Paginated list of alerts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssetCVEAlertPage'
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+  /api/v1/asset-alerts/{alertID}/acknowledge:
+    post:
+      tags:
+      - Threat Intel
+      summary: Mark an alert as reviewed
+      description: 'Requires role: operator or higher. Idempotent — acknowledging an already-acknowledged alert succeeds and
+        just overwrites who/when.
+
+        '
+      parameters:
+      - name: alertID
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '204':
+          description: Acknowledged
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          description: No alert with that ID
+          content:
+            text/plain: {}
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+  /api/v1/audit-log:
+    get:
+      tags:
+      - Audit
+      summary: List security-relevant events
+      description: 'Requires role: auditor or admin.'
+      parameters:
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: Paginated list of audit entries
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditPage'
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
+  /api/v1/incidents/:
+    get:
+      tags:
+      - Incidents
+      summary: List security incidents
+      description: 'Requires role: viewer or higher.'
+      parameters:
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Offset'
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum:
+          - new
+          - investigating
+          - contained
+          - resolved
+          - false_positive
+      - name: severity
+        in: query
+        schema:
+          type: string
+          enum:
+          - critical
+          - high
+          - medium
+          - low
+          - info
+      - name: agent_id
+        in: query
+        schema:
+          type: string
+          maxLength: 128
+      - name: assigned_to
+        in: query
+        schema:
+          type: string
+          format: uuid
+      - name: satellite_id
+        in: query
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Paginated incidents
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IncidentPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags:
+      - Incidents
+      summary: Create a security incident
+      description: 'Requires role: operator or higher. Only admins may set assigned_to. Reusing the same Idempotency-Key returns the original incident.'
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: false
+        schema:
+          type: string
+          maxLength: 128
+          pattern: '^[A-Za-z0-9_.:-]+$'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IncidentCreateRequest'
+      responses:
+        '201':
+          description: Incident created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Incident'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Insufficient role
+  /api/v1/incidents/stream:
+    get:
+      tags:
+      - Incidents
+      summary: Live incident SSE stream
+      description: 'Requires role: viewer or higher. Sends a paginated incident snapshot every five seconds.'
+      responses:
+        '200':
+          description: SSE stream
+          content:
+            text/event-stream: {}
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/incidents/{incidentID}:
+    get:
+      tags:
+      - Incidents
+      summary: Get incident detail and timeline
+      description: 'Requires role: viewer or higher.'
+      parameters:
+      - name: incidentID
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Incident detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IncidentDetail'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          description: Incident not found
+    patch:
+      tags:
+      - Incidents
+      summary: Update incident workflow fields
+      description: 'Requires role: analyst, operator, or admin. Only admins may change assigned_to.'
+      parameters:
+      - name: incidentID
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IncidentUpdateRequest'
+      responses:
+        '200':
+          description: Incident updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Incident'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          description: Insufficient role
+        '404':
+          description: Incident not found
+        '409':
+          description: Invalid incident status transition
+  /api/v1/incidents/{incidentID}/notes:
+    post:
+      tags:
+      - Incidents
+      summary: Add an investigation note
+      description: 'Requires role: analyst, operator, or admin.'
+      parameters:
+      - name: incidentID
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - message
+              properties:
+                message:
+                  type: string
+                  minLength: 1
+                  maxLength: 2000
+      responses:
+        '204':
+          description: Note added
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          description: Incident not found
+  /api/v1/incidents/{incidentID}/evidence:
+    post:
+      tags:
+      - Incidents
+      summary: Add a typed evidence reference
+      description: 'Requires role: analyst, operator, or admin. References are deduplicated per incident and evidence type.'
+      parameters:
+      - name: incidentID
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IncidentEvidenceCreateRequest'
+      responses:
+        '201':
+          description: Evidence reference stored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IncidentEvidence'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Insufficient role
+        '404':
+          description: Incident not found
+  /api/v1/detection-rules/:
+    get:
+      tags:
+      - Detection
+      summary: List RF detection rules
+      description: 'Requires role: viewer or higher.'
+      parameters:
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: Paginated detection rules
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetectionRulePage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Insufficient role
+    post:
+      tags:
+      - Detection
+      summary: Create an RF detection rule
+      description: 'Requires role: admin. Rules are typed and cannot execute arbitrary expressions or scripts.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DetectionRuleCreateRequest'
+      responses:
+        '201':
+          description: Detection rule created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetectionRule'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Admin role required
+        '409':
+          description: Rule name conflict
+  /api/v1/detection-rules/{ruleID}:
+    patch:
+      tags:
+      - Detection
+      summary: Update an RF detection rule
+      description: 'Requires role: admin. Rules are disabled rather than deleted to preserve detection history.'
+      parameters:
+      - name: ruleID
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DetectionRuleUpdateRequest'
+      responses:
+        '200':
+          description: Detection rule updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetectionRule'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Admin role required
+        '404':
+          description: Detection rule not found
+  /api/v1/agents/:
+    get:
+      tags:
+      - Agents
+      summary: List mTLS agent identities
+      description: 'Requires role: admin. Returns lifecycle state, certificate metadata, versions, and device reports.'
+      responses:
+        '200':
+          description: Agent identities
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [agent_id, status]
+                  properties:
+                    agent_id:
+                      type: string
+                    status:
+                      type: string
+                      enum: [pending, active, quarantined, revoked, offline]
+                    first_seen_at:
+                      type: string
+                      format: date-time
+                      nullable: true
+                    last_seen_at:
+                      type: string
+                      format: date-time
+                      nullable: true
+                    agent_version:
+                      type: string
+                    firmware_version:
+                      type: string
+                    certificate:
+                      type: object
+                      nullable: true
+                      properties:
+                        fingerprint_sha256:
+                          type: string
+                        serial_number:
+                          type: string
+                        not_before:
+                          type: string
+                          format: date-time
+                        not_after:
+                          type: string
+                          format: date-time
+                        status:
+                          type: string
+  /api/v1/agents/enrollment-tokens:
+    post:
+      tags:
+      - Agents
+      summary: Issue a one-time SDR agent enrollment token
+      description: 'Requires role: admin. The plaintext token is returned once and only its SHA-256 hash is stored.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [agent_id]
+              properties:
+                agent_id:
+                  type: string
+      responses:
+        '201':
+          description: Enrollment token created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [agent_id, token, expires_at]
+                properties:
+                  agent_id:
+                    type: string
+                  token:
+                    type: string
+                  expires_at:
+                    type: string
+                    format: date-time
+        '409':
+          description: Agent is already enrolled or inactive
+  /api/v1/agents/enroll:
+    post:
+      tags:
+      - Agents
+      summary: Enroll an SDR agent certificate
+      description: Exchanges a one-time enrollment token and agent-generated CSR for a short-lived client certificate. TLS is mandatory in production.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, csr_pem]
+              properties:
+                token:
+                  type: string
+                csr_pem:
+                  type: string
+                agent_version:
+                  type: string
+                firmware_version:
+                  type: string
+      responses:
+        '200':
+          description: Client certificate issued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  agent_id:
+                    type: string
+                  certificate_pem:
+                    type: string
+                  ca_pem:
+                    type: string
+                  expires_at:
+                    type: string
+                    format: date-time
+        '401':
+          description: Invalid or expired enrollment token
+  /api/v1/agents/me/certificate/rotate:
+    post:
+      tags:
+      - Agents
+      summary: Rotate the authenticated SDR agent client certificate
+      description: Requires a currently valid mTLS client certificate. The agent generates a new private key and submits only the CSR.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [csr_pem]
+              properties:
+                csr_pem:
+                  type: string
+      responses:
+        '200':
+          description: Replacement client certificate
+        '401':
+          description: Client certificate required or inactive
+  /api/v1/agents/{agentID}/status:
+    patch:
+      tags:
+      - Agents
+      summary: Quarantine, reactivate, or permanently revoke an SDR agent
+      description: 'Requires role: admin. Revocation is irreversible and revokes the active certificate.'
+      parameters:
+      - name: agentID
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [active, quarantined, revoked]
+      responses:
+        '204':
+          description: Agent status updated
+        '404':
+          description: Agent not found
+  /api/v1/agents/{agentID}/station:
+    put:
+      tags: [Agents]
+      summary: Set trusted ground-station coordinates for an SDR agent
+      description: 'Requires role: admin. Coordinates are used for orbital visibility and Doppler correlation.'
+      parameters:
+      - name: agentID
+        in: path
+        required: true
+        schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [latitude_deg, longitude_deg, altitude_m]
+              properties:
+                latitude_deg: {type: number, minimum: -90, maximum: 90}
+                longitude_deg: {type: number, minimum: -180, maximum: 180}
+                altitude_m: {type: number, minimum: -500, maximum: 10000}
+      responses:
+        '204': {description: Ground-station coordinates updated}
+        '404': {description: Agent not found}
+  /api/v1/agents/{agentID}/config:
+    get:
+      tags: [Agents]
+      summary: Read desired signed configuration for an SDR agent
+      description: 'Requires role: admin.'
+      parameters:
+      - name: agentID
+        in: path
+        required: true
+        schema: {type: string}
+      responses:
+        '200': {description: Desired configuration and acknowledgement state}
+        '204': {description: No desired configuration}
+    put:
+      tags: [Agents]
+      summary: Publish a new signed SDR agent configuration
+      description: 'Requires role: admin. Creates an immutable monotonic version. Only active mTLS agents are configurable.'
+      parameters:
+      - name: agentID
+        in: path
+        required: true
+        schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [frequency_hz, capture_interval_seconds]
+              properties:
+                frequency_hz:
+                  type: integer
+                  format: int64
+                  minimum: 100000
+                  maximum: 6000000000
+                capture_interval_seconds:
+                  type: integer
+                  minimum: 1
+                  maximum: 3600
+                satellite_id:
+                  type: string
+                  format: uuid
+                  nullable: true
+                  description: Optional tracked satellite propagated in the signed configuration and attached to RF readings.
+      responses:
+        '201': {description: Signed configuration version created}
+        '409': {description: Agent is not active}
+  /api/v1/agents/{agentID}/config/history:
+    get:
+      tags: [Agents]
+      summary: List immutable SDR agent configuration history
+      description: 'Requires role: admin. Returns up to the latest 20 versions and acknowledgements.'
+      parameters:
+      - name: agentID
+        in: path
+        required: true
+        schema: {type: string}
+      responses:
+        '200': {description: Configuration history}
+  /api/v1/agents/{agentID}/config/rollback:
+    post:
+      tags: [Agents]
+      summary: Roll back SDR agent settings by creating a new signed version
+      description: 'Requires role: admin. Historical rows remain immutable.'
+      parameters:
+      - name: agentID
+        in: path
+        required: true
+        schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [version]
+              properties:
+                version: {type: integer, format: int64, minimum: 1}
+      responses:
+        '201': {description: Rollback version created}
+        '404': {description: Historical version not found}
+  /api/v1/agents/me/config:
+    get:
+      tags: [Agents]
+      summary: Poll the desired signed configuration
+      description: Requires a valid active SDR mTLS client certificate. Legacy API keys and human JWTs are not accepted.
+      security: []
+      parameters:
+      - name: after_version
+        in: query
+        schema: {type: integer, format: int64, minimum: 0}
+      responses:
+        '200':
+          description: Signed configuration envelope
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [payload, signature, checksum_sha256]
+                properties:
+                  payload: {type: string}
+                  signature: {type: string}
+                  checksum_sha256: {type: string}
+        '204': {description: No newer desired version}
+        '401': {description: Active mTLS identity required}
+  /api/v1/agents/me/config/ack:
+    post:
+      tags: [Agents]
+      summary: Acknowledge application or rejection of a signed configuration
+      description: Requires a valid active SDR mTLS client certificate. Acknowledgements are idempotent for the same status/message/checksum.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [version, status, checksum_sha256]
+              properties:
+                version: {type: integer, format: int64, minimum: 1}
+                status: {type: string, enum: [applied, rejected]}
+                message: {type: string, maxLength: 256}
+                checksum_sha256: {type: string, minLength: 64, maxLength: 64}
+      responses:
+        '204': {description: Acknowledgement recorded}
+        '409': {description: Acknowledgement conflicts with immutable history}
+        '401': {description: Active mTLS identity required}
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Human session token from /api/v1/auth/login.
+    agentKeyAuth:
+      type: apiKey
+      in: header
+      name: X-Agent-Key
+      description: Legacy per-agent migration credential issued via POST /api/v1/agent-keys. Long-running agents should use mTLS enrollment.
+  parameters:
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        default: 25
+        maximum: 100
+    Offset:
+      name: offset
+      in: query
+      schema:
+        type: integer
+        default: 0
+        minimum: 0
+    UserID:
+      name: userID
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  responses:
+    BadRequest:
+      description: Invalid request body or parameters
+      content:
+        text/plain: {}
+    Unauthorized:
+      description: Missing or invalid credentials
+      content:
+        text/plain: {}
+    Forbidden:
+      description: Authenticated, but role does not permit this action
+      content:
+        text/plain: {}
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+    PingResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: pong from lyrahcle
+    LoginRequest:
+      type: object
+      required:
+      - identifier
+      - password
+      properties:
+        identifier:
+          type: string
+          description: Email or username
+        password:
+          type: string
+          format: password
+        totp_code:
+          type: string
+          description: Required when TOTP is enabled
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        role:
+          type: string
+          enum:
+          - viewer
+          - auditor
+          - analyst
+          - operator
+          - admin
+        must_change_password:
+          type: boolean
+    ChangePasswordRequest:
+      type: object
+      required:
+      - current_password
+      - new_password
+      properties:
+        current_password:
+          type: string
+          format: password
+        new_password:
+          type: string
+          format: password
+          minLength: 12
+          maxLength: 72
+    UpdateRoleRequest:
+      type: object
+      required:
+      - role
+      properties:
+        role:
+          type: string
+          enum:
+          - viewer
+          - auditor
+          - analyst
+          - operator
+          - admin
+    UserSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+        username:
+          type: string
+        role:
+          type: string
+          enum:
+          - viewer
+          - auditor
+          - analyst
+          - operator
+          - admin
+        totp_enabled:
+          type: boolean
+        enabled:
+          type: boolean
+        must_change_password:
+          type: boolean
+    Program:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+    Asset:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        program_id:
+          type: string
+          format: uuid
+        kind:
+          type: string
+          example: domain
+        value:
+          type: string
+          example: ground-station.example.com
+    CreateAssetRequest:
+      type: object
+      required:
+      - program_id
+      - kind
+      - value
+      properties:
+        program_id:
+          type: string
+          format: uuid
+        kind:
+          type: string
+          example: domain
+        value:
+          type: string
+    AssetPage:
+      allOf:
+      - $ref: '#/components/schemas/Page'
+      - type: object
+        properties:
+          items:
+            type: array
+            items:
+              $ref: '#/components/schemas/Asset'
+    Page:
+      type: object
+      properties:
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+    SatellitePosition:
+      type: object
+      properties:
+        latitude_deg:
+          type: number
+          format: double
+        longitude_deg:
+          type: number
+          format: double
+        altitude_km:
+          type: number
+          format: double
+    SatelliteWithPosition:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        norad_id:
+          type: integer
+          example: 25544
+        name:
+          type: string
+          example: ISS (ZARYA)
+        tle_line1:
+          type: string
+        tle_line2:
+          type: string
+        tle_epoch:
+          type: string
+          format: date-time
+          nullable: true
+          description: Epoch encoded in TLE line 1.
+        updated_at:
+          type: string
+          format: date-time
+        tle_status:
+          type: string
+          enum: [fresh, aging, stale, unusable]
+        tle_age_seconds:
+          type: integer
+          format: int64
+        orbital_confidence:
+          type: string
+          enum: [high, degraded, unavailable]
+        position:
+          allOf:
+          - $ref: '#/components/schemas/SatellitePosition'
+          nullable: true
+          description: Omitted if propagation fails or TLE quality is stale or unusable.
+    RegisterSatelliteRequest:
+      type: object
+      required:
+      - norad_id
+      - name
+      - tle_line1
+      - tle_line2
+      properties:
+        norad_id:
+          type: integer
+        name:
+          type: string
+        tle_line1:
+          type: string
+        tle_line2:
+          type: string
+    RFReadingInput:
+      type: object
+      required:
+      - agent_id
+      - frequency_hz
+      - power_dbm
+      - captured_at
+      properties:
+        agent_id:
+          type: string
+        satellite_id:
+          type: string
+          format: uuid
+          nullable: true
+        frequency_hz:
+          type: integer
+          format: int64
+          example: 437500000
+        power_dbm:
+          type: number
+          format: double
+          example: -62.4
+        captured_at:
+          type: string
+          format: date-time
+    RFReading:
+      allOf:
+      - $ref: '#/components/schemas/RFReadingInput'
+      - type: object
+        properties:
+          id:
+            type: string
+            format: uuid
+    RFAnomaly:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        reading_id:
+          type: string
+          format: uuid
+        agent_id:
+          type: string
+        satellite_id:
+          type: string
+          format: uuid
+          nullable: true
+        metric:
+          type: string
+          enum:
+          - power_dbm
+          - frequency_hz
+        value:
+          type: number
+          format: double
+        baseline_mean:
+          type: number
+          format: double
+        baseline_stddev:
+          type: number
+          format: double
+        z_score:
+          type: number
+          format: double
+        detected_at:
+          type: string
+          format: date-time
+    AgentKeySummary:
+      type: object
+      properties:
+        agent_id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        last_used_at:
+          type: string
+          format: date-time
+          nullable: true
+        revoked:
+          type: boolean
+        device:
+          $ref: '#/components/schemas/AgentDeviceInfo'
+    AgentKeyCreated:
+      type: object
+      properties:
+        agent_id:
+          type: string
+        api_key:
+          type: string
+          description: Shown once — store it now, it cannot be retrieved again.
+    AX25Frame:
+      type: object
+      properties:
+        destination:
+          type: string
+        destination_ssid:
+          type: integer
+        source:
+          type: string
+        source_ssid:
+          type: integer
+        control:
+          type: integer
+        pid:
+          type: integer
+        payload:
+          type: string
+        payload_hex:
+          type: string
+    CCSDSPacket:
+      type: object
+      properties:
+        version:
+          type: integer
+        packet_type:
+          type: string
+          enum:
+          - TM
+          - TC
+        secondary_header_flag:
+          type: boolean
+        apid:
+          type: integer
+        sequence_flags:
+          type: string
+        sequence_count:
+          type: integer
+        data_length:
+          type: integer
+        payload:
+          type: string
+        payload_hex:
+          type: string
+    PUSPacket:
+      type: object
+      properties:
+        apid:
+          type: integer
+        packet_type:
+          type: string
+          enum:
+          - TM
+          - TC
+        sequence_count:
+          type: integer
+        pus_version:
+          type: integer
+        service_type:
+          type: integer
+        service_subtype:
+          type: integer
+        message_type_counter:
+          type: integer
+        destination_id:
+          type: integer
+        payload:
+          type: string
+        payload_hex:
+          type: string
+    CSPPacket:
+      type: object
+      properties:
+        priority:
+          type: integer
+        source:
+          type: integer
+        destination:
+          type: integer
+        destination_port:
+          type: integer
+        source_port:
+          type: integer
+        reserved:
+          type: integer
+        hmac:
+          type: boolean
+        xtea:
+          type: boolean
+        rdp:
+          type: boolean
+        crc:
+          type: boolean
+        payload:
+          type: string
+        payload_hex:
+          type: string
+    SpaceCVE:
+      type: object
+      properties:
+        cve_id:
+          type: string
+          example: CVE-2025-12345
+        description:
+          type: string
+        published:
+          type: string
+          format: date-time
+        severity:
+          type: string
+          enum:
+          - LOW
+          - MEDIUM
+          - HIGH
+          - CRITICAL
+        score:
+          type: number
+          format: double
+        keyword:
+          type: string
+        synced_at:
+          type: string
+          format: date-time
+    SpaceCVEPage:
+      allOf:
+      - $ref: '#/components/schemas/Page'
+      - type: object
+        properties:
+          items:
+            type: array
+            items:
+              $ref: '#/components/schemas/SpaceCVE'
+    AssetCVEAlert:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        asset_id:
+          type: string
+          format: uuid
+        asset_kind:
+          type: string
+          example: satellite
+        asset_value:
+          type: string
+          example: NORAD-25544
+        cve_id:
+          type: string
+          example: CVE-2026-77777
+        cve_description:
+          type: string
+        cve_score:
+          type: number
+          format: double
+        matched_keyword:
+          type: string
+          example: satellite
+        severity:
+          type: string
+          enum:
+          - LOW
+          - MEDIUM
+          - HIGH
+          - CRITICAL
+          - unknown
+        acknowledged:
+          type: boolean
+        acknowledged_by:
+          type: string
+          format: uuid
+          nullable: true
+        acknowledged_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+    AssetCVEAlertPage:
+      allOf:
+      - $ref: '#/components/schemas/Page'
+      - type: object
+        properties:
+          items:
+            type: array
+            items:
+              $ref: '#/components/schemas/AssetCVEAlert'
+    AuditEntry:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        occurred_at:
+          type: string
+          format: date-time
+        actor_type:
+          type: string
+          enum:
+          - user
+          - agent
+          - anonymous
+        actor_id:
+          type: string
+        action:
+          type: string
+        ip:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+    AuditPage:
+      allOf:
+      - $ref: '#/components/schemas/Page'
+      - type: object
+        properties:
+          items:
+            type: array
+            items:
+              $ref: '#/components/schemas/AuditEntry'
+    CreateUserRequest:
+      type: object
+      required:
+      - email
+      - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+          minLength: 12
+          maxLength: 72
+        role:
+          type: string
+          enum:
+          - viewer
+          - auditor
+          - analyst
+          - operator
+          - admin
+          default: viewer
+    TOTPSetupResponse:
+      type: object
+      properties:
+        provider:
+          type: string
+          enum:
+          - google_authenticator
+        issuer:
+          type: string
+        account_name:
+          type: string
+        secret:
+          type: string
+        otpauth_url:
+          type: string
+    SessionSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+        ip:
+          type: string
+        user_agent:
+          type: string
+        current:
+          type: boolean
+    TOTPCodeRequest:
+      type: object
+      required:
+      - code
+      properties:
+        code:
+          type: string
+          example: '123456'
+    TOTPDisableRequest:
+      type: object
+      required:
+      - password
+      properties:
+        password:
+          type: string
+          format: password
+    AgentDeviceInfo:
+      type: object
+      properties:
+        driver:
+          type: string
+        hardware:
+          type: string
+        manufacturer:
+          type: string
+        product:
+          type: string
+        serial:
+          type: string
+        rx:
+          type: boolean
+        tx:
+          type: boolean
+        reported_at:
+          type: string
+          format: date-time
+          readOnly: true
+    Incident:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        reference:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        severity:
+          type: string
+          enum:
+          - critical
+          - high
+          - medium
+          - low
+          - info
+        status:
+          type: string
+          enum:
+          - new
+          - investigating
+          - contained
+          - resolved
+          - false_positive
+        source_type:
+          type: string
+          enum:
+          - manual
+          - rf_anomaly
+          - detection_rule
+        satellite_id:
+          type: string
+          format: uuid
+          nullable: true
+        satellite_name:
+          type: string
+        agent_id:
+          type: string
+        source_anomaly_id:
+          type: string
+          format: uuid
+          nullable: true
+        assigned_to:
+          type: string
+          format: uuid
+          nullable: true
+        assigned_username:
+          type: string
+        created_by:
+          type: string
+          format: uuid
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        resolved_at:
+          type: string
+          format: date-time
+          nullable: true
+    IncidentEvent:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        incident_id:
+          type: string
+          format: uuid
+        event_type:
+          type: string
+        actor_id:
+          type: string
+          format: uuid
+          nullable: true
+        actor_username:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+        created_at:
+          type: string
+          format: date-time
+    IncidentEvidence:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        incident_id:
+          type: string
+          format: uuid
+        evidence_type:
+          type: string
+          enum:
+          - rf_anomaly
+          - detection_rule
+          - request
+          - cve
+          - agent
+          - satellite
+          - external
+        evidence_ref:
+          type: string
+          maxLength: 256
+        label:
+          type: string
+          maxLength: 160
+        created_by:
+          type: string
+          format: uuid
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+    IncidentEvidenceCreateRequest:
+      type: object
+      required:
+      - evidence_type
+      - evidence_ref
+      properties:
+        evidence_type:
+          type: string
+          enum:
+          - rf_anomaly
+          - detection_rule
+          - request
+          - cve
+          - agent
+          - satellite
+          - external
+        evidence_ref:
+          type: string
+          minLength: 1
+          maxLength: 256
+        label:
+          type: string
+          maxLength: 160
+    IncidentDetail:
+      type: object
+      properties:
+        incident:
+          $ref: '#/components/schemas/Incident'
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/IncidentEvent'
+        evidence:
+          type: array
+          items:
+            $ref: '#/components/schemas/IncidentEvidence'
+    IncidentPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Incident'
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+    IncidentCreateRequest:
+      type: object
+      required:
+      - title
+      - severity
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 160
+        description:
+          type: string
+          maxLength: 4000
+        severity:
+          type: string
+          enum:
+          - critical
+          - high
+          - medium
+          - low
+          - info
+        satellite_id:
+          type: string
+          format: uuid
+        agent_id:
+          type: string
+          maxLength: 128
+        assigned_to:
+          type: string
+          format: uuid
+    IncidentUpdateRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+          - new
+          - investigating
+          - contained
+          - resolved
+          - false_positive
+        severity:
+          type: string
+          enum:
+          - critical
+          - high
+          - medium
+          - low
+          - info
+        assigned_to:
+          type: string
+          format: uuid
+          nullable: true
+    DetectionRule:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          maxLength: 120
+        description:
+          type: string
+          maxLength: 1000
+        enabled:
+          type: boolean
+        metric:
+          type: string
+          enum: [any, power_dbm, frequency_hz, power_dbm_trend, frequency_hz_trend]
+        operator:
+          type: string
+          enum: [abs_z_gte, z_gte, z_lte]
+        threshold:
+          type: number
+          minimum: 0
+          maximum: 100
+        severity:
+          type: string
+          enum: [critical, high, medium, low, info]
+        cooldown_seconds:
+          type: integer
+          minimum: 0
+          maximum: 86400
+        auto_incident:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    DetectionRulePage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/DetectionRule'
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+    DetectionRuleCreateRequest:
+      type: object
+      required: [name, metric, operator, threshold, severity, cooldown_seconds]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        description:
+          type: string
+          maxLength: 1000
+        enabled:
+          type: boolean
+          default: true
+        metric:
+          type: string
+          enum: [any, power_dbm, frequency_hz, power_dbm_trend, frequency_hz_trend]
+        operator:
+          type: string
+          enum: [abs_z_gte, z_gte, z_lte]
+        threshold:
+          type: number
+          exclusiveMinimum: true
+          minimum: 0
+          maximum: 100
+        severity:
+          type: string
+          enum: [critical, high, medium, low, info]
+        cooldown_seconds:
+          type: integer
+          minimum: 0
+          maximum: 86400
+        auto_incident:
+          type: boolean
+          default: true
+    DetectionRuleUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        description:
+          type: string
+          maxLength: 1000
+        enabled:
+          type: boolean
+        metric:
+          type: string
+          enum: [any, power_dbm, frequency_hz, power_dbm_trend, frequency_hz_trend]
+        operator:
+          type: string
+          enum: [abs_z_gte, z_gte, z_lte]
+        threshold:
+          type: number
+          exclusiveMinimum: true
+          minimum: 0
+          maximum: 100
+        severity:
+          type: string
+          enum: [critical, high, medium, low, info]
+        cooldown_seconds:
+          type: integer
+          minimum: 0
+          maximum: 86400
+        auto_incident:
+          type: boolean
+
