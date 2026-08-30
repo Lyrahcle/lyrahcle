@@ -1,3 +1,4 @@
+- v11.0: granular organization-scoped RBAC foundation with permissions, custom roles, compatibility mappings and permission middleware.
 - v10.6: added tenant-isolation audit gates, full tenant snapshots, source-contract checks and optional database-backed Org-A/Org-B integration tests.
 - v10.5: tenant-isolated programs, RF telemetry/anomalies, orbital events, asset-CVE alert operations and mixed global/local search.
 - v10.4: tenant-isolated agent administration and organization ownership across enrollment, certificates, remote config and legacy agent keys.

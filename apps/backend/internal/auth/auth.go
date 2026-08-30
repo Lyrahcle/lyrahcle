@@ -140,3 +140,7 @@ func RoleAtLeast(role Role, minimum Role) bool {
 	rank := map[Role]int{RoleViewer: 0, RoleAuditor: 0, RoleAnalyst: 1, RoleOperator: 2, RoleAdmin: 3}
 	return rank[role] >= rank[minimum]
 }
+
+func WithClaims(ctx context.Context, claims *Claims) context.Context {
+	return context.WithValue(ctx, claimsContextKey{}, claims)
+}

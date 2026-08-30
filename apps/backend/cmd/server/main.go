@@ -191,6 +191,7 @@ func newRouter(
 	orbitalEvents := store.NewOrbitalEventStore(pool)
 	organizations := store.NewOrganizationStore(pool)
 	tenantScope := store.NewTenantScopeStore(pool)
+	rbac := store.NewRBACStore(pool)
 	agentCA, err := buildAgentCA(cfg)
 	if err != nil {
 		panic(fmt.Sprintf("agent CA configuration: %v", err))
@@ -809,6 +810,7 @@ func newRouter(
 
 		registerOrganizationRoutes(r, cfg, organizations, auditLog, isTokenRevoked)
 		registerTenantScopeRoutes(r, cfg, tenantScope, isTokenRevoked)
+		registerRBACRoutes(r, cfg, rbac, isTokenRevoked)
 
 		r.Route("/users", func(r chi.Router) {
 			r.Use(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleAdmin, isTokenRevoked))
