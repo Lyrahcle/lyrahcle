@@ -35,7 +35,8 @@ Status values: **Shipped**, **Partial**, **Next**, and **Later**.
 | PUS and CSP decoders | Shipped | Current |
 | Robust RF anomaly detection | Shipped | Current |
 | Typed RF detection rules and deterministic correlation | Shipped | Current |
-| Cross-domain correlation | Next | v8.3-v9 |
+| Explainable cross-domain correlation | Shipped | v9.4 |
+| Correlation-driven severity policy after production validation | Later | Before v1.0 |
 | RF heat map | Next | v9 |
 | Telemetry, RF, CVE, and operations charts | Next | v8.3-v9 |
 | Orbital-aware RF detection and TLE freshness gating | Shipped | v9.2/v9.2.2 |

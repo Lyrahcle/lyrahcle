@@ -3,6 +3,14 @@
 
 ## Unreleased
 
+### v9.4 cross-domain correlation
+
+- Added an explainable cross-domain correlation summary to automatically generated RF detection incidents.
+- Correlation now reports confidence and corroborating domains across RF/detection rules, orbital evidence, agent posture, and recent agent audit activity.
+- Recent unacknowledged asset CVE alerts can be attached as explicitly `context_only` evidence and never increase severity by themselves.
+- Cross-domain severity remains candidate-only; existing orbital/TLE safety gates and incident severity policy remain authoritative.
+
+
 - Added v9.3 satellite pass prediction with AOS/LOS, peak elevation, configurable station masks, bounded prediction horizons, and v9.2.2 TLE-quality gating.
 ### v9.2.2 TLE freshness and correlation safety
 

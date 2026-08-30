@@ -193,3 +193,10 @@ The agent endpoints require a currently active client certificate. API keys and 
 `PUT /api/v1/agents/{agentID}/station` is admin-only and stores trusted ground-station latitude, longitude, and altitude for orbital correlation.
 
 Signed agent configuration accepts optional `satellite_id`. RF ingestion accepts the same optional UUID and rejects unknown satellites. Satellite-tagged anomalies retain the association in incidents and evidence.
+
+
+## v9.4 cross-domain correlation evidence
+
+Automatically generated RF detection incidents may contain `correlation` evidence with `evidence_ref` `cross-domain-v9.4`. The metadata includes a bounded confidence score, corroborating domains, context-only domains, candidate severity, and human-readable reasons. The v9.4 result is explainability/candidate evidence only and does not independently mutate incident severity.
+
+Recent agent audit activity may be attached as `audit` evidence. Recent unacknowledged asset CVE alerts may be attached as `asset_alert_context`; these entries are explicitly `context_only` because the current data model does not establish a direct causal link between a global asset alert and a specific RF incident.

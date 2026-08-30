@@ -70,3 +70,29 @@ func (s *AuditStore) List(ctx context.Context, limit, offset int) (Page[AuditEnt
 
 	return Page[AuditEntry]{Items: items, Total: total, Limit: limit, Offset: offset}, nil
 }
+
+func (s *AuditStore) RecentByActor(ctx context.Context, actorType, actorID string, since time.Time, limit int) ([]AuditEntry, error) {
+	if limit <= 0 || limit > 50 {
+		limit = 20
+	}
+	rows, err := s.pool.Query(ctx, `
+		SELECT id, occurred_at, actor_type, actor_id, action, ip, details
+		FROM audit_log
+		WHERE actor_type = $1 AND actor_id = $2 AND occurred_at >= $3
+		ORDER BY occurred_at DESC
+		LIMIT $4
+	`, actorType, actorID, since, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []AuditEntry{}
+	for rows.Next() {
+		var e AuditEntry
+		if err := rows.Scan(&e.ID, &e.OccurredAt, &e.ActorType, &e.ActorID, &e.Action, &e.IP, &e.Details); err != nil {
+			return nil, err
+		}
+		items = append(items, e)
+	}
+	return items, rows.Err()
+}

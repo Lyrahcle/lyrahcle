@@ -100,3 +100,34 @@ func (s *AssetAlertStore) Acknowledge(ctx context.Context, alertID, userID uuid.
 	}
 	return tag.RowsAffected() > 0, nil
 }
+
+func (s *AssetAlertStore) RecentUnacknowledged(ctx context.Context, since time.Time, limit int) ([]AssetCVEAlert, error) {
+	if limit <= 0 || limit > 50 {
+		limit = 10
+	}
+	rows, err := s.pool.Query(ctx, `
+		SELECT a.id, a.asset_id, ast.kind, ast.value, a.cve_id, c.description, COALESCE(c.score, 0),
+		       a.matched_keyword, a.severity, a.acknowledged, a.acknowledged_by, a.acknowledged_at, a.created_at
+		FROM asset_cve_alerts a
+		JOIN assets ast ON ast.id = a.asset_id
+		JOIN space_cves c ON c.cve_id = a.cve_id
+		WHERE a.acknowledged = false AND a.created_at >= $1
+		ORDER BY a.created_at DESC
+		LIMIT $2
+	`, since, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []AssetCVEAlert{}
+	for rows.Next() {
+		var al AssetCVEAlert
+		if err := rows.Scan(&al.ID, &al.AssetID, &al.AssetKind, &al.AssetValue, &al.CVEID, &al.CVEDescription,
+			&al.CVEScore, &al.MatchedKeyword, &al.Severity, &al.Acknowledged, &al.AcknowledgedBy,
+			&al.AcknowledgedAt, &al.CreatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, al)
+	}
+	return items, rows.Err()
+}
