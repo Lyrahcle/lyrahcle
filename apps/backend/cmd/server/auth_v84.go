@@ -29,6 +29,26 @@ import (
 	"github.com/mlko01/lyrahcle/apps/backend/internal/webauthnflow"
 )
 
+func revokeUserSecurityState(ctx context.Context, userID string, ttl time.Duration, blocklist *tokenblocklist.Blocklist, sessions *sessionstore.Store, redisClient *redis.Client) error {
+	if redisClient == nil {
+		return nil
+	}
+	if err := blocklist.RevokeUser(ctx, userID, time.Now(), ttl); err != nil {
+		return err
+	}
+	if err := sessions.DeleteUser(ctx, userID); err != nil {
+		return err
+	}
+	return nil
+}
+
+func auditRevocationFailure(ctx context.Context, auditLog *store.AuditStore, actorID, operation, ip string, err error) {
+	logAudit(ctx, auditLog, audit.ActorUser, actorID, audit.ActionSecurityRevocationFailed, ip, map[string]interface{}{
+		"operation": operation,
+		"error":     err.Error(),
+	})
+}
+
 func loadWebAuthnUser(ctx context.Context, users *store.UserStore, credentials *store.WebAuthnStore, userID uuid.UUID) (webauthnflow.User, store.User, error) {
 	user, err := users.GetByID(ctx, userID)
 	if err != nil {
@@ -233,9 +253,10 @@ func registerWebAuthnRoutes(r chi.Router, cfg config.Config, handler *webauthn.W
 				http.Error(w, "security-key registration failed", http.StatusConflict)
 				return
 			}
-			_ = blocklist.RevokeUser(r.Context(), claims.UserID.String(), time.Now(), cfg.JWTAccessTTL+time.Minute)
-			if redisClient != nil {
-				_ = sessions.DeleteUser(r.Context(), claims.UserID.String())
+			if err := revokeUserSecurityState(r.Context(), claims.UserID.String(), cfg.JWTAccessTTL+time.Minute, blocklist, sessions, redisClient); err != nil {
+				auditRevocationFailure(r.Context(), auditLog, claims.UserID.String(), "webauthn_register", clientIP(r), err)
+				http.Error(w, "security revocation failed", http.StatusServiceUnavailable)
+				return
 			}
 			logAudit(r.Context(), auditLog, audit.ActorUser, claims.UserID.String(), audit.ActionWebAuthnRegistered, clientIP(r), map[string]interface{}{"label": ceremony.Label})
 			w.WriteHeader(http.StatusNoContent)
@@ -264,9 +285,10 @@ func registerWebAuthnRoutes(r chi.Router, cfg config.Config, handler *webauthn.W
 				http.Error(w, "security key not found", http.StatusNotFound)
 				return
 			}
-			_ = blocklist.RevokeUser(r.Context(), claims.UserID.String(), time.Now(), cfg.JWTAccessTTL+time.Minute)
-			if redisClient != nil {
-				_ = sessions.DeleteUser(r.Context(), claims.UserID.String())
+			if err := revokeUserSecurityState(r.Context(), claims.UserID.String(), cfg.JWTAccessTTL+time.Minute, blocklist, sessions, redisClient); err != nil {
+				auditRevocationFailure(r.Context(), auditLog, claims.UserID.String(), "webauthn_remove", clientIP(r), err)
+				http.Error(w, "security revocation failed", http.StatusServiceUnavailable)
+				return
 			}
 			logAudit(r.Context(), auditLog, audit.ActorUser, claims.UserID.String(), audit.ActionWebAuthnRemoved, clientIP(r), map[string]interface{}{"credential_id": credentialID.String()})
 			w.WriteHeader(http.StatusNoContent)
@@ -396,9 +418,10 @@ func registerPasswordRecoveryRoutes(r chi.Router, cfg config.Config, users *stor
 			http.Error(w, "invalid or expired reset token", http.StatusUnauthorized)
 			return
 		}
-		_ = blocklist.RevokeUser(r.Context(), user.ID.String(), time.Now(), cfg.JWTAccessTTL+time.Minute)
-		if redisClient != nil {
-			_ = sessions.DeleteUser(r.Context(), user.ID.String())
+		if err := revokeUserSecurityState(r.Context(), user.ID.String(), cfg.JWTAccessTTL+time.Minute, blocklist, sessions, redisClient); err != nil {
+			auditRevocationFailure(r.Context(), auditLog, user.ID.String(), "password_reset", clientIP(r), err)
+			http.Error(w, "security revocation failed", http.StatusServiceUnavailable)
+			return
 		}
 		logAudit(r.Context(), auditLog, audit.ActorUser, user.ID.String(), audit.ActionPasswordResetCompleted, clientIP(r), nil)
 		w.WriteHeader(http.StatusNoContent)

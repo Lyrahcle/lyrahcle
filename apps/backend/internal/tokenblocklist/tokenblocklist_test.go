@@ -141,3 +141,19 @@ func TestRevokeUserKeepsNewerTokensValid(t *testing.T) {
 		t.Fatal("token issued after the user cutoff should remain valid")
 	}
 }
+
+func TestRevokeUserRedisUnavailableReturnsError(t *testing.T) {
+	client := redis.NewClient(&redis.Options{
+		Addr:         "127.0.0.1:1",
+		DialTimeout:  25 * time.Millisecond,
+		ReadTimeout:  25 * time.Millisecond,
+		WriteTimeout: 25 * time.Millisecond,
+		MaxRetries:   0,
+	})
+	t.Cleanup(func() { _ = client.Close() })
+	ctx, cancel := context.WithTimeout(context.Background(), 250*time.Millisecond)
+	defer cancel()
+	if err := New(client).RevokeUser(ctx, "user", time.Now(), time.Minute); err == nil {
+		t.Fatal("expected RevokeUser to return an error when Redis is unavailable")
+	}
+}

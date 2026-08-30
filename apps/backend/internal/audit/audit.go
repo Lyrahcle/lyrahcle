@@ -16,6 +16,7 @@ const (
 	ActionWebAuthnLogin              = "auth.webauthn_login"
 	ActionPasswordResetRequested     = "auth.password_reset_requested"
 	ActionPasswordResetCompleted     = "auth.password_reset_completed"
+	ActionSecurityRevocationFailed   = "auth.security_revocation_failed"
 	ActionAgentKeyCreated            = "agent_key.created"
 	ActionAgentKeyRevoked            = "agent_key.revoked"
 	ActionAgentKeyAuthFailed         = "agent_key.auth_failed"

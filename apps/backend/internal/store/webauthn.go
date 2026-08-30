@@ -68,8 +68,22 @@ func (s *WebAuthnStore) Add(ctx context.Context, userID uuid.UUID, label string,
 	if err != nil {
 		return err
 	}
-	_, err = s.pool.Exec(ctx, `INSERT INTO webauthn_credentials (user_id, credential_id, credential, label) VALUES ($1, $2, $3::jsonb, $4)`, userID, credential.ID, raw, label)
-	return err
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	if _, err := tx.Exec(ctx, `INSERT INTO webauthn_credentials (user_id, credential_id, credential, label) VALUES ($1, $2, $3::jsonb, $4)`, userID, credential.ID, raw, label); err != nil {
+		return err
+	}
+	tag, err := tx.Exec(ctx, `UPDATE users SET auth_version = auth_version + 1 WHERE id = $1 AND enabled = true AND deleted_at IS NULL`, userID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() != 1 {
+		return ErrUserNotFound
+	}
+	return tx.Commit(ctx)
 }
 
 func (s *WebAuthnStore) UpdateCredential(ctx context.Context, userID uuid.UUID, credential *webauthn.Credential) error {
@@ -105,12 +119,24 @@ func (s *WebAuthnStore) List(ctx context.Context, userID uuid.UUID) ([]WebAuthnC
 }
 
 func (s *WebAuthnStore) Delete(ctx context.Context, userID, credentialID uuid.UUID) error {
-	tag, err := s.pool.Exec(ctx, `DELETE FROM webauthn_credentials WHERE id = $1 AND user_id = $2`, credentialID, userID)
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	tag, err := tx.Exec(ctx, `DELETE FROM webauthn_credentials WHERE id = $1 AND user_id = $2`, credentialID, userID)
 	if err != nil {
 		return err
 	}
 	if tag.RowsAffected() == 0 {
 		return errors.New("store: webauthn credential not found")
 	}
-	return nil
+	tag, err = tx.Exec(ctx, `UPDATE users SET auth_version = auth_version + 1 WHERE id = $1 AND enabled = true AND deleted_at IS NULL`, userID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() != 1 {
+		return ErrUserNotFound
+	}
+	return tx.Commit(ctx)
 }

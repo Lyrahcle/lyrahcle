@@ -87,3 +87,10 @@ func TestUnavailableStoreFailsClosed(t *testing.T) {
 		t.Fatalf("List error = %v, want ErrUnavailable", err)
 	}
 }
+
+func TestDeleteUserUnavailableFailsClosed(t *testing.T) {
+	store := New(nil)
+	if err := store.DeleteUser(context.Background(), "user"); !errors.Is(err, ErrUnavailable) {
+		t.Fatalf("DeleteUser error = %v, want ErrUnavailable", err)
+	}
+}
