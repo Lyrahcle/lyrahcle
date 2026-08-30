@@ -3,7 +3,7 @@ import { applyAgentConfig, fetchAgentConfig, fetchAgentConfigHistory, rollbackAg
 import { useI18n } from '../lib/I18nContext.jsx'
 import TableScroll from './TableScroll.jsx'
 
-export default function AgentRemoteConfigPanel({ agents, satellites = [] }) {
+export default function AgentRemoteConfigPanel({ agents, satellites = [], canManage = true }) {
   const { t } = useI18n()
   const activeAgents = useMemo(() => agents.filter((agent) => agent.status === 'active'), [agents])
   const [agentId, setAgentId] = useState('')
@@ -94,20 +94,20 @@ export default function AgentRemoteConfigPanel({ agents, satellites = [] }) {
         </label>
         <label className="grid gap-1 text-[11px] uppercase tracking-wider text-lyra-mutedDim">
           {t('connectivity.remoteFrequency')}
-          <input type="number" min="100000" max="6000000000" required value={frequencyHz} onChange={(e) => setFrequencyHz(e.target.value)} className="rounded border border-lyra-border bg-lyra-bgSoft px-2 py-2 font-mono text-sm normal-case text-lyra-text" />
+          <input type="number" disabled={!canManage} min="100000" max="6000000000" required value={frequencyHz} onChange={(e) => setFrequencyHz(e.target.value)} className="rounded border border-lyra-border bg-lyra-bgSoft px-2 py-2 font-mono text-sm normal-case text-lyra-text" />
         </label>
         <label className="grid gap-1 text-[11px] uppercase tracking-wider text-lyra-mutedDim">
           {t('connectivity.remoteInterval')}
-          <input type="number" min="1" max="3600" required value={intervalSeconds} onChange={(e) => setIntervalSeconds(e.target.value)} className="rounded border border-lyra-border bg-lyra-bgSoft px-2 py-2 font-mono text-sm normal-case text-lyra-text" />
+          <input type="number" disabled={!canManage} min="1" max="3600" required value={intervalSeconds} onChange={(e) => setIntervalSeconds(e.target.value)} className="rounded border border-lyra-border bg-lyra-bgSoft px-2 py-2 font-mono text-sm normal-case text-lyra-text" />
         </label>
         <label className="grid gap-1 text-[11px] uppercase tracking-wider text-lyra-mutedDim">
           {t('connectivity.remoteSatellite')}
-          <select value={satelliteId} onChange={(e) => setSatelliteId(e.target.value)} className="rounded border border-lyra-border bg-lyra-bgSoft px-2 py-2 font-mono text-sm normal-case text-lyra-text">
+          <select value={satelliteId} disabled={!canManage} onChange={(e) => setSatelliteId(e.target.value)} className="rounded border border-lyra-border bg-lyra-bgSoft px-2 py-2 font-mono text-sm normal-case text-lyra-text">
             <option value="">{t('connectivity.remoteNoSatellite')}</option>
             {satellites.map((satellite) => <option key={satellite.id} value={satellite.id}>{satellite.name}</option>)}
           </select>
         </label>
-        <button disabled={busy} className="rounded bg-lyra-gold px-4 py-2 text-sm font-medium text-lyra-bg disabled:opacity-50">
+        <button disabled={busy || !canManage} className="rounded bg-lyra-gold px-4 py-2 text-sm font-medium text-lyra-bg disabled:opacity-50">
           {busy ? t('connectivity.remoteSaving') : t('connectivity.remoteApply')}
         </button>
       </form>
@@ -144,7 +144,7 @@ export default function AgentRemoteConfigPanel({ agents, satellites = [] }) {
                     <td className="py-2.5 font-mono text-xs text-lyra-mutedDim">{satellites.find((satellite) => satellite.id === item.config.satellite_id)?.name || '—'}</td>
                     <td className="py-2.5 font-mono text-xs text-lyra-mutedDim">{item.ack_status || '—'}</td>
                     <td className="py-2.5 text-right">
-                      {item.version !== current?.version && <button type="button" disabled={busy} onClick={() => rollback(item.version)} className="font-mono text-xs uppercase text-lyra-goldBright hover:underline disabled:opacity-50">{t('connectivity.remoteRollback')}</button>}
+                      {canManage && item.version !== current?.version && <button type="button" disabled={busy} onClick={() => rollback(item.version)} className="font-mono text-xs uppercase text-lyra-goldBright hover:underline disabled:opacity-50">{t('connectivity.remoteRollback')}</button>}
                     </td>
                   </tr>
                 ))}

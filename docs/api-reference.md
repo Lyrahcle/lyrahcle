@@ -74,50 +74,50 @@ Every backend response includes `X-Request-ID`. A safe incoming `X-Request-ID` m
 | `POST` | `/api/v1/auth/totp/setup` | Viewer | Generate pending Google Authenticator setup key |
 | `POST` | `/api/v1/auth/totp/enable` | Viewer | Verify and enable Google Authenticator |
 | `POST` | `/api/v1/auth/totp/disable` | Viewer | Disable Google Authenticator after password verification |
-| `GET` | `/api/v1/users/` | Admin | List users |
-| `POST` | `/api/v1/users/` | Admin | Create user with role |
-| `PATCH` | `/api/v1/users/{userID}/role` | Admin | Change role; last active admin cannot be demoted |
-| `PATCH` | `/api/v1/users/{userID}/status` | Admin | Enable or disable an account |
-| `DELETE` | `/api/v1/users/{userID}` | Admin | Privacy-preserving soft delete |
-| `GET` | `/api/v1/programs/` | Viewer | List programs |
-| `POST` | `/api/v1/programs/` | Operator | Create program |
-| `GET` | `/api/v1/assets/` | Viewer | List assets |
-| `POST` | `/api/v1/assets/` | Operator | Create/update asset |
-| `GET` | `/api/v1/satellites/` | Viewer | Satellites with propagated position |
-| `GET` | `/api/v1/satellites/{satelliteID}/passes` | Viewer | Predict AOS/LOS and peak elevation for a ground station; rejects stale/unusable TLEs |
-| `GET` | `/api/v1/satellites/stream` | Viewer | Live satellite SSE stream |
-| `POST` | `/api/v1/satellites/` | Operator | Register/update satellite TLE |
-| `GET` | `/api/v1/agents/` | Admin | List mTLS agent identity, certificate, version, and device posture |
-| `POST` | `/api/v1/agents/enrollment-tokens` | Admin | Issue single-use agent enrollment token |
+| `GET` | `/api/v1/users/` | `users.read` | List users |
+| `POST` | `/api/v1/users/` | `users.manage` | Create user with role |
+| `PATCH` | `/api/v1/users/{userID}/role` | `users.manage` | Change role; last active admin cannot be demoted |
+| `PATCH` | `/api/v1/users/{userID}/status` | `users.manage` | Enable or disable an account |
+| `DELETE` | `/api/v1/users/{userID}` | `users.manage` | Privacy-preserving soft delete |
+| `GET` | `/api/v1/programs/` | `programs.read` | List programs |
+| `POST` | `/api/v1/programs/` | `programs.manage` | Create program |
+| `GET` | `/api/v1/assets/` | `assets.read` | List assets |
+| `POST` | `/api/v1/assets/` | `assets.manage` | Create/update asset |
+| `GET` | `/api/v1/satellites/` | `orbital.read` | Satellites with propagated position |
+| `GET` | `/api/v1/satellites/{satelliteID}/passes` | `orbital.read` | Predict AOS/LOS and peak elevation for a ground station; rejects stale/unusable TLEs |
+| `GET` | `/api/v1/satellites/stream` | `orbital.read` | Live satellite SSE stream |
+| `POST` | `/api/v1/satellites/` | `orbital.manage` | Register/update satellite TLE |
+| `GET` | `/api/v1/agents/` | `agents.read` or `agents.manage` | List mTLS agent identity, certificate, version, and device posture |
+| `POST` | `/api/v1/agents/enrollment-tokens` | `agents.manage` | Issue single-use agent enrollment token |
 | `POST` | `/api/v1/agents/enroll` | Enrollment token | Exchange CSR for client certificate |
-| `PATCH` | `/api/v1/agents/{agentID}/status` | Admin | Quarantine, activate, or permanently revoke an agent |
+| `PATCH` | `/api/v1/agents/{agentID}/status` | `agents.manage` | Quarantine, activate, or permanently revoke an agent |
 | `POST` | `/api/v1/agents/me/certificate/rotate` | mTLS agent | Rotate the current client certificate |
-| `GET` | `/api/v1/agent-keys/` | Admin | List legacy agent key/device state |
-| `POST` | `/api/v1/agent-keys/` | Admin | Issue agent key |
-| `DELETE` | `/api/v1/agent-keys/{agentID}` | Admin | Revoke agent key |
+| `GET` | `/api/v1/agent-keys/` | `agents.read` or `agents.manage` | List legacy agent key/device state |
+| `POST` | `/api/v1/agent-keys/` | `agents.manage` | Issue agent key |
+| `DELETE` | `/api/v1/agent-keys/{agentID}` | `agents.manage` | Revoke agent key |
 | `POST` | `/api/v1/agents/me/device` | mTLS agent or legacy agent key | Report authenticated SDR device metadata |
-| `POST` | `/api/v1/rf/ingest` | mTLS agent, legacy agent key, or Operator | Ingest RF reading |
-| `GET` | `/api/v1/rf/readings` | Viewer | Recent RF readings |
-| `GET` | `/api/v1/rf/anomalies` | Viewer | Recent RF anomalies |
-| `GET` | `/api/v1/detection-rules/` | Viewer | List typed RF detection rules |
-| `POST` | `/api/v1/detection-rules/` | Admin | Create a detection rule |
-| `PATCH` | `/api/v1/detection-rules/{ruleID}` | Admin | Update or disable a detection rule |
-| `GET` | `/api/v1/incidents/` | Viewer | Filtered/paginated security incidents |
-| `POST` | `/api/v1/incidents/` | Operator | Create incident; assignment is admin-only |
-| `GET` | `/api/v1/incidents/stream` | Viewer | Live incident SSE snapshots |
-| `GET` | `/api/v1/incidents/{incidentID}` | Viewer | Incident detail and timeline |
-| `PATCH` | `/api/v1/incidents/{incidentID}` | Operator | Update workflow fields; assignment is admin-only |
-| `POST` | `/api/v1/incidents/{incidentID}/notes` | Operator | Add investigation note |
-| `POST` | `/api/v1/incidents/{incidentID}/evidence` | Operator | Add immutable typed evidence reference |
+| `POST` | `/api/v1/rf/ingest` | mTLS agent, legacy agent key, or `rf.ingest` | Ingest RF reading |
+| `GET` | `/api/v1/rf/readings` | `rf.read` | Recent RF readings |
+| `GET` | `/api/v1/rf/anomalies` | `rf.read` | Recent RF anomalies |
+| `GET` | `/api/v1/detection-rules/` | `detections.read` | List typed RF detection rules |
+| `POST` | `/api/v1/detection-rules/` | `detections.manage` | Create a detection rule |
+| `PATCH` | `/api/v1/detection-rules/{ruleID}` | `detections.manage` | Update or disable a detection rule |
+| `GET` | `/api/v1/incidents/` | `incidents.read` | Filtered/paginated security incidents |
+| `POST` | `/api/v1/incidents/` | `incidents.manage` | Create incident; assignment is allowed for incident managers |
+| `GET` | `/api/v1/incidents/stream` | `incidents.read` | Live incident SSE snapshots |
+| `GET` | `/api/v1/incidents/{incidentID}` | `incidents.read` | Incident detail and timeline |
+| `PATCH` | `/api/v1/incidents/{incidentID}` | `incidents.manage` | Update workflow fields, including assignment |
+| `POST` | `/api/v1/incidents/{incidentID}/notes` | `incidents.manage` | Add investigation note |
+| `POST` | `/api/v1/incidents/{incidentID}/evidence` | `incidents.manage` | Add immutable typed evidence reference |
 | `POST` | `/api/v1/tmtc/decode/ax25` | Viewer | Decode AX.25 |
 | `POST` | `/api/v1/tmtc/decode/ccsds` | Viewer | Decode CCSDS Space Packet |
 | `POST` | `/api/v1/tmtc/decode/pus` | Viewer | Decode PUS |
 | `POST` | `/api/v1/tmtc/decode/csp` | Viewer | Decode CSP v1 |
 | `GET` | `/api/v1/threat-intel/space-cves` | Viewer | Filtered/paginated space CVEs |
 | `GET` | `/api/v1/threat-intel/space-cves/keywords` | Viewer | Available CVE keywords |
-| `GET` | `/api/v1/asset-alerts/` | Viewer | CVE-to-asset alerts |
-| `POST` | `/api/v1/asset-alerts/{alertID}/acknowledge` | Operator | Acknowledge alert |
-| `GET` | `/api/v1/audit-log` | Auditor or Admin | Security audit trail |
+| `GET` | `/api/v1/asset-alerts/` | `alerts.read` | CVE-to-asset alerts |
+| `POST` | `/api/v1/asset-alerts/{alertID}/acknowledge` | `alerts.manage` | Acknowledge alert |
+| `GET` | `/api/v1/audit-log` | `audit.read` | Security audit trail |
 
 ## Pagination and CVE filters
 

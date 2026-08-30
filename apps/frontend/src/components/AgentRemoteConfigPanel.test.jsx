@@ -41,7 +41,7 @@ describe('AgentRemoteConfigPanel', () => {
     await waitFor(() => expect(api.fetchAgentConfig).toHaveBeenCalledWith('sdr-1'))
     expect(screen.getByDisplayValue('145800000')).toBeInTheDocument()
     expect(screen.getByDisplayValue('5')).toBeInTheDocument()
-    expect(screen.getByDisplayValue('sat-1')).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: /target satellite/i })).toHaveValue('sat-1')
   })
 
   it('applies numeric remote configuration and reloads state', async () => {
@@ -53,7 +53,7 @@ describe('AgentRemoteConfigPanel', () => {
     fireEvent.change(numeric[0], { target: { value: '437500000' } })
     fireEvent.change(numeric[1], { target: { value: '12' } })
     fireEvent.change(screen.getAllByRole('combobox')[1], { target: { value: 'sat-1' } })
-    fireEvent.click(screen.getByRole('button', { name: /apply configuration/i }))
+    fireEvent.click(screen.getByRole('button', { name: /publish config/i }))
 
     await waitFor(() => expect(api.applyAgentConfig).toHaveBeenCalledWith('sdr-1', 437500000, 12, 'sat-1'))
     expect(api.fetchAgentConfig.mock.calls.length).toBeGreaterThanOrEqual(2)
@@ -65,7 +65,7 @@ describe('AgentRemoteConfigPanel', () => {
     renderPanel()
     await waitFor(() => expect(api.fetchAgentConfig).toHaveBeenCalled())
 
-    fireEvent.click(screen.getByRole('button', { name: /apply configuration/i }))
+    fireEvent.click(screen.getByRole('button', { name: /publish config/i }))
     expect(await screen.findByRole('alert')).toHaveTextContent('config rejected')
   })
 })

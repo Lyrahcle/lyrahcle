@@ -311,13 +311,10 @@ func newRouter(
 		})
 
 		r.Route("/assets", func(r chi.Router) {
-			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked), auth.RequirePermission(rbac, "orbital.read")).Get("/", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "assets.read", isTokenRevoked)).Get("/", func(w http.ResponseWriter, r *http.Request) {
 				limit, offset := pageParams(r)
 				orgID, ok := requestOrganizationID(w, r)
 				if !ok {
-					return
-				}
-				if !requireRequestPermission(w, r, rbac, "assets.read") {
 					return
 				}
 				page, err := assets.ListByOrganization(r.Context(), orgID, limit, offset)
@@ -329,7 +326,7 @@ func newRouter(
 				json.NewEncoder(w).Encode(page)
 			})
 
-			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked), auth.RequirePermission(rbac, "orbital.manage")).Post("/", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "assets.manage", isTokenRevoked)).Post("/", func(w http.ResponseWriter, r *http.Request) {
 				var body struct {
 					ProgramID string `json:"program_id"`
 					Kind      string `json:"kind"`
@@ -359,9 +356,6 @@ func newRouter(
 				if !ok {
 					return
 				}
-				if !requireRequestPermission(w, r, rbac, "assets.manage") {
-					return
-				}
 				if err := assets.UpsertInOrganization(r.Context(), orgID, programID, body.Kind, body.Value); err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
@@ -371,12 +365,9 @@ func newRouter(
 		})
 
 		r.Route("/programs", func(r chi.Router) {
-			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)).Get("/", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "programs.read", isTokenRevoked)).Get("/", func(w http.ResponseWriter, r *http.Request) {
 				orgID, ok := requestOrganizationID(w, r)
 				if !ok {
-					return
-				}
-				if !requireRequestPermission(w, r, rbac, "programs.read") {
 					return
 				}
 				list, err := programs.ListByOrganization(r.Context(), orgID)
@@ -388,7 +379,7 @@ func newRouter(
 				json.NewEncoder(w).Encode(list)
 			})
 
-			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleOperator, isTokenRevoked)).Post("/", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "programs.manage", isTokenRevoked)).Post("/", func(w http.ResponseWriter, r *http.Request) {
 				var body struct {
 					Name string `json:"name"`
 				}
@@ -404,9 +395,6 @@ func newRouter(
 
 				orgID, ok := requestOrganizationID(w, r)
 				if !ok {
-					return
-				}
-				if !requireRequestPermission(w, r, rbac, "programs.manage") {
 					return
 				}
 				program, err := programs.CreateInOrganization(r.Context(), orgID, body.Name)
@@ -823,7 +811,7 @@ func newRouter(
 		})
 
 		registerOrganizationRoutes(r, cfg, organizations, users, auditLog, isTokenRevoked)
-		registerTenantScopeRoutes(r, cfg, tenantScope, isTokenRevoked)
+		registerTenantScopeRoutes(r, cfg, tenantScope, rbac, isTokenRevoked)
 		registerRBACRoutes(r, cfg, rbac, auditLog, isTokenRevoked)
 
 		r.Route("/users", func(r chi.Router) {
@@ -1100,7 +1088,7 @@ func newRouter(
 		})
 
 		r.Route("/agent-keys", func(r chi.Router) {
-			agentRead := auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "agents.read", isTokenRevoked)
+			agentRead := auth.RequireAnyPermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, []string{"agents.read", "agents.manage"}, isTokenRevoked)
 			agentManage := auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "agents.manage", isTokenRevoked)
 
 			r.With(agentRead).Get("/", func(w http.ResponseWriter, r *http.Request) {
@@ -1552,11 +1540,11 @@ func newRouter(
 		})
 
 		r.Route("/satellites", func(r chi.Router) {
-			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked), auth.RequirePermission(rbac, "orbital.read")).Get("/{satelliteID}/passes", handleSatellitePassPrediction(satellites, tlePolicy(cfg)))
-			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked), auth.RequirePermission(rbac, "orbital.read")).Get("/{satelliteID}/orbital-events", handleListOrbitalEvents(orbitalEvents, satellites))
-			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked), auth.RequirePermission(rbac, "orbital.manage")).Post("/{satelliteID}/orbital-events", handleCreateOrbitalEvent(orbitalEvents, satellites, auditLog))
+			r.With(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "orbital.read", isTokenRevoked)).Get("/{satelliteID}/passes", handleSatellitePassPrediction(satellites, tlePolicy(cfg)))
+			r.With(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "orbital.read", isTokenRevoked)).Get("/{satelliteID}/orbital-events", handleListOrbitalEvents(orbitalEvents, satellites))
+			r.With(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "orbital.manage", isTokenRevoked)).Post("/{satelliteID}/orbital-events", handleCreateOrbitalEvent(orbitalEvents, satellites, auditLog))
 
-			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)).Get("/", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "orbital.read", isTokenRevoked)).Get("/", func(w http.ResponseWriter, r *http.Request) {
 				out, err := satellitesWithPositions(r.Context(), satellites, cache, tlePolicy(cfg))
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -1566,10 +1554,7 @@ func newRouter(
 				json.NewEncoder(w).Encode(out)
 			})
 
-			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)).Get("/stream", func(w http.ResponseWriter, r *http.Request) {
-				if !requireRequestPermission(w, r, rbac, "orbital.read") {
-					return
-				}
+			r.With(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "orbital.read", isTokenRevoked)).Get("/stream", func(w http.ResponseWriter, r *http.Request) {
 				flusher, ok := w.(http.Flusher)
 				if !ok {
 					http.Error(w, "streaming unsupported", http.StatusInternalServerError)
@@ -1619,7 +1604,7 @@ func newRouter(
 				}
 			})
 
-			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleOperator, isTokenRevoked)).Post("/", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "orbital.manage", isTokenRevoked)).Post("/", func(w http.ResponseWriter, r *http.Request) {
 				var body struct {
 					NoradID int    `json:"norad_id"`
 					Name    string `json:"name"`
@@ -1749,13 +1734,10 @@ func newRouter(
 			})
 		})
 
-		r.With(auth.RequireAnyRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, []auth.Role{auth.RoleAuditor, auth.RoleAdmin}, isTokenRevoked)).Get("/audit-log", func(w http.ResponseWriter, r *http.Request) {
+		r.With(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "audit.read", isTokenRevoked)).Get("/audit-log", func(w http.ResponseWriter, r *http.Request) {
 			limit, offset := pageParams(r)
 			orgID, ok := requestOrganizationID(w, r)
 			if !ok {
-				return
-			}
-			if !requireRequestPermission(w, r, rbac, "audit.read") {
 				return
 			}
 			page, err := auditLog.ListByOrganization(r.Context(), orgID, limit, offset)
@@ -1812,7 +1794,7 @@ func newRouter(
 		})
 
 		r.Route("/incidents", func(r chi.Router) {
-			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)).Get("/", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "incidents.read", isTokenRevoked)).Get("/", func(w http.ResponseWriter, r *http.Request) {
 				limit, offset := pageParams(r)
 				filter, err := parseIncidentFilter(r)
 				if err != nil {
@@ -1835,7 +1817,7 @@ func newRouter(
 				json.NewEncoder(w).Encode(page)
 			})
 
-			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)).Get("/stream", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "incidents.read", isTokenRevoked)).Get("/stream", func(w http.ResponseWriter, r *http.Request) {
 				flusher, ok := w.(http.Flusher)
 				if !ok {
 					http.Error(w, "streaming unsupported", http.StatusInternalServerError)
@@ -1885,7 +1867,7 @@ func newRouter(
 				}
 			})
 
-			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleOperator, isTokenRevoked)).Post("/", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "incidents.manage", isTokenRevoked)).Post("/", func(w http.ResponseWriter, r *http.Request) {
 				var body struct {
 					Title       string `json:"title"`
 					Description string `json:"description"`
@@ -1952,10 +1934,6 @@ func newRouter(
 					http.Error(w, "organization context required", http.StatusForbidden)
 					return
 				}
-				if assignedTo != nil && claims.Role != auth.RoleAdmin {
-					http.Error(w, "only admins can assign incidents", http.StatusForbidden)
-					return
-				}
 				if assignedTo != nil {
 					if _, err := users.GetByIDInOrganization(r.Context(), orgID, *assignedTo); err != nil {
 						if err == store.ErrUserNotFound {
@@ -1969,9 +1947,6 @@ func newRouter(
 				idempotencyKey := strings.TrimSpace(r.Header.Get("Idempotency-Key"))
 				if idempotencyKey != "" && !validRequestID(idempotencyKey) {
 					http.Error(w, "Idempotency-Key must contain only safe identifier characters and be at most 128 characters", http.StatusBadRequest)
-					return
-				}
-				if !requireRequestPermission(w, r, rbac, "incidents.manage") {
 					return
 				}
 				incident, err := incidents.Create(r.Context(), store.CreateIncidentInput{
@@ -1988,7 +1963,7 @@ func newRouter(
 				json.NewEncoder(w).Encode(incident)
 			})
 
-			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)).Get("/{incidentID}", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "incidents.read", isTokenRevoked)).Get("/{incidentID}", func(w http.ResponseWriter, r *http.Request) {
 				incidentID, err := uuid.Parse(chi.URLParam(r, "incidentID"))
 				if err != nil {
 					http.Error(w, "incidentID must be a valid UUID", http.StatusBadRequest)
@@ -1996,9 +1971,6 @@ func newRouter(
 				}
 				orgID, ok := requestOrganizationID(w, r)
 				if !ok {
-					return
-				}
-				if !requireRequestPermission(w, r, rbac, "incidents.read") {
 					return
 				}
 				detail, err := incidents.GetByOrganization(r.Context(), orgID, incidentID)
@@ -2014,7 +1986,7 @@ func newRouter(
 				json.NewEncoder(w).Encode(detail)
 			})
 
-			r.With(auth.RequireAnyRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, []auth.Role{auth.RoleAnalyst, auth.RoleOperator, auth.RoleAdmin}, isTokenRevoked)).Patch("/{incidentID}", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "incidents.manage", isTokenRevoked)).Patch("/{incidentID}", func(w http.ResponseWriter, r *http.Request) {
 				incidentID, err := uuid.Parse(chi.URLParam(r, "incidentID"))
 				if err != nil {
 					http.Error(w, "incidentID must be a valid UUID", http.StatusBadRequest)
@@ -2068,10 +2040,6 @@ func newRouter(
 					http.Error(w, "organization context required", http.StatusForbidden)
 					return
 				}
-				if input.UpdateAssignment && claims.Role != auth.RoleAdmin {
-					http.Error(w, "only admins can assign incidents", http.StatusForbidden)
-					return
-				}
 				if input.AssignedTo != nil {
 					if _, err := users.GetByIDInOrganization(r.Context(), orgID, *input.AssignedTo); err != nil {
 						if err == store.ErrUserNotFound {
@@ -2083,9 +2051,6 @@ func newRouter(
 					}
 				}
 				input.ActorID = claims.UserID
-				if !requireRequestPermission(w, r, rbac, "incidents.manage") {
-					return
-				}
 				incident, err := incidents.UpdateByOrganization(r.Context(), orgID, incidentID, input)
 				if err != nil {
 					if errors.Is(err, store.ErrInvalidIncidentTransition) {
@@ -2104,7 +2069,7 @@ func newRouter(
 				json.NewEncoder(w).Encode(incident)
 			})
 
-			r.With(auth.RequireAnyRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, []auth.Role{auth.RoleAnalyst, auth.RoleOperator, auth.RoleAdmin}, isTokenRevoked)).Post("/{incidentID}/notes", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "incidents.manage", isTokenRevoked)).Post("/{incidentID}/notes", func(w http.ResponseWriter, r *http.Request) {
 				incidentID, err := uuid.Parse(chi.URLParam(r, "incidentID"))
 				if err != nil {
 					http.Error(w, "incidentID must be a valid UUID", http.StatusBadRequest)
@@ -2127,9 +2092,6 @@ func newRouter(
 					http.Error(w, "unauthorized", http.StatusUnauthorized)
 					return
 				}
-				if !requireRequestPermission(w, r, rbac, "incidents.manage") {
-					return
-				}
 				if err := func() error {
 					orgID, ok := requestOrganizationID(w, r)
 					if !ok {
@@ -2148,7 +2110,7 @@ func newRouter(
 				w.WriteHeader(http.StatusNoContent)
 			})
 
-			r.With(auth.RequireAnyRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, []auth.Role{auth.RoleAnalyst, auth.RoleOperator, auth.RoleAdmin}, isTokenRevoked)).Post("/{incidentID}/evidence", func(w http.ResponseWriter, r *http.Request) {
+			r.With(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "incidents.manage", isTokenRevoked)).Post("/{incidentID}/evidence", func(w http.ResponseWriter, r *http.Request) {
 				incidentID, err := uuid.Parse(chi.URLParam(r, "incidentID"))
 				if err != nil {
 					http.Error(w, "incidentID must be a valid UUID", http.StatusBadRequest)
@@ -2181,9 +2143,6 @@ func newRouter(
 				claims, ok := auth.FromContext(r.Context())
 				if !ok {
 					http.Error(w, "unauthorized", http.StatusUnauthorized)
-					return
-				}
-				if !requireRequestPermission(w, r, rbac, "incidents.manage") {
 					return
 				}
 				evidence, err := func() (store.IncidentEvidence, error) {

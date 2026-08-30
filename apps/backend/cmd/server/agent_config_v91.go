@@ -49,10 +49,10 @@ func registerAgentConfigRoutes(
 	rbac *store.RBACStore,
 	isTokenRevoked auth.RevocationCheck,
 ) {
-	adminRead := auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "agents.read", isTokenRevoked)
-	adminManage := auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "agents.manage", isTokenRevoked)
+	agentRead := auth.RequireAnyPermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, []string{"agents.read", "agents.manage"}, isTokenRevoked)
+	agentManage := auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "agents.manage", isTokenRevoked)
 
-	r.With(adminRead).Get("/agents/{agentID}/config", func(w http.ResponseWriter, r *http.Request) {
+	r.With(agentRead).Get("/agents/{agentID}/config", func(w http.ResponseWriter, r *http.Request) {
 		agentID := strings.TrimSpace(chi.URLParam(r, "agentID"))
 		if err := validate.AgentID(agentID); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -75,7 +75,7 @@ func registerAgentConfigRoutes(
 		json.NewEncoder(w).Encode(item)
 	})
 
-	r.With(adminRead).Get("/agents/{agentID}/config/history", func(w http.ResponseWriter, r *http.Request) {
+	r.With(agentRead).Get("/agents/{agentID}/config/history", func(w http.ResponseWriter, r *http.Request) {
 		agentID := strings.TrimSpace(chi.URLParam(r, "agentID"))
 		if err := validate.AgentID(agentID); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -164,7 +164,7 @@ func registerAgentConfigRoutes(
 		json.NewEncoder(w).Encode(item)
 	}
 
-	r.With(adminManage).Put("/agents/{agentID}/config", func(w http.ResponseWriter, r *http.Request) {
+	r.With(agentManage).Put("/agents/{agentID}/config", func(w http.ResponseWriter, r *http.Request) {
 		agentID := strings.TrimSpace(chi.URLParam(r, "agentID"))
 		if err := validate.AgentID(agentID); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -178,7 +178,7 @@ func registerAgentConfigRoutes(
 		createConfig(w, r, agentID, body, audit.ActionAgentConfigIssued, 0)
 	})
 
-	r.With(adminManage).Post("/agents/{agentID}/config/rollback", func(w http.ResponseWriter, r *http.Request) {
+	r.With(agentManage).Post("/agents/{agentID}/config/rollback", func(w http.ResponseWriter, r *http.Request) {
 		agentID := strings.TrimSpace(chi.URLParam(r, "agentID"))
 		if err := validate.AgentID(agentID); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)

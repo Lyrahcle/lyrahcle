@@ -28,7 +28,7 @@ func TestDetectionAndOperationalPermissionContractsV117(t *testing.T) {
 			t.Fatalf("v11.7 security contract missing %q", token)
 		}
 	}
-	if !strings.Contains(src, `RequirePermission(rbac, "orbital.read")).Get("/{satelliteID}/passes"`) {
+	if !strings.Contains(src, `RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "orbital.read", isTokenRevoked)).Get("/{satelliteID}/passes"`) {
 		t.Fatal("satellite pass prediction must require orbital.read")
 	}
 }

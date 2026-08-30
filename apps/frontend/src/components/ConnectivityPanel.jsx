@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { ChevronDown, Cpu, ExternalLink, Radio } from 'lucide-react'
 import { useI18n } from '../lib/I18nContext.jsx'
+import { hasPermission } from '../lib/permissions.js'
 import Panel from './Panel.jsx'
 import Skeleton from './Skeleton.jsx'
 import AgentKeysPanel from './AgentKeysPanel.jsx'
@@ -91,8 +92,11 @@ function DeviceCard({ device, detectedOn, t }) {
   )
 }
 
-export default function ConnectivityPanel({ admin, agentKeys, agentIdentities, satellites = [], onAgentKeysChanged, onAgentIdentitiesChanged }) {
+export default function ConnectivityPanel({ agentKeys, agentIdentities, satellites = [], onAgentKeysChanged, onAgentIdentitiesChanged }) {
   const { t } = useI18n()
+  const canReadAgents = hasPermission('agents.read')
+  const canManageAgents = hasPermission('agents.manage')
+  const canAccessAgents = canReadAgents || canManageAgents
 
   const detectionByDevice = useMemo(() => {
     const map = {}
@@ -146,32 +150,32 @@ export default function ConnectivityPanel({ admin, agentKeys, agentIdentities, s
         </a>
       </Panel>
 
-      {admin && (
+      {canAccessAgents && (
         <Panel eyebrow={t('panels.connectivity')} title={t('connectivity.mtlsIdentities')} uppercase>
-          {agentIdentities === null ? <Skeleton /> : <AgentIdentityPanel agents={agentIdentities} onChanged={onAgentIdentitiesChanged} />}
+          {agentIdentities === null ? <Skeleton /> : <AgentIdentityPanel agents={agentIdentities} onChanged={onAgentIdentitiesChanged} canManage={canManageAgents} />}
         </Panel>
       )}
 
-      {admin && (
+      {canAccessAgents && (
         <Panel eyebrow={t('panels.connectivity')} title={t('connectivity.remoteConfiguration')} uppercase>
-          {agentIdentities === null ? <Skeleton /> : <AgentRemoteConfigPanel agents={agentIdentities} satellites={satellites} />}
+          {agentIdentities === null ? <Skeleton /> : <AgentRemoteConfigPanel agents={agentIdentities} satellites={satellites} canManage={canManageAgents} />}
         </Panel>
       )}
 
-      {admin && (
+      {canAccessAgents && (
         <Panel eyebrow={t('panels.connectivity')} title={t('connectivity.connectedAgents')} uppercase>
           <p className="mb-4 text-sm text-lyra-muted">{t('connectivity.connectedAgentsHint')}</p>
-          {agentKeys === null ? <Skeleton /> : <AgentKeysWithDevices keys={agentKeys} onChanged={onAgentKeysChanged} t={t} />}
+          {agentKeys === null ? <Skeleton /> : <AgentKeysWithDevices keys={agentKeys} onChanged={onAgentKeysChanged} t={t} canManage={canManageAgents} />}
         </Panel>
       )}
     </div>
   )
 }
 
-function AgentKeysWithDevices({ keys, onChanged, t }) {
+function AgentKeysWithDevices({ keys, onChanged, t, canManage }) {
   return (
     <div>
-      <AgentKeysPanel keys={keys} onChanged={onChanged} />
+      <AgentKeysPanel keys={keys} onChanged={onChanged} canManage={canManage} />
 
       {keys.length > 0 && (
         <div className="mt-6">

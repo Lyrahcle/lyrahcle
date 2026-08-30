@@ -61,13 +61,13 @@ describe('IncidentsPanel', () => {
     expect(onChanged).toHaveBeenCalledOnce()
   })
 
-  it('only exposes assignee controls when users.manage is also present', () => {
+  it('exposes assignee controls with incidents.manage plus users.read', () => {
     setEffectivePermissions(['incidents.manage'])
     const users = [{ id: 'user-1', username: 'analyst-one', email: 'a@example.com' }]
     const { rerender } = renderPanel({ users })
     expect(screen.queryByRole('option', { name: 'analyst-one' })).not.toBeInTheDocument()
 
-    setEffectivePermissions(['incidents.manage', 'users.manage'])
+    setEffectivePermissions(['incidents.manage', 'users.read'])
     rerender(
       <I18nProvider>
         <IncidentsPanel

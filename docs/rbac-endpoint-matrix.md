@@ -14,8 +14,11 @@ must enforce capabilities rather than `RoleAdmin`/`RoleOperator` directly.
 | RF | `rf.read` | `rf.ingest` | `/api/v1/rf/*` |
 | Orbital | `orbital.read` | `orbital.manage` | orbital event routes |
 | Audit | `audit.read` | — | `/api/v1/audit-log` |
-| Organizations | `organizations.read` | `organizations.manage` | `/api/v1/organizations/*` |
+| Organization scope (tenant) | `organizations.read` | `organizations.manage` (reserved) | `/api/v1/organization-scope/*` |
+| Organizations (global control plane) | platform administrator boundary | platform administrator boundary | `/api/v1/organizations/*` |
 | RBAC | `rbac.read`/authenticated self view | `rbac.manage` | `/api/v1/rbac/*` |
+
+Global organization administration is intentionally outside tenant-local RBAC: `/api/v1/organizations/*` uses the platform-administrator boundary. `organizations.read` currently protects the tenant scope summary; `organizations.manage` remains reserved for future tenant-local organization settings.
 
 Machine-agent routes remain credential-scoped and are not converted into human RBAC
 checks. Static regression tests cover the sensitive human domains and explicitly reject

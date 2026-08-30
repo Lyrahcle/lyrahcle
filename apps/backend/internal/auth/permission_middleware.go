@@ -18,3 +18,17 @@ func RequirePermissionWithFallback(
 		return authn(authz(next))
 	}
 }
+
+func RequireAnyPermissionWithFallback(
+	secret []byte,
+	previousSecret []byte,
+	checker PermissionChecker,
+	permissions []string,
+	isTokenRevoked func(context.Context, *Claims) (bool, error),
+) func(http.Handler) http.Handler {
+	authn := RequireRoleWithFallback(secret, previousSecret, RoleViewer, isTokenRevoked)
+	authz := RequireAnyPermission(checker, permissions...)
+	return func(next http.Handler) http.Handler {
+		return authn(authz(next))
+	}
+}

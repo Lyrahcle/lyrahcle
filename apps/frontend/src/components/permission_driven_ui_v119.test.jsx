@@ -8,7 +8,7 @@ function readComponent(file) {
 
 describe('permission-driven operational UI', () => {
   it('does not use legacy role-rank helpers in sensitive operational panels', () => {
-    for (const file of ['Dashboard.jsx', 'DetectionRulesPanel.jsx', 'IncidentsPanel.jsx', 'AssetAlertsPanel.jsx']) {
+    for (const file of ['Dashboard.jsx', 'ConnectivityPanel.jsx', 'DetectionRulesPanel.jsx', 'IncidentsPanel.jsx', 'AssetAlertsPanel.jsx']) {
       const src = readComponent(file)
       expect(src).not.toMatch(/\b(canWrite|canInvestigate|canAudit|isAdmin)\s*\(/)
       expect(src).toContain('hasPermission')
@@ -17,7 +17,8 @@ describe('permission-driven operational UI', () => {
 
   it('maps write controls to backend capabilities', () => {
     const expected = {
-      'Dashboard.jsx': ['assets.manage', 'orbital.manage', 'audit.read'],
+      'Dashboard.jsx': ['assets.manage', 'orbital.manage', 'audit.read', 'agents.read', 'agents.manage'],
+      'ConnectivityPanel.jsx': ['agents.read', 'agents.manage'],
       'DetectionRulesPanel.jsx': ['detections.manage'],
       'IncidentsPanel.jsx': ['incidents.manage'],
       'AssetAlertsPanel.jsx': ['alerts.manage'],
@@ -27,4 +28,14 @@ describe('permission-driven operational UI', () => {
       for (const permission of permissions) expect(src).toContain(`hasPermission('${permission}')`)
     }
   })
+
+  it('does not gate connectivity or incident assignment on users.manage', () => {
+    const connectivity = readComponent('ConnectivityPanel.jsx')
+    const incidents = readComponent('IncidentsPanel.jsx')
+    expect(connectivity).not.toContain("hasPermission('users.manage')")
+    expect(connectivity).not.toMatch(/\badmin\s*[},]/)
+    expect(incidents).not.toContain("hasPermission('users.manage')")
+    expect(incidents).toContain("hasPermission('users.read')")
+  })
+
 })

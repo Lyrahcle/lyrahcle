@@ -3,7 +3,7 @@ import { createAgentEnrollmentToken, updateAgentIdentityStatus, updateAgentStati
 import TableScroll from './TableScroll.jsx'
 import { useI18n } from '../lib/I18nContext.jsx'
 
-export default function AgentIdentityPanel({ agents, onChanged }) {
+export default function AgentIdentityPanel({ agents, onChanged, canManage = true }) {
   const { t } = useI18n()
   const [agentId, setAgentId] = useState('')
   const [issued, setIssued] = useState(null)
@@ -61,7 +61,7 @@ export default function AgentIdentityPanel({ agents, onChanged }) {
         {t('connectivity.mtlsHint')}
       </div>
 
-      <form onSubmit={issue} className="mb-5 flex flex-wrap items-end gap-3">
+      {canManage && <form onSubmit={issue} className="mb-5 flex flex-wrap items-end gap-3">
         <div>
           <label htmlFor="mtls-agent-id" className="mb-1 block text-[11px] uppercase tracking-wider text-lyra-mutedDim">
             Agent ID
@@ -82,11 +82,11 @@ export default function AgentIdentityPanel({ agents, onChanged }) {
         >
           {busy ? t('connectivity.issuingEnrollmentToken') : t('connectivity.issueEnrollmentToken')}
         </button>
-      </form>
+      </form>}
 
       {error && <p role="alert" className="mb-4 text-sm text-lyra-bad">{error}</p>}
 
-      {agents.length > 0 && (
+      {canManage && agents.length > 0 && (
         <form onSubmit={saveStation} className="mb-5 grid gap-3 rounded border border-lyra-borderSoft bg-lyra-bgSoft/30 p-3 md:grid-cols-[1.2fr_1fr_1fr_1fr_auto] md:items-end">
           <label className="grid gap-1 text-[11px] uppercase tracking-wider text-lyra-mutedDim">
             {t('connectivity.stationAgent')}
@@ -153,9 +153,9 @@ export default function AgentIdentityPanel({ agents, onChanged }) {
                   </td>
                   <td className="py-2.5 font-mono text-xs text-lyra-mutedDim">{agent.last_seen_at ? new Date(agent.last_seen_at).toLocaleString() : '—'}</td>
                   <td className="py-2.5 text-right">
-                    {agent.status === 'active' && <button onClick={() => changeStatus(agent.agent_id, 'quarantined')} className="mr-3 font-mono text-xs uppercase text-lyra-goldBright hover:underline">{t('connectivity.quarantine')}</button>}
-                    {agent.status === 'quarantined' && <button onClick={() => changeStatus(agent.agent_id, 'active')} className="mr-3 font-mono text-xs uppercase text-lyra-good hover:underline">{t('connectivity.activate')}</button>}
-                    {agent.status !== 'revoked' && <button onClick={() => changeStatus(agent.agent_id, 'revoked')} className="font-mono text-xs uppercase text-lyra-bad hover:underline">{t('connectivity.revoke')}</button>}
+                    {canManage && agent.status === 'active' && <button onClick={() => changeStatus(agent.agent_id, 'quarantined')} className="mr-3 font-mono text-xs uppercase text-lyra-goldBright hover:underline">{t('connectivity.quarantine')}</button>}
+                    {canManage && agent.status === 'quarantined' && <button onClick={() => changeStatus(agent.agent_id, 'active')} className="mr-3 font-mono text-xs uppercase text-lyra-good hover:underline">{t('connectivity.activate')}</button>}
+                    {canManage && agent.status !== 'revoked' && <button onClick={() => changeStatus(agent.agent_id, 'revoked')} className="font-mono text-xs uppercase text-lyra-bad hover:underline">{t('connectivity.revoke')}</button>}
                   </td>
                 </tr>
               ))}

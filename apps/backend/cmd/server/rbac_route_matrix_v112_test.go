@@ -19,6 +19,7 @@ func TestRBACRouteMatrixCoversSensitiveDomains(t *testing.T) {
 	mainSrc := readRouteSource(t, "main.go")
 	agentSrc := readRouteSource(t, "agent_identity_v90.go")
 	rbacSrc := readRouteSource(t, "rbac_v110.go")
+	tenantScopeSrc := readRouteSource(t, "tenant_scope_v102.go")
 
 	required := map[string][]string{
 		"main.go": {
@@ -32,11 +33,13 @@ func TestRBACRouteMatrixCoversSensitiveDomains(t *testing.T) {
 		},
 		"agent_identity_v90.go": {`"agents.read"`, `"agents.manage"`},
 		"rbac_v110.go":          {`"rbac.manage"`},
+		"tenant_scope_v102.go":  {`"organizations.read"`},
 	}
 	sources := map[string]string{
 		"main.go":               mainSrc,
 		"agent_identity_v90.go": agentSrc,
 		"rbac_v110.go":          rbacSrc,
+		"tenant_scope_v102.go":  tenantScopeSrc,
 	}
 	for file, tokens := range required {
 		for _, token := range tokens {

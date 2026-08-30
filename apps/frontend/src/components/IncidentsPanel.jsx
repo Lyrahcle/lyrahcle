@@ -28,7 +28,7 @@ export default function IncidentsPanel({ page, filters, onFiltersChange, onPrev,
   const [form, setForm] = useState({ title: '', description: '', severity: 'medium', satelliteId: '', agentId: '', assignedTo: '' })
   const incidents = page?.items ?? []
   const canManage = hasPermission('incidents.manage')
-  const canManageUsers = hasPermission('users.manage')
+  const canAssign = canManage && hasPermission('users.read')
 
   useEffect(() => {
     if (!selectedId) {
@@ -62,7 +62,7 @@ export default function IncidentsPanel({ page, filters, onFiltersChange, onPrev,
         severity: form.severity,
         satelliteId: form.satelliteId,
         agentId: form.agentId,
-        assignedTo: canManageUsers ? form.assignedTo : '',
+        assignedTo: canAssign ? form.assignedTo : '',
       })
       setForm({ title: '', description: '', severity: 'medium', satelliteId: '', agentId: '', assignedTo: '' })
       onChanged()
@@ -172,7 +172,7 @@ export default function IncidentsPanel({ page, filters, onFiltersChange, onPrev,
               {satellites.map((satellite) => <option key={satellite.id} value={satellite.id}>{satellite.name}</option>)}
             </select>
             <input aria-label={t('incidents.agent')} maxLength={128} value={form.agentId} onChange={(e) => setForm({ ...form, agentId: e.target.value })} placeholder={t('incidents.agentPlaceholder')} className="rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 text-sm text-lyra-text" />
-            {canManageUsers ? (
+            {canAssign ? (
               <select aria-label={t('incidents.unassigned')} value={form.assignedTo} onChange={(e) => setForm({ ...form, assignedTo: e.target.value })} className="rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 text-sm text-lyra-text">
                 <option value="">{t('incidents.unassigned')}</option>
                 {orderedUsers.map((user) => <option key={user.id} value={user.id}>{user.username || user.email}</option>)}
@@ -231,7 +231,7 @@ export default function IncidentsPanel({ page, filters, onFiltersChange, onPrev,
               <select aria-label={t('incidents.severity')} value={selected.severity} disabled={saving} onChange={(e) => applyUpdate({ severity: e.target.value })} className="rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 text-sm text-lyra-text">
                 {SEVERITIES.map((severity) => <option key={severity} value={severity}>{severity}</option>)}
               </select>
-              {canManageUsers && (
+              {canAssign && (
                 <select aria-label={t('incidents.unassigned')} value={selected.assigned_to || ''} disabled={saving} onChange={(e) => applyUpdate({ assignedTo: e.target.value })} className="rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 text-sm text-lyra-text">
                   <option value="">{t('incidents.unassigned')}</option>
                   {orderedUsers.map((user) => <option key={user.id} value={user.id}>{user.username || user.email}</option>)}

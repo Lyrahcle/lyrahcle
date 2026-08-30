@@ -113,10 +113,14 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
 
   const admin = hasPermission('users.manage')
   const usersRead = hasPermission('users.read')
+  const incidentsManage = hasPermission('incidents.manage')
+  const agentsRead = hasPermission('agents.read')
+  const agentsManage = hasPermission('agents.manage')
   const auditAccess = hasPermission('audit.read')
   const rbacRead = hasPermission('rbac.read')
   const rbacManage = hasPermission('rbac.manage')
   const adminAccess = admin || usersRead || auditAccess || rbacRead || rbacManage
+  const connectivityAccess = agentsRead || agentsManage
   const tabs = [
     { id: 'orbital', label: t('tabs.orbital') },
     { id: 'assets', label: t('tabs.assets') },
@@ -210,7 +214,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
           ),
           safeFetch(fetchSatellites, setSatellites),
         ]
-        if (admin) requests.push(safeFetch(fetchUsers, setUsers))
+        if (incidentsManage && usersRead) requests.push(safeFetch(fetchUsers, setUsers))
         await Promise.all(requests)
         return
       }
@@ -231,10 +235,11 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
         return
       }
 
-      if (activeTab === 'connectivity' && admin) {
+      if (activeTab === 'connectivity' && connectivityAccess) {
         await Promise.all([
           safeFetch(fetchAgentKeys, setAgentKeys),
           safeFetch(fetchAgentIdentities, setAgentIdentities),
+          safeFetch(fetchSatellites, setSatellites),
         ])
         return
       }
@@ -523,7 +528,6 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
 
         {activeTab === 'connectivity' && (
           <ConnectivityPanel
-            admin={admin}
             agentKeys={agentKeys}
             agentIdentities={agentIdentities}
             satellites={satellites ?? []}

@@ -11,9 +11,9 @@ import (
 	"github.com/mlko01/lyrahcle/apps/backend/internal/store"
 )
 
-func registerTenantScopeRoutes(r chi.Router, cfg config.Config, scope *store.TenantScopeStore, isTokenRevoked func(context.Context, *auth.Claims) (bool, error)) {
+func registerTenantScopeRoutes(r chi.Router, cfg config.Config, scope *store.TenantScopeStore, rbac *store.RBACStore, isTokenRevoked func(context.Context, *auth.Claims) (bool, error)) {
 	r.Route("/organization-scope", func(r chi.Router) {
-		r.Use(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleAdmin, isTokenRevoked))
+		r.Use(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "organizations.read", isTokenRevoked))
 		r.Get("/summary", func(w http.ResponseWriter, r *http.Request) {
 			claims, ok := auth.FromContext(r.Context())
 			if !ok {

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { createAgentKey, revokeAgentKey } from '../lib/api.js'
 import TableScroll from './TableScroll.jsx'
 
-export default function AgentKeysPanel({ keys, onChanged }) {
+export default function AgentKeysPanel({ keys, onChanged, canManage = true }) {
   const [newAgentId, setNewAgentId] = useState('')
   const [issuedKey, setIssuedKey] = useState(null)
   const [error, setError] = useState(null)
@@ -36,7 +36,7 @@ export default function AgentKeysPanel({ keys, onChanged }) {
 
   return (
     <div>
-      <form onSubmit={handleCreate} className="mb-5 flex flex-wrap items-end gap-3">
+      {canManage && <form onSubmit={handleCreate} className="mb-5 flex flex-wrap items-end gap-3">
         <div>
           <label htmlFor="new-agent-id" className="mb-1 block text-[11px] uppercase tracking-wider text-lyra-mutedDim">
             New agent_id
@@ -57,7 +57,7 @@ export default function AgentKeysPanel({ keys, onChanged }) {
         >
           {busy ? 'Issuing…' : 'Issue key'}
         </button>
-      </form>
+      </form>}
 
       {error && (
         <p role="alert" className="mb-4 text-sm text-lyra-bad">
@@ -112,7 +112,7 @@ export default function AgentKeysPanel({ keys, onChanged }) {
                     </span>
                   </td>
                   <td className="py-2.5 text-right">
-                    {!k.revoked && (
+                    {canManage && !k.revoked && (
                       <button
                         onClick={() => handleRevoke(k.agent_id)}
                         aria-label={`Revoke key for ${k.agent_id}`}

@@ -570,7 +570,7 @@ paths:
       tags:
       - Programs
       summary: List programs
-      description: 'Requires role: viewer or higher.'
+      description: 'Requires capability: programs.read.'
       responses:
         '200':
           description: List of programs
@@ -589,7 +589,7 @@ paths:
       tags:
       - Programs
       summary: Create a program
-      description: 'Requires role: operator or higher.'
+      description: 'Requires capability: programs.manage.'
       requestBody:
         required: true
         content:
@@ -623,7 +623,7 @@ paths:
       tags:
       - Assets
       summary: List tracked assets
-      description: 'Requires role: viewer or higher.'
+      description: 'Requires capability: assets.read.'
       parameters:
       - $ref: '#/components/parameters/Limit'
       - $ref: '#/components/parameters/Offset'
@@ -643,7 +643,7 @@ paths:
       tags:
       - Assets
       summary: Create or update an asset
-      description: 'Requires role: operator or higher.'
+      description: 'Requires capability: assets.manage.'
       requestBody:
         required: true
         content:
@@ -667,7 +667,7 @@ paths:
       tags:
       - Satellites
       summary: List tracked satellites with live computed position
-      description: 'Requires role: viewer or higher.'
+      description: 'Requires capability: orbital.read.'
       responses:
         '200':
           description: List of satellites
@@ -686,7 +686,7 @@ paths:
       tags:
       - Satellites
       summary: Register a satellite by NORAD ID and TLE
-      description: 'Requires role: operator or higher.'
+      description: 'Requires capability: orbital.manage.'
       requestBody:
         required: true
         content:
@@ -710,7 +710,7 @@ paths:
       tags:
       - Satellites
       summary: Predict satellite passes for a ground station
-      description: 'Requires role: viewer or higher. Predicts AOS, LOS, peak time, maximum elevation, and duration using the stored TLE. Stale or unusable TLEs are rejected. Aging TLEs are returned with degraded orbital confidence.'
+      description: 'Requires capability: orbital.read. Predicts AOS, LOS, peak time, maximum elevation, and duration using the stored TLE. Stale or unusable TLEs are rejected. Aging TLEs are returned with degraded orbital confidence.'
       parameters:
       - name: satelliteID
         in: path
@@ -799,7 +799,7 @@ paths:
       tags:
       - Satellites
       summary: List maneuver and conjunction context for a satellite
-      description: 'Requires role: viewer or higher. Returns persisted operator/trusted-integration orbital operations context. Events are candidate-only evidence and do not directly change incident severity.'
+      description: 'Requires capability: orbital.read. Returns persisted operator/trusted-integration orbital operations context. Events are candidate-only evidence and do not directly change incident severity.'
       parameters:
       - name: satelliteID
         in: path
@@ -846,7 +846,7 @@ paths:
       tags:
       - Satellites
       summary: Ingest maneuver or conjunction context
-      description: 'Requires role: operator or higher. Stores trusted/operator-provided orbital context for correlation. This endpoint does not claim automatic maneuver detection or conjunction screening.'
+      description: 'Requires capability: orbital.manage. Stores trusted/operator-provided orbital context for correlation. This endpoint does not claim automatic maneuver detection or conjunction screening.'
       parameters:
       - name: satelliteID
         in: path
@@ -880,7 +880,7 @@ paths:
       tags:
       - Satellites
       summary: Stream live satellite positions
-      description: 'Requires role: viewer or higher. Server-Sent Events; sends an initial satellites event and refreshes every
+      description: 'Requires capability: orbital.read. Server-Sent Events; sends an initial satellites event and refreshes every
         five seconds.'
       responses:
         '200':
@@ -1402,7 +1402,7 @@ paths:
       tags:
       - Audit
       summary: List security-relevant events
-      description: 'Requires role: auditor or admin.'
+      description: 'Requires capability: audit.read.'
       parameters:
       - $ref: '#/components/parameters/Limit'
       - $ref: '#/components/parameters/Offset'
@@ -1423,7 +1423,7 @@ paths:
       tags:
       - Incidents
       summary: List security incidents
-      description: 'Requires role: viewer or higher.'
+      description: 'Requires capability: incidents.read.'
       parameters:
       - $ref: '#/components/parameters/Limit'
       - $ref: '#/components/parameters/Offset'
@@ -1477,7 +1477,7 @@ paths:
       tags:
       - Incidents
       summary: Create a security incident
-      description: 'Requires role: operator or higher. Only admins may set assigned_to. Reusing the same Idempotency-Key returns the original incident.'
+      description: 'Requires capability: incidents.manage. Assignment is authorized by incidents.manage. Reusing the same Idempotency-Key returns the original incident.'
       parameters:
       - name: Idempotency-Key
         in: header
@@ -1504,13 +1504,13 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
-          description: Insufficient role
+          description: Missing required capability
   /api/v1/incidents/stream:
     get:
       tags:
       - Incidents
       summary: Live incident SSE stream
-      description: 'Requires role: viewer or higher. Sends a paginated incident snapshot every five seconds.'
+      description: 'Requires capability: incidents.read. Sends a paginated incident snapshot every five seconds.'
       responses:
         '200':
           description: SSE stream
@@ -1523,7 +1523,7 @@ paths:
       tags:
       - Incidents
       summary: Get incident detail and timeline
-      description: 'Requires role: viewer or higher.'
+      description: 'Requires capability: incidents.read.'
       parameters:
       - name: incidentID
         in: path
@@ -1546,7 +1546,7 @@ paths:
       tags:
       - Incidents
       summary: Update incident workflow fields
-      description: 'Requires role: analyst, operator, or admin. Only admins may change assigned_to.'
+      description: 'Requires capability: incidents.manage. Assignment is authorized by incidents.manage.'
       parameters:
       - name: incidentID
         in: path
@@ -1570,7 +1570,7 @@ paths:
         '400':
           $ref: '#/components/responses/BadRequest'
         '403':
-          description: Insufficient role
+          description: Missing required capability
         '404':
           description: Incident not found
         '409':
@@ -1580,7 +1580,7 @@ paths:
       tags:
       - Incidents
       summary: Add an investigation note
-      description: 'Requires role: analyst, operator, or admin.'
+      description: 'Requires capability: incidents.manage.'
       parameters:
       - name: incidentID
         in: path
@@ -1613,7 +1613,7 @@ paths:
       tags:
       - Incidents
       summary: Add a typed evidence reference
-      description: 'Requires role: analyst, operator, or admin. References are deduplicated per incident and evidence type.'
+      description: 'Requires capability: incidents.manage. References are deduplicated per incident and evidence type.'
       parameters:
       - name: incidentID
         in: path
@@ -1639,7 +1639,7 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
-          description: Insufficient role
+          description: Missing required capability
         '404':
           description: Incident not found
   /api/v1/detection-rules/:
@@ -1661,7 +1661,7 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
-          description: Insufficient role
+          description: Missing required capability
     post:
       tags:
       - Detection
