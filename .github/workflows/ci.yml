@@ -137,6 +137,10 @@ jobs:
           docker compose --profile observability config -q
           bash -n scripts/*.sh
           python3 -m json.tool deploy/grafana/dashboards/lyrahcle-overview.json >/dev/null
+      - name: Command-injection contract
+        run: |
+          python3 -m unittest scripts/test_check_command_execution.py
+          python3 scripts/check-command-execution.py .
       - name: Lint Dockerfiles (hadolint)
         uses: hadolint/hadolint-action@v3.1.0
         continue-on-error: true
