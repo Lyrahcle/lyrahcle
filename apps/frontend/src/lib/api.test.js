@@ -4,9 +4,16 @@ import {
   createAgentKey,
   createAgentEnrollmentToken,
   createAsset,
+  updateAsset,
+  deleteAsset,
   createIncident,
   createProgram,
+  updateOrganization,
+  updateProgram,
+  deleteProgram,
   createSatellite,
+  updateSatellite,
+  createOrbitalEvent,
   fetchAgentConfig,
   fetchAgentConfigHistory,
   fetchAgentKeys,
@@ -23,18 +30,24 @@ import {
   revokeSession,
   revokeAllSessions,
   fetchSatellites,
+  fetchSatellitePasses,
+  fetchOrbitalEvents,
   updateIncident,
   addIncidentNote,
   revokeAgentKey,
   updateAgentIdentityStatus,
   updateAgentStation,
   UnauthorizedError,
+  ApiError,
+  API_ERROR_EVENT,
+  fetchEffectivePermissions,
 } from './api.js'
 
-function mockFetchOnce(ok, body, status = ok ? 200 : 500) {
+function mockFetchOnce(ok, body, status = ok ? 200 : 500, headers = {}) {
   global.fetch = vi.fn().mockResolvedValue({
     ok,
     status,
+    headers: { get: (name) => headers[name] ?? headers[name.toLowerCase()] ?? null },
     json: () => Promise.resolve(body),
     text: () => Promise.resolve(typeof body === 'string' ? body : ''),
   })
@@ -74,6 +87,42 @@ describe('api client', () => {
     expect(localStorage.getItem('lyra_token')).toBeNull()
   })
 
+  it('preserves HTTP status metadata and publishes actionable API errors', async () => {
+    const seen = []
+    const listener = (event) => seen.push(event.detail)
+    window.addEventListener(API_ERROR_EVENT, listener)
+    mockFetchOnce(false, 'forbidden', 403, { 'X-Request-ID': 'req-403' })
+    let caught
+    try {
+      await fetchAssets()
+    } catch (error) {
+      caught = error
+    } finally {
+      window.removeEventListener(API_ERROR_EVENT, listener)
+    }
+    expect(caught).toBeInstanceOf(ApiError)
+    expect(caught).toMatchObject({ status: 403, kind: 'forbidden', retryable: false, requestId: 'req-403' })
+    expect(seen).toHaveLength(1)
+    expect(seen[0]).toBe(caught)
+  })
+
+  it('captures Retry-After for rate limited responses', async () => {
+    mockFetchOnce(false, 'slow down', 429, { 'Retry-After': '12' })
+    await expect(fetchAssets()).rejects.toMatchObject({ status: 429, kind: 'rate_limited', retryAfterSeconds: 12, retryable: true })
+  })
+
+  it('turns network failures into retryable ApiError instances', async () => {
+    global.fetch = vi.fn().mockRejectedValue(new TypeError('network down'))
+    await expect(fetchPing()).rejects.toMatchObject({ status: 0, kind: 'network', retryable: true })
+  })
+
+  it('loads effective permissions through the authenticated API boundary', async () => {
+    sessionStorage.setItem('lyra_token', 'test-token')
+    mockFetchOnce(true, { permissions: ['assets.read'] })
+    await expect(fetchEffectivePermissions()).resolves.toEqual({ permissions: ['assets.read'] })
+    expect(fetch).toHaveBeenCalledWith('/api/v1/rbac/me', { headers: { Authorization: 'Bearer test-token' } })
+  })
+
   it('createAsset posts program_id, kind, and value', async () => {
     mockFetchOnce(true, null)
     await createAsset({ programId: 'p1', kind: 'domain', value: 'x.com' })
@@ -106,6 +155,39 @@ describe('api client', () => {
     )
   })
 
+  it('asset and program management APIs encode ids and use tenant mutation endpoints', async () => {
+    mockFetchOnce(true, { id: 'asset/1', program_id: 'p1', kind: 'ip', value: '198.51.100.42' })
+    await updateAsset('asset/1', { programId: 'p1', kind: 'ip', value: '198.51.100.42' })
+    expect(fetch).toHaveBeenCalledWith('/api/v1/assets/asset%2F1', expect.objectContaining({
+      method: 'PUT',
+      body: JSON.stringify({ program_id: 'p1', kind: 'ip', value: '198.51.100.42' }),
+    }))
+
+    mockFetchOnce(true, null, 204)
+    await deleteAsset('asset/1')
+    expect(fetch).toHaveBeenCalledWith('/api/v1/assets/asset%2F1', expect.objectContaining({ method: 'DELETE' }))
+
+    mockFetchOnce(true, { id: 'program/1', name: 'Beta' })
+    await updateProgram('program/1', 'Beta')
+    expect(fetch).toHaveBeenCalledWith('/api/v1/programs/program%2F1', expect.objectContaining({
+      method: 'PUT',
+      body: JSON.stringify({ name: 'Beta' }),
+    }))
+
+    mockFetchOnce(true, null, 204)
+    await deleteProgram('program/1')
+    expect(fetch).toHaveBeenCalledWith('/api/v1/programs/program%2F1', expect.objectContaining({ method: 'DELETE' }))
+  })
+
+  it('updateOrganization encodes the id and updates platform organization metadata', async () => {
+    mockFetchOnce(true, { id: 'org/1', slug: 'mission-b', name: 'Mission B', enabled: true })
+    await updateOrganization('org/1', 'mission-b', 'Mission B')
+    expect(fetch).toHaveBeenCalledWith('/api/v1/organizations/org%2F1', expect.objectContaining({
+      method: 'PUT',
+      body: JSON.stringify({ slug: 'mission-b', name: 'Mission B' }),
+    }))
+  })
+
   it('createSatellite posts the TLE fields', async () => {
     mockFetchOnce(true, null)
     await createSatellite({ noradId: 25544, name: 'ISS', tleLine1: 'l1', tleLine2: 'l2' })
@@ -118,10 +200,24 @@ describe('api client', () => {
     )
   })
 
+  it('updateSatellite encodes the stable id and puts all editable fields', async () => {
+    const updated = { id: 'sat/1', norad_id: 25544, name: 'ISS (ZARYA)' }
+    mockFetchOnce(true, updated)
+    await expect(updateSatellite('sat/1', { noradId: 25544, name: 'ISS (ZARYA)', tleLine1: 'l1', tleLine2: 'l2' })).resolves.toEqual(updated)
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/v1/satellites/sat%2F1',
+      expect.objectContaining({
+        method: 'PUT',
+        body: JSON.stringify({ norad_id: 25544, name: 'ISS (ZARYA)', tle_line1: 'l1', tle_line2: 'l2' }),
+      })
+    )
+  })
+
   it('fetchPing calls the ping endpoint without auth', async () => {
     mockFetchOnce(true, { message: 'pong from lyrahcle' })
     const data = await fetchPing()
-    expect(fetch).toHaveBeenCalledWith('/api/v1/ping')
+    expect(fetch).toHaveBeenCalledWith('/api/v1/ping', {})
+    expect(fetch.mock.calls[0][1]?.headers).toBeUndefined()
     expect(data.message).toBe('pong from lyrahcle')
   })
 
@@ -146,6 +242,26 @@ describe('api client', () => {
     expect(fetch).toHaveBeenCalledWith('/api/v1/satellites/', {
       headers: { Authorization: 'Bearer test-token' },
     })
+  })
+
+  it('orbital operations client exposes pass prediction and orbital-event APIs', async () => {
+    mockFetchOnce(true, { passes: [] })
+    await fetchSatellitePasses('sat/1', { latitudeDeg: 40.4168, longitudeDeg: -3.7038, altitudeM: 667, hours: 24, minElevationDeg: 10, limit: 10 })
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/v1/satellites/sat%2F1/passes?latitude_deg=40.4168&longitude_deg=-3.7038&altitude_m=667&hours=24&min_elevation_deg=10&limit=10',
+      { headers: {} },
+    )
+
+    mockFetchOnce(true, [])
+    await fetchOrbitalEvents('sat-1')
+    expect(fetch).toHaveBeenCalledWith('/api/v1/satellites/sat-1/orbital-events?hours=168&limit=50', { headers: {} })
+
+    mockFetchOnce(true, { id: 'evt-1' }, 201)
+    await createOrbitalEvent('sat-1', { eventType: 'maneuver', eventTime: '2026-08-30T18:00:00Z', source: 'Operator', confidence: 0.9, severity: 'medium' })
+    expect(fetch).toHaveBeenCalledWith('/api/v1/satellites/sat-1/orbital-events', expect.objectContaining({
+      method: 'POST',
+      body: JSON.stringify({ event_type: 'maneuver', event_time: '2026-08-30T18:00:00Z', source: 'Operator', confidence: 0.9, severity: 'medium', metadata: {} }),
+    }))
   })
 
   it('fetchAgentKeys, createAgentKey, and revokeAgentKey hit the right endpoints', async () => {

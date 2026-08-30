@@ -1,14 +1,55 @@
 import { authHeaders, logout } from './auth.js'
 
-class UnauthorizedError extends Error {}
+export const API_ERROR_EVENT = 'lyrahcle:api-error'
 
-async function authedFetch(url, options = {}) {
-  const res = await fetch(url, { ...options, headers: { ...authHeaders(), ...(options.headers ?? {}) } })
-  if (res.status === 401) {
-    logout()
-    throw new UnauthorizedError('session expired')
+export class ApiError extends Error {
+  constructor(message, { status = 0, kind = 'unknown', retryAfterSeconds = 0, requestId = '', cause } = {}) {
+    super(message, cause ? { cause } : undefined)
+    this.name = 'ApiError'
+    this.status = status
+    this.kind = kind
+    this.retryAfterSeconds = retryAfterSeconds
+    this.requestId = requestId
+    this.retryable = kind === 'network' || kind === 'rate_limited' || kind === 'server'
   }
-  return res
+}
+
+export class UnauthorizedError extends ApiError {
+  constructor(message = 'session expired', details = {}) {
+    super(message, { ...details, status: 401, kind: 'unauthorized' })
+    this.name = 'UnauthorizedError'
+    this.retryable = false
+  }
+}
+
+function classifyStatus(status) {
+  if (status === 403) return 'forbidden'
+  if (status === 404) return 'not_found'
+  if (status === 409) return 'conflict'
+  if (status === 429) return 'rate_limited'
+  if (status >= 500) return 'server'
+  if (status >= 400) return 'client'
+  return 'unknown'
+}
+
+function retryAfterSeconds(res) {
+  const raw = res?.headers?.get?.('Retry-After')
+  if (!raw) return 0
+  const seconds = Number(raw)
+  if (Number.isFinite(seconds) && seconds >= 0) return Math.ceil(seconds)
+  const at = Date.parse(raw)
+  return Number.isNaN(at) ? 0 : Math.max(0, Math.ceil((at - Date.now()) / 1000))
+}
+
+function requestIdFrom(res) {
+  return res?.headers?.get?.('X-Request-ID') || ''
+}
+
+function publishApiError(error) {
+  if (!(error instanceof ApiError) || error instanceof UnauthorizedError) return
+  if (!['forbidden', 'not_found', 'conflict', 'rate_limited', 'server', 'network'].includes(error.kind)) return
+  if (typeof window === 'undefined' || typeof window.dispatchEvent !== 'function') return
+  window.dispatchEvent(new CustomEvent(API_ERROR_EVENT, { detail: error }))
 }
 
 async function readErrorText(res, fallback) {
@@ -16,9 +57,42 @@ async function readErrorText(res, fallback) {
   return message.trim() || fallback
 }
 
+async function apiErrorFromResponse(res, fallback) {
+  const message = await readErrorText(res, fallback)
+  const error = new ApiError(message, {
+    status: res.status,
+    kind: classifyStatus(res.status),
+    retryAfterSeconds: retryAfterSeconds(res),
+    requestId: requestIdFrom(res),
+  })
+  publishApiError(error)
+  return error
+}
+
+async function trackedFetch(url, options = {}) {
+  try {
+    return await fetch(url, options)
+  } catch (cause) {
+    if (cause?.name === 'AbortError') throw cause
+    const error = new ApiError('backend unavailable', { kind: 'network', cause })
+    publishApiError(error)
+    throw error
+  }
+}
+
+async function authedFetch(url, options = {}) {
+  const res = await trackedFetch(url, { ...options, headers: { ...authHeaders(), ...(options.headers ?? {}) } })
+  if (res.status === 401) {
+    const message = await readErrorText(res, 'session expired')
+    logout()
+    throw new UnauthorizedError(message, { requestId: requestIdFrom(res) })
+  }
+  return res
+}
+
 export async function fetchAssets(limit = 50, offset = 0) {
   const res = await authedFetch(`/api/v1/assets/?limit=${limit}&offset=${offset}`)
-  if (!res.ok) throw new Error('failed to fetch assets')
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to fetch assets')
   return res.json()
 }
 
@@ -28,12 +102,27 @@ export async function createAsset({ programId, kind, value }) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ program_id: programId, kind, value }),
   })
-  if (!res.ok) throw new Error(await readErrorText(res, 'failed to create asset'))
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to create asset')
+}
+
+export async function updateAsset(assetId, { programId, kind, value }) {
+  const res = await authedFetch(`/api/v1/assets/${encodeURIComponent(assetId)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ program_id: programId, kind, value }),
+  })
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to update asset')
+  return res.json()
+}
+
+export async function deleteAsset(assetId) {
+  const res = await authedFetch(`/api/v1/assets/${encodeURIComponent(assetId)}`, { method: 'DELETE' })
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to delete asset')
 }
 
 export async function fetchPrograms() {
   const res = await authedFetch('/api/v1/programs/')
-  if (!res.ok) throw new Error('failed to fetch programs')
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to fetch programs')
   return res.json()
 }
 
@@ -43,8 +132,23 @@ export async function createProgram(name) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name }),
   })
-  if (!res.ok) throw new Error(await readErrorText(res, 'failed to create program'))
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to create program')
   return res.json()
+}
+
+export async function updateProgram(programId, name) {
+  const res = await authedFetch(`/api/v1/programs/${encodeURIComponent(programId)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name }),
+  })
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to update program')
+  return res.json()
+}
+
+export async function deleteProgram(programId) {
+  const res = await authedFetch(`/api/v1/programs/${encodeURIComponent(programId)}`, { method: 'DELETE' })
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to delete program')
 }
 
 export async function createUser(email, password, role) {
@@ -53,25 +157,25 @@ export async function createUser(email, password, role) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password, role }),
   })
-  if (!res.ok) throw new Error(await readErrorText(res, 'failed to create user'))
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to create user')
   return res.json()
 }
 
 export async function fetchSystemInfo() {
   const res = await authedFetch('/api/v1/system-info')
-  if (!res.ok) throw new Error('failed to fetch system info')
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to fetch system info')
   return res.json()
 }
 
 export async function fetchMe() {
   const res = await authedFetch('/api/v1/auth/me')
-  if (!res.ok) throw new Error('failed to fetch account info')
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to fetch account info')
   return res.json()
 }
 
 export async function setupTotp() {
   const res = await authedFetch('/api/v1/auth/totp/setup', { method: 'POST' })
-  if (!res.ok) throw new Error(await readErrorText(res, 'failed to start two-factor setup'))
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to start two-factor setup')
   return res.json()
 }
 
@@ -81,7 +185,7 @@ export async function enableTotp(code) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ code }),
   })
-  if (!res.ok) throw new Error(await readErrorText(res, 'invalid code'))
+  if (!res.ok) throw await apiErrorFromResponse(res, 'invalid code')
 }
 
 export async function disableTotp(password) {
@@ -90,7 +194,7 @@ export async function disableTotp(password) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ password }),
   })
-  if (!res.ok) throw new Error(await readErrorText(res, 'failed to disable two-factor authentication'))
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to disable two-factor authentication')
 }
 
 export async function changePassword(currentPassword, newPassword) {
@@ -99,47 +203,47 @@ export async function changePassword(currentPassword, newPassword) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
   })
-  if (!res.ok) throw new Error(await readErrorText(res, 'failed to change password'))
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to change password')
 }
 
 
 export async function fetchSessions() {
   const res = await authedFetch('/api/v1/auth/sessions/')
-  if (!res.ok) throw new Error(await readErrorText(res, 'failed to fetch sessions'))
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to fetch sessions')
   return res.json()
 }
 
 export async function revokeSession(sessionId) {
   const res = await authedFetch(`/api/v1/auth/sessions/${encodeURIComponent(sessionId)}`, { method: 'DELETE' })
-  if (!res.ok) throw new Error(await readErrorText(res, 'failed to revoke session'))
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to revoke session')
 }
 
 export async function revokeAllSessions() {
   const res = await authedFetch('/api/v1/auth/sessions/', { method: 'DELETE' })
-  if (!res.ok) throw new Error(await readErrorText(res, 'failed to revoke sessions'))
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to revoke sessions')
 }
 
 export async function fetchPing() {
-  const res = await fetch('/api/v1/ping')
-  if (!res.ok) throw new Error('backend unreachable')
+  const res = await trackedFetch('/api/v1/ping')
+  if (!res.ok) throw await apiErrorFromResponse(res, 'backend unreachable')
   return res.json()
 }
 
 export async function fetchRfReadings() {
   const res = await authedFetch('/api/v1/rf/readings')
-  if (!res.ok) throw new Error('failed to fetch rf readings')
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to fetch rf readings')
   return res.json()
 }
 
 export async function fetchRfAnomalies() {
   const res = await authedFetch('/api/v1/rf/anomalies')
-  if (!res.ok) throw new Error('failed to fetch rf anomalies')
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to fetch rf anomalies')
   return res.json()
 }
 
 export async function fetchSatellites() {
   const res = await authedFetch('/api/v1/satellites/')
-  if (!res.ok) throw new Error('failed to fetch satellites')
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to fetch satellites')
   return res.json()
 }
 
@@ -155,16 +259,13 @@ export function subscribeSatellites({ onData, onError }) {
   async function run() {
     let res
     try {
-      res = await fetch('/api/v1/satellites/stream', {
-        headers: authHeaders(),
-        signal: controller.signal,
-      })
+      res = await authedFetch('/api/v1/satellites/stream', { signal: controller.signal })
     } catch (err) {
       if (err.name !== 'AbortError') onError?.(err)
       return
     }
     if (!res.ok || !res.body) {
-      onError?.(new Error(`stream failed with status ${res.status}`))
+      onError?.(await apiErrorFromResponse(res, `stream failed with status ${res.status}`))
       return
     }
 
@@ -201,13 +302,61 @@ export function subscribeSatellites({ onData, onError }) {
   return () => controller.abort()
 }
 
+export async function fetchSatellitePasses(satelliteId, { latitudeDeg, longitudeDeg, altitudeM = 0, hours = 24, minElevationDeg = 0, limit = 10 }) {
+  const params = new URLSearchParams({
+    latitude_deg: String(latitudeDeg),
+    longitude_deg: String(longitudeDeg),
+    altitude_m: String(altitudeM),
+    hours: String(hours),
+    min_elevation_deg: String(minElevationDeg),
+    limit: String(limit),
+  })
+  const res = await authedFetch(`/api/v1/satellites/${encodeURIComponent(satelliteId)}/passes?${params.toString()}`)
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to predict satellite passes')
+  return res.json()
+}
+
+export async function fetchOrbitalEvents(satelliteId, hours = 168, limit = 50) {
+  const params = new URLSearchParams({ hours: String(hours), limit: String(limit) })
+  const res = await authedFetch(`/api/v1/satellites/${encodeURIComponent(satelliteId)}/orbital-events?${params.toString()}`)
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to fetch orbital events')
+  return res.json()
+}
+
+export async function createOrbitalEvent(satelliteId, { eventType, eventTime, source, confidence, severity, metadata = {} }) {
+  const res = await authedFetch(`/api/v1/satellites/${encodeURIComponent(satelliteId)}/orbital-events`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      event_type: eventType,
+      event_time: eventTime,
+      source,
+      confidence,
+      severity,
+      metadata,
+    }),
+  })
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to create orbital event')
+  return res.json()
+}
+
 export async function createSatellite({ noradId, name, tleLine1, tleLine2 }) {
   const res = await authedFetch('/api/v1/satellites/', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ norad_id: noradId, name, tle_line1: tleLine1, tle_line2: tleLine2 }),
   })
-  if (!res.ok) throw new Error(await readErrorText(res, 'failed to create satellite'))
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to create satellite')
+}
+
+export async function updateSatellite(satelliteId, { noradId, name, tleLine1, tleLine2 }) {
+  const res = await authedFetch(`/api/v1/satellites/${encodeURIComponent(satelliteId)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ norad_id: noradId, name, tle_line1: tleLine1, tle_line2: tleLine2 }),
+  })
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to update satellite')
+  return res.json()
 }
 
 export async function fetchSpaceCVEs(limit = 50, offset = 0, filters = {}) {
@@ -220,30 +369,30 @@ export async function fetchSpaceCVEs(limit = 50, offset = 0, filters = {}) {
   if (filters.order) params.set('order', filters.order)
 
   const res = await authedFetch(`/api/v1/threat-intel/space-cves?${params.toString()}`)
-  if (!res.ok) throw new Error('failed to fetch space CVEs')
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to fetch space CVEs')
   return res.json()
 }
 
 export async function fetchSpaceCVEKeywords() {
   const res = await authedFetch('/api/v1/threat-intel/space-cves/keywords')
-  if (!res.ok) throw new Error('failed to fetch CVE keywords')
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to fetch CVE keywords')
   return res.json()
 }
 
 export async function fetchAssetAlerts(limit = 50, offset = 0) {
   const res = await authedFetch(`/api/v1/asset-alerts/?limit=${limit}&offset=${offset}`)
-  if (!res.ok) throw new Error('failed to fetch asset alerts')
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to fetch asset alerts')
   return res.json()
 }
 
 export async function acknowledgeAssetAlert(alertId) {
   const res = await authedFetch(`/api/v1/asset-alerts/${alertId}/acknowledge`, { method: 'POST' })
-  if (!res.ok) throw new Error(await readErrorText(res, 'failed to acknowledge alert'))
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to acknowledge alert')
 }
 
 export async function fetchAgentKeys() {
   const res = await authedFetch('/api/v1/agent-keys/')
-  if (!res.ok) throw new Error('failed to fetch agent keys')
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to fetch agent keys')
   return res.json()
 }
 
@@ -253,7 +402,7 @@ export async function createAgentKey(agentId) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ agent_id: agentId }),
   })
-  if (!res.ok) throw new Error(await readErrorText(res, 'failed to create agent key'))
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to create agent key')
   return res.json()
 }
 
@@ -261,18 +410,24 @@ export async function revokeAgentKey(agentId) {
   const res = await authedFetch(`/api/v1/agent-keys/${encodeURIComponent(agentId)}`, {
     method: 'DELETE',
   })
-  if (!res.ok) throw new Error(await readErrorText(res, 'failed to revoke agent key'))
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to revoke agent key')
 }
 
 export async function fetchAuditLog(limit = 50, offset = 0) {
   const res = await authedFetch(`/api/v1/audit-log?limit=${limit}&offset=${offset}`)
-  if (!res.ok) throw new Error('failed to fetch audit log')
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to fetch audit log')
+  return res.json()
+}
+
+export async function fetchEffectivePermissions() {
+  const res = await authedFetch('/api/v1/rbac/me')
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to load effective permissions')
   return res.json()
 }
 
 export async function fetchUsers() {
   const res = await authedFetch('/api/v1/users/')
-  if (!res.ok) throw new Error('failed to fetch users')
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to fetch users')
   return res.json()
 }
 
@@ -282,7 +437,7 @@ export async function updateUserRole(userId, role) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ role }),
   })
-  if (!res.ok) throw new Error(await readErrorText(res, 'failed to update role'))
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to update role')
   return res.json()
 }
 
@@ -292,13 +447,13 @@ export async function updateUserStatus(userId, enabled) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ enabled }),
   })
-  if (!res.ok) throw new Error(await readErrorText(res, 'failed to update user status'))
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to update user status')
   return res.json()
 }
 
 export async function deleteUser(userId) {
   const res = await authedFetch(`/api/v1/users/${encodeURIComponent(userId)}`, { method: 'DELETE' })
-  if (!res.ok) throw new Error(await readErrorText(res, 'failed to delete user'))
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to delete user')
 }
 
 const DECODE_ENDPOINTS = {
@@ -317,11 +472,10 @@ export async function decodeFrame(protocol, hex) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ [endpoint.field]: hex }),
   })
-  if (!res.ok) throw new Error(await readErrorText(res, 'decode failed'))
+  if (!res.ok) throw await apiErrorFromResponse(res, 'decode failed')
   return res.json()
 }
 
-export { UnauthorizedError }
 
 export async function fetchIncidents(limit = 50, offset = 0, filters = {}) {
   const params = new URLSearchParams({ limit, offset })
@@ -331,13 +485,13 @@ export async function fetchIncidents(limit = 50, offset = 0, filters = {}) {
   if (filters.satelliteId) params.set('satellite_id', filters.satelliteId)
   if (filters.assignedTo) params.set('assigned_to', filters.assignedTo)
   const res = await authedFetch(`/api/v1/incidents/?${params.toString()}`)
-  if (!res.ok) throw new Error(await readErrorText(res, 'failed to fetch incidents'))
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to fetch incidents')
   return res.json()
 }
 
 export async function fetchIncident(incidentId) {
   const res = await authedFetch(`/api/v1/incidents/${encodeURIComponent(incidentId)}`)
-  if (!res.ok) throw new Error(await readErrorText(res, 'failed to fetch incident'))
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to fetch incident')
   return res.json()
 }
 
@@ -354,7 +508,7 @@ export async function createIncident({ title, description, severity, satelliteId
       assigned_to: assignedTo || '',
     }),
   })
-  if (!res.ok) throw new Error(await readErrorText(res, 'failed to create incident'))
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to create incident')
   return res.json()
 }
 
@@ -368,7 +522,7 @@ export async function updateIncident(incidentId, fields) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
-  if (!res.ok) throw new Error(await readErrorText(res, 'failed to update incident'))
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to update incident')
   return res.json()
 }
 
@@ -378,7 +532,7 @@ export async function addIncidentNote(incidentId, message) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ message }),
   })
-  if (!res.ok) throw new Error(await readErrorText(res, 'failed to add incident note'))
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to add incident note')
 }
 
 export async function addIncidentEvidence(incidentId, evidence) {
@@ -391,7 +545,7 @@ export async function addIncidentEvidence(incidentId, evidence) {
       label: evidence.label,
     }),
   })
-  if (!res.ok) throw new Error(await readErrorText(res, 'failed to add incident evidence'))
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to add incident evidence')
   return res.json()
 }
 
@@ -400,13 +554,13 @@ export function subscribeIncidents({ onData, onError }) {
   async function run() {
     let res
     try {
-      res = await fetch('/api/v1/incidents/stream', { headers: authHeaders(), signal: controller.signal })
+      res = await authedFetch('/api/v1/incidents/stream', { signal: controller.signal })
     } catch (err) {
       if (err.name !== 'AbortError') onError?.(err)
       return
     }
     if (!res.ok || !res.body) {
-      onError?.(new Error(`incident stream failed with status ${res.status}`))
+      onError?.(await apiErrorFromResponse(res, `incident stream failed with status ${res.status}`))
       return
     }
     const reader = res.body.getReader()
@@ -438,7 +592,7 @@ export function subscribeIncidents({ onData, onError }) {
 
 export async function fetchDetectionRules(limit = 50, offset = 0) {
   const res = await authedFetch(`/api/v1/detection-rules/?limit=${limit}&offset=${offset}`)
-  if (!res.ok) throw new Error(await readErrorText(res, 'failed to fetch detection rules'))
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to fetch detection rules')
   return res.json()
 }
 
@@ -457,7 +611,7 @@ export async function createDetectionRule({ name, description, metric, operator,
       auto_incident: autoIncident,
     }),
   })
-  if (!res.ok) throw new Error(await readErrorText(res, 'failed to create detection rule'))
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to create detection rule')
   return res.json()
 }
 
@@ -467,20 +621,20 @@ export async function updateDetectionRule(ruleId, fields) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(fields),
   })
-  if (!res.ok) throw new Error(await readErrorText(res, 'failed to update detection rule'))
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to update detection rule')
   return res.json()
 }
 
 
 export async function globalSearch(query, signal) {
   const res = await authedFetch(`/api/v1/search?q=${encodeURIComponent(query)}`, { signal })
-  if (!res.ok) throw new Error(await readErrorText(res, 'search failed'))
+  if (!res.ok) throw await apiErrorFromResponse(res, 'search failed')
   return res.json()
 }
 
 export async function fetchSecurityKeys() {
   const res = await authedFetch('/api/v1/auth/webauthn/credentials/')
-  if (!res.ok) throw new Error(await readErrorText(res, 'failed to fetch security keys'))
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to fetch security keys')
   return res.json()
 }
 
@@ -510,31 +664,31 @@ export async function removeSecurityKey(credentialId, password) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ password }),
   })
-  if (!res.ok) throw new Error(await readErrorText(res, 'failed to remove security key'))
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to remove security key')
 }
 
 export async function requestPasswordReset(identifier) {
-  const res = await fetch('/api/v1/auth/password-reset/request', {
+  const res = await trackedFetch('/api/v1/auth/password-reset/request', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ identifier }),
   })
-  if (!res.ok) throw new Error('password recovery request failed')
+  if (!res.ok) throw await apiErrorFromResponse(res, 'password recovery request failed')
   return res.json()
 }
 
 export async function completePasswordReset(token, newPassword, totpCode) {
-  const res = await fetch('/api/v1/auth/password-reset/complete', {
+  const res = await trackedFetch('/api/v1/auth/password-reset/complete', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ token, new_password: newPassword, totp_code: totpCode }),
   })
-  if (!res.ok) throw new Error(await readErrorText(res, 'password reset failed'))
+  if (!res.ok) throw await apiErrorFromResponse(res, 'password reset failed')
 }
 
 export async function fetchAgentIdentities() {
   const res = await authedFetch('/api/v1/agents/')
-  if (!res.ok) throw new Error('failed to fetch agent identities')
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to fetch agent identities')
   return res.json()
 }
 
@@ -544,7 +698,7 @@ export async function createAgentEnrollmentToken(agentId) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ agent_id: agentId }),
   })
-  if (!res.ok) throw new Error(await readErrorText(res, 'failed to create enrollment token'))
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to create enrollment token')
   return res.json()
 }
 
@@ -554,7 +708,7 @@ export async function updateAgentIdentityStatus(agentId, status) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ status }),
   })
-  if (!res.ok) throw new Error(await readErrorText(res, 'failed to update agent status'))
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to update agent status')
 }
 
 export async function updateAgentStation(agentId, latitudeDeg, longitudeDeg, altitudeM) {
@@ -563,19 +717,19 @@ export async function updateAgentStation(agentId, latitudeDeg, longitudeDeg, alt
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ latitude_deg: latitudeDeg, longitude_deg: longitudeDeg, altitude_m: altitudeM }),
   })
-  if (!res.ok) throw new Error(await readErrorText(res, 'failed to update agent station'))
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to update agent station')
 }
 
 export async function fetchAgentConfig(agentId) {
   const res = await authedFetch(`/api/v1/agents/${encodeURIComponent(agentId)}/config`)
   if (res.status === 204) return null
-  if (!res.ok) throw new Error(await readErrorText(res, 'failed to fetch agent config'))
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to fetch agent config')
   return res.json()
 }
 
 export async function fetchAgentConfigHistory(agentId) {
   const res = await authedFetch(`/api/v1/agents/${encodeURIComponent(agentId)}/config/history`)
-  if (!res.ok) throw new Error(await readErrorText(res, 'failed to fetch agent config history'))
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to fetch agent config history')
   return res.json()
 }
 
@@ -585,7 +739,7 @@ export async function applyAgentConfig(agentId, frequencyHz, captureIntervalSeco
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ frequency_hz: frequencyHz, capture_interval_seconds: captureIntervalSeconds, satellite_id: satelliteId || null }),
   })
-  if (!res.ok) throw new Error(await readErrorText(res, 'failed to apply agent config'))
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to apply agent config')
   return res.json()
 }
 
@@ -595,20 +749,20 @@ export async function rollbackAgentConfig(agentId, version) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ version }),
   })
-  if (!res.ok) throw new Error(await readErrorText(res, 'failed to rollback agent config'))
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to rollback agent config')
   return res.json()
 }
 
 
 export async function fetchPlatformAccess() {
   const res = await authedFetch('/api/v1/organizations/me')
-  if (!res.ok) throw new Error(await readErrorText(res, 'failed to check platform access'))
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to check platform access')
   return res.json()
 }
 
 export async function fetchOrganizations() {
   const res = await authedFetch('/api/v1/organizations/')
-  if (!res.ok) throw new Error(await readErrorText(res, 'failed to fetch organizations'))
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to fetch organizations')
   return res.json()
 }
 
@@ -618,20 +772,30 @@ export async function createOrganization(slug, name) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ slug, name }),
   })
-  if (!res.ok) throw new Error(await readErrorText(res, 'failed to create organization'))
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to create organization')
+  return res.json()
+}
+
+export async function updateOrganization(organizationId, slug, name) {
+  const res = await authedFetch(`/api/v1/organizations/${encodeURIComponent(organizationId)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ slug, name }),
+  })
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to update organization')
   return res.json()
 }
 
 
 export async function fetchRBACPermissions() {
   const res = await authedFetch('/api/v1/rbac/permissions')
-  if (!res.ok) throw new Error(await readErrorText(res, 'failed to fetch RBAC permissions'))
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to fetch RBAC permissions')
   return res.json()
 }
 
 export async function fetchRBACRoles() {
   const res = await authedFetch('/api/v1/rbac/roles')
-  if (!res.ok) throw new Error(await readErrorText(res, 'failed to fetch RBAC roles'))
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to fetch RBAC roles')
   return res.json()
 }
 
@@ -641,39 +805,39 @@ export async function createRBACRole(name, description, permissions) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name, description, permissions }),
   })
-  if (!res.ok) throw new Error(await readErrorText(res, 'failed to create RBAC role'))
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to create RBAC role')
   return res.json()
 }
 
 export async function fetchUserRBACRoles(userId) {
   const res = await authedFetch(`/api/v1/rbac/users/${encodeURIComponent(userId)}/roles`)
-  if (!res.ok) throw new Error(await readErrorText(res, 'failed to fetch user roles'))
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to fetch user roles')
   return res.json()
 }
 
 export async function assignUserRBACRole(userId, roleId) {
   const res = await authedFetch(`/api/v1/rbac/users/${encodeURIComponent(userId)}/roles/${encodeURIComponent(roleId)}`, { method: 'POST' })
-  if (!res.ok) throw new Error(await readErrorText(res, 'failed to assign role'))
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to assign role')
 }
 
 export async function removeUserRBACRole(userId, roleId) {
   const res = await authedFetch(`/api/v1/rbac/users/${encodeURIComponent(userId)}/roles/${encodeURIComponent(roleId)}`, { method: 'DELETE' })
-  if (!res.ok) throw new Error(await readErrorText(res, 'failed to remove role'))
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to remove role')
 }
 
 
 export async function fetchPlatformUsers() {
   const res = await authedFetch('/api/v1/organizations/platform-users')
-  if (!res.ok) throw new Error(await readErrorText(res, 'failed to fetch platform users'))
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to fetch platform users')
   return res.json()
 }
 
 export async function grantPlatformAdministrator(userId) {
   const res = await authedFetch(`/api/v1/organizations/platform-admins/${encodeURIComponent(userId)}`, { method: 'POST' })
-  if (!res.ok) throw new Error(await readErrorText(res, 'failed to grant platform administrator'))
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to grant platform administrator')
 }
 
 export async function revokePlatformAdministrator(userId) {
   const res = await authedFetch(`/api/v1/organizations/platform-admins/${encodeURIComponent(userId)}`, { method: 'DELETE' })
-  if (!res.ok) throw new Error(await readErrorText(res, 'failed to revoke platform administrator'))
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to revoke platform administrator')
 }

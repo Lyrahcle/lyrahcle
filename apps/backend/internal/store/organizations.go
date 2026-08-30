@@ -68,3 +68,23 @@ func (s *OrganizationStore) Create(ctx context.Context, slug, name string) (Orga
 	}
 	return o, nil
 }
+func (s *OrganizationStore) Update(ctx context.Context, id uuid.UUID, slug, name string) (Organization, error) {
+	slug, name = strings.TrimSpace(strings.ToLower(slug)), strings.TrimSpace(name)
+	var o Organization
+	err := s.pool.QueryRow(ctx, `
+		UPDATE organizations
+		SET slug=$2, name=$3, updated_at=now()
+		WHERE id=$1
+		RETURNING id, slug, name, enabled
+	`, id, slug, name).Scan(&o.ID, &o.Slug, &o.Name, &o.Enabled)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Organization{}, ErrOrganizationNotFound
+	}
+	if err != nil {
+		if isUniqueViolation(err) {
+			return Organization{}, ErrOrganizationSlugTaken
+		}
+		return Organization{}, err
+	}
+	return o, nil
+}

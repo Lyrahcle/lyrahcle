@@ -8,12 +8,14 @@ import RfPanel from './RfPanel.jsx'
 import AnomaliesPanel from './AnomaliesPanel.jsx'
 import DetectionRulesPanel from './DetectionRulesPanel.jsx'
 import SatellitesPanel from './SatellitesPanel.jsx'
+import OrbitalOperationsPanel from './OrbitalOperationsPanel.jsx'
 import WorldMap from './WorldMap.jsx'
 import ThreatIntelPanel from './ThreatIntelPanel.jsx'
 import AssetAlertsPanel from './AssetAlertsPanel.jsx'
 import IncidentsPanel from './IncidentsPanel.jsx'
 import Decoder from './Decoder.jsx'
 import NewAssetForm from './NewAssetForm.jsx'
+import ProgramManager from './ProgramManager.jsx'
 import NewSatelliteForm from './NewSatelliteForm.jsx'
 import ConnectivityPanel from './ConnectivityPanel.jsx'
 import AuditLogPanel from './AuditLogPanel.jsx'
@@ -22,6 +24,7 @@ import SettingsPanel from './SettingsPanel.jsx'
 import PlatformOrganizationsPanel from './PlatformOrganizationsPanel.jsx'
 import RBACPanel from './RBACPanel.jsx'
 import Footer from './Footer.jsx'
+import ApiStatusBanner from './ApiStatusBanner.jsx'
 import { AnomalyTimelineChart, CVESeverityChart, CVETimelineChart, IncidentSeverityChart, IncidentTimelineChart, OrbitalAltitudeChart, RFPowerChart, RFSpectrumChart, RFStationMapChart } from './TelemetryCharts.jsx'
 import { hasPermission } from '../lib/permissions.js'
 import { useI18n } from '../lib/I18nContext.jsx'
@@ -30,6 +33,7 @@ import {
   fetchAgentIdentities,
   fetchIncidents,
   fetchAssets,
+  fetchPrograms,
   fetchAssetAlerts,
   fetchAuditLog,
   fetchPing,
@@ -47,6 +51,8 @@ import {
   subscribeSatellites,
   subscribeIncidents,
   UnauthorizedError,
+  ApiError,
+  API_ERROR_EVENT,
 } from '../lib/api.js'
 
 const REFRESH_MS = 8000
@@ -55,6 +61,7 @@ const PAGE_LIMIT = 50
 export default function Dashboard({ onLogout, onSessionExpired, activeTab, onChangeTab }) {
   const { t } = useI18n()
   const [assets, setAssets] = useState(null)
+  const [programs, setPrograms] = useState(null)
   const [rfReadings, setRfReadings] = useState(null)
   const [rfAnomalies, setRfAnomalies] = useState(null)
   const [detectionRules, setDetectionRules] = useState(null)
@@ -74,6 +81,9 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
   const [rbacRoles, setRbacRoles] = useState(null)
   const [backendStatus, setBackendStatus] = useState('checking')
   const [dbStatus, setDbStatus] = useState('checking')
+  const [apiIssue, setApiIssue] = useState(null)
+  const [retryNonce, setRetryNonce] = useState(0)
+  const rateLimitedUntilRef = useRef(0)
 
   const [assetsOffset, setAssetsOffset] = useState(0)
   const [cvesOffset, setCvesOffset] = useState(0)
@@ -111,7 +121,28 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
     incidentFiltersRef.current = incidentFilters
   }, [incidentFilters])
 
+
+  useEffect(() => {
+    function handleApiError(event) {
+      const issue = event.detail
+      if (!(issue instanceof ApiError)) return
+      if (issue.kind === 'rate_limited' && issue.retryAfterSeconds > 0) {
+        rateLimitedUntilRef.current = Date.now() + issue.retryAfterSeconds * 1000
+      }
+      setApiIssue(issue)
+    }
+    window.addEventListener(API_ERROR_EVENT, handleApiError)
+    return () => window.removeEventListener(API_ERROR_EVENT, handleApiError)
+  }, [])
+
+  function retryFailedRequests() {
+    if (Date.now() < rateLimitedUntilRef.current) return
+    setApiIssue(null)
+    setRetryNonce((value) => value + 1)
+  }
+
   const admin = hasPermission('users.manage')
+  const programsAccess = hasPermission('programs.read') || hasPermission('programs.manage')
   const usersRead = hasPermission('users.read')
   const incidentsManage = hasPermission('incidents.manage')
   const agentsRead = hasPermission('agents.read')
@@ -163,9 +194,13 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
     }
 
     async function poll() {
+      if (Date.now() < rateLimitedUntilRef.current) return
       try {
         await fetchPing()
-        if (!cancelled) setBackendStatus('online')
+        if (!cancelled) {
+          setBackendStatus('online')
+          setApiIssue((current) => current?.kind === 'network' ? null : current)
+        }
       } catch {
         if (!cancelled) setBackendStatus('offline')
       }
@@ -177,9 +212,13 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
 
       if (activeTab === 'assets') {
         try {
-          const data = await fetchAssets(PAGE_LIMIT, assetsOffsetRef.current)
+          const [assetData, programData] = await Promise.all([
+            fetchAssets(PAGE_LIMIT, assetsOffsetRef.current),
+            programsAccess ? fetchPrograms() : Promise.resolve([]),
+          ])
           if (!cancelled) {
-            setAssets(data ?? { items: [], total: 0, limit: PAGE_LIMIT, offset: 0 })
+            setAssets(assetData ?? { items: [], total: 0, limit: PAGE_LIMIT, offset: 0 })
+            setPrograms(programData ?? [])
             setDbStatus('online')
           }
         } catch (err) {
@@ -189,6 +228,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
           }
           if (!cancelled) {
             setAssets((prev) => prev ?? { items: [], total: 0, limit: PAGE_LIMIT, offset: 0 })
+            setPrograms((prev) => prev ?? [])
             setDbStatus('offline')
           }
         }
@@ -273,7 +313,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
       cancelled = true
       clearInterval(id)
     }
-  }, [onSessionExpired, activeTab, admin, auditAccess, assetsOffset, cvesOffset, cveFilters, auditOffset, incidentsOffset, incidentFilters, platformAdmin, adminAccess, usersRead, rbacRead])
+  }, [onSessionExpired, activeTab, admin, auditAccess, assetsOffset, cvesOffset, cveFilters, auditOffset, incidentsOffset, incidentFilters, platformAdmin, adminAccess, usersRead, rbacRead, programsAccess, retryNonce])
 
   useEffect(() => {
     if (activeTab !== 'orbital') {
@@ -285,7 +325,10 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
         setSatellites(data)
         setSatellitesLive(true)
       },
-      onError: () => setSatellitesLive(false),
+      onError: (err) => {
+        setSatellitesLive(false)
+        if (err instanceof UnauthorizedError) onSessionExpired()
+      },
     })
     return unsubscribe
   }, [activeTab])
@@ -298,7 +341,9 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
           setIncidents(data)
         }
       },
-      onError: () => {},
+      onError: (err) => {
+        if (err instanceof UnauthorizedError) onSessionExpired()
+      },
     })
     return unsubscribe
   }, [activeTab])
@@ -307,9 +352,15 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
   const sdrStatus =
     lastRf && Date.now() - new Date(lastRf.captured_at).getTime() < 30000 ? 'live' : 'idle'
 
-  function reloadAssets() {
+  async function reloadAssets() {
     setAssetsOffset(0)
-    fetchAssets(PAGE_LIMIT, 0).then(setAssets).catch(() => {})
+    try {
+      const [assetData, programData] = await Promise.all([fetchAssets(PAGE_LIMIT, 0), programsAccess ? fetchPrograms() : Promise.resolve([])])
+      setAssets(assetData)
+      setPrograms(programData ?? [])
+    } catch {
+      // Polling will retry; mutation components already surface their own errors.
+    }
   }
   function handleCveFiltersChange(next) {
     setCvesOffset(0)
@@ -369,6 +420,11 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
         searchCves={spaceCVEs}
         onSearchNavigate={onChangeTab}
       />
+      <ApiStatusBanner
+        issue={apiIssue}
+        onRetry={apiIssue?.retryable ? retryFailedRequests : undefined}
+        onDismiss={() => setApiIssue(null)}
+      />
 
       <main id="main-content" className="mx-auto max-w-7xl px-6 py-10 sm:px-8">
         <Tabs tabs={tabs} active={activeTab} onChange={onChangeTab} />
@@ -404,22 +460,43 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
             </Panel>
             <Panel eyebrow={t('panels.orbitalTracking')} title={t('panels.trackedSatellites')} uppercase>
               {hasPermission('orbital.manage') && <NewSatelliteForm onCreated={reloadSatellites} />}
-              {satellites === null ? <Skeleton /> : <SatellitesPanel satellites={satellites} />}
+              {satellites === null ? <Skeleton /> : <SatellitesPanel satellites={satellites} canManage={hasPermission('orbital.manage')} onChanged={reloadSatellites} />}
             </Panel>
+            {(hasPermission('orbital.read') || hasPermission('orbital.manage')) && (
+              <Panel eyebrow={t('panels.orbitalOperations')} title={t('orbitalOperations.title')}>
+                {satellites === null ? <Skeleton /> : <OrbitalOperationsPanel satellites={satellites} />}
+              </Panel>
+            )}
           </div>
         )}
 
         {activeTab === 'assets' && (
           <Panel eyebrow={t('panels.assetInventory')} title={t('panels.trackedAssets')}>
-            {hasPermission('assets.manage') && <NewAssetForm onCreated={reloadAssets} />}
-            {assets === null ? (
+            {hasPermission('assets.manage') && programsAccess && (
+              <NewAssetForm
+                onCreated={reloadAssets}
+                programs={programs ?? []}
+                onProgramsChanged={reloadAssets}
+              />
+            )}
+            {hasPermission('assets.manage') && !programsAccess && (
+              <p className="mb-4 text-xs text-lyra-mutedDim">{t('assetInventory.programAccessRequired')}</p>
+            )}
+            {assets === null || programs === null ? (
               <Skeleton />
             ) : (
-              <AssetsTable
-                page={assets}
-                onPrev={() => setAssetsOffset((o) => Math.max(0, o - PAGE_LIMIT))}
-                onNext={() => setAssetsOffset((o) => o + PAGE_LIMIT)}
-              />
+              <>
+                <AssetsTable
+                  page={assets}
+                  programs={programs}
+                  onChanged={reloadAssets}
+                  onPrev={() => setAssetsOffset((o) => Math.max(0, o - PAGE_LIMIT))}
+                  onNext={() => setAssetsOffset((o) => o + PAGE_LIMIT)}
+                />
+                {(hasPermission('programs.read') || hasPermission('programs.manage')) && (
+                  <ProgramManager programs={programs} onChanged={reloadAssets} />
+                )}
+              </>
             )}
           </Panel>
         )}

@@ -1148,3 +1148,258 @@ func TestDisablingAndReenablingUserDoesNotRestoreOldToken(t *testing.T) {
 		t.Fatalf("reenabled viewer old token: status = %d, want %d", rec.Code, http.StatusUnauthorized)
 	}
 }
+
+func TestAssetProgramCRUDUsesCapabilitiesAndAudit(t *testing.T) {
+	router, pool, users := testRouter(t)
+	adminToken := registerAndLogin(t, router, users, "asset-admin@example.com", "Correct-Horse-Battery-9!")
+
+	createProgram := doJSON(t, router, http.MethodPost, "/api/v1/programs/", adminToken, map[string]string{"name": "Mission Alpha"})
+	if createProgram.Code != http.StatusCreated {
+		t.Fatalf("POST /programs: status=%d body=%s", createProgram.Code, createProgram.Body.String())
+	}
+	var program store.Program
+	if err := json.Unmarshal(createProgram.Body.Bytes(), &program); err != nil {
+		t.Fatal(err)
+	}
+
+	createAsset := doJSON(t, router, http.MethodPost, "/api/v1/assets/", adminToken, map[string]string{
+		"program_id": program.ID.String(), "kind": "domain", "value": "ops.example.com",
+	})
+	if createAsset.Code != http.StatusCreated {
+		t.Fatalf("POST /assets: status=%d body=%s", createAsset.Code, createAsset.Body.String())
+	}
+
+	listAssets := doJSON(t, router, http.MethodGet, "/api/v1/assets/?limit=50&offset=0", adminToken, nil)
+	if listAssets.Code != http.StatusOK {
+		t.Fatalf("GET /assets: status=%d body=%s", listAssets.Code, listAssets.Body.String())
+	}
+	var page store.Page[store.Asset]
+	if err := json.Unmarshal(listAssets.Body.Bytes(), &page); err != nil {
+		t.Fatal(err)
+	}
+	if len(page.Items) != 1 {
+		t.Fatalf("asset count=%d want 1", len(page.Items))
+	}
+	assetID := page.Items[0].ID
+
+	updateProgram := doJSON(t, router, http.MethodPut, "/api/v1/programs/"+program.ID.String(), adminToken, map[string]string{"name": "Mission Beta"})
+	if updateProgram.Code != http.StatusOK {
+		t.Fatalf("PUT /programs/{id}: status=%d body=%s", updateProgram.Code, updateProgram.Body.String())
+	}
+
+	updateAsset := doJSON(t, router, http.MethodPut, "/api/v1/assets/"+assetID.String(), adminToken, map[string]string{
+		"program_id": program.ID.String(), "kind": "ip", "value": "198.51.100.42",
+	})
+	if updateAsset.Code != http.StatusOK {
+		t.Fatalf("PUT /assets/{id}: status=%d body=%s", updateAsset.Code, updateAsset.Body.String())
+	}
+	var updated store.Asset
+	if err := json.Unmarshal(updateAsset.Body.Bytes(), &updated); err != nil {
+		t.Fatal(err)
+	}
+	if updated.Kind != "ip" || updated.Value != "198.51.100.42" {
+		t.Fatalf("updated asset=%#v", updated)
+	}
+
+	viewerHash, err := auth.HashPassword("Correct-Horse-Battery-9!")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := users.Create(context.Background(), "asset-viewer@example.com", viewerHash, string(auth.RoleViewer)); err != nil {
+		t.Fatal(err)
+	}
+	viewerToken := registerAndLogin_loginOnly(t, router, "asset-viewer@example.com", "Correct-Horse-Battery-9!")
+	denied := doJSON(t, router, http.MethodDelete, "/api/v1/assets/"+assetID.String(), viewerToken, nil)
+	if denied.Code != http.StatusForbidden {
+		t.Fatalf("viewer DELETE /assets/{id}: status=%d want 403", denied.Code)
+	}
+
+	deleteAsset := doJSON(t, router, http.MethodDelete, "/api/v1/assets/"+assetID.String(), adminToken, nil)
+	if deleteAsset.Code != http.StatusNoContent {
+		t.Fatalf("DELETE /assets/{id}: status=%d body=%s", deleteAsset.Code, deleteAsset.Body.String())
+	}
+	deleteProgram := doJSON(t, router, http.MethodDelete, "/api/v1/programs/"+program.ID.String(), adminToken, nil)
+	if deleteProgram.Code != http.StatusNoContent {
+		t.Fatalf("DELETE /programs/{id}: status=%d body=%s", deleteProgram.Code, deleteProgram.Body.String())
+	}
+
+	var auditCount int
+	if err := pool.QueryRow(context.Background(), `
+		SELECT count(*) FROM audit_log
+		WHERE action = ANY($1::text[])
+	`, []string{
+		"program.created", "asset.upserted", "program.updated", "asset.updated", "asset.deleted", "program.deleted",
+	}).Scan(&auditCount); err != nil {
+		t.Fatal(err)
+	}
+	if auditCount != 6 {
+		t.Fatalf("asset/program mutation audit count=%d want 6", auditCount)
+	}
+}
+
+func TestPlatformOrganizationUpdateUsesPlatformBoundaryAndAudits(t *testing.T) {
+	router, pool, users := testRouter(t)
+	platformToken := seedUserAndLogin(t, router, users, "platform-org-admin@example.com", "Correct-Horse-Battery-9!", string(auth.RoleAdmin))
+	platformUser, err := users.GetByEmail(context.Background(), "platform-org-admin@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := users.GrantPlatformAdministrator(context.Background(), platformUser.ID); err != nil {
+		t.Fatalf("grant platform admin: %v", err)
+	}
+
+	create := doJSON(t, router, http.MethodPost, "/api/v1/organizations/", platformToken, map[string]string{
+		"slug": "mission-alpha", "name": "Mission Alpha",
+	})
+	if create.Code != http.StatusCreated {
+		t.Fatalf("POST /organizations: status=%d body=%s", create.Code, create.Body.String())
+	}
+	var organization store.Organization
+	if err := json.Unmarshal(create.Body.Bytes(), &organization); err != nil {
+		t.Fatal(err)
+	}
+
+	update := doJSON(t, router, http.MethodPut, "/api/v1/organizations/"+organization.ID.String(), platformToken, map[string]string{
+		"slug": "mission-beta", "name": "Mission Beta",
+	})
+	if update.Code != http.StatusOK {
+		t.Fatalf("PUT /organizations/{id}: status=%d body=%s", update.Code, update.Body.String())
+	}
+	var updated store.Organization
+	if err := json.Unmarshal(update.Body.Bytes(), &updated); err != nil {
+		t.Fatal(err)
+	}
+	if updated.Slug != "mission-beta" || updated.Name != "Mission Beta" || updated.ID != organization.ID {
+		t.Fatalf("updated organization=%#v", updated)
+	}
+
+	secondCreate := doJSON(t, router, http.MethodPost, "/api/v1/organizations/", platformToken, map[string]string{
+		"slug": "mission-gamma", "name": "Mission Gamma",
+	})
+	if secondCreate.Code != http.StatusCreated {
+		t.Fatalf("create second organization: status=%d body=%s", secondCreate.Code, secondCreate.Body.String())
+	}
+	var second store.Organization
+	if err := json.Unmarshal(secondCreate.Body.Bytes(), &second); err != nil {
+		t.Fatal(err)
+	}
+	conflict := doJSON(t, router, http.MethodPut, "/api/v1/organizations/"+second.ID.String(), platformToken, map[string]string{
+		"slug": "mission-beta", "name": "Conflicting Mission",
+	})
+	if conflict.Code != http.StatusConflict {
+		t.Fatalf("duplicate organization slug update: status=%d want 409 body=%s", conflict.Code, conflict.Body.String())
+	}
+
+	tenantAdminToken := seedUserAndLogin(t, router, users, "tenant-only-admin@example.com", "Correct-Horse-Battery-9!", string(auth.RoleAdmin))
+	denied := doJSON(t, router, http.MethodPut, "/api/v1/organizations/"+organization.ID.String(), tenantAdminToken, map[string]string{
+		"slug": "forbidden-change", "name": "Forbidden Change",
+	})
+	if denied.Code != http.StatusForbidden {
+		t.Fatalf("tenant admin PUT /organizations/{id}: status=%d want 403", denied.Code)
+	}
+
+	var auditCount int
+	if err := pool.QueryRow(context.Background(), `SELECT count(*) FROM audit_log WHERE organization_id=$1 AND action='organization.updated'`, organization.ID).Scan(&auditCount); err != nil {
+		t.Fatal(err)
+	}
+	if auditCount != 1 {
+		t.Fatalf("organization.updated audit count=%d want 1", auditCount)
+	}
+}
+
+func TestSatelliteUpdateUsesOrbitalManageAndAudits(t *testing.T) {
+	router, pool, users := testRouter(t)
+	operatorToken := seedUserAndLogin(t, router, users, "sat-update-operator@example.com", "Correct-Horse-Battery-9!", "operator")
+	viewerToken := seedUserAndLogin(t, router, users, "sat-update-viewer@example.com", "Correct-Horse-Battery-9!", "viewer")
+
+	line1 := "1 25544U 98067A   26239.14379413  .00008717  00000+0  16243-3 0  9995"
+	line2 := "2 25544  51.6326 308.8886 0007697  87.8986 272.2885 15.49649978582754"
+	rec := doJSON(t, router, http.MethodPost, "/api/v1/satellites/", operatorToken, map[string]interface{}{
+		"norad_id": 25544, "name": "ISS", "tle_line1": line1, "tle_line2": line2,
+	})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("seed satellite: status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+
+	rec = doJSON(t, router, http.MethodGet, "/api/v1/satellites/", operatorToken, nil)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("list satellites: status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	var list []struct {
+		ID uuid.UUID `json:"id"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &list); err != nil || len(list) != 1 {
+		t.Fatalf("satellite list = %+v, err = %v", list, err)
+	}
+	satelliteID := list[0].ID
+	updatedLine1 := "1 25544U 98067A   26240.00000000  .00008717  00000+0  16243-3 0  9996"
+	body := map[string]interface{}{
+		"norad_id": 25544, "name": "ISS (ZARYA)", "tle_line1": updatedLine1, "tle_line2": line2,
+	}
+
+	rec = doJSON(t, router, http.MethodPut, "/api/v1/satellites/"+satelliteID.String(), viewerToken, body)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("viewer PUT /satellites/{id}: status = %d, want %d; body=%s", rec.Code, http.StatusForbidden, rec.Body.String())
+	}
+
+	rec = doJSON(t, router, http.MethodPut, "/api/v1/satellites/"+satelliteID.String(), operatorToken, body)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("operator PUT /satellites/{id}: status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	var updated store.Satellite
+	if err := json.Unmarshal(rec.Body.Bytes(), &updated); err != nil {
+		t.Fatalf("decode updated satellite: %v", err)
+	}
+	if updated.ID != satelliteID || updated.Name != "ISS (ZARYA)" || updated.TLELine1 != updatedLine1 {
+		t.Fatalf("updated satellite = %+v", updated)
+	}
+
+	var auditCount int
+	if err := pool.QueryRow(context.Background(), `SELECT count(*) FROM audit_log WHERE action='satellite.updated' AND details->>'satellite_id'=$1`, satelliteID.String()).Scan(&auditCount); err != nil {
+		t.Fatalf("query satellite.updated audit: %v", err)
+	}
+	if auditCount != 1 {
+		t.Fatalf("satellite.updated audit count = %d, want 1", auditCount)
+	}
+
+	rec = doJSON(t, router, http.MethodPut, "/api/v1/satellites/00000000-0000-0000-0000-000000000000", operatorToken, body)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("PUT unknown satellite: status = %d, want %d", rec.Code, http.StatusNotFound)
+	}
+}
+
+func TestSatelliteUpdateRejectsDuplicateNoradID(t *testing.T) {
+	router, _, users := testRouter(t)
+	token := seedUserAndLogin(t, router, users, "sat-conflict@example.com", "Correct-Horse-Battery-9!", "operator")
+	line1a := "1 25544U 98067A   26239.14379413  .00008717  00000+0  16243-3 0  9995"
+	line2a := "2 25544  51.6326 308.8886 0007697  87.8986 272.2885 15.49649978582754"
+	line1b := "1 40967U 15058A   26239.00000000  .00000000  00000+0  00000+0 0  9991"
+	line2b := "2 40967   0.0170  88.0000 0001000  90.0000 270.0000  1.00270000    01"
+	for _, body := range []map[string]interface{}{
+		{"norad_id": 25544, "name": "ISS", "tle_line1": line1a, "tle_line2": line2a},
+		{"norad_id": 40967, "name": "SAT-B", "tle_line1": line1b, "tle_line2": line2b},
+	} {
+		rec := doJSON(t, router, http.MethodPost, "/api/v1/satellites/", token, body)
+		if rec.Code != http.StatusCreated {
+			t.Fatalf("seed satellite: status = %d, body = %s", rec.Code, rec.Body.String())
+		}
+	}
+
+	rec := doJSON(t, router, http.MethodGet, "/api/v1/satellites/", token, nil)
+	var list []store.Satellite
+	if err := json.Unmarshal(rec.Body.Bytes(), &list); err != nil || len(list) != 2 {
+		t.Fatalf("satellite list = %+v, err=%v", list, err)
+	}
+	var target store.Satellite
+	for _, sat := range list {
+		if sat.NoradID == 40967 {
+			target = sat
+		}
+	}
+	rec = doJSON(t, router, http.MethodPut, "/api/v1/satellites/"+target.ID.String(), token, map[string]interface{}{
+		"norad_id": 25544, "name": "Conflict", "tle_line1": line1b, "tle_line2": line2b,
+	})
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("duplicate NORAD update: status = %d, want %d; body=%s", rec.Code, http.StatusConflict, rec.Body.String())
+	}
+}

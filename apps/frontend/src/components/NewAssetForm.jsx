@@ -3,9 +3,9 @@ import { createAsset, createProgram, fetchPrograms } from '../lib/api.js'
 
 const KINDS = ['domain', 'ip', 'satellite', 'ground_station', 'firmware']
 
-export default function NewAssetForm({ onCreated }) {
+export default function NewAssetForm({ onCreated, programs: providedPrograms = null, onProgramsChanged }) {
   const [open, setOpen] = useState(false)
-  const [programs, setPrograms] = useState(null)
+  const [programs, setPrograms] = useState(providedPrograms)
   const [programId, setProgramId] = useState('')
   const [newProgramName, setNewProgramName] = useState('')
   const [kind, setKind] = useState('domain')
@@ -14,6 +14,11 @@ export default function NewAssetForm({ onCreated }) {
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
+    if (providedPrograms !== null) {
+      setPrograms(providedPrograms)
+      if (!programId && providedPrograms.length) setProgramId(providedPrograms[0].id)
+      return
+    }
     if (!open || programs !== null) return
     fetchPrograms()
       .then((data) => {
@@ -21,7 +26,7 @@ export default function NewAssetForm({ onCreated }) {
         if (data?.length) setProgramId(data[0].id)
       })
       .catch(() => setPrograms([]))
-  }, [open, programs])
+  }, [open, programs, providedPrograms, programId])
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -32,6 +37,7 @@ export default function NewAssetForm({ onCreated }) {
       if (!targetProgramId && newProgramName.trim()) {
         const program = await createProgram(newProgramName.trim())
         targetProgramId = program.id
+        await onProgramsChanged?.()
       }
       if (!targetProgramId) {
         throw new Error('Select an existing program or name a new one')

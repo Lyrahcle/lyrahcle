@@ -98,6 +98,49 @@ func registerOrganizationRoutes(r chi.Router, cfg config.Config, organizations *
 			json.NewEncoder(w).Encode(org)
 		})
 
+		r.With(requirePlatformAdmin).Put("/{organizationID}", func(w http.ResponseWriter, r *http.Request) {
+			organizationID, err := uuid.Parse(chi.URLParam(r, "organizationID"))
+			if err != nil {
+				http.Error(w, "invalid organization id", http.StatusBadRequest)
+				return
+			}
+			var body struct {
+				Slug string `json:"slug"`
+				Name string `json:"name"`
+			}
+			if err := decodeStrictJSON(r, &body); err != nil {
+				http.Error(w, "invalid JSON body", http.StatusBadRequest)
+				return
+			}
+			body.Slug, body.Name = strings.TrimSpace(strings.ToLower(body.Slug)), strings.TrimSpace(body.Name)
+			if !organizationSlugPattern.MatchString(body.Slug) || body.Name == "" || len(body.Name) > 120 {
+				http.Error(w, "invalid organization slug or name", http.StatusBadRequest)
+				return
+			}
+			org, err := organizations.Update(r.Context(), organizationID, body.Slug, body.Name)
+			if err != nil {
+				switch {
+				case errors.Is(err, store.ErrOrganizationNotFound):
+					http.Error(w, "organization not found", http.StatusNotFound)
+				case errors.Is(err, store.ErrOrganizationSlugTaken):
+					http.Error(w, "organization slug already registered", http.StatusConflict)
+				default:
+					http.Error(w, "organization update failed", http.StatusInternalServerError)
+				}
+				return
+			}
+			if claims, ok := auth.FromContext(r.Context()); ok {
+				logAuditInOrganization(r.Context(), auditLog, org.ID, audit.ActorUser, claims.UserID.String(), audit.ActionOrganizationUpdated, clientIP(r), map[string]interface{}{
+					"organization_id":       org.ID.String(),
+					"actor_organization_id": claims.OrganizationID.String(),
+					"slug":                  org.Slug,
+					"name":                  org.Name,
+				})
+			}
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(org)
+		})
+
 		r.With(requirePlatformAdmin).Get("/platform-users", func(w http.ResponseWriter, r *http.Request) {
 			allUsers, err := users.List(r.Context())
 			if err != nil {

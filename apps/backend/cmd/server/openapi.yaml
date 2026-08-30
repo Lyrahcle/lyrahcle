@@ -16,6 +16,7 @@ tags:
 - name: System
 - name: Auth
 - name: Users
+- name: Organizations
 - name: Assets
 - name: Programs
 - name: Satellites
@@ -565,6 +566,129 @@ paths:
               description: Request correlation identifier
               schema:
                 type: string
+  /api/v1/organizations/:
+    get:
+      tags:
+      - Organizations
+      summary: List organizations in the global control plane
+      description: Requires the platform-administrator boundary; tenant-local RBAC capabilities do not grant access.
+      responses:
+        '200':
+          description: Organizations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Organization'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags:
+      - Organizations
+      summary: Create an organization
+      description: Requires the platform-administrator boundary.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrganizationMutation'
+      responses:
+        '201':
+          description: Organization created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Organization'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Organization slug already exists
+  /api/v1/organizations/{organizationID}:
+    put:
+      tags:
+      - Organizations
+      summary: Update organization metadata
+      description: Requires the platform-administrator boundary. The enabled lifecycle state is intentionally not changed by this endpoint.
+      parameters:
+      - name: organizationID
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrganizationMutation'
+      responses:
+        '200':
+          description: Organization updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Organization'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Organization not found
+        '409':
+          description: Organization slug already exists
+  /api/v1/organizations/platform-users:
+    get:
+      tags:
+      - Organizations
+      summary: List users eligible for platform-administrator management
+      description: Requires the platform-administrator boundary.
+      responses:
+        '200':
+          description: Platform user inventory
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/organizations/platform-admins/{userID}:
+    post:
+      tags:
+      - Organizations
+      summary: Grant platform-administrator access
+      parameters:
+      - name: userID
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '204':
+          description: Access granted
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Self-grant or lifecycle conflict
+    delete:
+      tags:
+      - Organizations
+      summary: Revoke platform-administrator access
+      parameters:
+      - name: userID
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '204':
+          description: Access revoked
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Self-revocation or last-platform-admin conflict
   /api/v1/programs/:
     get:
       tags:
@@ -618,6 +742,62 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /api/v1/programs/{programID}:
+    put:
+      tags:
+      - Programs
+      summary: Rename a tenant program
+      description: 'Requires capability: programs.manage. Returns 404 for unknown or cross-tenant IDs.'
+      parameters:
+      - name: programID
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - name
+              properties:
+                name:
+                  type: string
+      responses:
+        '200':
+          description: Program updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Program'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Program not found
+    delete:
+      tags:
+      - Programs
+      summary: Delete a tenant program
+      description: 'Requires capability: programs.manage. Deletion follows database cascade rules for dependent assets/scans.'
+      parameters:
+      - name: programID
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '204':
+          description: Program deleted
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Program not found
   /api/v1/assets/:
     get:
       tags:
@@ -662,6 +842,57 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /api/v1/assets/{assetID}:
+    put:
+      tags:
+      - Assets
+      summary: Update a tenant asset
+      description: 'Requires capability: assets.manage. The target program must belong to the same tenant.'
+      parameters:
+      - name: assetID
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAssetRequest'
+      responses:
+        '200':
+          description: Asset updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Asset'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Asset or tenant-local target program not found
+    delete:
+      tags:
+      - Assets
+      summary: Delete a tenant asset
+      description: 'Requires capability: assets.manage.'
+      parameters:
+      - name: assetID
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '204':
+          description: Asset deleted
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Asset not found
   /api/v1/satellites/:
     get:
       tags:
@@ -705,6 +936,40 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /api/v1/satellites/{satelliteID}:
+    put:
+      tags:
+      - Satellites
+      summary: Update a tracked satellite and its TLE
+      description: 'Requires capability: orbital.manage. Satellites are part of the shared global orbital reference catalog.'
+      parameters:
+      - name: satelliteID
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterSatelliteRequest'
+      responses:
+        '200':
+          description: Satellite updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SatelliteRecord'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Satellite not found
+        '409':
+          description: NORAD ID already registered by another satellite
   /api/v1/satellites/{satelliteID}/passes:
     get:
       tags:
@@ -2189,6 +2454,32 @@ components:
           type: boolean
         must_change_password:
           type: boolean
+    Organization:
+      type: object
+      required: [id, slug, name, enabled]
+      properties:
+        id:
+          type: string
+          format: uuid
+        slug:
+          type: string
+          pattern: '^[a-z0-9][a-z0-9-]{1,62}$'
+        name:
+          type: string
+          maxLength: 120
+        enabled:
+          type: boolean
+    OrganizationMutation:
+      type: object
+      required: [slug, name]
+      additionalProperties: false
+      properties:
+        slug:
+          type: string
+          pattern: '^[a-z0-9][a-z0-9-]{1,62}$'
+        name:
+          type: string
+          maxLength: 120
     Program:
       type: object
       properties:
@@ -2257,6 +2548,30 @@ components:
         altitude_km:
           type: number
           format: double
+    SatelliteRecord:
+      type: object
+      required: [id, norad_id, name, tle_line1, tle_line2, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        norad_id:
+          type: integer
+          example: 25544
+        name:
+          type: string
+          example: ISS (ZARYA)
+        tle_line1:
+          type: string
+        tle_line2:
+          type: string
+        tle_epoch:
+          type: string
+          format: date-time
+          nullable: true
+        updated_at:
+          type: string
+          format: date-time
     SatelliteWithPosition:
       type: object
       properties:

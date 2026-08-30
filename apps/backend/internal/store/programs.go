@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -66,9 +67,31 @@ func (s *ProgramStore) ListByOrganization(ctx context.Context, organizationID uu
 func (s *ProgramStore) CreateInOrganization(ctx context.Context, organizationID uuid.UUID, name string) (Program, error) {
 	var p Program
 	err := s.pool.QueryRow(ctx, `
-		INSERT INTO programs (organization_id, name)
-		VALUES ($1,$2)
-		RETURNING id, organization_id, name
-	`, organizationID, name).Scan(&p.ID, &p.OrganizationID, &p.Name)
+        INSERT INTO programs (organization_id, name)
+        VALUES ($1,$2)
+        RETURNING id, organization_id, name
+    `, organizationID, name).Scan(&p.ID, &p.OrganizationID, &p.Name)
 	return p, err
+}
+
+func (s *ProgramStore) UpdateInOrganization(ctx context.Context, organizationID, programID uuid.UUID, name string) (Program, error) {
+	var p Program
+	err := s.pool.QueryRow(ctx, `
+        UPDATE programs
+        SET name=$3
+        WHERE id=$2 AND organization_id=$1
+        RETURNING id, organization_id, name
+    `, organizationID, programID, name).Scan(&p.ID, &p.OrganizationID, &p.Name)
+	return p, err
+}
+
+func (s *ProgramStore) DeleteInOrganization(ctx context.Context, organizationID, programID uuid.UUID) error {
+	tag, err := s.pool.Exec(ctx, `DELETE FROM programs WHERE id=$1 AND organization_id=$2`, programID, organizationID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return pgx.ErrNoRows
+	}
+	return nil
 }

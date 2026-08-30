@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 )
 
 func TestSecurityE2EMultiTenantStoreBoundaries(t *testing.T) {
@@ -43,6 +44,10 @@ func TestSecurityE2EMultiTenantStoreBoundaries(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	if err := assets.UpsertInOrganization(ctx, orgA, programB.ID, "domain", "cross-tenant.example"); !errors.Is(err, pgx.ErrNoRows) {
+		t.Fatalf("tenant A created an asset under tenant B program: err=%v", err)
+	}
+
 	pageA, err := assets.ListByOrganization(ctx, orgA, 100, 0)
 	if err != nil {
 		t.Fatal(err)
@@ -61,6 +66,22 @@ func TestSecurityE2EMultiTenantStoreBoundaries(t *testing.T) {
 		t.Fatal(err)
 	} else if ok {
 		t.Fatal("tenant A can resolve tenant B asset by id")
+	}
+
+	if _, err := assets.UpdateInOrganization(ctx, orgA, pageB.Items[0].ID, programA.ID, "domain", "mutated.example"); !errors.Is(err, pgx.ErrNoRows) {
+		t.Fatalf("tenant A updated tenant B asset: err=%v", err)
+	}
+	if _, err := assets.UpdateInOrganization(ctx, orgA, pageA.Items[0].ID, programB.ID, "domain", "mutated.example"); !errors.Is(err, pgx.ErrNoRows) {
+		t.Fatalf("tenant A reassigned asset to tenant B program: err=%v", err)
+	}
+	if err := assets.DeleteInOrganization(ctx, orgA, pageB.Items[0].ID); !errors.Is(err, pgx.ErrNoRows) {
+		t.Fatalf("tenant A deleted tenant B asset: err=%v", err)
+	}
+	if _, err := programs.UpdateInOrganization(ctx, orgA, programB.ID, "renamed-by-a"); !errors.Is(err, pgx.ErrNoRows) {
+		t.Fatalf("tenant A updated tenant B program: err=%v", err)
+	}
+	if err := programs.DeleteInOrganization(ctx, orgA, programB.ID); !errors.Is(err, pgx.ErrNoRows) {
+		t.Fatalf("tenant A deleted tenant B program: err=%v", err)
 	}
 
 	var ruleBID uuid.UUID

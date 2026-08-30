@@ -817,3 +817,31 @@ func TestOrbitalEventStoreCreateAndRecentForSatellite(t *testing.T) {
 		t.Fatalf("recent events = %#v", recent)
 	}
 }
+
+func TestSatelliteStoreUpdateByID(t *testing.T) {
+	pool := testPool(t)
+	ctx := context.Background()
+	satellites := NewSatelliteStore(pool)
+
+	line1 := "1 25544U 98067A   26239.14379413  .00008717  00000+0  16243-3 0  9995"
+	line2 := "2 25544  51.6326 308.8886 0007697  87.8986 272.2885 15.49649978582754"
+	if err := satellites.Upsert(ctx, 25544, "ISS", line1, line2); err != nil {
+		t.Fatalf("seed satellite: %v", err)
+	}
+	list, err := satellites.List(ctx)
+	if err != nil || len(list) != 1 {
+		t.Fatalf("List after seed = %+v, %v", list, err)
+	}
+
+	updatedLine1 := "1 25544U 98067A   26240.00000000  .00008717  00000+0  16243-3 0  9996"
+	updated, err := satellites.Update(ctx, list[0].ID, 25544, "ISS (ZARYA)", updatedLine1, line2)
+	if err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+	if updated.ID != list[0].ID || updated.Name != "ISS (ZARYA)" || updated.TLELine1 != updatedLine1 {
+		t.Fatalf("updated satellite = %+v", updated)
+	}
+	if updated.TLEEpoch == nil {
+		t.Fatal("updated TLE epoch was not persisted")
+	}
+}

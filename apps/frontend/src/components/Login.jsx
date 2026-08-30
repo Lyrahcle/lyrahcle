@@ -15,7 +15,7 @@ import pkg from '../../package.json'
 
 const REPO_URL = 'https://github.com/mlko01/lyrahcle'
 
-export default function Login({ onSuccess }) {
+export default function Login({ onSuccess, notice = '' }) {
   const { t } = useI18n()
   const resetToken = new URLSearchParams(window.location.search).get('token') ?? ''
   const [identifier, setIdentifier] = useState('')
@@ -164,6 +164,11 @@ export default function Login({ onSuccess }) {
           </form>
         ) : (
           <form onSubmit={handleSubmit} className="rounded-lg border border-lyra-border bg-lyra-panel/40 p-6">
+            {notice === 'session_expired' && (
+              <p role="status" className="mb-4 rounded border border-lyra-warn/30 bg-lyra-warn/10 px-3 py-2 text-sm text-lyra-text">
+                {t('auth.sessionExpired')}
+              </p>
+            )}
             <div className={needsTotp || needsWebAuthn ? 'hidden' : 'mb-4'}>
               <label htmlFor="identifier" className="mb-1.5 block text-xs uppercase tracking-wider text-lyra-mutedDim">{t('common.emailOrUsername')}</label>
               <input

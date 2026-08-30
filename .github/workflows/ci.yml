@@ -153,6 +153,27 @@ jobs:
         run: |
           python3 -m unittest scripts/test_check_frontend_xss.py
           python3 scripts/check-frontend-xss.py .
+      - name: Asset and program UI parity contract
+        run: |
+          python3 -m unittest scripts/test_check_asset_program_parity.py
+          python3 scripts/check-asset-program-parity.py .
+      - name: Platform organization UI parity contract
+        run: |
+          python3 -m unittest scripts/test_check_platform_organization_parity.py
+          python3 scripts/check-platform-organization-parity.py .
+      - name: Satellite UI parity contract
+        run: |
+          python3 -m unittest scripts/test_check_satellite_ui_parity.py
+          python3 scripts/check-satellite-ui-parity.py .
+
+      - name: Correlation UI parity contract
+        run: |
+          python3 -m unittest scripts/test_check_correlation_ui_parity.py
+          python3 scripts/check-correlation-ui-parity.py .
+      - name: HTTP error UI contract
+        run: |
+          python3 -m unittest scripts/test_check_http_error_ui.py
+          python3 scripts/check-http-error-ui.py .
       - name: Lint Dockerfiles (hadolint)
         uses: hadolint/hadolint-action@v3.1.0
         continue-on-error: true

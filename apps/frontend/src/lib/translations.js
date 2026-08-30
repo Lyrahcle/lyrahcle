@@ -66,6 +66,19 @@ export const translations = {
       submit: 'Register',
       submitting: 'Registering…',
     },
+    satelliteManagement: {
+      empty: 'No satellites tracked yet.',
+      emptyHint: 'Use “Register satellite” above to add a TLE and begin orbital tracking.',
+      satellite: 'Satellite',
+      latitude: 'Latitude',
+      longitude: 'Longitude',
+      altitude: 'Altitude',
+      tleStatus: 'TLE status',
+      updated: 'Updated',
+      editEyebrow: 'Satellite management',
+      editSatellite: 'Edit {name}',
+      saveChanges: 'Save changes',
+    },
     connectivity: {
       supportedDevices: 'Supported devices',
       supportedDevicesHint: 'SDR hardware Lyrahcle agents can drive via SoapySDR. Status reflects what connected agents have self-reported.',
@@ -384,6 +397,19 @@ export const translations = {
       tle2: 'Línea TLE 2',
       submit: 'Registrar',
       submitting: 'Registrando…',
+    },
+    satelliteManagement: {
+      empty: 'Aún no hay satélites registrados.',
+      emptyHint: 'Usa “Registrar satélite” arriba para añadir un TLE y comenzar el seguimiento orbital.',
+      satellite: 'Satélite',
+      latitude: 'Latitud',
+      longitude: 'Longitud',
+      altitude: 'Altitud',
+      tleStatus: 'Estado TLE',
+      updated: 'Actualizado',
+      editEyebrow: 'Gestión de satélite',
+      editSatellite: 'Editar {name}',
+      saveChanges: 'Guardar cambios',
     },
     connectivity: {
       supportedDevices: 'Dispositivos soportados',
@@ -704,6 +730,19 @@ export const translations = {
       submit: 'Enregistrer',
       submitting: 'Enregistrement…',
     },
+    satelliteManagement: {
+      empty: 'Aucun satellite suivi pour le moment.',
+      emptyHint: 'Utilisez « Enregistrer un satellite » ci-dessus pour ajouter un TLE et commencer le suivi orbital.',
+      satellite: 'Satellite',
+      latitude: 'Latitude',
+      longitude: 'Longitude',
+      altitude: 'Altitude',
+      tleStatus: 'État TLE',
+      updated: 'Mis à jour',
+      editEyebrow: 'Gestion du satellite',
+      editSatellite: 'Modifier {name}',
+      saveChanges: 'Enregistrer les modifications',
+    },
     connectivity: {
       supportedDevices: 'Appareils pris en charge',
       supportedDevicesHint: 'Matériel SDR que les agents Lyrahcle peuvent piloter via SoapySDR. Le statut reflète ce que les agents connectés ont signalé.',
@@ -1022,6 +1061,19 @@ export const translations = {
       tle2: 'TLE-Zeile 2',
       submit: 'Registrieren',
       submitting: 'Wird registriert…',
+    },
+    satelliteManagement: {
+      empty: 'Noch keine Satelliten erfasst.',
+      emptyHint: 'Verwenden Sie oben „Satellit registrieren“, um ein TLE hinzuzufügen und die Bahnverfolgung zu starten.',
+      satellite: 'Satellit',
+      latitude: 'Breitengrad',
+      longitude: 'Längengrad',
+      altitude: 'Höhe',
+      tleStatus: 'TLE-Status',
+      updated: 'Aktualisiert',
+      editEyebrow: 'Satellitenverwaltung',
+      editSatellite: '{name} bearbeiten',
+      saveChanges: 'Änderungen speichern',
     },
     connectivity: {
       supportedDevices: 'Unterstützte Geräte',
@@ -1534,3 +1586,163 @@ const platformAdminTranslations = {
   de: { admins: 'Plattformadministratoren', user: 'Benutzer', organization: 'Organisation', access: 'Zugriff', platformAdmin: 'Plattformadmin', tenantUser: 'Mandantenbenutzer', grantAdmin: 'Plattformadmin gewähren', revokeAdmin: 'Plattformadmin entziehen' },
 }
 for (const [language, extra] of Object.entries(platformAdminTranslations)) Object.assign(translations[language].platform, extra)
+
+
+const platformParityTranslations = {
+  en: { status: 'Status', enabled: 'Enabled', disabled: 'Disabled', edit: 'Edit', editTitle: 'Edit organization', editSlug: 'Organization slug', editName: 'Organization name', saveChanges: 'Save changes', adminsHint: 'Platform administrators can manage the global control plane across tenant boundaries.', unknownOrganization: 'Unknown organization' },
+  es: { status: 'Estado', enabled: 'Activa', disabled: 'Desactivada', edit: 'Editar', editTitle: 'Editar organización', editSlug: 'Slug de la organización', editName: 'Nombre de la organización', saveChanges: 'Guardar cambios', adminsHint: 'Los administradores de plataforma pueden gestionar el plano de control global entre tenants.', unknownOrganization: 'Organización desconocida' },
+  fr: { status: 'État', enabled: 'Active', disabled: 'Désactivée', edit: 'Modifier', editTitle: 'Modifier l’organisation', editSlug: 'Slug de l’organisation', editName: 'Nom de l’organisation', saveChanges: 'Enregistrer', adminsHint: 'Les administrateurs de plateforme peuvent gérer le plan de contrôle global entre les tenants.', unknownOrganization: 'Organisation inconnue' },
+  de: { status: 'Status', enabled: 'Aktiv', disabled: 'Deaktiviert', edit: 'Bearbeiten', editTitle: 'Organisation bearbeiten', editSlug: 'Organisations-Slug', editName: 'Organisationsname', saveChanges: 'Änderungen speichern', adminsHint: 'Plattformadministratoren können die globale Kontrollebene tenantübergreifend verwalten.', unknownOrganization: 'Unbekannte Organisation' },
+}
+for (const [language, extra] of Object.entries(platformParityTranslations)) Object.assign(translations[language].platform, extra)
+
+const orbitalOperationsTranslations = {
+  en: {
+    panels: { orbitalOperations: 'Orbital Operations' },
+    orbitalOperations: {
+      title: 'Pass prediction & orbital events', passPrediction: 'Pass prediction', passHint: 'Predict visibility from a ground-station location using the stored TLE.',
+      satellite: 'Satellite', latitude: 'Station latitude', longitude: 'Station longitude', altitude: 'Altitude (m)', horizon: 'Prediction horizon (hours)', minElevation: 'Minimum elevation (°)',
+      predict: 'Predict passes', predicting: 'Predicting…', predictedPasses: 'Predicted passes', runPrediction: 'Enter the ground-station coordinates and run a prediction.', noPasses: 'No passes meet this elevation threshold in the selected horizon.', peak: 'Peak elevation', duration: 'Duration',
+      events: 'Orbital events', eventsHint: 'Operator or trusted-integration context used as candidate-only correlation evidence.', noEvents: 'No recent orbital events for this satellite.', type: 'Type', time: 'Event time', source: 'Source', confidence: 'Confidence', severity: 'Severity',
+      addEvent: 'Add orbital event', candidateOnly: 'Events are stored as candidate-only evidence and do not directly change incident severity.', sourcePlaceholder: 'Operator, provider or trusted feed', maneuver: 'Maneuver', conjunction: 'Conjunction', createEvent: 'Add orbital event', creating: 'Adding…',
+      noAccess: 'You do not have permission to view orbital operations.', noSatellites: 'Register a satellite in the UI before using orbital operations.', predictionFailed: 'Pass prediction failed.', eventsFailed: 'Orbital events could not be loaded.', eventCreateFailed: 'Orbital event could not be created.',
+    },
+  },
+  es: {
+    panels: { orbitalOperations: 'Operaciones Orbitales' },
+    orbitalOperations: {
+      title: 'Predicción de pases y eventos orbitales', passPrediction: 'Predicción de pases', passHint: 'Predice la visibilidad desde una estación terrestre usando el TLE almacenado.',
+      satellite: 'Satélite', latitude: 'Latitud de la estación', longitude: 'Longitud de la estación', altitude: 'Altitud (m)', horizon: 'Horizonte de predicción (horas)', minElevation: 'Elevación mínima (°)',
+      predict: 'Predecir pases', predicting: 'Calculando…', predictedPasses: 'Pases previstos', runPrediction: 'Introduce las coordenadas de la estación y ejecuta una predicción.', noPasses: 'No hay pases que cumplan el umbral de elevación en el horizonte seleccionado.', peak: 'Elevación máxima', duration: 'Duración',
+      events: 'Eventos orbitales', eventsHint: 'Contexto de operador o integración confiable usado solo como evidencia candidata de correlación.', noEvents: 'No hay eventos orbitales recientes para este satélite.', type: 'Tipo', time: 'Hora del evento', source: 'Fuente', confidence: 'Confianza', severity: 'Severidad',
+      addEvent: 'Añadir evento orbital', candidateOnly: 'Los eventos se guardan como evidencia candidata y no cambian directamente la severidad del incidente.', sourcePlaceholder: 'Operador, proveedor o feed confiable', maneuver: 'Maniobra', conjunction: 'Conjunción', createEvent: 'Añadir evento orbital', creating: 'Añadiendo…',
+      noAccess: 'No tienes permiso para ver operaciones orbitales.', noSatellites: 'Registra un satélite desde la UI antes de usar operaciones orbitales.', predictionFailed: 'La predicción de pases ha fallado.', eventsFailed: 'No se pudieron cargar los eventos orbitales.', eventCreateFailed: 'No se pudo crear el evento orbital.',
+    },
+  },
+  fr: {
+    panels: { orbitalOperations: 'Opérations orbitales' },
+    orbitalOperations: {
+      title: 'Prédiction des passages et événements orbitaux', passPrediction: 'Prédiction des passages', passHint: 'Prédit la visibilité depuis une station sol avec le TLE enregistré.',
+      satellite: 'Satellite', latitude: 'Latitude de la station', longitude: 'Longitude de la station', altitude: 'Altitude (m)', horizon: 'Horizon de prédiction (heures)', minElevation: 'Élévation minimale (°)',
+      predict: 'Prédire les passages', predicting: 'Calcul…', predictedPasses: 'Passages prévus', runPrediction: 'Saisissez les coordonnées de la station et lancez une prédiction.', noPasses: 'Aucun passage ne respecte ce seuil dans la période sélectionnée.', peak: 'Élévation max.', duration: 'Durée',
+      events: 'Événements orbitaux', eventsHint: 'Contexte opérateur ou intégration de confiance utilisé uniquement comme preuve candidate.', noEvents: 'Aucun événement orbital récent pour ce satellite.', type: 'Type', time: "Heure de l’événement", source: 'Source', confidence: 'Confiance', severity: 'Gravité',
+      addEvent: 'Ajouter un événement orbital', candidateOnly: 'Les événements restent des preuves candidates et ne modifient pas directement la gravité.', sourcePlaceholder: 'Opérateur, fournisseur ou flux de confiance', maneuver: 'Manœuvre', conjunction: 'Conjonction', createEvent: 'Ajouter un événement orbital', creating: 'Ajout…',
+      noAccess: "Vous n’avez pas l’autorisation de voir les opérations orbitales.", noSatellites: 'Enregistrez un satellite dans l’interface avant d’utiliser les opérations orbitales.', predictionFailed: 'La prédiction a échoué.', eventsFailed: 'Impossible de charger les événements orbitaux.', eventCreateFailed: 'Impossible de créer l’événement orbital.',
+    },
+  },
+  de: {
+    panels: { orbitalOperations: 'Orbitale Operationen' },
+    orbitalOperations: {
+      title: 'Passvorhersage & orbitale Ereignisse', passPrediction: 'Passvorhersage', passHint: 'Berechnet Sichtbarkeit von einer Bodenstation anhand des gespeicherten TLE.',
+      satellite: 'Satellit', latitude: 'Stationsbreitengrad', longitude: 'Stationslängengrad', altitude: 'Höhe (m)', horizon: 'Vorhersagehorizont (Stunden)', minElevation: 'Minimale Elevation (°)',
+      predict: 'Pässe vorhersagen', predicting: 'Berechnung…', predictedPasses: 'Vorhergesagte Pässe', runPrediction: 'Stationskoordinaten eingeben und Vorhersage starten.', noPasses: 'Keine Pässe erfüllen die Elevationsschwelle im gewählten Zeitraum.', peak: 'Max. Elevation', duration: 'Dauer',
+      events: 'Orbitale Ereignisse', eventsHint: 'Operator- oder vertrauenswürdiger Integrationskontext nur als Kandidaten-Evidenz.', noEvents: 'Keine aktuellen orbitalen Ereignisse für diesen Satelliten.', type: 'Typ', time: 'Ereigniszeit', source: 'Quelle', confidence: 'Konfidenz', severity: 'Schweregrad',
+      addEvent: 'Orbitales Ereignis hinzufügen', candidateOnly: 'Ereignisse sind Kandidaten-Evidenz und ändern den Vorfallschweregrad nicht direkt.', sourcePlaceholder: 'Operator, Anbieter oder vertrauenswürdiger Feed', maneuver: 'Manöver', conjunction: 'Konjunktion', createEvent: 'Orbitales Ereignis hinzufügen', creating: 'Hinzufügen…',
+      noAccess: 'Keine Berechtigung für orbitale Operationen.', noSatellites: 'Registriere zuerst einen Satelliten über die UI.', predictionFailed: 'Passvorhersage fehlgeschlagen.', eventsFailed: 'Orbitale Ereignisse konnten nicht geladen werden.', eventCreateFailed: 'Orbitales Ereignis konnte nicht erstellt werden.',
+    },
+  },
+}
+for (const [language, extra] of Object.entries(orbitalOperationsTranslations)) {
+  Object.assign(translations[language].panels, extra.panels)
+  translations[language].orbitalOperations = extra.orbitalOperations
+}
+
+const assetInventoryTranslations = {
+  en: { assetInventory: {
+    kind: 'Kind', value: 'Value', program: 'Program', programs: 'Programs', programsHint: 'Manage tenant-local programs used to group tracked assets.', programName: 'Program name', programNameRequired: 'Program name is required.', noPrograms: 'No programs configured yet.',
+    actions: 'Actions', edit: 'Edit', delete: 'Delete', deleting: 'Deleting…', noAssets: 'No assets tracked yet.', noAssetsHint: 'Create a program and add the first asset from this screen.', assetFieldsRequired: 'Program and asset value are required.', programAccessRequired: 'Asset creation needs programs.read (or programs.manage) so the target program can be selected safely.',
+    deleteAssetConfirm: 'Delete asset {value}?', deleteProgramConfirm: 'Delete program {name}? Its tracked assets and dependent scan history will also be removed.',
+  } },
+  es: { assetInventory: {
+    kind: 'Tipo', value: 'Valor', program: 'Programa', programs: 'Programas', programsHint: 'Gestiona los programas del tenant usados para agrupar los assets monitorizados.', programName: 'Nombre del programa', programNameRequired: 'El nombre del programa es obligatorio.', noPrograms: 'Todavía no hay programas configurados.',
+    actions: 'Acciones', edit: 'Editar', delete: 'Eliminar', deleting: 'Eliminando…', noAssets: 'Todavía no hay assets monitorizados.', noAssetsHint: 'Crea un programa y añade el primer asset desde esta pantalla.', assetFieldsRequired: 'El programa y el valor del asset son obligatorios.', programAccessRequired: 'Para crear assets desde la UI necesitas programs.read (o programs.manage) y así seleccionar el programa de destino de forma segura.',
+    deleteAssetConfirm: '¿Eliminar el asset {value}?', deleteProgramConfirm: '¿Eliminar el programa {name}? También se eliminarán sus assets monitorizados y el historial de escaneos dependiente.',
+  } },
+  fr: { assetInventory: {
+    kind: 'Type', value: 'Valeur', program: 'Programme', programs: 'Programmes', programsHint: 'Gérez les programmes du tenant utilisés pour regrouper les actifs suivis.', programName: 'Nom du programme', programNameRequired: 'Le nom du programme est obligatoire.', noPrograms: 'Aucun programme configuré.',
+    actions: 'Actions', edit: 'Modifier', delete: 'Supprimer', deleting: 'Suppression…', noAssets: 'Aucun actif suivi pour le moment.', noAssetsHint: 'Créez un programme et ajoutez le premier actif depuis cet écran.', assetFieldsRequired: 'Le programme et la valeur de l’actif sont obligatoires.', programAccessRequired: 'La création d’actifs dans l’interface nécessite programs.read (ou programs.manage) pour sélectionner le programme cible en sécurité.',
+    deleteAssetConfirm: 'Supprimer l’actif {value} ?', deleteProgramConfirm: 'Supprimer le programme {name} ? Ses actifs suivis et l’historique des scans dépendants seront également supprimés.',
+  } },
+  de: { assetInventory: {
+    kind: 'Typ', value: 'Wert', program: 'Programm', programs: 'Programme', programsHint: 'Mandantenlokale Programme zur Gruppierung verfolgter Assets verwalten.', programName: 'Programmname', programNameRequired: 'Der Programmname ist erforderlich.', noPrograms: 'Noch keine Programme konfiguriert.',
+    actions: 'Aktionen', edit: 'Bearbeiten', delete: 'Löschen', deleting: 'Löschen…', noAssets: 'Noch keine Assets erfasst.', noAssetsHint: 'Erstelle ein Programm und füge das erste Asset direkt hier hinzu.', assetFieldsRequired: 'Programm und Asset-Wert sind erforderlich.', programAccessRequired: 'Zum Erstellen von Assets in der UI ist programs.read (oder programs.manage) erforderlich, damit das Zielprogramm sicher gewählt werden kann.',
+    deleteAssetConfirm: 'Asset {value} löschen?', deleteProgramConfirm: 'Programm {name} löschen? Zugehörige Assets und abhängige Scan-Historie werden ebenfalls entfernt.',
+  } },
+}
+for (const [language, extra] of Object.entries(assetInventoryTranslations)) translations[language].assetInventory = extra.assetInventory
+
+const correlationEvidenceTranslations = {
+  en: { correlation: {
+    eyebrow: 'Explainable evidence', title: 'Cross-domain correlation assessment', explain: 'Candidate assessment generated from corroborating telemetry and context. It never changes incident severity by itself.',
+    confidence: 'Confidence', candidateSeverity: 'Candidate severity', policy: 'Policy', corroborating: 'Corroborating domains', contextDomains: 'Context-only domains', reasons: 'Why this assessment exists',
+    notApplied: 'Not applied to severity', applied: 'Applied', none: 'None', candidateOnly: 'Candidate only', contextOnly: 'Context only', orbitalOperations: 'Orbital operations context', agentAudit: 'Agent audit context', assetAlerts: 'Asset CVE context',
+    noOrbitalOperations: 'No linked maneuver or conjunction evidence.', noAgentAudit: 'No linked agent audit activity.', noAssetAlerts: 'No linked asset CVE alerts.', moreItems: '+{count} more items',
+  } },
+  es: { correlation: {
+    eyebrow: 'Evidencia explicable', title: 'Evaluación de correlación multidominio', explain: 'Evaluación candidata generada a partir de telemetría corroborante y contexto. Nunca cambia por sí sola la severidad del incidente.',
+    confidence: 'Confianza', candidateSeverity: 'Severidad candidata', policy: 'Política', corroborating: 'Dominios corroborantes', contextDomains: 'Dominios solo contextuales', reasons: 'Motivos de la evaluación',
+    notApplied: 'No aplicada a la severidad', applied: 'Aplicada', none: 'Ninguno', candidateOnly: 'Solo candidata', contextOnly: 'Solo contexto', orbitalOperations: 'Contexto de operaciones orbitales', agentAudit: 'Contexto de auditoría del agente', assetAlerts: 'Contexto CVE de assets',
+    noOrbitalOperations: 'No hay evidencia enlazada de maniobras o conjunciones.', noAgentAudit: 'No hay actividad de auditoría del agente enlazada.', noAssetAlerts: 'No hay alertas CVE de assets enlazadas.', moreItems: '+{count} elementos más',
+  } },
+  fr: { correlation: {
+    eyebrow: 'Preuves explicables', title: 'Évaluation de corrélation multidomaine', explain: "Évaluation candidate générée à partir de télémétrie corroborante et de contexte. Elle ne modifie jamais seule la gravité de l’incident.",
+    confidence: 'Confiance', candidateSeverity: 'Gravité candidate', policy: 'Politique', corroborating: 'Domaines corroborants', contextDomains: 'Domaines contextuels uniquement', reasons: 'Raisons de cette évaluation',
+    notApplied: 'Non appliquée à la gravité', applied: 'Appliquée', none: 'Aucun', candidateOnly: 'Candidate uniquement', contextOnly: 'Contexte uniquement', orbitalOperations: 'Contexte des opérations orbitales', agentAudit: "Contexte d’audit de l’agent", assetAlerts: 'Contexte CVE des actifs',
+    noOrbitalOperations: 'Aucune preuve liée de manœuvre ou conjonction.', noAgentAudit: "Aucune activité d’audit liée pour l’agent.", noAssetAlerts: 'Aucune alerte CVE liée.', moreItems: '+{count} éléments supplémentaires',
+  } },
+  de: { correlation: {
+    eyebrow: 'Erklärbare Evidenz', title: 'Domänenübergreifende Korrelationsbewertung', explain: 'Kandidatenbewertung aus bestätigender Telemetrie und Kontext. Sie ändert niemals eigenständig den Schweregrad des Vorfalls.',
+    confidence: 'Konfidenz', candidateSeverity: 'Kandidaten-Schweregrad', policy: 'Richtlinie', corroborating: 'Bestätigende Domänen', contextDomains: 'Nur kontextuelle Domänen', reasons: 'Gründe für diese Bewertung',
+    notApplied: 'Nicht auf Schweregrad angewendet', applied: 'Angewendet', none: 'Keine', candidateOnly: 'Nur Kandidat', contextOnly: 'Nur Kontext', orbitalOperations: 'Kontext orbitaler Operationen', agentAudit: 'Agent-Audit-Kontext', assetAlerts: 'Asset-CVE-Kontext',
+    noOrbitalOperations: 'Keine verknüpfte Manöver- oder Konjunktionsevidenz.', noAgentAudit: 'Keine verknüpfte Agent-Audit-Aktivität.', noAssetAlerts: 'Keine verknüpften Asset-CVE-Warnungen.', moreItems: '+{count} weitere Einträge',
+  } },
+}
+for (const [language, extra] of Object.entries(correlationEvidenceTranslations)) translations[language].correlation = extra.correlation
+
+
+const httpErrorTranslations = {
+  en: { httpErrors: {
+    forbidden: { title: 'Permission denied', message: 'Your role does not allow this operation. Ask an administrator if you need additional access.' },
+    not_found: { title: 'Resource not found', message: 'The requested item no longer exists or is not visible in your organization.' },
+    conflict: { title: 'Update conflict', message: 'The operation conflicts with the current state. Refresh the data and try again.' },
+    rate_limited: { title: 'Too many requests', message: 'Lyrahcle is temporarily limiting requests. Retry after the cooldown.' },
+    server: { title: 'Server error', message: 'The backend could not complete the request. Your current screen is preserved.' },
+    network: { title: 'Backend unavailable', message: 'The Lyrahcle API cannot be reached. Check connectivity and retry.' },
+    retry: 'Retry', retryIn: 'Retry in {seconds}s', dismiss: 'Dismiss', requestId: 'Request ID',
+    loadingAccessContext: 'Loading access context…', accessContextFailed: 'Access context could not be loaded. Your session remains protected; retry when the backend is available.',
+  }, auth: { sessionExpired: 'Your session expired or was revoked. Sign in again to continue.' } },
+  es: { httpErrors: {
+    forbidden: { title: 'Permiso denegado', message: 'Tu rol no permite esta operación. Solicita acceso adicional a un administrador si lo necesitas.' },
+    not_found: { title: 'Recurso no encontrado', message: 'El elemento solicitado ya no existe o no es visible en tu organización.' },
+    conflict: { title: 'Conflicto de actualización', message: 'La operación entra en conflicto con el estado actual. Actualiza los datos y vuelve a intentarlo.' },
+    rate_limited: { title: 'Demasiadas solicitudes', message: 'Lyrahcle está limitando temporalmente las solicitudes. Reintenta tras el periodo de espera.' },
+    server: { title: 'Error del servidor', message: 'El backend no pudo completar la solicitud. La pantalla actual se mantiene.' },
+    network: { title: 'Backend no disponible', message: 'No se puede alcanzar la API de Lyrahcle. Comprueba la conectividad y reintenta.' },
+    retry: 'Reintentar', retryIn: 'Reintentar en {seconds}s', dismiss: 'Cerrar', requestId: 'ID de solicitud',
+    loadingAccessContext: 'Cargando contexto de acceso…', accessContextFailed: 'No se pudo cargar el contexto de acceso. La sesión sigue protegida; reintenta cuando el backend esté disponible.',
+  }, auth: { sessionExpired: 'Tu sesión ha caducado o ha sido revocada. Inicia sesión de nuevo para continuar.' } },
+  fr: { httpErrors: {
+    forbidden: { title: 'Permission refusée', message: 'Votre rôle ne permet pas cette opération. Demandez un accès supplémentaire à un administrateur si nécessaire.' },
+    not_found: { title: 'Ressource introuvable', message: 'L’élément demandé n’existe plus ou n’est pas visible dans votre organisation.' },
+    conflict: { title: 'Conflit de mise à jour', message: 'L’opération est incompatible avec l’état actuel. Actualisez les données puis réessayez.' },
+    rate_limited: { title: 'Trop de requêtes', message: 'Lyrahcle limite temporairement les requêtes. Réessayez après le délai indiqué.' },
+    server: { title: 'Erreur serveur', message: 'Le backend n’a pas pu terminer la requête. L’écran actuel est conservé.' },
+    network: { title: 'Backend indisponible', message: 'L’API Lyrahcle est inaccessible. Vérifiez la connectivité puis réessayez.' },
+    retry: 'Réessayer', retryIn: 'Réessayer dans {seconds}s', dismiss: 'Fermer', requestId: 'ID de requête',
+    loadingAccessContext: 'Chargement du contexte d’accès…', accessContextFailed: 'Le contexte d’accès n’a pas pu être chargé. La session reste protégée ; réessayez lorsque le backend est disponible.',
+  }, auth: { sessionExpired: 'Votre session a expiré ou a été révoquée. Reconnectez-vous pour continuer.' } },
+  de: { httpErrors: {
+    forbidden: { title: 'Zugriff verweigert', message: 'Ihre Rolle erlaubt diese Aktion nicht. Fordern Sie bei Bedarf zusätzliche Rechte bei einem Administrator an.' },
+    not_found: { title: 'Ressource nicht gefunden', message: 'Das angeforderte Element existiert nicht mehr oder ist in Ihrer Organisation nicht sichtbar.' },
+    conflict: { title: 'Aktualisierungskonflikt', message: 'Die Aktion steht im Konflikt mit dem aktuellen Zustand. Daten aktualisieren und erneut versuchen.' },
+    rate_limited: { title: 'Zu viele Anfragen', message: 'Lyrahcle begrenzt Anfragen vorübergehend. Nach der Wartezeit erneut versuchen.' },
+    server: { title: 'Serverfehler', message: 'Das Backend konnte die Anfrage nicht abschließen. Die aktuelle Ansicht bleibt erhalten.' },
+    network: { title: 'Backend nicht verfügbar', message: 'Die Lyrahcle-API ist nicht erreichbar. Verbindung prüfen und erneut versuchen.' },
+    retry: 'Erneut versuchen', retryIn: 'Erneut in {seconds}s', dismiss: 'Schließen', requestId: 'Anfrage-ID',
+    loadingAccessContext: 'Zugriffskontext wird geladen…', accessContextFailed: 'Der Zugriffskontext konnte nicht geladen werden. Die Sitzung bleibt geschützt; erneut versuchen, sobald das Backend verfügbar ist.',
+  }, auth: { sessionExpired: 'Ihre Sitzung ist abgelaufen oder wurde widerrufen. Melden Sie sich erneut an.' } },
+}
+for (const [language, extra] of Object.entries(httpErrorTranslations)) {
+  translations[language].httpErrors = extra.httpErrors
+  Object.assign(translations[language].auth, extra.auth)
+}

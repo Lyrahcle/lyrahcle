@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -32,10 +33,10 @@ func (s *AssetStore) List(ctx context.Context, limit, offset int) (Page[Asset], 
 	}
 
 	rows, err := s.pool.Query(ctx, `
-		SELECT id, organization_id, program_id, kind, value FROM assets
-		ORDER BY last_seen DESC
-		LIMIT $1 OFFSET $2
-	`, limit, offset)
+        SELECT id, organization_id, program_id, kind, value FROM assets
+        ORDER BY last_seen DESC
+        LIMIT $1 OFFSET $2
+    `, limit, offset)
 	if err != nil {
 		return Page[Asset]{}, err
 	}
@@ -66,10 +67,10 @@ func (s *AssetStore) ListByKinds(ctx context.Context, kinds []string) ([]Asset, 
 	}
 
 	rows, err := s.pool.Query(ctx, `
-		SELECT id, organization_id, program_id, kind, value FROM assets
-		WHERE kind = ANY($1)
-		ORDER BY last_seen DESC
-	`, kinds)
+        SELECT id, organization_id, program_id, kind, value FROM assets
+        WHERE kind = ANY($1)
+        ORDER BY last_seen DESC
+    `, kinds)
 	if err != nil {
 		return nil, err
 	}
@@ -93,12 +94,12 @@ func (s *AssetStore) ListByOrganization(ctx context.Context, organizationID uuid
 		return Page[Asset]{}, err
 	}
 	rows, err := s.pool.Query(ctx, `
-		SELECT id, organization_id, program_id, kind, value
-		FROM assets
-		WHERE organization_id=$1
-		ORDER BY last_seen DESC
-		LIMIT $2 OFFSET $3
-	`, organizationID, limit, offset)
+        SELECT id, organization_id, program_id, kind, value
+        FROM assets
+        WHERE organization_id=$1
+        ORDER BY last_seen DESC
+        LIMIT $2 OFFSET $3
+    `, organizationID, limit, offset)
 	if err != nil {
 		return Page[Asset]{}, err
 	}
@@ -114,14 +115,53 @@ func (s *AssetStore) ListByOrganization(ctx context.Context, organizationID uuid
 	return Page[Asset]{Items: items, Total: total, Limit: limit, Offset: offset}, rows.Err()
 }
 
+// UpsertInOrganization only accepts a program owned by the same organization.
+// This prevents a known program UUID from another tenant being used to create a
+// cross-tenant asset association.
 func (s *AssetStore) UpsertInOrganization(ctx context.Context, organizationID, programID uuid.UUID, kind, value string) error {
-	_, err := s.pool.Exec(ctx, `
-		INSERT INTO assets (organization_id, program_id, kind, value)
-		VALUES ($1,$2,$3,$4)
-		ON CONFLICT (organization_id, program_id, kind, value)
-		DO UPDATE SET last_seen=now()
-	`, organizationID, programID, kind, value)
-	return err
+	tag, err := s.pool.Exec(ctx, `
+        INSERT INTO assets (organization_id, program_id, kind, value)
+        SELECT $1, p.id, $3, $4
+        FROM programs p
+        WHERE p.id=$2 AND p.organization_id=$1
+        ON CONFLICT (organization_id, program_id, kind, value)
+        DO UPDATE SET last_seen=now()
+    `, organizationID, programID, kind, value)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return pgx.ErrNoRows
+	}
+	return nil
+}
+
+func (s *AssetStore) UpdateInOrganization(ctx context.Context, organizationID, assetID, programID uuid.UUID, kind, value string) (Asset, error) {
+	var asset Asset
+	err := s.pool.QueryRow(ctx, `
+        UPDATE assets a
+        SET program_id=p.id, kind=$4, value=$5, last_seen=now()
+        FROM programs p
+        WHERE a.id=$2
+          AND a.organization_id=$1
+          AND p.id=$3
+          AND p.organization_id=$1
+        RETURNING a.id, a.organization_id, a.program_id, a.kind, a.value
+    `, organizationID, assetID, programID, kind, value).Scan(
+		&asset.ID, &asset.OrganizationID, &asset.ProgramID, &asset.Kind, &asset.Value,
+	)
+	return asset, err
+}
+
+func (s *AssetStore) DeleteInOrganization(ctx context.Context, organizationID, assetID uuid.UUID) error {
+	tag, err := s.pool.Exec(ctx, `DELETE FROM assets WHERE id=$1 AND organization_id=$2`, assetID, organizationID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return pgx.ErrNoRows
+	}
+	return nil
 }
 
 func (s *AssetStore) ExistsInOrganization(ctx context.Context, organizationID, assetID uuid.UUID) (bool, error) {

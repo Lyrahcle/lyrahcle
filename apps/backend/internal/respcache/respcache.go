@@ -40,3 +40,9 @@ func (c *Cache) Set(ctx context.Context, key string, value interface{}, ttl time
 	}
 	c.client.Set(ctx, key, raw, ttl)
 }
+func (c *Cache) Delete(ctx context.Context, key string) error {
+	if c == nil || c.client == nil {
+		return nil
+	}
+	return c.client.Del(ctx, key).Err()
+}

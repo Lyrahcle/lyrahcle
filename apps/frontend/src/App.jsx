@@ -2,18 +2,33 @@ import { useCallback, useEffect, useState } from 'react'
 import Login from './components/Login.jsx'
 import Dashboard from './components/Dashboard.jsx'
 import ChangePasswordModal from './components/ChangePasswordModal.jsx'
+import ApiStatusBanner from './components/ApiStatusBanner.jsx'
 import { isAuthenticated, logout, passwordChangeRequired } from './lib/auth.js'
 import { clearEffectivePermissions, loadEffectivePermissions } from './lib/permissions.js'
+import { UnauthorizedError } from './lib/api.js'
+import { useI18n } from './lib/I18nContext.jsx'
 
 function App() {
+  const { t } = useI18n()
   const [authenticated, setAuthenticated] = useState(isAuthenticated())
   const [activeTab, setActiveTab] = useState('orbital')
   const [permissionsReady, setPermissionsReady] = useState(false)
+  const [authNotice, setAuthNotice] = useState('')
+  const [permissionsError, setPermissionsError] = useState(null)
+  const [permissionsRetry, setPermissionsRetry] = useState(0)
   const mustChangePassword = authenticated && passwordChangeRequired()
 
   const handleLogout = useCallback(() => {
     clearEffectivePermissions()
     logout()
+    setAuthNotice('')
+    setAuthenticated(false)
+  }, [])
+
+  const handleSessionExpired = useCallback(() => {
+    clearEffectivePermissions()
+    logout()
+    setAuthNotice('session_expired')
     setAuthenticated(false)
   }, [])
 
@@ -24,32 +39,54 @@ function App() {
       setPermissionsReady(false)
       return undefined
     }
+    setPermissionsError(null)
     loadEffectivePermissions()
       .then(() => {
         if (!cancelled) setPermissionsReady(true)
       })
-      .catch(() => {
-        if (!cancelled) handleLogout()
+      .catch((error) => {
+        if (cancelled) return
+        if (error instanceof UnauthorizedError) {
+          handleSessionExpired()
+          return
+        }
+        setPermissionsError(error)
       })
     return () => {
       cancelled = true
     }
-  }, [authenticated, mustChangePassword, handleLogout])
+  }, [authenticated, mustChangePassword, handleSessionExpired, permissionsRetry])
 
   if (!authenticated) {
-    return <Login onSuccess={() => { setPermissionsReady(false); setAuthenticated(true) }} />
+    return <Login notice={authNotice} onSuccess={() => { setAuthNotice(''); setPermissionsReady(false); setAuthenticated(true) }} />
   }
 
   if (mustChangePassword) {
     return <ChangePasswordModal required onClose={() => {}} onSecurityChange={handleLogout} />
   }
 
-  if (!permissionsReady) return null
+  if (!permissionsReady) {
+    return (
+      <div className="min-h-screen bg-transparent text-lyra-text">
+        <ApiStatusBanner
+          issue={permissionsError}
+          onRetry={permissionsError?.retryable ? () => setPermissionsRetry((value) => value + 1) : undefined}
+          onDismiss={() => setPermissionsError(null)}
+        />
+        <main className="mx-auto flex min-h-[70vh] max-w-3xl items-center justify-center px-6 text-center">
+          <div>
+            <p className="font-mono text-xs uppercase tracking-[0.2em] text-lyra-gold">Lyrahcle</p>
+            <p className="mt-3 text-sm text-lyra-muted">{permissionsError ? t('httpErrors.accessContextFailed') : t('httpErrors.loadingAccessContext')}</p>
+          </div>
+        </main>
+      </div>
+    )
+  }
 
   return (
     <Dashboard
       onLogout={handleLogout}
-      onSessionExpired={handleLogout}
+      onSessionExpired={handleSessionExpired}
       activeTab={activeTab}
       onChangeTab={setActiveTab}
     />

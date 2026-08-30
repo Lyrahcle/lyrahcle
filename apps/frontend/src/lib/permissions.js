@@ -1,4 +1,4 @@
-import { authHeaders } from './auth.js'
+import { fetchEffectivePermissions } from './api.js'
 
 let permissions = new Set()
 let loaded = false
@@ -26,12 +26,12 @@ export function effectivePermissions() {
 }
 
 export async function loadEffectivePermissions() {
-  const res = await fetch('/api/v1/rbac/me', { headers: authHeaders() })
-  if (!res.ok) {
+  try {
+    const data = await fetchEffectivePermissions()
+    setEffectivePermissions(data.permissions)
+    return data
+  } catch (error) {
     clearEffectivePermissions()
-    throw new Error('failed to load effective permissions')
+    throw error
   }
-  const data = await res.json()
-  setEffectivePermissions(data.permissions)
-  return data
 }

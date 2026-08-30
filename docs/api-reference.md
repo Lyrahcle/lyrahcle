@@ -86,7 +86,8 @@ Every backend response includes `X-Request-ID`. A safe incoming `X-Request-ID` m
 | `GET` | `/api/v1/satellites/` | `orbital.read` | Satellites with propagated position |
 | `GET` | `/api/v1/satellites/{satelliteID}/passes` | `orbital.read` | Predict AOS/LOS and peak elevation for a ground station; rejects stale/unusable TLEs |
 | `GET` | `/api/v1/satellites/stream` | `orbital.read` | Live satellite SSE stream |
-| `POST` | `/api/v1/satellites/` | `orbital.manage` | Register/update satellite TLE |
+| `POST` | `/api/v1/satellites/` | `orbital.manage` | Register/update satellite by NORAD ID |
+| `PUT` | `/api/v1/satellites/{satelliteID}` | `orbital.manage` | Edit satellite name/NORAD/TLE from its stable UUID |
 | `GET` | `/api/v1/agents/` | `agents.read` or `agents.manage` | List mTLS agent identity, certificate, version, and device posture |
 | `POST` | `/api/v1/agents/enrollment-tokens` | `agents.manage` | Issue single-use agent enrollment token |
 | `POST` | `/api/v1/agents/enroll` | Enrollment token | Exchange CSR for client certificate |

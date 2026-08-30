@@ -14,3 +14,9 @@ administrator status to the initial seeded administrator.
 
 Future control-plane APIs should reuse this boundary rather than
 `organizations.manage`.
+
+## Organization metadata management
+
+Platform administrators can list, create and update organization metadata from the Platform UI. The update surface changes only `slug` and `name`; the existing `enabled` database field is displayed as lifecycle state but is intentionally read-only until disable/enable semantics are enforced consistently for human sessions, machine credentials, background workers and recovery access.
+
+The global routes remain behind the explicit platform-administrator boundary. Tenant-local `organizations.read` / `organizations.manage` capabilities must not grant access to `/api/v1/organizations/*` control-plane mutations.

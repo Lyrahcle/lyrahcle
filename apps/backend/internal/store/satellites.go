@@ -42,6 +42,23 @@ func (s *SatelliteStore) Upsert(ctx context.Context, noradID int, name, line1, l
 	return err
 }
 
+func (s *SatelliteStore) Update(ctx context.Context, id uuid.UUID, noradID int, name, line1, line2 string) (Satellite, error) {
+	epoch, err := tlequality.Epoch(line1)
+	if err != nil {
+		return Satellite{}, err
+	}
+	var sat Satellite
+	err = s.pool.QueryRow(ctx, `
+		UPDATE satellites
+		SET norad_id = $2, name = $3, tle_line1 = $4, tle_line2 = $5, tle_epoch = $6, updated_at = now()
+		WHERE id = $1
+		RETURNING id, norad_id, name, tle_line1, tle_line2, tle_epoch, updated_at
+	`, id, noradID, name, line1, line2, epoch).Scan(
+		&sat.ID, &sat.NoradID, &sat.Name, &sat.TLELine1, &sat.TLELine2, &sat.TLEEpoch, &sat.UpdatedAt,
+	)
+	return sat, err
+}
+
 func (s *SatelliteStore) List(ctx context.Context) ([]Satellite, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT id, norad_id, name, tle_line1, tle_line2, tle_epoch, updated_at

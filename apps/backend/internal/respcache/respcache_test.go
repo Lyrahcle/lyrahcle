@@ -114,3 +114,30 @@ func TestNewWithNilClientIsSafe(t *testing.T) {
 		t.Fatal("Get with a nil client should always report a miss")
 	}
 }
+
+func TestDeleteInvalidatesKey(t *testing.T) {
+	c := New(testClient(t))
+	ctx := context.Background()
+	key := "test:respcache:delete:" + t.Name()
+
+	c.Set(ctx, key, sample{Name: "ISS"}, time.Minute)
+	if err := c.Delete(ctx, key); err != nil {
+		t.Fatalf("Delete: %v", err)
+	}
+
+	var got sample
+	hit, err := c.Get(ctx, key, &got)
+	if err != nil {
+		t.Fatalf("Get after Delete: %v", err)
+	}
+	if hit {
+		t.Fatal("expected cache miss after Delete")
+	}
+}
+
+func TestDeleteOnNilCacheIsSafe(t *testing.T) {
+	var c *Cache
+	if err := c.Delete(context.Background(), "key"); err != nil {
+		t.Fatalf("Delete on nil cache: %v", err)
+	}
+}
