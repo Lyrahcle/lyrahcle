@@ -358,8 +358,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
                 onNext={() => setAssetsOffset((o) => o + PAGE_LIMIT)}
               />
             )}
-            </Panel>
-          </div>
+          </Panel>
         )}
 
         {activeTab === 'signal' && (
@@ -387,21 +386,22 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
               {incidents === null ? <Skeleton /> : <IncidentSeverityChart incidents={incidents.items ?? []} />}
             </Panel>
             <Panel eyebrow={t('panels.incidentResponse')} title={t('panels.securityIncidents')}>
-            {incidents === null ? (
-              <Skeleton />
-            ) : (
-              <IncidentsPanel
-                page={incidents}
-                filters={incidentFilters}
-                onFiltersChange={handleIncidentFiltersChange}
-                onPrev={() => setIncidentsOffset((o) => Math.max(0, o - PAGE_LIMIT))}
-                onNext={() => setIncidentsOffset((o) => o + PAGE_LIMIT)}
-                onChanged={reloadIncidents}
-                satellites={satellites ?? []}
-                users={users ?? []}
-              />
-            )}
-          </Panel>
+              {incidents === null ? (
+                <Skeleton />
+              ) : (
+                <IncidentsPanel
+                  page={incidents}
+                  filters={incidentFilters}
+                  onFiltersChange={handleIncidentFiltersChange}
+                  onPrev={() => setIncidentsOffset((o) => Math.max(0, o - PAGE_LIMIT))}
+                  onNext={() => setIncidentsOffset((o) => o + PAGE_LIMIT)}
+                  onChanged={reloadIncidents}
+                  satellites={satellites ?? []}
+                  users={users ?? []}
+                />
+              )}
+            </Panel>
+          </div>
         )}
 
         {activeTab === 'intel' && (
