@@ -2526,6 +2526,7 @@ func correlateRFDetectionRules(ctx context.Context, rules *store.DetectionRuleSt
 		ruleSummary = fmt.Sprintf("%s (+%d more)", ruleSummary, autoRuleCount-len(autoNames))
 	}
 	incident, err := incidents.Create(ctx, store.CreateIncidentInput{
+		OrganizationID:  anomalyRecord.OrganizationID,
 		Title:           fmt.Sprintf("RF detection on %s", anomalyRecord.AgentID),
 		Description:     fmt.Sprintf("Matched rules: %s. Metric %s produced a z-score of %.2f.", ruleSummary, anomalyRecord.Metric, anomalyRecord.ZScore),
 		Severity:        autoSeverity,
@@ -2568,10 +2569,11 @@ func correlateRFDetectionRules(ctx context.Context, rules *store.DetectionRuleSt
 	attachOrbitalSecurityEvidence(ctx, incidents, incident.ID.String(), orbitalSecurity)
 	attachCrossDomainCorrelationEvidence(ctx, incidents, auditLog, assetAlerts, orbitalEvents, incident.ID, anomalyRecord.AgentID, anomalyRecord.SatelliteID, len(matched), orbitalSecurity)
 	logAudit(ctx, auditLog, audit.ActorSystem, "correlation-engine", audit.ActionIncidentCreated, "", map[string]interface{}{
-		"incident_id": incident.ID.String(),
-		"reference":   incident.Reference,
-		"anomaly_id":  anomalyRecord.ID.String(),
-		"rule_count":  len(matched),
+		"organization_id": anomalyRecord.OrganizationID.String(),
+		"incident_id":     incident.ID.String(),
+		"reference":       incident.Reference,
+		"anomaly_id":      anomalyRecord.ID.String(),
+		"rule_count":      len(matched),
 	})
 }
 
@@ -2598,7 +2600,22 @@ func validateDetectionRule(name, description, metric, operator string, threshold
 }
 
 func logAudit(ctx context.Context, auditLog *store.AuditStore, actorType, actorID, action, ip string, details map[string]interface{}) {
-	if err := auditLog.Insert(ctx, actorType, actorID, action, ip, details); err != nil {
+	organizationID := store.DefaultOrganizationID
+	if claims, ok := auth.FromContext(ctx); ok && claims.OrganizationID != uuid.Nil {
+		organizationID = claims.OrganizationID
+	} else if details != nil {
+		switch value := details["organization_id"].(type) {
+		case uuid.UUID:
+			if value != uuid.Nil {
+				organizationID = value
+			}
+		case string:
+			if parsed, err := uuid.Parse(value); err == nil && parsed != uuid.Nil {
+				organizationID = parsed
+			}
+		}
+	}
+	if err := auditLog.InsertInOrganization(ctx, organizationID, actorType, actorID, action, ip, details); err != nil {
 		log.Printf("audit: failed to record %s by %s %s: %v", action, actorType, actorID, err)
 	}
 }

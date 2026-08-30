@@ -186,11 +186,11 @@ func (s *IncidentStore) Create(ctx context.Context, input CreateIncidentInput) (
 			source_anomaly_id, assigned_to, created_by, idempotency_key
 		)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, nullif($8, ''), $9, $10, $11, nullif($12, ''))
-		RETURNING id, reference, title, description, severity, status, source_type, satellite_id,
+		RETURNING id, organization_id, reference, title, description, severity, status, source_type, satellite_id,
 		          coalesce(agent_id, ''), source_anomaly_id, assigned_to, created_by, created_at, updated_at, resolved_at
 	`, incidentOrganizationID(input.OrganizationID), reference, input.Title, input.Description, input.Severity, input.SourceType, input.SatelliteID,
 		input.AgentID, input.SourceAnomalyID, input.AssignedTo, input.CreatedBy, input.IdempotencyKey).Scan(
-		&incident.ID, &incident.Reference, &incident.Title, &incident.Description, &incident.Severity,
+		&incident.ID, &incident.OrganizationID, &incident.Reference, &incident.Title, &incident.Description, &incident.Severity,
 		&incident.Status, &incident.SourceType, &incident.SatelliteID, &incident.AgentID,
 		&incident.SourceAnomalyID, &incident.AssignedTo, &incident.CreatedBy, &incident.CreatedAt,
 		&incident.UpdatedAt, &incident.ResolvedAt,

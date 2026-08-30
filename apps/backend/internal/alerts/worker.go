@@ -86,13 +86,14 @@ func (w *Worker) ProcessCVE(ctx context.Context, cveID string) error {
 
 		if w.auditLog != nil {
 			details := map[string]interface{}{
-				"cve_id":      cve.CVEID,
-				"asset_kind":  a.Kind,
-				"asset_value": a.Value,
-				"keyword":     cve.Keyword,
-				"severity":    cve.Severity,
+				"organization_id": a.OrganizationID.String(),
+				"cve_id":          cve.CVEID,
+				"asset_kind":      a.Kind,
+				"asset_value":     a.Value,
+				"keyword":         cve.Keyword,
+				"severity":        cve.Severity,
 			}
-			if err := w.auditLog.Insert(ctx, audit.ActorSystem, "cve-alert-matcher", audit.ActionAssetAlertCreated, "", details); err != nil {
+			if err := w.auditLog.InsertInOrganization(ctx, a.OrganizationID, audit.ActorSystem, "cve-alert-matcher", audit.ActionAssetAlertCreated, "", details); err != nil {
 				log.Printf("alerts: failed to record audit entry for asset %s / cve %s: %v", a.ID, cve.CVEID, err)
 			}
 		}

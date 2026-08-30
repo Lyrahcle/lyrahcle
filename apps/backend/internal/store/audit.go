@@ -28,14 +28,7 @@ func NewAuditStore(pool *pgxpool.Pool) *AuditStore {
 }
 
 func (s *AuditStore) Insert(ctx context.Context, actorType, actorID, action, ip string, details map[string]interface{}) error {
-	if details == nil {
-		details = map[string]interface{}{}
-	}
-	_, err := s.pool.Exec(ctx, `
-		INSERT INTO audit_log (actor_type, actor_id, action, ip, details)
-		VALUES ($1, $2, $3, $4, $5)
-	`, actorType, actorID, action, ip, details)
-	return err
+	return s.InsertInOrganization(ctx, DefaultOrganizationID, actorType, actorID, action, ip, details)
 }
 
 func (s *AuditStore) List(ctx context.Context, limit, offset int) (Page[AuditEntry], error) {
