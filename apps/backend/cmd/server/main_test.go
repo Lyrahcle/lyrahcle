@@ -47,8 +47,10 @@ func testRouter(t *testing.T) (http.Handler, *pgxpool.Pool, *store.UserStore) {
 	t.Cleanup(pool.Close)
 
 	cfg := config.Config{
-		JWTSecret:    []byte("test-jwt-secret-for-http-tests-only"),
-		JWTAccessTTL: time.Hour,
+		JWTSecret:       []byte("test-jwt-secret-for-http-tests-only"),
+		JWTAccessTTL:    time.Hour,
+		WebAuthnRPID:    "localhost",
+		WebAuthnOrigins: []string{"http://localhost:5173"},
 	}
 
 	assets := store.NewAssetStore(pool)
