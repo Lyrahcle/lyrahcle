@@ -174,7 +174,7 @@ export default function ThreatIntelPanel({ page, loading, filters, onFiltersChan
                       <a
                         href={`https://nvd.nist.gov/vuln/detail/${c.cve_id}`}
                         target="_blank"
-                        rel="noreferrer"
+                        rel="noopener noreferrer"
                         className="hover:underline"
                       >
                         {c.cve_id}

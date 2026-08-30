@@ -141,6 +141,14 @@ jobs:
         run: |
           python3 -m unittest scripts/test_check_command_execution.py
           python3 scripts/check-command-execution.py .
+      - name: SQL construction contract
+        run: |
+          python3 -m unittest scripts/test_check_sql_construction.py
+          python3 scripts/check-sql-construction.py .
+      - name: Frontend XSS contract
+        run: |
+          python3 -m unittest scripts/test_check_frontend_xss.py
+          python3 scripts/check-frontend-xss.py .
       - name: Lint Dockerfiles (hadolint)
         uses: hadolint/hadolint-action@v3.1.0
         continue-on-error: true

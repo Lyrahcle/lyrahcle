@@ -53,6 +53,30 @@ var validSpaceCVESortFields = map[string]string{
 	"cve_id":    "cve_id",
 }
 
+// spaceCVESortClause returns SQL fragments selected exclusively from an internal
+// whitelist. Never pass user-controlled identifiers through to SQL directly.
+func spaceCVESortClause(sortBy string, sortDesc bool) (string, string) {
+	sortCol, ok := validSpaceCVESortFields[sortBy]
+	if !ok {
+		sortCol = "published"
+	}
+	dir := "ASC"
+	if sortDesc {
+		dir = "DESC"
+	}
+
+	if sortCol == "severity_rank" {
+		return `CASE lower(severity)
+			WHEN 'critical' THEN 4
+			WHEN 'high' THEN 3
+			WHEN 'medium' THEN 2
+			WHEN 'low' THEN 1
+			ELSE 0
+		END`, dir
+	}
+	return sortCol, dir
+}
+
 func (s *SpaceCVEStore) List(ctx context.Context, limit, offset int, filter SpaceCVEFilter) (Page[SpaceCVE], error) {
 	limit, offset = ClampPageParams(limit, offset)
 
@@ -83,25 +107,7 @@ func (s *SpaceCVEStore) List(ctx context.Context, limit, offset int, filter Spac
 		return Page[SpaceCVE]{}, err
 	}
 
-	sortCol, ok := validSpaceCVESortFields[filter.SortBy]
-	if !ok {
-		sortCol = "published"
-	}
-	dir := "ASC"
-	if filter.SortDesc {
-		dir = "DESC"
-	}
-
-	orderExpr := sortCol
-	if sortCol == "severity_rank" {
-		orderExpr = `CASE lower(severity)
-			WHEN 'critical' THEN 4
-			WHEN 'high' THEN 3
-			WHEN 'medium' THEN 2
-			WHEN 'low' THEN 1
-			ELSE 0
-		END`
-	}
+	orderExpr, dir := spaceCVESortClause(filter.SortBy, filter.SortDesc)
 
 	querySQL := fmt.Sprintf(`
 		SELECT cve_id, description, published, severity, score, keyword, synced_at

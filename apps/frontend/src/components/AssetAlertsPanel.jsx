@@ -77,7 +77,7 @@ export default function AssetAlertsPanel({ page, onPrev, onNext, onChanged }) {
                   <a
                     href={`https://nvd.nist.gov/vuln/detail/${a.cve_id}`}
                     target="_blank"
-                    rel="noreferrer"
+                    rel="noopener noreferrer"
                     className="hover:underline"
                   >
                     {a.cve_id}

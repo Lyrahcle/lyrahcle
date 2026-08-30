@@ -50,7 +50,7 @@ func TestSecurityCriticalRoutesDoNotIgnoreRevocationErrors(t *testing.T) {
 		}
 	}
 	for _, required := range []string{
-		"auth.ActionSecurityRevocationFailed",
+		"audit.ActionSecurityRevocationFailed",
 		`"password_reset"`,
 		`"webauthn_register"`,
 		`"webauthn_remove"`,

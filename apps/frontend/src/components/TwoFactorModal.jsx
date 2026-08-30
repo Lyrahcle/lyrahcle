@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { disableTotp, enableTotp, fetchMe, setupTotp } from '../lib/api.js'
 import { useI18n } from '../lib/I18nContext.jsx'
 import { useFocusTrap } from '../lib/useFocusTrap.js'
+import { safeOtpauthUrl } from '../lib/safeUrl.js'
 
 export default function TwoFactorModal({ onClose, onSecurityChange }) {
   const { t } = useI18n()
@@ -217,9 +218,9 @@ export default function TwoFactorModal({ onClose, onSecurityChange }) {
                 </button>
               </div>
               <p className="mt-3 text-xs text-lyra-mutedDim">{t('twoFactorModal.timeBasedHint')}</p>
-              {setup.otpauth_url && (
+              {safeOtpauthUrl(setup.otpauth_url) && (
                 <a
-                  href={setup.otpauth_url}
+                  href={safeOtpauthUrl(setup.otpauth_url)}
                   className="mt-3 inline-flex rounded border border-lyra-gold/50 px-3 py-1.5 text-xs text-lyra-goldBright outline-none transition-opacity hover:opacity-80 focus-visible:ring-1 focus-visible:ring-lyra-gold"
                 >
                   {t('twoFactorModal.openGoogleAuthenticator')}
