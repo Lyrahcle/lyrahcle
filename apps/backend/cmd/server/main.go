@@ -852,7 +852,7 @@ func newRouter(
 				json.NewEncoder(w).Encode(list)
 			})
 
-			r.With(agentManage).Post("/", func(w http.ResponseWriter, r *http.Request) {
+			r.Post("/", func(w http.ResponseWriter, r *http.Request) {
 				if !requireRequestPermission(w, r, rbac, "users.manage") {
 					return
 				}
@@ -1118,7 +1118,7 @@ func newRouter(
 				json.NewEncoder(w).Encode(list)
 			})
 
-			r.Post("/", func(w http.ResponseWriter, r *http.Request) {
+			r.With(agentManage).Post("/", func(w http.ResponseWriter, r *http.Request) {
 				var body struct {
 					AgentID string `json:"agent_id"`
 				}
