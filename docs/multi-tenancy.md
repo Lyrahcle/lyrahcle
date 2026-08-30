@@ -1,20 +1,22 @@
-# Organizations and multi-tenancy foundation (v10.0)
+# Organizations and multi-tenancy
 
-v10.0 introduces the first backward-compatible organization boundary.
+## v10.0 foundation
 
-## Included
+v10.0 introduced organizations, default-organization migration, user membership and JWT organization context.
 
-- `organizations` persistence with a stable default organization.
-- Existing users migrate automatically into the default organization.
-- Users expose `organization_id`.
-- Newly issued user JWTs carry `organization_id`.
-- Admin-only organization list/create API.
-- Authentication revocation rejects organization mismatches.
+## v10.1 user administration isolation
 
-## Isolation status
+The administrative user surface is now tenant-scoped:
 
-This is a foundation, not a claim of complete tenant isolation. Agents, assets, incidents, audit, RF, satellites and orbital data still need domain-by-domain organization scoping and negative cross-tenant tests before production multi-tenancy is enabled.
+- user listing is restricted to the authenticated organization;
+- newly created users are assigned to the administrator's organization;
+- role changes, enable/disable and soft-delete require the target user to belong to the same organization;
+- the last-admin safeguard is calculated per organization;
+- user-administration audit metadata records `organization_id`;
+- organization-less legacy tokens are rejected by tenant administrative routes.
 
-## Next gate
+A known user UUID from another organization is intentionally treated as not found by scoped store methods.
 
-Scope critical domain stores and APIs to the authenticated organization, then add explicit tests proving Org A cannot read, mutate, search, stream or correlate Org B data.
+## Remaining isolation work
+
+Complete multi-tenancy still requires organization scoping for agents, assets, incidents, audit queries, RF, orbital data, programs, CVE relationships, background jobs, search and streaming/SSE. Those domains must receive negative cross-tenant tests before production multi-tenancy is declared complete.

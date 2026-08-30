@@ -249,6 +249,150 @@ func (s *UserStore) SoftDelete(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
+func (s *UserStore) CreateInOrganization(ctx context.Context, organizationID uuid.UUID, email, passwordHash, role string) (User, error) {
+	base := usernameSanitizer.ReplaceAllString(strings.ToLower(strings.SplitN(email, "@", 2)[0]), "")
+	if base == "" {
+		base = "user"
+	}
+	var u User
+	username := base
+	for attempt := 0; attempt < 5; attempt++ {
+		err := s.pool.QueryRow(ctx, `
+			INSERT INTO users (organization_id, email, username, password_hash, role)
+			VALUES ($1, $2, $3, $4, $5)
+			RETURNING id, organization_id, email, username, password_hash, role,
+			          coalesce(totp_secret, ''), totp_enabled, enabled, must_change_password, auth_version
+		`, organizationID, email, username, passwordHash, role).Scan(
+			&u.ID, &u.OrganizationID, &u.Email, &u.Username, &u.PasswordHash, &u.Role,
+			&u.TOTPSecret, &u.TOTPEnabled, &u.Enabled, &u.MustChangePassword, &u.AuthVersion,
+		)
+		if err == nil {
+			return u, nil
+		}
+		if isUniqueViolation(err) {
+			if strings.Contains(err.Error(), "users_username_key") {
+				username = base + "-" + uuid.NewString()[:6]
+				continue
+			}
+			return User{}, ErrEmailTaken
+		}
+		return User{}, err
+	}
+	return User{}, errors.New("store: could not allocate a unique username")
+}
+
+func (s *UserStore) ListByOrganization(ctx context.Context, organizationID uuid.UUID) ([]User, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT id, organization_id, email, username, password_hash, role,
+		       coalesce(totp_secret, ''), totp_enabled, enabled, must_change_password, auth_version
+		FROM users
+		WHERE organization_id = $1 AND deleted_at IS NULL
+		ORDER BY created_at ASC
+	`, organizationID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []User
+	for rows.Next() {
+		var u User
+		if err := rows.Scan(
+			&u.ID, &u.OrganizationID, &u.Email, &u.Username, &u.PasswordHash, &u.Role,
+			&u.TOTPSecret, &u.TOTPEnabled, &u.Enabled, &u.MustChangePassword, &u.AuthVersion,
+		); err != nil {
+			return nil, err
+		}
+		out = append(out, u)
+	}
+	return out, rows.Err()
+}
+
+func (s *UserStore) GetByIDInOrganization(ctx context.Context, organizationID, id uuid.UUID) (User, error) {
+	var u User
+	err := s.pool.QueryRow(ctx, `
+		SELECT id, organization_id, email, username, password_hash, role,
+		       coalesce(totp_secret, ''), totp_enabled, enabled, must_change_password, auth_version
+		FROM users
+		WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL
+	`, id, organizationID).Scan(
+		&u.ID, &u.OrganizationID, &u.Email, &u.Username, &u.PasswordHash, &u.Role,
+		&u.TOTPSecret, &u.TOTPEnabled, &u.Enabled, &u.MustChangePassword, &u.AuthVersion,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return User{}, ErrUserNotFound
+	}
+	return u, err
+}
+
+func (s *UserStore) CountAdminsInOrganization(ctx context.Context, organizationID uuid.UUID) (int, error) {
+	var count int
+	err := s.pool.QueryRow(ctx, `
+		SELECT count(*) FROM users
+		WHERE organization_id = $1 AND role = 'admin' AND enabled = true AND deleted_at IS NULL
+	`, organizationID).Scan(&count)
+	return count, err
+}
+
+func (s *UserStore) UpdateRoleInOrganization(ctx context.Context, organizationID, id uuid.UUID, role string) (User, error) {
+	var u User
+	err := s.pool.QueryRow(ctx, `
+		UPDATE users
+		SET role = $1, auth_version = auth_version + 1
+		WHERE id = $2 AND organization_id = $3 AND deleted_at IS NULL
+		RETURNING id, organization_id, email, username, password_hash, role,
+		          coalesce(totp_secret, ''), totp_enabled, enabled, must_change_password, auth_version
+	`, role, id, organizationID).Scan(
+		&u.ID, &u.OrganizationID, &u.Email, &u.Username, &u.PasswordHash, &u.Role,
+		&u.TOTPSecret, &u.TOTPEnabled, &u.Enabled, &u.MustChangePassword, &u.AuthVersion,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return User{}, ErrUserNotFound
+	}
+	return u, err
+}
+
+func (s *UserStore) SetEnabledInOrganization(ctx context.Context, organizationID, id uuid.UUID, enabled bool) (User, error) {
+	var u User
+	err := s.pool.QueryRow(ctx, `
+		UPDATE users
+		SET enabled = $1, auth_version = auth_version + 1
+		WHERE id = $2 AND organization_id = $3 AND deleted_at IS NULL
+		RETURNING id, organization_id, email, username, password_hash, role,
+		          coalesce(totp_secret, ''), totp_enabled, enabled, must_change_password, auth_version
+	`, enabled, id, organizationID).Scan(
+		&u.ID, &u.OrganizationID, &u.Email, &u.Username, &u.PasswordHash, &u.Role,
+		&u.TOTPSecret, &u.TOTPEnabled, &u.Enabled, &u.MustChangePassword, &u.AuthVersion,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return User{}, ErrUserNotFound
+	}
+	return u, err
+}
+
+func (s *UserStore) SoftDeleteInOrganization(ctx context.Context, organizationID, id uuid.UUID) error {
+	tag, err := s.pool.Exec(ctx, `
+		UPDATE users
+		SET enabled = false,
+		    deleted_at = now(),
+		    email = 'deleted-' || id::text || '@invalid.local',
+		    username = 'deleted-' || substr(id::text, 1, 12),
+		    password_hash = '!deleted!',
+		    totp_secret = NULL,
+		    totp_enabled = false,
+		    must_change_password = false,
+		    auth_version = auth_version + 1
+		WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL
+	`, id, organizationID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrUserNotFound
+	}
+	return nil
+}
+
 func isUniqueViolation(err error) bool {
 	var pgErr *pgconn.PgError
 	return errors.As(err, &pgErr) && pgErr.Code == "23505"

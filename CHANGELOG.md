@@ -1,3 +1,4 @@
+- v10.1: tenant-scoped user administration with per-organization list/create/role/status/delete controls and last-admin protection.
 - v10.0: Organizations / multi-tenancy foundation with default-org migration, user membership, JWT organization context and admin organization API.
 # Changelog
 
