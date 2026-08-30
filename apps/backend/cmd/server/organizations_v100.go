@@ -17,11 +17,28 @@ import (
 
 var organizationSlugPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{1,62}$`)
 
-func registerOrganizationRoutes(r chi.Router, cfg config.Config, organizations *store.OrganizationStore, rbac *store.RBACStore, auditLog *store.AuditStore, isTokenRevoked func(context.Context, *auth.Claims) (bool, error)) {
+func registerOrganizationRoutes(r chi.Router, cfg config.Config, organizations *store.OrganizationStore, users *store.UserStore, auditLog *store.AuditStore, isTokenRevoked func(context.Context, *auth.Claims) (bool, error)) {
 	r.Route("/organizations", func(r chi.Router) {
-		organizationRead := auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "organizations.read", isTokenRevoked)
-		organizationManage := auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "organizations.manage", isTokenRevoked)
-		r.With(organizationRead).Get("/", func(w http.ResponseWriter, r *http.Request) {
+		requirePlatformAdmin := func(next http.Handler) http.Handler {
+			return auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				claims, ok := auth.FromContext(r.Context())
+				if !ok {
+					http.Error(w, "unauthorized", http.StatusUnauthorized)
+					return
+				}
+				allowed, err := users.IsPlatformAdministrator(r.Context(), claims.UserID)
+				if err != nil {
+					http.Error(w, "platform authorization unavailable", http.StatusInternalServerError)
+					return
+				}
+				if !allowed {
+					http.Error(w, "platform administrator required", http.StatusForbidden)
+					return
+				}
+				next.ServeHTTP(w, r)
+			}))
+		}
+		r.With(requirePlatformAdmin).Get("/", func(w http.ResponseWriter, r *http.Request) {
 			list, err := organizations.List(r.Context())
 			if err != nil {
 				http.Error(w, "organization listing failed", http.StatusInternalServerError)
@@ -30,7 +47,7 @@ func registerOrganizationRoutes(r chi.Router, cfg config.Config, organizations *
 			w.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(w).Encode(list)
 		})
-		r.With(organizationManage).Post("/", func(w http.ResponseWriter, r *http.Request) {
+		r.With(requirePlatformAdmin).Post("/", func(w http.ResponseWriter, r *http.Request) {
 			var body struct {
 				Slug string `json:"slug"`
 				Name string `json:"name"`

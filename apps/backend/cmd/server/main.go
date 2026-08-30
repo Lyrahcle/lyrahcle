@@ -822,7 +822,7 @@ func newRouter(
 			})
 		})
 
-		registerOrganizationRoutes(r, cfg, organizations, rbac, auditLog, isTokenRevoked)
+		registerOrganizationRoutes(r, cfg, organizations, users, auditLog, isTokenRevoked)
 		registerTenantScopeRoutes(r, cfg, tenantScope, isTokenRevoked)
 		registerRBACRoutes(r, cfg, rbac, auditLog, isTokenRevoked)
 
@@ -2764,7 +2764,11 @@ func seedAdmin(ctx context.Context, users *store.UserStore, cfg config.Config) e
 		return err
 	}
 
-	if _, err := users.CreateProvisioned(ctx, cfg.SeedAdminEmail, hash, string(auth.RoleAdmin)); err != nil {
+	seeded, err := users.CreateProvisioned(ctx, cfg.SeedAdminEmail, hash, string(auth.RoleAdmin))
+	if err != nil {
+		return err
+	}
+	if err := users.GrantPlatformAdministrator(ctx, seeded.ID); err != nil {
 		return err
 	}
 

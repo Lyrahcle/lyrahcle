@@ -393,6 +393,43 @@ func (s *UserStore) SoftDeleteInOrganization(ctx context.Context, organizationID
 	return nil
 }
 
+func (s *UserStore) IsPlatformAdministrator(ctx context.Context, userID uuid.UUID) (bool, error) {
+	var allowed bool
+	err := s.pool.QueryRow(ctx, `
+		SELECT EXISTS(
+			SELECT 1
+			FROM platform_administrators pa
+			JOIN users u ON u.id = pa.user_id
+			WHERE pa.user_id = $1
+			  AND u.enabled = true
+			  AND u.deleted_at IS NULL
+		)
+	`, userID).Scan(&allowed)
+	return allowed, err
+}
+
+func (s *UserStore) GrantPlatformAdministrator(ctx context.Context, userID uuid.UUID) error {
+	tag, err := s.pool.Exec(ctx, `
+		INSERT INTO platform_administrators (user_id)
+		SELECT id FROM users
+		WHERE id = $1 AND enabled = true AND deleted_at IS NULL
+		ON CONFLICT (user_id) DO NOTHING
+	`, userID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		var exists bool
+		if err := s.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM platform_administrators WHERE user_id=$1)`, userID).Scan(&exists); err != nil {
+			return err
+		}
+		if !exists {
+			return ErrUserNotFound
+		}
+	}
+	return nil
+}
+
 func isUniqueViolation(err error) bool {
 	var pgErr *pgconn.PgError
 	return errors.As(err, &pgErr) && pgErr.Code == "23505"
