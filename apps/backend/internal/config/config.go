@@ -27,6 +27,7 @@ type Config struct {
 	Environment               string
 	WebAuthnRPID              string
 	WebAuthnOrigins           []string
+	CORSAllowedOrigins        []string
 	PasswordRecoveryEnabled   bool
 	PasswordResetBaseURL      string
 	SMTPHost                  string
@@ -91,6 +92,7 @@ func Load() Config {
 		Environment:               getEnv("ENV", "development"),
 		WebAuthnRPID:              getEnv("WEBAUTHN_RP_ID", "localhost"),
 		WebAuthnOrigins:           splitCSV(getEnv("WEBAUTHN_ORIGINS", "http://localhost:5173")),
+		CORSAllowedOrigins:        splitCSV(getEnv("CORS_ALLOWED_ORIGINS", "")),
 		PasswordRecoveryEnabled:   strings.EqualFold(getEnv("PASSWORD_RECOVERY_ENABLED", "false"), "true"),
 		PasswordResetBaseURL:      getEnv("PASSWORD_RESET_BASE_URL", "http://localhost:5173/"),
 		SMTPHost:                  getEnv("SMTP_HOST", ""),
@@ -108,6 +110,21 @@ func Load() Config {
 	}
 
 	production := cfg.IsProduction()
+	for _, origin := range cfg.CORSAllowedOrigins {
+		origin = strings.TrimSpace(origin)
+		if origin == "" {
+			continue
+		}
+		if origin == "*" {
+			log.Fatal("FATAL: CORS_ALLOWED_ORIGINS must not contain wildcard '*'")
+		}
+		if !strings.HasPrefix(origin, "http://") && !strings.HasPrefix(origin, "https://") {
+			log.Fatalf("FATAL: invalid CORS origin %q; expected absolute http(s) origin", origin)
+		}
+		if production && !strings.HasPrefix(strings.ToLower(origin), "https://") {
+			log.Fatalf("FATAL: CORS origin %q must use HTTPS in production", origin)
+		}
+	}
 	if cfg.OrbitalAutoEscalation {
 		log.Println("WARNING: orbital automatic severity escalation is enabled; validate RF/orbital performance against representative station data before production use")
 	}

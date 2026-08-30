@@ -242,6 +242,7 @@ func newRouter(
 	r.Use(securityHeaders(cfg.TLSCertFile != "" && cfg.TLSKeyFile != ""))
 	r.Use(metrics.Middleware)
 	r.Use(maxBodySize(1 << 20))
+	r.Use(strictCORS(cfg.CORSAllowedOrigins))
 	r.Use(globalLimiter)
 
 	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {

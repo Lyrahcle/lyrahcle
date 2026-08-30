@@ -31,16 +31,7 @@
       href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
       rel="stylesheet"
     />
-    <script>
-      // Applied before first paint to avoid a flash of the wrong theme.
-      try {
-        const stored = localStorage.getItem('lyra_theme')
-        const theme = stored === 'light' || stored === 'dark'
-          ? stored
-          : (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
-        if (theme === 'light') document.documentElement.classList.add('light')
-      } catch {}
-    </script>
+    <script src="/theme-init.js"></script>
   </head>
   <body class="font-body">
     <a
