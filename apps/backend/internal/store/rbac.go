@@ -187,13 +187,25 @@ func (s *RBACStore) AssignRole(ctx context.Context, organizationID, userID, role
 	if !exists {
 		return ErrOrganizationRoleNotFound
 	}
-	_, err := s.pool.Exec(ctx, `
+	tag, err := s.pool.Exec(ctx, `
 		INSERT INTO organization_membership_roles (user_id,organization_id,organization_role_id)
 		SELECT $1,$2,$3
 		WHERE EXISTS(SELECT 1 FROM users WHERE id=$1 AND organization_id=$2 AND deleted_at IS NULL)
 		ON CONFLICT DO NOTHING
 	`, userID, organizationID, roleID)
-	return err
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		var userExists bool
+		if err := s.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM users WHERE id=$1 AND organization_id=$2 AND deleted_at IS NULL)`, userID, organizationID).Scan(&userExists); err != nil {
+			return err
+		}
+		if !userExists {
+			return ErrUserNotFound
+		}
+	}
+	return nil
 }
 
 func (s *RBACStore) RemoveRole(ctx context.Context, organizationID, userID, roleID uuid.UUID) error {

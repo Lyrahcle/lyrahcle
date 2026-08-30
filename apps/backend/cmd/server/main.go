@@ -826,7 +826,7 @@ func newRouter(
 		registerRBACRoutes(r, cfg, rbac, isTokenRevoked)
 
 		r.Route("/users", func(r chi.Router) {
-			r.Use(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleAdmin, isTokenRevoked))
+			r.Use(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked))
 			r.Use(func(next http.Handler) http.Handler {
 				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					claims, ok := auth.FromContext(r.Context())
