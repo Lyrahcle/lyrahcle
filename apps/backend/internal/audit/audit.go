@@ -41,6 +41,10 @@ const (
 	ActionIncidentEvidenceAdded      = "incident.evidence_added"
 	ActionDetectionRuleCreated       = "detection_rule.created"
 	ActionDetectionRuleUpdated       = "detection_rule.updated"
+	ActionOrganizationCreated        = "organization.created"
+	ActionRBACRoleCreated            = "rbac.role_created"
+	ActionRBACRoleAssigned           = "rbac.role_assigned"
+	ActionRBACRoleRemoved            = "rbac.role_removed"
 
 	ActorUser      = "user"
 	ActorAgent     = "agent"

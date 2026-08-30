@@ -39,7 +39,8 @@ func (s *RBACStore) HasPermission(ctx context.Context, userID, organizationID uu
 		SELECT EXISTS(
 			SELECT 1
 			FROM organization_membership_roles umr
-			JOIN organization_role_permissions rp ON rp.organization_role_id=umr.organization_role_id
+			JOIN organization_roles r ON r.id=umr.organization_role_id AND r.organization_id=umr.organization_id
+			JOIN organization_role_permissions rp ON rp.organization_role_id=r.id
 			WHERE umr.user_id=$1 AND umr.organization_id=$2 AND rp.permission_key=$3
 		)
 	`, userID, organizationID, permission).Scan(&ok)
@@ -50,7 +51,8 @@ func (s *RBACStore) EffectivePermissions(ctx context.Context, userID, organizati
 	rows, err := s.pool.Query(ctx, `
 		SELECT DISTINCT p.key,p.description
 		FROM organization_membership_roles umr
-		JOIN organization_role_permissions rp ON rp.organization_role_id=umr.organization_role_id
+		JOIN organization_roles r ON r.id=umr.organization_role_id AND r.organization_id=umr.organization_id
+		JOIN organization_role_permissions rp ON rp.organization_role_id=r.id
 		JOIN permissions p ON p.key=rp.permission_key
 		WHERE umr.user_id=$1 AND umr.organization_id=$2
 		ORDER BY p.key

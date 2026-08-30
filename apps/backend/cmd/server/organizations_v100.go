@@ -54,7 +54,12 @@ func registerOrganizationRoutes(r chi.Router, cfg config.Config, organizations *
 				return
 			}
 			if claims, ok := auth.FromContext(r.Context()); ok {
-				logAudit(r.Context(), auditLog, audit.ActorUser, claims.UserID.String(), "organization.created", clientIP(r), map[string]interface{}{"organization_id": org.ID.String(), "slug": org.Slug})
+				logAuditInOrganization(r.Context(), auditLog, org.ID, audit.ActorUser, claims.UserID.String(), audit.ActionOrganizationCreated, clientIP(r), map[string]interface{}{
+					"organization_id":       org.ID.String(),
+					"actor_organization_id": claims.OrganizationID.String(),
+					"slug":                  org.Slug,
+					"name":                  org.Name,
+				})
 			}
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusCreated)

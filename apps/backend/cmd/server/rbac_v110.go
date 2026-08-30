@@ -10,17 +10,18 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
+	"github.com/mlko01/lyrahcle/apps/backend/internal/audit"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/auth"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/config"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/store"
 )
 
-func registerRBACRoutes(r chi.Router, cfg config.Config, rbac *store.RBACStore, isTokenRevoked func(context.Context, *auth.Claims) (bool, error)) {
+func registerRBACRoutes(r chi.Router, cfg config.Config, rbac *store.RBACStore, auditLog *store.AuditStore, isTokenRevoked func(context.Context, *auth.Claims) (bool, error)) {
 	r.Route("/rbac", func(r chi.Router) {
 		r.Use(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked))
 
 		r.Get("/permissions", func(w http.ResponseWriter, r *http.Request) {
-			if !requireRequestPermission(w, r, rbac, "rbac.manage") {
+			if !requireRequestPermission(w, r, rbac, "rbac.read") {
 				return
 			}
 			items, err := rbac.ListPermissions(r.Context())
@@ -32,7 +33,7 @@ func registerRBACRoutes(r chi.Router, cfg config.Config, rbac *store.RBACStore, 
 		})
 
 		r.Get("/roles", func(w http.ResponseWriter, r *http.Request) {
-			if !requireRequestPermission(w, r, rbac, "rbac.manage") {
+			if !requireRequestPermission(w, r, rbac, "rbac.read") {
 				return
 			}
 			orgID, ok := requestOrganizationID(w, r)
@@ -77,6 +78,14 @@ func registerRBACRoutes(r chi.Router, cfg config.Config, rbac *store.RBACStore, 
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}
+			if claims, ok := auth.FromContext(r.Context()); ok {
+				logAuditInOrganization(r.Context(), auditLog, orgID, audit.ActorUser, claims.UserID.String(), audit.ActionRBACRoleCreated, clientIP(r), map[string]interface{}{
+					"organization_id": orgID.String(),
+					"role_id":         item.ID.String(),
+					"role_name":       item.Name,
+					"permissions":     body.Permissions,
+				})
+			}
 			writeRBACJSON(w, http.StatusCreated, item)
 		})
 
@@ -116,6 +125,13 @@ func registerRBACRoutes(r chi.Router, cfg config.Config, rbac *store.RBACStore, 
 				http.Error(w, "role assignment failed", http.StatusBadRequest)
 				return
 			}
+			if claims, ok := auth.FromContext(r.Context()); ok {
+				logAuditInOrganization(r.Context(), auditLog, orgID, audit.ActorUser, claims.UserID.String(), audit.ActionRBACRoleAssigned, clientIP(r), map[string]interface{}{
+					"organization_id": orgID.String(),
+					"target_user_id":  userID.String(),
+					"role_id":         roleID.String(),
+				})
+			}
 			w.WriteHeader(http.StatusNoContent)
 		})
 
@@ -140,6 +156,13 @@ func registerRBACRoutes(r chi.Router, cfg config.Config, rbac *store.RBACStore, 
 			if err := rbac.RemoveRole(r.Context(), orgID, userID, roleID); err != nil {
 				http.Error(w, "role assignment not found", http.StatusNotFound)
 				return
+			}
+			if claims, ok := auth.FromContext(r.Context()); ok {
+				logAuditInOrganization(r.Context(), auditLog, orgID, audit.ActorUser, claims.UserID.String(), audit.ActionRBACRoleRemoved, clientIP(r), map[string]interface{}{
+					"organization_id": orgID.String(),
+					"target_user_id":  userID.String(),
+					"role_id":         roleID.String(),
+				})
 			}
 			w.WriteHeader(http.StatusNoContent)
 		})

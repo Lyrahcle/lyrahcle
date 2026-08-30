@@ -823,7 +823,7 @@ func newRouter(
 
 		registerOrganizationRoutes(r, cfg, organizations, rbac, auditLog, isTokenRevoked)
 		registerTenantScopeRoutes(r, cfg, tenantScope, isTokenRevoked)
-		registerRBACRoutes(r, cfg, rbac, isTokenRevoked)
+		registerRBACRoutes(r, cfg, rbac, auditLog, isTokenRevoked)
 
 		r.Route("/users", func(r chi.Router) {
 			r.Use(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked))
@@ -2597,6 +2597,15 @@ func validateDetectionRule(name, description, metric, operator string, threshold
 		return err
 	}
 	return validate.DetectionRuleCooldown(cooldownSeconds)
+}
+
+func logAuditInOrganization(ctx context.Context, auditLog *store.AuditStore, organizationID uuid.UUID, actorType, actorID, action, ip string, details map[string]interface{}) {
+	if organizationID == uuid.Nil {
+		organizationID = store.DefaultOrganizationID
+	}
+	if err := auditLog.InsertInOrganization(ctx, organizationID, actorType, actorID, action, ip, details); err != nil {
+		log.Printf("audit: failed to record %s by %s %s in organization %s: %v", action, actorType, actorID, organizationID, err)
+	}
 }
 
 func logAudit(ctx context.Context, auditLog *store.AuditStore, actorType, actorID, action, ip string, details map[string]interface{}) {
