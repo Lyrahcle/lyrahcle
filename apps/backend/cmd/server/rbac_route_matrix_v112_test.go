@@ -18,7 +18,6 @@ func readRouteSource(t *testing.T, name string) string {
 func TestRBACRouteMatrixCoversSensitiveDomains(t *testing.T) {
 	mainSrc := readRouteSource(t, "main.go")
 	agentSrc := readRouteSource(t, "agent_identity_v90.go")
-	orgSrc := readRouteSource(t, "organizations_v100.go")
 	rbacSrc := readRouteSource(t, "rbac_v110.go")
 
 	required := map[string][]string{
@@ -32,13 +31,11 @@ func TestRBACRouteMatrixCoversSensitiveDomains(t *testing.T) {
 			`"agents.read"`, `"agents.manage"`,
 		},
 		"agent_identity_v90.go": {`"agents.read"`, `"agents.manage"`},
-		"organizations_v100.go": {`"organizations.read"`, `"organizations.manage"`},
 		"rbac_v110.go":          {`"rbac.manage"`},
 	}
 	sources := map[string]string{
 		"main.go":               mainSrc,
 		"agent_identity_v90.go": agentSrc,
-		"organizations_v100.go": orgSrc,
 		"rbac_v110.go":          rbacSrc,
 	}
 	for file, tokens := range required {
@@ -66,14 +63,19 @@ func TestAgentAndOrganizationAdminRoutesDoNotDependOnLegacyAdminRole(t *testing.
 	agentSrc := readRouteSource(t, "agent_identity_v90.go")
 	orgSrc := readRouteSource(t, "organizations_v100.go")
 
-	for _, token := range []string{
-		`RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleAdmin`,
-	} {
-		if strings.Contains(agentSrc, token) {
-			t.Errorf("agent identity administration still depends on legacy admin role")
+	legacyAdminGate := `RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleAdmin`
+	if strings.Contains(agentSrc, legacyAdminGate) {
+		t.Error("agent identity administration still depends on legacy admin role")
+	}
+	if strings.Contains(orgSrc, legacyAdminGate) {
+		t.Error("organization administration still depends on legacy admin role")
+	}
+	for _, token := range []string{"IsPlatformAdministrator", "requirePlatformAdmin"} {
+		if !strings.Contains(orgSrc, token) {
+			t.Errorf("organization control-plane route missing platform boundary %q", token)
 		}
-		if strings.Contains(orgSrc, token) {
-			t.Errorf("organization administration still depends on legacy admin role")
-		}
+	}
+	if strings.Contains(orgSrc, `"organizations.read"`) || strings.Contains(orgSrc, `"organizations.manage"`) {
+		t.Error("global organization routes must not use tenant-local organization capabilities")
 	}
 }

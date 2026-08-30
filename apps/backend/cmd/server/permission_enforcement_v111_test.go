@@ -20,10 +20,19 @@ func TestSensitiveRoutesUseCapabilities(t *testing.T) {
 		"users.read", "users.manage", "agents.read", "agents.manage",
 		"assets.read", "assets.manage", "incidents.read", "incidents.manage",
 		"audit.read", "programs.read", "programs.manage", "rf.read", "rf.ingest",
-		"orbital.read", "orbital.manage", "organizations.read", "organizations.manage", "rbac.manage",
+		"orbital.read", "orbital.manage", "rbac.manage",
 	} {
 		if !strings.Contains(joined, permission) {
 			t.Fatalf("missing permission enforcement %s", permission)
+		}
+	}
+	organizationSource, err := os.ReadFile("organizations_v100.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, token := range []string{"IsPlatformAdministrator", "requirePlatformAdmin"} {
+		if !strings.Contains(string(organizationSource), token) {
+			t.Fatalf("missing platform administrator enforcement %s", token)
 		}
 	}
 }
