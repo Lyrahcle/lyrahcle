@@ -91,7 +91,7 @@ function DeviceCard({ device, detectedOn, t }) {
   )
 }
 
-export default function ConnectivityPanel({ admin, agentKeys, agentIdentities, onAgentKeysChanged, onAgentIdentitiesChanged }) {
+export default function ConnectivityPanel({ admin, agentKeys, agentIdentities, satellites = [], onAgentKeysChanged, onAgentIdentitiesChanged }) {
   const { t } = useI18n()
 
   const detectionByDevice = useMemo(() => {
@@ -154,7 +154,7 @@ export default function ConnectivityPanel({ admin, agentKeys, agentIdentities, o
 
       {admin && (
         <Panel eyebrow={t('panels.connectivity')} title={t('connectivity.remoteConfiguration')} uppercase>
-          {agentIdentities === null ? <Skeleton /> : <AgentRemoteConfigPanel agents={agentIdentities} />}
+          {agentIdentities === null ? <Skeleton /> : <AgentRemoteConfigPanel agents={agentIdentities} satellites={satellites} />}
         </Panel>
       )}
 

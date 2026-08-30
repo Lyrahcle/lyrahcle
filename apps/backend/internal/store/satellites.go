@@ -62,3 +62,13 @@ func (s *SatelliteStore) Exists(ctx context.Context, id uuid.UUID) (bool, error)
 	err := s.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM satellites WHERE id = $1)`, id).Scan(&exists)
 	return exists, err
 }
+
+func (s *SatelliteStore) Get(ctx context.Context, id uuid.UUID) (Satellite, error) {
+	var sat Satellite
+	err := s.pool.QueryRow(ctx, `
+		SELECT id, norad_id, name, tle_line1, tle_line2, updated_at
+		FROM satellites
+		WHERE id = $1
+	`, id).Scan(&sat.ID, &sat.NoradID, &sat.Name, &sat.TLELine1, &sat.TLELine2, &sat.UpdatedAt)
+	return sat, err
+}

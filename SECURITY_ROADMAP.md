@@ -123,3 +123,17 @@
 - Delivered rollback as a newly signed version instead of history mutation.
 - Kept remote shell execution and arbitrary command payloads out of the control plane.
 - Next: fleet policy, staged rollouts, hardware capability attestation, and stronger signing-key custody.
+
+
+## v9.2 orbital-aware security correlation
+
+- [x] Trusted admin-managed ground-station coordinates for SDR identities
+- [x] Signed optional satellite target in remote SDR configuration
+- [x] Satellite association persisted on RF readings and anomalies
+- [x] Visibility, elevation, slant range, range-rate, and expected Doppler context
+- [x] Critical escalation for signal attribution when the target satellite is below the station horizon
+- [x] High-severity floor for Doppler-aware frequency residuals outside bounded tolerance
+- [x] Orbital and ambient Threat Intel evidence attached to correlated incidents
+- [x] Threat Intel context does not raise severity without an explicit asset relationship
+- [ ] Pass prediction windows and AOS/LOS scheduling
+- [ ] Maneuver and conjunction anomaly context

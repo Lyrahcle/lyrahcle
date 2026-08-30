@@ -183,3 +183,10 @@ v9.1 adds admin-managed, immutable configuration versions for active mTLS agents
 | `POST` | `/api/v1/agents/me/config/ack` | mTLS agent | Record `applied` or `rejected` |
 
 The agent endpoints require a currently active client certificate. API keys and human JWTs cannot be used to fetch or acknowledge remote configuration.
+
+
+## Orbital security context
+
+`PUT /api/v1/agents/{agentID}/station` is admin-only and stores trusted ground-station latitude, longitude, and altitude for orbital correlation.
+
+Signed agent configuration accepts optional `satellite_id`. RF ingestion accepts the same optional UUID and rejects unknown satellites. Satellite-tagged anomalies retain the association in incidents and evidence.

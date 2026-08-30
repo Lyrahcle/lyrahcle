@@ -57,3 +57,10 @@ A verified configuration is applied without restarting the SDR process. The capt
 ## Operational guidance
 
 Use small staged changes, confirm `applied` acknowledgements, and quarantine an agent whose behavior does not match expected configuration. Future fleet-policy work should add hardware capability constraints and staged rollout rather than widening this endpoint into a generic command channel.
+
+
+## Orbital target
+
+A signed configuration may include an optional `satellite_id`. The backend accepts only a currently tracked satellite UUID. The SDR agent verifies the signed payload before updating its target and propagates that ID in subsequent RF readings.
+
+The satellite target is metadata for correlation and does not grant command authority over a spacecraft.

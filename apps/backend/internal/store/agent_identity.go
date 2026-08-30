@@ -16,6 +16,7 @@ var ErrAgentIdentityInactive = errors.New("store: agent identity is not active")
 var ErrAgentAlreadyEnrolled = errors.New("store: agent identity already has an active certificate")
 var ErrAgentCertificateNotFound = errors.New("store: agent certificate not found")
 var ErrAgentStatusTransition = errors.New("store: invalid agent status transition")
+var ErrAgentStationNotConfigured = errors.New("store: agent station is not configured")
 
 type AgentIdentityStore struct {
 	pool *pgxpool.Pool
@@ -30,6 +31,13 @@ type AgentIdentity struct {
 	FirmwareVersion string            `json:"firmware_version"`
 	Certificate     *AgentCertificate `json:"certificate,omitempty"`
 	Device          *AgentDeviceInfo  `json:"device,omitempty"`
+	Station         *AgentStation     `json:"station,omitempty"`
+}
+
+type AgentStation struct {
+	LatitudeDeg  float64 `json:"latitude_deg"`
+	LongitudeDeg float64 `json:"longitude_deg"`
+	AltitudeM    float64 `json:"altitude_m"`
 }
 
 type AgentCertificate struct {
@@ -286,6 +294,7 @@ func (s *AgentIdentityStore) List(ctx context.Context) ([]AgentIdentity, error) 
 			i.agent_id, i.status, i.first_seen_at, i.last_seen_at, i.agent_version, i.firmware_version,
 			i.device_driver, i.device_hardware, i.device_manufacturer, i.device_product,
 			i.device_serial, i.device_rx, i.device_tx, i.device_reported_at,
+			i.station_latitude_deg, i.station_longitude_deg, i.station_altitude_m,
 			c.id, c.serial_number, c.fingerprint_sha256, c.not_before, c.not_after, c.status, c.last_seen_at
 		FROM agent_identities i
 		LEFT JOIN agent_certificates c ON c.agent_id = i.agent_id AND c.status = 'active'
@@ -302,15 +311,20 @@ func (s *AgentIdentityStore) List(ctx context.Context) ([]AgentIdentity, error) 
 		var driver, hardware, manufacturer, product, serial *string
 		var rx, tx *bool
 		var reportedAt *time.Time
+		var stationLat, stationLon, stationAlt *float64
 		var certID *uuid.UUID
 		var certSerial, fingerprint, certStatus *string
 		var notBefore, notAfter, certLastSeen *time.Time
 		if err := rows.Scan(
 			&item.AgentID, &item.Status, &item.FirstSeenAt, &item.LastSeenAt, &item.AgentVersion, &item.FirmwareVersion,
 			&driver, &hardware, &manufacturer, &product, &serial, &rx, &tx, &reportedAt,
+			&stationLat, &stationLon, &stationAlt,
 			&certID, &certSerial, &fingerprint, &notBefore, &notAfter, &certStatus, &certLastSeen,
 		); err != nil {
 			return nil, err
+		}
+		if stationLat != nil && stationLon != nil && stationAlt != nil {
+			item.Station = &AgentStation{LatitudeDeg: *stationLat, LongitudeDeg: *stationLon, AltitudeM: *stationAlt}
 		}
 		if reportedAt != nil {
 			item.Device = &AgentDeviceInfo{
@@ -390,4 +404,50 @@ func (s *AgentIdentityStore) ReportDevice(ctx context.Context, agentID string, i
 		return ErrAgentIdentityNotFound
 	}
 	return nil
+}
+
+func (s *AgentIdentityStore) SetStation(ctx context.Context, agentID string, station AgentStation) error {
+	tag, err := s.pool.Exec(ctx, `
+		UPDATE agent_identities
+		SET station_latitude_deg = $2, station_longitude_deg = $3, station_altitude_m = $4, updated_at = now()
+		WHERE agent_id = $1
+	`, agentID, station.LatitudeDeg, station.LongitudeDeg, station.AltitudeM)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrAgentIdentityNotFound
+	}
+	return nil
+}
+
+func (s *AgentIdentityStore) Station(ctx context.Context, agentID string) (AgentStation, error) {
+	var station AgentStation
+	err := s.pool.QueryRow(ctx, `
+		SELECT station_latitude_deg, station_longitude_deg, station_altitude_m
+		FROM agent_identities
+		WHERE agent_id = $1
+		  AND station_latitude_deg IS NOT NULL
+		  AND station_longitude_deg IS NOT NULL
+		  AND station_altitude_m IS NOT NULL
+	`, agentID).Scan(&station.LatitudeDeg, &station.LongitudeDeg, &station.AltitudeM)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return AgentStation{}, ErrAgentStationNotConfigured
+		}
+		return AgentStation{}, err
+	}
+	return station, nil
+}
+
+func (s *AgentIdentityStore) Status(ctx context.Context, agentID string) (string, error) {
+	var status string
+	err := s.pool.QueryRow(ctx, `SELECT status FROM agent_identities WHERE agent_id = $1`, agentID).Scan(&status)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", ErrAgentIdentityNotFound
+		}
+		return "", err
+	}
+	return status, nil
 }

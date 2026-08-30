@@ -13,11 +13,14 @@ import (
 	"fmt"
 	"os"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type Settings struct {
-	FrequencyHz            int64 `json:"frequency_hz"`
-	CaptureIntervalSeconds int   `json:"capture_interval_seconds"`
+	FrequencyHz            int64      `json:"frequency_hz"`
+	CaptureIntervalSeconds int        `json:"capture_interval_seconds"`
+	SatelliteID            *uuid.UUID `json:"satellite_id,omitempty"`
 }
 
 type Payload struct {

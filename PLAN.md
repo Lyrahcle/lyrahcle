@@ -38,7 +38,7 @@ v9.0 delivers one-time enrollment, locally generated agent keys, short-lived cli
 
 ### 4. Orbital security context
 
-Add pass prediction, expected Doppler windows, visibility checks, maneuver/anomaly signals, and conjunction context.
+v9.2 delivers trusted station coordinates, satellite-tagged RF observations, horizon visibility checks, expected Doppler context, and deterministic orbital escalation. Next work is pass prediction, maneuver/anomaly signals, and conjunction context.
 
 ### 5. Asset graph and exposure
 
@@ -70,3 +70,8 @@ Delivered: dedicated SDR Agent CA support, one-time enrollment tokens, CSR signi
 ## v9.1 remote management milestone
 
 Delivered: Ed25519-signed immutable configuration versions, mTLS-only polling, runtime frequency/interval changes, applied/rejected acknowledgements, rollback as a new signed version, audit coverage, and Connectivity controls. Remote management deliberately excludes shell execution and arbitrary command payloads.
+
+
+## v9.2 orbital-aware correlation milestone
+
+Delivered: admin-managed ground-station coordinates, signed satellite targeting for SDR agents, satellite-tagged RF readings/anomalies, physical visibility/range/range-rate calculations, Doppler-aware frequency residual checks, and orbital evidence attached to correlated incidents. Generic Threat Intel is contextual only and does not elevate severity without an asset relationship.

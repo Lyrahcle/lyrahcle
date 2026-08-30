@@ -9,11 +9,12 @@ import (
 )
 
 type RFReading struct {
-	ID          uuid.UUID `json:"id"`
-	AgentID     string    `json:"agent_id"`
-	FrequencyHz int64     `json:"frequency_hz"`
-	PowerDbm    float64   `json:"power_dbm"`
-	CapturedAt  time.Time `json:"captured_at"`
+	ID          uuid.UUID  `json:"id"`
+	AgentID     string     `json:"agent_id"`
+	SatelliteID *uuid.UUID `json:"satellite_id,omitempty"`
+	FrequencyHz int64      `json:"frequency_hz"`
+	PowerDbm    float64    `json:"power_dbm"`
+	CapturedAt  time.Time  `json:"captured_at"`
 }
 
 type RFStore struct {
@@ -26,15 +27,15 @@ func NewRFStore(pool *pgxpool.Pool) *RFStore {
 
 func (s *RFStore) Insert(ctx context.Context, r *RFReading) error {
 	return s.pool.QueryRow(ctx, `
-		INSERT INTO rf_readings (agent_id, frequency_hz, power_dbm, captured_at)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO rf_readings (agent_id, satellite_id, frequency_hz, power_dbm, captured_at)
+		VALUES ($1, $2, $3, $4, $5)
 		RETURNING id
-	`, r.AgentID, r.FrequencyHz, r.PowerDbm, r.CapturedAt).Scan(&r.ID)
+	`, r.AgentID, r.SatelliteID, r.FrequencyHz, r.PowerDbm, r.CapturedAt).Scan(&r.ID)
 }
 
 func (s *RFStore) Recent(ctx context.Context, limit int) ([]RFReading, error) {
 	rows, err := s.pool.Query(ctx, `
-		SELECT id, agent_id, frequency_hz, power_dbm, captured_at
+		SELECT id, agent_id, satellite_id, frequency_hz, power_dbm, captured_at
 		FROM rf_readings
 		ORDER BY captured_at DESC
 		LIMIT $1
@@ -47,7 +48,7 @@ func (s *RFStore) Recent(ctx context.Context, limit int) ([]RFReading, error) {
 	var out []RFReading
 	for rows.Next() {
 		var r RFReading
-		if err := rows.Scan(&r.ID, &r.AgentID, &r.FrequencyHz, &r.PowerDbm, &r.CapturedAt); err != nil {
+		if err := rows.Scan(&r.ID, &r.AgentID, &r.SatelliteID, &r.FrequencyHz, &r.PowerDbm, &r.CapturedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, r)
@@ -57,7 +58,7 @@ func (s *RFStore) Recent(ctx context.Context, limit int) ([]RFReading, error) {
 
 func (s *RFStore) RecentForAgent(ctx context.Context, agentID string, limit int) ([]RFReading, error) {
 	rows, err := s.pool.Query(ctx, `
-		SELECT id, agent_id, frequency_hz, power_dbm, captured_at
+		SELECT id, agent_id, satellite_id, frequency_hz, power_dbm, captured_at
 		FROM rf_readings
 		WHERE agent_id = $1
 		ORDER BY captured_at DESC
@@ -71,7 +72,7 @@ func (s *RFStore) RecentForAgent(ctx context.Context, agentID string, limit int)
 	var out []RFReading
 	for rows.Next() {
 		var r RFReading
-		if err := rows.Scan(&r.ID, &r.AgentID, &r.FrequencyHz, &r.PowerDbm, &r.CapturedAt); err != nil {
+		if err := rows.Scan(&r.ID, &r.AgentID, &r.SatelliteID, &r.FrequencyHz, &r.PowerDbm, &r.CapturedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, r)

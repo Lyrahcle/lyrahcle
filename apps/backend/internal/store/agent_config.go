@@ -19,8 +19,9 @@ type AgentConfigStore struct {
 }
 
 type AgentConfigSettings struct {
-	FrequencyHz            int64 `json:"frequency_hz"`
-	CaptureIntervalSeconds int   `json:"capture_interval_seconds"`
+	FrequencyHz            int64      `json:"frequency_hz"`
+	CaptureIntervalSeconds int        `json:"capture_interval_seconds"`
+	SatelliteID            *uuid.UUID `json:"satellite_id,omitempty"`
 }
 
 type AgentConfigVersion struct {
@@ -83,10 +84,10 @@ func (s *AgentConfigStore) Create(ctx context.Context, agentID string, settings 
 	item.CreatedBy = createdBy
 	if err := tx.QueryRow(ctx, `
 		INSERT INTO agent_config_versions (
-			agent_id, version, frequency_hz, capture_interval_seconds, payload, signature, checksum_sha256, created_by, created_at
-		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+			agent_id, version, frequency_hz, capture_interval_seconds, satellite_id, payload, signature, checksum_sha256, created_by, created_at
+		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
 		RETURNING id, created_at
-	`, agentID, version, settings.FrequencyHz, settings.CaptureIntervalSeconds, payload, signature, checksum, createdBy, issuedAt).Scan(&item.ID, &item.CreatedAt); err != nil {
+	`, agentID, version, settings.FrequencyHz, settings.CaptureIntervalSeconds, settings.SatelliteID, payload, signature, checksum, createdBy, issuedAt).Scan(&item.ID, &item.CreatedAt); err != nil {
 		return AgentConfigVersion{}, err
 	}
 	if _, err := tx.Exec(ctx, `
@@ -113,13 +114,13 @@ func (s *AgentConfigStore) Desired(ctx context.Context, agentID string) (AgentCo
 	var item AgentConfigVersion
 	item.AgentID = agentID
 	err := s.pool.QueryRow(ctx, `
-		SELECT v.id, v.version, v.frequency_hz, v.capture_interval_seconds, v.payload, v.signature,
+		SELECT v.id, v.version, v.frequency_hz, v.capture_interval_seconds, v.satellite_id, v.payload, v.signature,
 		       v.checksum_sha256, v.created_by, v.created_at, s.ack_status, s.ack_message, s.acked_at
 		FROM agent_config_state s
 		JOIN agent_config_versions v ON v.agent_id = s.agent_id AND v.version = s.desired_version
 		WHERE s.agent_id = $1
 	`, agentID).Scan(
-		&item.ID, &item.Version, &item.Settings.FrequencyHz, &item.Settings.CaptureIntervalSeconds,
+		&item.ID, &item.Version, &item.Settings.FrequencyHz, &item.Settings.CaptureIntervalSeconds, &item.Settings.SatelliteID,
 		&item.Payload, &item.Signature, &item.Checksum, &item.CreatedBy, &item.CreatedAt,
 		&item.AckStatus, &item.AckMessage, &item.AckedAt,
 	)
@@ -137,7 +138,7 @@ func (s *AgentConfigStore) History(ctx context.Context, agentID string, limit in
 		limit = 20
 	}
 	rows, err := s.pool.Query(ctx, `
-		SELECT v.id, v.version, v.frequency_hz, v.capture_interval_seconds, v.checksum_sha256, v.created_by, v.created_at,
+		SELECT v.id, v.version, v.frequency_hz, v.capture_interval_seconds, v.satellite_id, v.checksum_sha256, v.created_by, v.created_at,
 		       COALESCE(a.status, ''), COALESCE(a.message, ''), a.created_at
 		FROM agent_config_versions v
 		LEFT JOIN agent_config_acks a ON a.agent_id = v.agent_id AND a.version = v.version
@@ -153,7 +154,7 @@ func (s *AgentConfigStore) History(ctx context.Context, agentID string, limit in
 	for rows.Next() {
 		var item AgentConfigVersion
 		item.AgentID = agentID
-		if err := rows.Scan(&item.ID, &item.Version, &item.Settings.FrequencyHz, &item.Settings.CaptureIntervalSeconds, &item.Checksum, &item.CreatedBy, &item.CreatedAt, &item.AckStatus, &item.AckMessage, &item.AckedAt); err != nil {
+		if err := rows.Scan(&item.ID, &item.Version, &item.Settings.FrequencyHz, &item.Settings.CaptureIntervalSeconds, &item.Settings.SatelliteID, &item.Checksum, &item.CreatedBy, &item.CreatedAt, &item.AckStatus, &item.AckMessage, &item.AckedAt); err != nil {
 			return nil, err
 		}
 		items = append(items, item)
@@ -164,10 +165,10 @@ func (s *AgentConfigStore) History(ctx context.Context, agentID string, limit in
 func (s *AgentConfigStore) SettingsForVersion(ctx context.Context, agentID string, version int64) (AgentConfigSettings, error) {
 	var settings AgentConfigSettings
 	err := s.pool.QueryRow(ctx, `
-		SELECT frequency_hz, capture_interval_seconds
+		SELECT frequency_hz, capture_interval_seconds, satellite_id
 		FROM agent_config_versions
 		WHERE agent_id = $1 AND version = $2
-	`, agentID, version).Scan(&settings.FrequencyHz, &settings.CaptureIntervalSeconds)
+	`, agentID, version).Scan(&settings.FrequencyHz, &settings.CaptureIntervalSeconds, &settings.SatelliteID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return AgentConfigSettings{}, ErrAgentConfigNotFound

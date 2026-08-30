@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/mlko01/lyrahcle/apps/sdr-agent/internal/capture"
@@ -17,13 +18,15 @@ import (
 )
 
 type Client struct {
-	BackendURL string
-	AgentID    string
-	APIKey     string
-	AuthToken  string
-	http       *http.Client
-	transport  *http.Transport
-	mtls       bool
+	BackendURL  string
+	AgentID     string
+	APIKey      string
+	AuthToken   string
+	mu          sync.RWMutex
+	satelliteID string
+	http        *http.Client
+	transport   *http.Transport
+	mtls        bool
 }
 
 type RemoteConfigEnvelope struct {
@@ -103,11 +106,13 @@ func NewWithIdentity(backendURL, agentID, apiKey, authToken, caCertPath, clientC
 func (c *Client) Send(reading capture.Reading) error {
 	payload := struct {
 		AgentID     string  `json:"agent_id"`
+		SatelliteID string  `json:"satellite_id,omitempty"`
 		FrequencyHz int64   `json:"frequency_hz"`
 		PowerDbm    float64 `json:"power_dbm"`
 		CapturedAt  string  `json:"captured_at"`
 	}{
 		AgentID:     c.AgentID,
+		SatelliteID: c.currentSatelliteID(),
 		FrequencyHz: reading.FrequencyHz,
 		PowerDbm:    reading.PowerDbm,
 		CapturedAt:  reading.CapturedAt.Format(time.RFC3339),
@@ -214,4 +219,16 @@ func (c *Client) AckRemoteConfig(ack RemoteConfigAck) error {
 		return fmt.Errorf("uplink: remote configuration requires mTLS")
 	}
 	return c.postJSON("/api/v1/agents/me/config/ack", ack)
+}
+
+func (c *Client) SetSatelliteID(satelliteID string) {
+	c.mu.Lock()
+	c.satelliteID = satelliteID
+	c.mu.Unlock()
+}
+
+func (c *Client) currentSatelliteID() string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.satelliteID
 }

@@ -108,6 +108,7 @@ func main() {
 		}
 		manager := remoteconfig.NewManager(client, verifier, func(settings remoteconfig.Settings) error {
 			liveConfig.Store(runtimeAgentConfig{FrequencyHz: settings.FrequencyHz, CaptureIntervalSeconds: settings.CaptureIntervalSeconds})
+			client.SetSatelliteID(settings.SatelliteID)
 			select {
 			case configChanged <- struct{}{}:
 			default:

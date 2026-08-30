@@ -3,12 +3,13 @@ import { applyAgentConfig, fetchAgentConfig, fetchAgentConfigHistory, rollbackAg
 import { useI18n } from '../lib/I18nContext.jsx'
 import TableScroll from './TableScroll.jsx'
 
-export default function AgentRemoteConfigPanel({ agents }) {
+export default function AgentRemoteConfigPanel({ agents, satellites = [] }) {
   const { t } = useI18n()
   const activeAgents = useMemo(() => agents.filter((agent) => agent.status === 'active'), [agents])
   const [agentId, setAgentId] = useState('')
   const [frequencyHz, setFrequencyHz] = useState('437500000')
   const [intervalSeconds, setIntervalSeconds] = useState('10')
+  const [satelliteId, setSatelliteId] = useState('')
   const [current, setCurrent] = useState(null)
   const [history, setHistory] = useState([])
   const [error, setError] = useState(null)
@@ -33,6 +34,7 @@ export default function AgentRemoteConfigPanel({ agents }) {
         if (desired?.config) {
           setFrequencyHz(String(desired.config.frequency_hz))
           setIntervalSeconds(String(desired.config.capture_interval_seconds))
+          setSatelliteId(desired.config.satellite_id || '')
         }
       })
       .catch((err) => {
@@ -54,7 +56,7 @@ export default function AgentRemoteConfigPanel({ agents }) {
     setBusy(true)
     setError(null)
     try {
-      await applyAgentConfig(agentId, Number(frequencyHz), Number(intervalSeconds))
+      await applyAgentConfig(agentId, Number(frequencyHz), Number(intervalSeconds), satelliteId)
       await reload()
     } catch (err) {
       setError(err.message)
@@ -83,7 +85,7 @@ export default function AgentRemoteConfigPanel({ agents }) {
   return (
     <div>
       <p className="mb-4 text-sm text-lyra-muted">{t('connectivity.remoteConfigHint')}</p>
-      <form onSubmit={submit} className="grid gap-3 md:grid-cols-[1.3fr_1fr_1fr_auto] md:items-end">
+      <form onSubmit={submit} className="grid gap-3 md:grid-cols-[1.3fr_1fr_1fr_1.2fr_auto] md:items-end">
         <label className="grid gap-1 text-[11px] uppercase tracking-wider text-lyra-mutedDim">
           {t('connectivity.agent')}
           <select value={agentId} onChange={(e) => setAgentId(e.target.value)} className="rounded border border-lyra-border bg-lyra-bgSoft px-2 py-2 font-mono text-sm normal-case text-lyra-text">
@@ -97,6 +99,13 @@ export default function AgentRemoteConfigPanel({ agents }) {
         <label className="grid gap-1 text-[11px] uppercase tracking-wider text-lyra-mutedDim">
           {t('connectivity.remoteInterval')}
           <input type="number" min="1" max="3600" required value={intervalSeconds} onChange={(e) => setIntervalSeconds(e.target.value)} className="rounded border border-lyra-border bg-lyra-bgSoft px-2 py-2 font-mono text-sm normal-case text-lyra-text" />
+        </label>
+        <label className="grid gap-1 text-[11px] uppercase tracking-wider text-lyra-mutedDim">
+          {t('connectivity.remoteSatellite')}
+          <select value={satelliteId} onChange={(e) => setSatelliteId(e.target.value)} className="rounded border border-lyra-border bg-lyra-bgSoft px-2 py-2 font-mono text-sm normal-case text-lyra-text">
+            <option value="">{t('connectivity.remoteNoSatellite')}</option>
+            {satellites.map((satellite) => <option key={satellite.id} value={satellite.id}>{satellite.name}</option>)}
+          </select>
         </label>
         <button disabled={busy} className="rounded bg-lyra-gold px-4 py-2 text-sm font-medium text-lyra-bg disabled:opacity-50">
           {busy ? t('connectivity.remoteSaving') : t('connectivity.remoteApply')}
@@ -121,6 +130,7 @@ export default function AgentRemoteConfigPanel({ agents }) {
                   <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">{t('connectivity.remoteVersion')}</th>
                   <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">{t('connectivity.remoteFrequency')}</th>
                   <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">{t('connectivity.remoteInterval')}</th>
+                  <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">{t('connectivity.remoteSatellite')}</th>
                   <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">{t('connectivity.remoteAckLabel')}</th>
                   <th className="pb-2" />
                 </tr>
@@ -131,6 +141,7 @@ export default function AgentRemoteConfigPanel({ agents }) {
                     <td className="py-2.5 font-mono text-xs text-lyra-goldBright">v{item.version}</td>
                     <td className="py-2.5 font-mono text-xs text-lyra-text">{item.config.frequency_hz}</td>
                     <td className="py-2.5 font-mono text-xs text-lyra-text">{item.config.capture_interval_seconds}s</td>
+                    <td className="py-2.5 font-mono text-xs text-lyra-mutedDim">{satellites.find((satellite) => satellite.id === item.config.satellite_id)?.name || '—'}</td>
                     <td className="py-2.5 font-mono text-xs text-lyra-mutedDim">{item.ack_status || '—'}</td>
                     <td className="py-2.5 text-right">
                       {item.version !== current?.version && <button type="button" disabled={busy} onClick={() => rollback(item.version)} className="font-mono text-xs uppercase text-lyra-goldBright hover:underline disabled:opacity-50">{t('connectivity.remoteRollback')}</button>}

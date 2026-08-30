@@ -178,3 +178,37 @@ func (s *SpaceCVEStore) GetByID(ctx context.Context, cveID string) (SpaceCVE, er
 	}
 	return c, nil
 }
+
+func (s *SpaceCVEStore) RecentHighSeverity(ctx context.Context, since time.Time, limit int) ([]SpaceCVE, error) {
+	if limit <= 0 || limit > 20 {
+		limit = 5
+	}
+	rows, err := s.pool.Query(ctx, `
+		SELECT cve_id, description, published, severity, score, keyword, synced_at
+		FROM space_cves
+		WHERE published >= $1 AND lower(severity) IN ('critical', 'high')
+		ORDER BY score DESC NULLS LAST, published DESC NULLS LAST
+		LIMIT $2
+	`, since, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []SpaceCVE{}
+	for rows.Next() {
+		var item SpaceCVE
+		var published *time.Time
+		var score *float64
+		if err := rows.Scan(&item.CVEID, &item.Description, &published, &item.Severity, &score, &item.Keyword, &item.SyncedAt); err != nil {
+			return nil, err
+		}
+		if published != nil {
+			item.Published = *published
+		}
+		if score != nil {
+			item.Score = *score
+		}
+		out = append(out, item)
+	}
+	return out, rows.Err()
+}

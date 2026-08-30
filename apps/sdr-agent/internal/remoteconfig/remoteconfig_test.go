@@ -86,3 +86,15 @@ func TestVerifierRejectsWrongAgentAndTampering(t *testing.T) {
 		t.Fatal("expected tampering rejection")
 	}
 }
+
+func TestValidateSatelliteID(t *testing.T) {
+	valid := Settings{FrequencyHz: 437500000, CaptureIntervalSeconds: 10, SatelliteID: "550e8400-e29b-41d4-a716-446655440000"}
+	if err := Validate(valid); err != nil {
+		t.Fatal(err)
+	}
+	invalid := valid
+	invalid.SatelliteID = "not-a-uuid"
+	if err := Validate(invalid); err == nil {
+		t.Fatal("expected invalid satellite id to be rejected")
+	}
+}

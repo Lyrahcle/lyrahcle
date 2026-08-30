@@ -235,6 +235,37 @@ func registerAgentIdentityRoutes(
 		})
 	})
 
+	r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleAdmin, isTokenRevoked)).Put("/agents/{agentID}/station", func(w http.ResponseWriter, r *http.Request) {
+		agentID := strings.TrimSpace(chi.URLParam(r, "agentID"))
+		if err := validate.AgentID(agentID); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		var body store.AgentStation
+		if err := decodeAgentJSON(w, r, 2<<10, &body); err != nil {
+			http.Error(w, "invalid JSON body", http.StatusBadRequest)
+			return
+		}
+		if body.LatitudeDeg < -90 || body.LatitudeDeg > 90 || body.LongitudeDeg < -180 || body.LongitudeDeg > 180 || body.AltitudeM < -500 || body.AltitudeM > 10000 {
+			http.Error(w, "invalid station coordinates", http.StatusBadRequest)
+			return
+		}
+		if err := identities.SetStation(r.Context(), agentID, body); err != nil {
+			if errors.Is(err, store.ErrAgentIdentityNotFound) {
+				http.Error(w, "agent not found", http.StatusNotFound)
+				return
+			}
+			http.Error(w, "failed to update station", http.StatusInternalServerError)
+			return
+		}
+		if claims, ok := auth.FromContext(r.Context()); ok {
+			logAudit(r.Context(), auditLog, audit.ActorUser, claims.UserID.String(), audit.ActionAgentStationUpdated, clientIP(r), map[string]interface{}{
+				"agent_id": agentID, "latitude_deg": body.LatitudeDeg, "longitude_deg": body.LongitudeDeg, "altitude_m": body.AltitudeM,
+			})
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
+
 	r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleAdmin, isTokenRevoked)).Patch("/agents/{agentID}/status", func(w http.ResponseWriter, r *http.Request) {
 		agentID := strings.TrimSpace(chi.URLParam(r, "agentID"))
 		if err := validate.AgentID(agentID); err != nil {

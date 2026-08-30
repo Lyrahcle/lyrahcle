@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { createAgentEnrollmentToken, updateAgentIdentityStatus } from '../lib/api.js'
+import { createAgentEnrollmentToken, updateAgentIdentityStatus, updateAgentStation } from '../lib/api.js'
 import TableScroll from './TableScroll.jsx'
 import { useI18n } from '../lib/I18nContext.jsx'
 
@@ -9,6 +9,10 @@ export default function AgentIdentityPanel({ agents, onChanged }) {
   const [issued, setIssued] = useState(null)
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
+  const [stationAgentId, setStationAgentId] = useState('')
+  const [latitude, setLatitude] = useState('')
+  const [longitude, setLongitude] = useState('')
+  const [altitude, setAltitude] = useState('0')
 
   async function issue(e) {
     e.preventDefault()
@@ -18,6 +22,21 @@ export default function AgentIdentityPanel({ agents, onChanged }) {
       const result = await createAgentEnrollmentToken(agentId.trim())
       setIssued(result)
       setAgentId('')
+      await onChanged()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+
+  async function saveStation(e) {
+    e.preventDefault()
+    setError(null)
+    setBusy(true)
+    try {
+      await updateAgentStation(stationAgentId, Number(latitude), Number(longitude), Number(altitude))
       await onChanged()
     } catch (err) {
       setError(err.message)
@@ -66,6 +85,38 @@ export default function AgentIdentityPanel({ agents, onChanged }) {
       </form>
 
       {error && <p role="alert" className="mb-4 text-sm text-lyra-bad">{error}</p>}
+
+      {agents.length > 0 && (
+        <form onSubmit={saveStation} className="mb-5 grid gap-3 rounded border border-lyra-borderSoft bg-lyra-bgSoft/30 p-3 md:grid-cols-[1.2fr_1fr_1fr_1fr_auto] md:items-end">
+          <label className="grid gap-1 text-[11px] uppercase tracking-wider text-lyra-mutedDim">
+            {t('connectivity.stationAgent')}
+            <select required value={stationAgentId} onChange={(e) => {
+              const id = e.target.value
+              setStationAgentId(id)
+              const station = agents.find((agent) => agent.agent_id === id)?.station
+              setLatitude(station ? String(station.latitude_deg) : '')
+              setLongitude(station ? String(station.longitude_deg) : '')
+              setAltitude(station ? String(station.altitude_m) : '0')
+            }} className="rounded border border-lyra-border bg-lyra-bgSoft px-2 py-2 font-mono text-sm normal-case text-lyra-text">
+              <option value="">{t('connectivity.stationSelect')}</option>
+              {agents.map((agent) => <option key={agent.agent_id} value={agent.agent_id}>{agent.agent_id}</option>)}
+            </select>
+          </label>
+          <label className="grid gap-1 text-[11px] uppercase tracking-wider text-lyra-mutedDim">
+            {t('connectivity.stationLatitude')}
+            <input required type="number" step="0.000001" min="-90" max="90" value={latitude} onChange={(e) => setLatitude(e.target.value)} className="rounded border border-lyra-border bg-lyra-bgSoft px-2 py-2 font-mono text-sm normal-case text-lyra-text" />
+          </label>
+          <label className="grid gap-1 text-[11px] uppercase tracking-wider text-lyra-mutedDim">
+            {t('connectivity.stationLongitude')}
+            <input required type="number" step="0.000001" min="-180" max="180" value={longitude} onChange={(e) => setLongitude(e.target.value)} className="rounded border border-lyra-border bg-lyra-bgSoft px-2 py-2 font-mono text-sm normal-case text-lyra-text" />
+          </label>
+          <label className="grid gap-1 text-[11px] uppercase tracking-wider text-lyra-mutedDim">
+            {t('connectivity.stationAltitude')}
+            <input required type="number" step="0.1" min="-500" max="10000" value={altitude} onChange={(e) => setAltitude(e.target.value)} className="rounded border border-lyra-border bg-lyra-bgSoft px-2 py-2 font-mono text-sm normal-case text-lyra-text" />
+          </label>
+          <button disabled={busy || !stationAgentId} className="rounded border border-lyra-border px-3 py-2 font-mono text-xs uppercase text-lyra-goldBright disabled:opacity-50">{t('connectivity.stationSave')}</button>
+        </form>
+      )}
 
       {issued && (
         <div role="status" className="mb-5 rounded border border-lyra-good/30 bg-lyra-good/10 p-3">

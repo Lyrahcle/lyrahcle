@@ -1730,6 +1730,30 @@ paths:
           description: Agent status updated
         '404':
           description: Agent not found
+  /api/v1/agents/{agentID}/station:
+    put:
+      tags: [Agents]
+      summary: Set trusted ground-station coordinates for an SDR agent
+      description: 'Requires role: admin. Coordinates are used for orbital visibility and Doppler correlation.'
+      parameters:
+      - name: agentID
+        in: path
+        required: true
+        schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [latitude_deg, longitude_deg, altitude_m]
+              properties:
+                latitude_deg: {type: number, minimum: -90, maximum: 90}
+                longitude_deg: {type: number, minimum: -180, maximum: 180}
+                altitude_m: {type: number, minimum: -500, maximum: 10000}
+      responses:
+        '204': {description: Ground-station coordinates updated}
+        '404': {description: Agent not found}
   /api/v1/agents/{agentID}/config:
     get:
       tags: [Agents]
@@ -1769,6 +1793,11 @@ paths:
                   type: integer
                   minimum: 1
                   maximum: 3600
+                satellite_id:
+                  type: string
+                  format: uuid
+                  nullable: true
+                  description: Optional tracked satellite propagated in the signed configuration and attached to RF readings.
       responses:
         '201': {description: Signed configuration version created}
         '409': {description: Agent is not active}
@@ -2111,6 +2140,10 @@ components:
       properties:
         agent_id:
           type: string
+        satellite_id:
+          type: string
+          format: uuid
+          nullable: true
         frequency_hz:
           type: integer
           format: int64
@@ -2141,6 +2174,10 @@ components:
           format: uuid
         agent_id:
           type: string
+        satellite_id:
+          type: string
+          format: uuid
+          nullable: true
         metric:
           type: string
           enum:

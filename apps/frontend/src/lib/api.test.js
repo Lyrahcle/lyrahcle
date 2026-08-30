@@ -27,6 +27,7 @@ import {
   addIncidentNote,
   revokeAgentKey,
   updateAgentIdentityStatus,
+  updateAgentStation,
   UnauthorizedError,
 } from './api.js'
 
@@ -176,7 +177,7 @@ describe('api client', () => {
     await applyAgentConfig('sdr-1', 437500000, 15)
     expect(fetch).toHaveBeenCalledWith('/api/v1/agents/sdr-1/config', expect.objectContaining({
       method: 'PUT',
-      body: JSON.stringify({ frequency_hz: 437500000, capture_interval_seconds: 15 }),
+      body: JSON.stringify({ frequency_hz: 437500000, capture_interval_seconds: 15, satellite_id: null }),
     }))
 
     mockFetchOnce(true, { version: 4 }, 201)
@@ -204,6 +205,13 @@ describe('api client', () => {
     expect(fetch).toHaveBeenCalledWith('/api/v1/agents/sdr-1/status', expect.objectContaining({
       method: 'PATCH',
       body: JSON.stringify({ status: 'quarantined' }),
+    }))
+
+    mockFetchOnce(true, null, 204)
+    await updateAgentStation('sdr-1', 40.4168, -3.7038, 667)
+    expect(fetch).toHaveBeenCalledWith('/api/v1/agents/sdr-1/station', expect.objectContaining({
+      method: 'PUT',
+      body: JSON.stringify({ latitude_deg: 40.4168, longitude_deg: -3.7038, altitude_m: 667 }),
     }))
   })
 

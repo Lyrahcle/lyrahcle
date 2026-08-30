@@ -380,3 +380,22 @@ func writeClientIdentity(t *testing.T) (string, string) {
 	}
 	return certPath, keyPath
 }
+
+func TestSendIncludesConfiguredSatelliteID(t *testing.T) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var payload map[string]interface{}
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			t.Fatal(err)
+		}
+		if payload["satellite_id"] != "550e8400-e29b-41d4-a716-446655440000" {
+			t.Fatalf("satellite_id = %v", payload["satellite_id"])
+		}
+		w.WriteHeader(http.StatusCreated)
+	}))
+	defer server.Close()
+	client := newTestClient(server, true)
+	client.SetSatelliteID("550e8400-e29b-41d4-a716-446655440000")
+	if err := client.Send(capture.Reading{FrequencyHz: 437500000, PowerDbm: -80, CapturedAt: time.Now().UTC()}); err != nil {
+		t.Fatal(err)
+	}
+}

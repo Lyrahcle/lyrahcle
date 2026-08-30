@@ -4,6 +4,16 @@ Notable changes are tracked here until versioned release notes take over.
 
 ## Unreleased
 
+### v9.2 orbital-aware security correlation
+
+- Added trusted ground-station coordinates for mTLS SDR identities and admin controls to maintain them.
+- Extended signed remote agent configuration with an optional satellite target that is propagated into RF readings and anomalies.
+- Added orbital visibility, elevation, range, range-rate, and expected Doppler calculations at the RF capture timestamp.
+- Escalated correlated incidents deterministically when a claimed satellite is below the local horizon or frequency residuals exceed the Doppler-aware tolerance.
+- Added satellite and recent space-threat-intelligence context to incident evidence without using generic CVEs to raise severity.
+- Added database constraints and indexes for station coordinates, satellite-tagged RF data, and satellite-targeted agent configuration.
+
+
 ### v9.1.1 backend runtime image hardening
 
 - Replaced the backend distroless runtime dependency with a scratch image to remove the failing GCR runtime pull from CI.

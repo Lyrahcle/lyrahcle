@@ -23,6 +23,7 @@ const (
 	ActionAgentEnrolled              = "agent.enrolled"
 	ActionAgentCertificateRotated    = "agent.certificate_rotated"
 	ActionAgentStatusChanged         = "agent.status_changed"
+	ActionAgentStationUpdated        = "agent.station_updated"
 	ActionAgentCertificateAuthFailed = "agent.certificate_auth_failed"
 	ActionAgentConfigIssued          = "agent.config_issued"
 	ActionAgentConfigRollback        = "agent.config_rollback"

@@ -557,6 +557,15 @@ export async function updateAgentIdentityStatus(agentId, status) {
   if (!res.ok) throw new Error(await readErrorText(res, 'failed to update agent status'))
 }
 
+export async function updateAgentStation(agentId, latitudeDeg, longitudeDeg, altitudeM) {
+  const res = await authedFetch(`/api/v1/agents/${encodeURIComponent(agentId)}/station`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ latitude_deg: latitudeDeg, longitude_deg: longitudeDeg, altitude_m: altitudeM }),
+  })
+  if (!res.ok) throw new Error(await readErrorText(res, 'failed to update agent station'))
+}
+
 export async function fetchAgentConfig(agentId) {
   const res = await authedFetch(`/api/v1/agents/${encodeURIComponent(agentId)}/config`)
   if (res.status === 204) return null
@@ -570,11 +579,11 @@ export async function fetchAgentConfigHistory(agentId) {
   return res.json()
 }
 
-export async function applyAgentConfig(agentId, frequencyHz, captureIntervalSeconds) {
+export async function applyAgentConfig(agentId, frequencyHz, captureIntervalSeconds, satelliteId = '') {
   const res = await authedFetch(`/api/v1/agents/${encodeURIComponent(agentId)}/config`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ frequency_hz: frequencyHz, capture_interval_seconds: captureIntervalSeconds }),
+    body: JSON.stringify({ frequency_hz: frequencyHz, capture_interval_seconds: captureIntervalSeconds, satellite_id: satelliteId || null }),
   })
   if (!res.ok) throw new Error(await readErrorText(res, 'failed to apply agent config'))
   return res.json()

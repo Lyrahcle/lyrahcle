@@ -18,8 +18,9 @@ import (
 )
 
 type Settings struct {
-	FrequencyHz            int64 `json:"frequency_hz"`
-	CaptureIntervalSeconds int   `json:"capture_interval_seconds"`
+	FrequencyHz            int64  `json:"frequency_hz"`
+	CaptureIntervalSeconds int    `json:"capture_interval_seconds"`
+	SatelliteID            string `json:"satellite_id,omitempty"`
 }
 
 type Payload struct {
@@ -93,6 +94,9 @@ func Validate(settings Settings) error {
 	if settings.CaptureIntervalSeconds < 1 || settings.CaptureIntervalSeconds > 3600 {
 		return errors.New("remote config: capture interval out of bounds")
 	}
+	if settings.SatelliteID != "" && !validUUID(settings.SatelliteID) {
+		return errors.New("remote config: satellite id is invalid")
+	}
 	return nil
 }
 
@@ -141,4 +145,19 @@ func (m *Manager) Poll() (bool, error) {
 	}
 	m.version = payload.Version
 	return true, nil
+}
+
+func validUUID(value string) bool {
+	if len(value) != 36 || value[8] != '-' || value[13] != '-' || value[18] != '-' || value[23] != '-' {
+		return false
+	}
+	for i, r := range value {
+		if i == 8 || i == 13 || i == 18 || i == 23 {
+			continue
+		}
+		if !((r >= '0' && r <= '9') || (r >= 'a' && r <= 'f') || (r >= 'A' && r <= 'F')) {
+			return false
+		}
+	}
+	return true
 }

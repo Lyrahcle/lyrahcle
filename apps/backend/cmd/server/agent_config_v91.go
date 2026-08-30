@@ -44,6 +44,7 @@ func registerAgentConfigRoutes(
 	signer *agentconfig.Signer,
 	configs *store.AgentConfigStore,
 	identities *store.AgentIdentityStore,
+	satellites *store.SatelliteStore,
 	auditLog *store.AuditStore,
 	isTokenRevoked auth.RevocationCheck,
 ) {
@@ -92,6 +93,17 @@ func registerAgentConfigRoutes(
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
+		if settings.SatelliteID != nil {
+			exists, err := satellites.Exists(r.Context(), *settings.SatelliteID)
+			if err != nil {
+				http.Error(w, "failed to validate satellite", http.StatusInternalServerError)
+				return
+			}
+			if !exists {
+				http.Error(w, "satellite not found", http.StatusBadRequest)
+				return
+			}
+		}
 		claims, ok := auth.FromContext(r.Context())
 		if !ok {
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
@@ -102,6 +114,7 @@ func registerAgentConfigRoutes(
 			envelope, payload, signature, err := signer.Sign(agentID, version, agentconfig.Settings{
 				FrequencyHz:            value.FrequencyHz,
 				CaptureIntervalSeconds: value.CaptureIntervalSeconds,
+				SatelliteID:            value.SatelliteID,
 			}, issuedAt)
 			if err != nil {
 				return nil, nil, "", err
@@ -124,6 +137,7 @@ func registerAgentConfigRoutes(
 			"version":                  item.Version,
 			"frequency_hz":             settings.FrequencyHz,
 			"capture_interval_seconds": settings.CaptureIntervalSeconds,
+			"satellite_id":             settings.SatelliteID,
 			"checksum_sha256":          item.Checksum,
 		}
 		if rollbackFrom > 0 {

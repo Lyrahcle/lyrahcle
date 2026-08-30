@@ -431,6 +431,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
             admin={admin}
             agentKeys={agentKeys}
             agentIdentities={agentIdentities}
+            satellites={satellites ?? []}
             onAgentKeysChanged={reloadAgentKeys}
             onAgentIdentitiesChanged={reloadAgentIdentities}
           />

@@ -1490,4 +1490,16 @@ for (const [language, extra] of Object.entries(v84Translations)) {
   Object.assign(translations[language].settings, extra.settings)
 }
 
+
+const v92Translations = {
+  en: { connectivity: { stationAgent: 'Ground station agent', stationSelect: 'Select agent', stationLatitude: 'Latitude', stationLongitude: 'Longitude', stationAltitude: 'Altitude (m)', stationSave: 'Save station', remoteSatellite: 'Target satellite', remoteNoSatellite: 'No orbital target' } },
+  es: { connectivity: { stationAgent: 'Agente de estación', stationSelect: 'Seleccionar agente', stationLatitude: 'Latitud', stationLongitude: 'Longitud', stationAltitude: 'Altitud (m)', stationSave: 'Guardar estación', remoteSatellite: 'Satélite objetivo', remoteNoSatellite: 'Sin objetivo orbital' } },
+  fr: { connectivity: { stationAgent: 'Agent de station', stationSelect: 'Sélectionner un agent', stationLatitude: 'Latitude', stationLongitude: 'Longitude', stationAltitude: 'Altitude (m)', stationSave: 'Enregistrer la station', remoteSatellite: 'Satellite cible', remoteNoSatellite: 'Aucune cible orbitale' } },
+  de: { connectivity: { stationAgent: 'Bodenstations-Agent', stationSelect: 'Agent auswählen', stationLatitude: 'Breitengrad', stationLongitude: 'Längengrad', stationAltitude: 'Höhe (m)', stationSave: 'Station speichern', remoteSatellite: 'Zielsatellit', remoteNoSatellite: 'Kein Orbitalziel' } },
+}
+
+for (const [language, extra] of Object.entries(v92Translations)) {
+  Object.assign(translations[language].connectivity, extra.connectivity)
+}
+
 export const supportedLanguages = Object.keys(translations)
