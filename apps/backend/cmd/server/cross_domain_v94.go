@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -27,17 +28,29 @@ func attachCrossDomainCorrelationEvidence(
 ) {
 	var recentAudit []store.AuditEntry
 	if auditLog != nil && agentID != "" {
-		recentAudit, _ = auditLog.RecentByActor(ctx, audit.ActorAgent, agentID, time.Now().UTC().Add(-24*time.Hour), 10)
+		var err error
+		recentAudit, err = auditLog.RecentByActor(ctx, audit.ActorAgent, agentID, time.Now().UTC().Add(-24*time.Hour), 10)
+		if err != nil {
+			log.Printf("cross-domain: recent agent audit lookup failed for %s: %v", agentID, err)
+		}
 	}
 
 	var contextualAlerts []store.AssetCVEAlert
 	if assetAlerts != nil {
-		contextualAlerts, _ = assetAlerts.RecentUnacknowledged(ctx, time.Now().UTC().Add(-7*24*time.Hour), 5)
+		var err error
+		contextualAlerts, err = assetAlerts.RecentUnacknowledged(ctx, time.Now().UTC().Add(-7*24*time.Hour), 5)
+		if err != nil {
+			log.Printf("cross-domain: contextual asset alert lookup failed: %v", err)
+		}
 	}
 
 	var operationalEvents []store.OrbitalEvent
 	if orbitalEvents != nil && satelliteID != nil {
-		operationalEvents, _ = orbitalEvents.RecentForSatellite(ctx, *satelliteID, time.Now().UTC().Add(-7*24*time.Hour), 20)
+		var err error
+		operationalEvents, err = orbitalEvents.RecentForSatellite(ctx, *satelliteID, time.Now().UTC().Add(-7*24*time.Hour), 20)
+		if err != nil {
+			log.Printf("cross-domain: orbital event lookup failed for %s: %v", satelliteID.String(), err)
+		}
 	}
 	maneuverCount, conjunctionCount := 0, 0
 	orbitalOpsConfidence := 0.0
@@ -68,7 +81,7 @@ func attachCrossDomainCorrelationEvidence(
 		OrbitalOpsSeverity:       orbitalOpsSeverity,
 	})
 
-	_, _ = incidents.AddEvidence(ctx, incidentID, store.CreateIncidentEvidenceInput{
+	if _, err := incidents.AddEvidence(ctx, incidentID, store.CreateIncidentEvidenceInput{
 		EvidenceType: "external",
 		EvidenceRef:  "cross-domain-v9.4",
 		Label:        "Cross-domain correlation summary",
@@ -82,7 +95,9 @@ func attachCrossDomainCorrelationEvidence(
 			"severity_applied":      false,
 			"policy":                "explainable_candidate_only",
 		},
-	})
+	}); err != nil {
+		log.Printf("cross-domain: summary evidence write failed for incident %s: %v", incidentID, err)
+	}
 
 	if len(recentAudit) > 0 {
 		items := make([]map[string]interface{}, 0, len(recentAudit))
@@ -91,14 +106,16 @@ func attachCrossDomainCorrelationEvidence(
 				"id": entry.ID.String(), "action": entry.Action, "occurred_at": entry.OccurredAt,
 			})
 		}
-		_, _ = incidents.AddEvidence(ctx, incidentID, store.CreateIncidentEvidenceInput{
+		if _, err := incidents.AddEvidence(ctx, incidentID, store.CreateIncidentEvidenceInput{
 			EvidenceType: "external",
 			EvidenceRef:  agentID,
 			Label:        "Recent agent audit activity",
 			Metadata: map[string]interface{}{
 				"window_hours": 24, "items": items,
 			},
-		})
+		}); err != nil {
+			log.Printf("cross-domain: agent audit evidence write failed for incident %s: %v", incidentID, err)
+		}
 	}
 
 	if len(operationalEvents) > 0 {
@@ -109,12 +126,14 @@ func attachCrossDomainCorrelationEvidence(
 				"source": event.Source, "confidence": event.Confidence, "severity": event.Severity,
 			})
 		}
-		_, _ = incidents.AddEvidence(ctx, incidentID, store.CreateIncidentEvidenceInput{
+		if _, err := incidents.AddEvidence(ctx, incidentID, store.CreateIncidentEvidenceInput{
 			EvidenceType: "external", EvidenceRef: "orbital-operations-v9.5", Label: "Maneuver/conjunction context",
 			Metadata: map[string]interface{}{
 				"candidate_only": true, "severity_applied": false, "window_days": 7, "items": items,
 			},
-		})
+		}); err != nil {
+			log.Printf("cross-domain: orbital evidence write failed for incident %s: %v", incidentID, err)
+		}
 	}
 
 	if len(contextualAlerts) > 0 {
@@ -125,14 +144,16 @@ func attachCrossDomainCorrelationEvidence(
 				"asset_value": alert.AssetValue, "cve_id": alert.CVEID, "severity": alert.Severity,
 			})
 		}
-		_, _ = incidents.AddEvidence(ctx, incidentID, store.CreateIncidentEvidenceInput{
+		if _, err := incidents.AddEvidence(ctx, incidentID, store.CreateIncidentEvidenceInput{
 			EvidenceType: "external",
 			EvidenceRef:  "unacknowledged-7d",
 			Label:        "Recent unacknowledged asset CVE alerts",
 			Metadata: map[string]interface{}{
 				"context_only": true, "window_days": 7, "items": items,
 			},
-		})
+		}); err != nil {
+			log.Printf("cross-domain: asset alert evidence write failed for incident %s: %v", incidentID, err)
+		}
 	}
 }
 

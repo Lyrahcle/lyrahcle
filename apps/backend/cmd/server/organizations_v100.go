@@ -67,7 +67,7 @@ func registerOrganizationRoutes(r chi.Router, cfg config.Config, organizations *
 				Slug string `json:"slug"`
 				Name string `json:"name"`
 			}
-			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			if err := decodeStrictJSON(r, &body); err != nil {
 				http.Error(w, "invalid JSON body", http.StatusBadRequest)
 				return
 			}

@@ -71,7 +71,7 @@ func registerWebAuthnRoutes(r chi.Router, cfg config.Config, handler *webauthn.W
 			Identifier string `json:"identifier"`
 			Password   string `json:"password"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if err := decodeStrictJSON(r, &body); err != nil {
 			http.Error(w, "invalid JSON body", http.StatusBadRequest)
 			return
 		}
@@ -115,7 +115,7 @@ func registerWebAuthnRoutes(r chi.Router, cfg config.Config, handler *webauthn.W
 			FlowID     string          `json:"flow_id"`
 			Credential json.RawMessage `json:"credential"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil || len(body.Credential) == 0 {
+		if err := decodeStrictJSON(r, &body); err != nil || len(body.Credential) == 0 {
 			http.Error(w, "invalid JSON body", http.StatusBadRequest)
 			return
 		}
@@ -185,7 +185,7 @@ func registerWebAuthnRoutes(r chi.Router, cfg config.Config, handler *webauthn.W
 				Label    string `json:"label"`
 				Password string `json:"password"`
 			}
-			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			if err := decodeStrictJSON(r, &body); err != nil {
 				http.Error(w, "invalid JSON body", http.StatusBadRequest)
 				return
 			}
@@ -224,7 +224,7 @@ func registerWebAuthnRoutes(r chi.Router, cfg config.Config, handler *webauthn.W
 				FlowID     string          `json:"flow_id"`
 				Credential json.RawMessage `json:"credential"`
 			}
-			if err := json.NewDecoder(r.Body).Decode(&body); err != nil || len(body.Credential) == 0 {
+			if err := decodeStrictJSON(r, &body); err != nil || len(body.Credential) == 0 {
 				http.Error(w, "invalid JSON body", http.StatusBadRequest)
 				return
 			}
@@ -267,7 +267,7 @@ func registerWebAuthnRoutes(r chi.Router, cfg config.Config, handler *webauthn.W
 			var body struct {
 				Password string `json:"password"`
 			}
-			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			if err := decodeStrictJSON(r, &body); err != nil {
 				http.Error(w, "invalid JSON body", http.StatusBadRequest)
 				return
 			}
@@ -307,7 +307,7 @@ func registerPasswordRecoveryRoutes(r chi.Router, cfg config.Config, users *stor
 		var body struct {
 			Identifier string `json:"identifier"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if err := decodeStrictJSON(r, &body); err != nil {
 			http.Error(w, "invalid JSON body", http.StatusBadRequest)
 			return
 		}
@@ -365,7 +365,7 @@ func registerPasswordRecoveryRoutes(r chi.Router, cfg config.Config, users *stor
 			NewPassword string `json:"new_password"`
 			TOTPCode    string `json:"totp_code"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if err := decodeStrictJSON(r, &body); err != nil {
 			http.Error(w, "invalid JSON body", http.StatusBadRequest)
 			return
 		}

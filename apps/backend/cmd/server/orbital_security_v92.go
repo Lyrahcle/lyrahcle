@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log"
 	"math"
 	"time"
 
@@ -149,12 +150,14 @@ func attachOrbitalSecurityEvidence(ctx context.Context, incidents *store.Inciden
 	if err != nil {
 		return
 	}
-	_, _ = incidents.AddEvidence(ctx, id, store.CreateIncidentEvidenceInput{
+	if _, err := incidents.AddEvidence(ctx, id, store.CreateIncidentEvidenceInput{
 		EvidenceType: "satellite",
 		EvidenceRef:  stringValue(security.Metadata["satellite_id"]),
 		Label:        stringValue(security.Metadata["satellite_name"]),
 		Metadata:     security.Metadata,
-	})
+	}); err != nil {
+		log.Printf("orbital-security: satellite evidence write failed for incident %s: %v", id, err)
+	}
 	if len(security.ThreatCVEs) > 0 {
 		items := make([]map[string]interface{}, 0, len(security.ThreatCVEs))
 		for _, cve := range security.ThreatCVEs {
@@ -165,7 +168,7 @@ func attachOrbitalSecurityEvidence(ctx context.Context, incidents *store.Inciden
 				"keyword":  cve.Keyword,
 			})
 		}
-		_, _ = incidents.AddEvidence(ctx, id, store.CreateIncidentEvidenceInput{
+		if _, err := incidents.AddEvidence(ctx, id, store.CreateIncidentEvidenceInput{
 			EvidenceType: "external",
 			EvidenceRef:  "space-threat-intel-30d",
 			Label:        "Recent high-severity space CVEs",
@@ -173,7 +176,9 @@ func attachOrbitalSecurityEvidence(ctx context.Context, incidents *store.Inciden
 				"context_only": true,
 				"items":        items,
 			},
-		})
+		}); err != nil {
+			log.Printf("orbital-security: threat-intel evidence write failed for incident %s: %v", id, err)
+		}
 	}
 }
 

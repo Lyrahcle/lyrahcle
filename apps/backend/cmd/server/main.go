@@ -102,12 +102,16 @@ func main() {
 	go alerts.NewWorker(redisClient, spaceCVEs, assets, assetAlerts, auditLog).Run(alertsCtx)
 
 	sched := scheduler.New()
-	_ = sched.Every("0 */6 * * *", "recon-sweep", func() {
+	if err := sched.Every("0 */6 * * *", "recon-sweep", func() {
 		log.Println("recon sweep tick (not yet implemented)")
-	})
-	_ = sched.Every("0 */6 * * *", "tle-sync", func() {
+	}); err != nil {
+		log.Fatalf("scheduler: register recon-sweep: %v", err)
+	}
+	if err := sched.Every("0 */6 * * *", "tle-sync", func() {
 		syncTLEs(ctx, cfg.CelestrakGroups, satellites, tlePolicy(cfg))
-	})
+	}); err != nil {
+		log.Fatalf("scheduler: register tle-sync: %v", err)
+	}
 	sched.Start()
 	defer sched.Stop()
 
@@ -157,7 +161,9 @@ func main() {
 
 		if err := srv.Shutdown(shutdownCtx); err != nil {
 			log.Printf("graceful shutdown timed out, forcing close: %v", err)
-			_ = srv.Close()
+			if closeErr := srv.Close(); closeErr != nil {
+				log.Printf("forced server close failed: %v", closeErr)
+			}
 		}
 
 		log.Println("shutdown complete")
@@ -332,7 +338,7 @@ func newRouter(
 					Kind      string `json:"kind"`
 					Value     string `json:"value"`
 				}
-				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				if err := decodeStrictJSON(r, &body); err != nil {
 					http.Error(w, "invalid JSON body", http.StatusBadRequest)
 					return
 				}
@@ -383,7 +389,7 @@ func newRouter(
 				var body struct {
 					Name string `json:"name"`
 				}
-				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				if err := decodeStrictJSON(r, &body); err != nil {
 					http.Error(w, "invalid JSON body", http.StatusBadRequest)
 					return
 				}
@@ -415,7 +421,7 @@ func newRouter(
 					Password   string `json:"password"`
 					TOTPCode   string `json:"totp_code"`
 				}
-				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				if err := decodeStrictJSON(r, &body); err != nil {
 					http.Error(w, "invalid JSON body", http.StatusBadRequest)
 					return
 				}
@@ -529,7 +535,7 @@ func newRouter(
 					var body struct {
 						Code string `json:"code"`
 					}
-					if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+					if err := decodeStrictJSON(r, &body); err != nil {
 						http.Error(w, "invalid JSON body", http.StatusBadRequest)
 						return
 					}
@@ -574,7 +580,7 @@ func newRouter(
 					var body struct {
 						Password string `json:"password"`
 					}
-					if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+					if err := decodeStrictJSON(r, &body); err != nil {
 						http.Error(w, "invalid JSON body", http.StatusBadRequest)
 						return
 					}
@@ -755,7 +761,7 @@ func newRouter(
 					CurrentPassword string `json:"current_password"`
 					NewPassword     string `json:"new_password"`
 				}
-				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				if err := decodeStrictJSON(r, &body); err != nil {
 					http.Error(w, "invalid JSON body", http.StatusBadRequest)
 					return
 				}
@@ -850,7 +856,7 @@ func newRouter(
 					Password string `json:"password"`
 					Role     string `json:"role"`
 				}
-				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				if err := decodeStrictJSON(r, &body); err != nil {
 					http.Error(w, "invalid JSON body", http.StatusBadRequest)
 					return
 				}
@@ -910,7 +916,7 @@ func newRouter(
 				var body struct {
 					Role string `json:"role"`
 				}
-				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				if err := decodeStrictJSON(r, &body); err != nil {
 					http.Error(w, "invalid JSON body", http.StatusBadRequest)
 					return
 				}
@@ -988,7 +994,7 @@ func newRouter(
 				var body struct {
 					Enabled bool `json:"enabled"`
 				}
-				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				if err := decodeStrictJSON(r, &body); err != nil {
 					http.Error(w, "invalid JSON body", http.StatusBadRequest)
 					return
 				}
@@ -1111,7 +1117,7 @@ func newRouter(
 				var body struct {
 					AgentID string `json:"agent_id"`
 				}
-				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				if err := decodeStrictJSON(r, &body); err != nil {
 					http.Error(w, "invalid JSON body", http.StatusBadRequest)
 					return
 				}
@@ -1203,7 +1209,7 @@ func newRouter(
 			}
 
 			var body store.AgentDeviceInfo
-			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			if err := decodeStrictJSON(r, &body); err != nil {
 				http.Error(w, "invalid JSON body", http.StatusBadRequest)
 				return
 			}
@@ -1251,7 +1257,7 @@ func newRouter(
 					CooldownSeconds int     `json:"cooldown_seconds"`
 					AutoIncident    *bool   `json:"auto_incident"`
 				}
-				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				if err := decodeStrictJSON(r, &body); err != nil {
 					http.Error(w, "invalid JSON body", http.StatusBadRequest)
 					return
 				}
@@ -1339,7 +1345,7 @@ func newRouter(
 					CooldownSeconds *int     `json:"cooldown_seconds"`
 					AutoIncident    *bool    `json:"auto_incident"`
 				}
-				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				if err := decodeStrictJSON(r, &body); err != nil {
 					http.Error(w, "invalid JSON body", http.StatusBadRequest)
 					return
 				}
@@ -1419,7 +1425,7 @@ func newRouter(
 			agentAuth := auth.RequireAgentCredentialOrPermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "rf.ingest", auditedLookup, auditedCertificateLookup, isTokenRevoked)
 			r.With(agentAuth).Post("/ingest", func(w http.ResponseWriter, r *http.Request) {
 				var reading store.RFReading
-				if err := json.NewDecoder(r.Body).Decode(&reading); err != nil {
+				if err := decodeStrictJSON(r, &reading); err != nil {
 					http.Error(w, "invalid JSON body", http.StatusBadRequest)
 					return
 				}
@@ -1591,7 +1597,7 @@ func newRouter(
 					Line1   string `json:"tle_line1"`
 					Line2   string `json:"tle_line2"`
 				}
-				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				if err := decodeStrictJSON(r, &body); err != nil {
 					http.Error(w, "invalid JSON body", http.StatusBadRequest)
 					return
 				}
@@ -1633,7 +1639,7 @@ func newRouter(
 				var body struct {
 					FrameHex string `json:"frame_hex"`
 				}
-				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				if err := decodeStrictJSON(r, &body); err != nil {
 					http.Error(w, "invalid JSON body", http.StatusBadRequest)
 					return
 				}
@@ -1654,7 +1660,7 @@ func newRouter(
 				var body struct {
 					PacketHex string `json:"packet_hex"`
 				}
-				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				if err := decodeStrictJSON(r, &body); err != nil {
 					http.Error(w, "invalid JSON body", http.StatusBadRequest)
 					return
 				}
@@ -1675,7 +1681,7 @@ func newRouter(
 				var body struct {
 					PacketHex string `json:"packet_hex"`
 				}
-				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				if err := decodeStrictJSON(r, &body); err != nil {
 					http.Error(w, "invalid JSON body", http.StatusBadRequest)
 					return
 				}
@@ -1696,7 +1702,7 @@ func newRouter(
 				var body struct {
 					PacketHex string `json:"packet_hex"`
 				}
-				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				if err := decodeStrictJSON(r, &body); err != nil {
 					http.Error(w, "invalid JSON body", http.StatusBadRequest)
 					return
 				}
@@ -1856,7 +1862,7 @@ func newRouter(
 					AgentID     string `json:"agent_id"`
 					AssignedTo  string `json:"assigned_to"`
 				}
-				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				if err := decodeStrictJSON(r, &body); err != nil {
 					http.Error(w, "invalid JSON body", http.StatusBadRequest)
 					return
 				}
@@ -1977,7 +1983,7 @@ func newRouter(
 					Severity   *string `json:"severity"`
 					AssignedTo *string `json:"assigned_to"`
 				}
-				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				if err := decodeStrictJSON(r, &body); err != nil {
 					http.Error(w, "invalid JSON body", http.StatusBadRequest)
 					return
 				}
@@ -2058,7 +2064,7 @@ func newRouter(
 				var body struct {
 					Message string `json:"message"`
 				}
-				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				if err := decodeStrictJSON(r, &body); err != nil {
 					http.Error(w, "invalid JSON body", http.StatusBadRequest)
 					return
 				}
@@ -2101,7 +2107,7 @@ func newRouter(
 					EvidenceRef  string `json:"evidence_ref"`
 					Label        string `json:"label"`
 				}
-				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				if err := decodeStrictJSON(r, &body); err != nil {
 					http.Error(w, "invalid JSON body", http.StatusBadRequest)
 					return
 				}

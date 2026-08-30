@@ -87,7 +87,7 @@ func handleCreateOrbitalEvent(events *store.OrbitalEventStore, satellites *store
 			Severity   string                 `json:"severity"`
 			Metadata   map[string]interface{} `json:"metadata"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if err := decodeStrictJSON(r, &body); err != nil {
 			http.Error(w, "invalid JSON body", http.StatusBadRequest)
 			return
 		}

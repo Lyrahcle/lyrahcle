@@ -131,7 +131,9 @@ func (s *AgentKeyStore) AgentIDForHash(ctx context.Context, keyHash string) (str
 		return "", err
 	}
 
-	_, _ = s.pool.Exec(ctx, `UPDATE agent_keys SET last_used_at = now() WHERE key_hash = $1`, keyHash)
+	if _, err := s.pool.Exec(ctx, `UPDATE agent_keys SET last_used_at = now() WHERE key_hash = $1`, keyHash); err != nil {
+		return "", err
+	}
 
 	return agentID, nil
 }

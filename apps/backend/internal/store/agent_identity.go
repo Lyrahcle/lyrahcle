@@ -219,14 +219,18 @@ func (s *AgentIdentityStore) AgentIDForCertificate(ctx context.Context, fingerpr
 		}
 		return "", err
 	}
-	_, _ = s.pool.Exec(ctx, `
+	if _, err := s.pool.Exec(ctx, `
 		UPDATE agent_certificates SET last_seen_at = now()
 		WHERE fingerprint_sha256 = $1 AND (last_seen_at IS NULL OR last_seen_at < now() - interval '1 minute')
-	`, fingerprint)
-	_, _ = s.pool.Exec(ctx, `
+	`, fingerprint); err != nil {
+		return "", err
+	}
+	if _, err := s.pool.Exec(ctx, `
 		UPDATE agent_identities SET last_seen_at = now(), updated_at = now()
 		WHERE agent_id = $1 AND (last_seen_at IS NULL OR last_seen_at < now() - interval '1 minute')
-	`, agentID)
+	`, agentID); err != nil {
+		return "", err
+	}
 	return agentID, nil
 }
 

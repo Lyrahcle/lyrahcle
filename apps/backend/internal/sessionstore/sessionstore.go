@@ -113,7 +113,9 @@ func (s *Store) List(ctx context.Context, userID string) ([]Session, error) {
 	for _, id := range ids {
 		commands = append(commands, getPipe.Get(ctx, sessionKey(id)))
 	}
-	_, _ = getPipe.Exec(ctx)
+	if _, err := getPipe.Exec(ctx); err != nil && !errors.Is(err, redis.Nil) {
+		return nil, fmt.Errorf("sessionstore: list sessions: %w", err)
+	}
 	out := make([]Session, 0, len(commands))
 	nowTime := time.Now()
 	for _, cmd := range commands {

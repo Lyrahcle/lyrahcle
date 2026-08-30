@@ -61,7 +61,7 @@ func registerRBACRoutes(r chi.Router, cfg config.Config, rbac *store.RBACStore, 
 				Description string   `json:"description"`
 				Permissions []string `json:"permissions"`
 			}
-			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			if err := decodeStrictJSON(r, &body); err != nil {
 				http.Error(w, "invalid json", http.StatusBadRequest)
 				return
 			}
