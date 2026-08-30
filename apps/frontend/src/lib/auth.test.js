@@ -10,6 +10,7 @@ function makeToken(payload) {
 describe('auth client', () => {
   beforeEach(() => {
     localStorage.clear()
+  sessionStorage.clear()
     global.fetch = vi.fn()
   })
 
@@ -32,13 +33,13 @@ describe('auth client', () => {
 
   it('isAuthenticated is true for a token with a future expiry', () => {
     const token = makeToken({ exp: Math.floor(Date.now() / 1000) + 3600 })
-    localStorage.setItem('lyra_token', token)
+    sessionStorage.setItem('lyra_token', token)
     expect(isAuthenticated()).toBe(true)
   })
 
   it('isAuthenticated is false for an expired token', () => {
     const token = makeToken({ exp: Math.floor(Date.now() / 1000) - 3600 })
-    localStorage.setItem('lyra_token', token)
+    sessionStorage.setItem('lyra_token', token)
     expect(isAuthenticated()).toBe(false)
   })
 
@@ -96,8 +97,8 @@ describe('auth client', () => {
   })
 
   it('logout clears the stored token and role', async () => {
-    localStorage.setItem('lyra_token', 'a-token')
-    localStorage.setItem('lyra_role', 'admin')
+    sessionStorage.setItem('lyra_token', 'a-token')
+    sessionStorage.setItem('lyra_role', 'admin')
     global.fetch.mockResolvedValue({ ok: true })
     await logout()
     expect(getToken()).toBeNull()
@@ -105,7 +106,7 @@ describe('auth client', () => {
   })
 
   it('logout revokes the token server-side', async () => {
-    localStorage.setItem('lyra_token', 'a-token')
+    sessionStorage.setItem('lyra_token', 'a-token')
     global.fetch.mockResolvedValue({ ok: true })
     await logout()
     expect(global.fetch).toHaveBeenCalledWith(
@@ -120,8 +121,8 @@ describe('auth client', () => {
   })
 
   it('logout clears local state even if the backend call fails', async () => {
-    localStorage.setItem('lyra_token', 'a-token')
-    localStorage.setItem('lyra_role', 'admin')
+    sessionStorage.setItem('lyra_token', 'a-token')
+    sessionStorage.setItem('lyra_role', 'admin')
     global.fetch.mockRejectedValue(new Error('network error'))
     await expect(logout()).resolves.not.toThrow()
     expect(getToken()).toBeNull()
@@ -133,7 +134,7 @@ describe('auth client', () => {
   })
 
   it('authHeaders returns a Bearer header with a token', () => {
-    localStorage.setItem('lyra_token', 'a-token')
+    sessionStorage.setItem('lyra_token', 'a-token')
     expect(authHeaders()).toEqual({ Authorization: 'Bearer a-token' })
   })
 })

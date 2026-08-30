@@ -1,12 +1,17 @@
 const TOKEN_KEY = 'lyra_token'
 const ROLE_KEY = 'lyra_role'
 
+function purgeLegacyPersistentAuth() {
+  localStorage.removeItem(TOKEN_KEY)
+  localStorage.removeItem(ROLE_KEY)
+}
+
 export function getToken() {
-  return localStorage.getItem(TOKEN_KEY)
+  return sessionStorage.getItem(TOKEN_KEY)
 }
 
 export function getRole() {
-  return localStorage.getItem(ROLE_KEY)
+  return sessionStorage.getItem(ROLE_KEY)
 }
 
 export function isAuthenticated() {
@@ -55,15 +60,17 @@ export async function login(identifier, password, totpCode) {
     throw new Error('Login failed')
   }
   const data = await res.json()
-  localStorage.setItem(TOKEN_KEY, data.token)
-  localStorage.setItem(ROLE_KEY, data.role)
+  purgeLegacyPersistentAuth()
+  sessionStorage.setItem(TOKEN_KEY, data.token)
+  sessionStorage.setItem(ROLE_KEY, data.role)
   return data
 }
 
 export async function logout() {
   const token = getToken()
-  localStorage.removeItem(TOKEN_KEY)
-  localStorage.removeItem(ROLE_KEY)
+  purgeLegacyPersistentAuth()
+  sessionStorage.removeItem(TOKEN_KEY)
+  sessionStorage.removeItem(ROLE_KEY)
 
   if (token) {
     try {
@@ -182,7 +189,8 @@ export async function loginWithSecurityKey(identifier, password) {
   })
   if (!finish.ok) throw new Error('Security-key verification failed')
   const data = await finish.json()
-  localStorage.setItem(TOKEN_KEY, data.token)
-  localStorage.setItem(ROLE_KEY, data.role)
+  purgeLegacyPersistentAuth()
+  sessionStorage.setItem(TOKEN_KEY, data.token)
+  sessionStorage.setItem(ROLE_KEY, data.role)
   return data
 }
