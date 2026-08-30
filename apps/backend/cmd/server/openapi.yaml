@@ -705,6 +705,95 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /api/v1/satellites/{satelliteID}/passes:
+    get:
+      tags:
+      - Satellites
+      summary: Predict satellite passes for a ground station
+      description: 'Requires role: viewer or higher. Predicts AOS, LOS, peak time, maximum elevation, and duration using the stored TLE. Stale or unusable TLEs are rejected. Aging TLEs are returned with degraded orbital confidence.'
+      parameters:
+      - name: satelliteID
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: latitude_deg
+        in: query
+        required: true
+        schema:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+      - name: longitude_deg
+        in: query
+        required: true
+        schema:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+      - name: altitude_m
+        in: query
+        required: false
+        schema:
+          type: number
+          format: double
+          default: 0
+          minimum: -500
+          maximum: 10000
+      - name: from
+        in: query
+        required: false
+        description: Prediction start in RFC3339. Defaults to current UTC time.
+        schema:
+          type: string
+          format: date-time
+      - name: hours
+        in: query
+        required: false
+        schema:
+          type: number
+          format: double
+          default: 24
+          exclusiveMinimum: true
+          minimum: 0
+          maximum: 72
+      - name: min_elevation_deg
+        in: query
+        required: false
+        schema:
+          type: number
+          format: double
+          default: 0
+          minimum: 0
+          maximum: 90
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 10
+          minimum: 1
+          maximum: 50
+      responses:
+        '200':
+          description: Predicted passes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SatellitePassPredictionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Satellite not found
+        '422':
+          description: TLE is stale/unusable or propagation failed
   /api/v1/satellites/stream:
     get:
       tags:
@@ -2125,6 +2214,79 @@ components:
           - $ref: '#/components/schemas/SatellitePosition'
           nullable: true
           description: Omitted if propagation fails or TLE quality is stale or unusable.
+    GroundStation:
+      type: object
+      required: [latitude_deg, longitude_deg, altitude_m]
+      properties:
+        latitude_deg:
+          type: number
+          format: double
+        longitude_deg:
+          type: number
+          format: double
+        altitude_m:
+          type: number
+          format: double
+    SatellitePass:
+      type: object
+      required: [aos, los, peak_at, max_elevation_deg, duration_seconds]
+      properties:
+        aos:
+          type: string
+          format: date-time
+        los:
+          type: string
+          format: date-time
+        peak_at:
+          type: string
+          format: date-time
+        max_elevation_deg:
+          type: number
+          format: double
+        duration_seconds:
+          type: integer
+          format: int64
+        aos_truncated:
+          type: boolean
+          description: True when the satellite was already above the requested minimum elevation at the start of the prediction window.
+        los_truncated:
+          type: boolean
+          description: True when the pass remains above the requested minimum elevation at the end of the prediction window.
+    SatellitePassPredictionResponse:
+      type: object
+      required: [satellite_id, norad_id, satellite_name, tle_status, tle_age_seconds, orbital_confidence, station, from, until, min_elevation_deg, passes]
+      properties:
+        satellite_id:
+          type: string
+          format: uuid
+        norad_id:
+          type: integer
+        satellite_name:
+          type: string
+        tle_status:
+          type: string
+          enum: [fresh, aging]
+        tle_age_seconds:
+          type: integer
+          format: int64
+        orbital_confidence:
+          type: string
+          enum: [high, degraded]
+        station:
+          $ref: '#/components/schemas/GroundStation'
+        from:
+          type: string
+          format: date-time
+        until:
+          type: string
+          format: date-time
+        min_elevation_deg:
+          type: number
+          format: double
+        passes:
+          type: array
+          items:
+            $ref: '#/components/schemas/SatellitePass'
     RegisterSatelliteRequest:
       type: object
       required:

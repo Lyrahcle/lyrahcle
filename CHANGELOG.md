@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- Added v9.3 satellite pass prediction with AOS/LOS, peak elevation, configurable station masks, bounded prediction horizons, and v9.2.2 TLE-quality gating.
 ### v9.2.2 TLE freshness and correlation safety
 
 - Added TLE epoch persistence and configurable freshness states derived from the orbital element itself rather than ingestion time.

@@ -84,8 +84,7 @@ Delivered: TLE epoch parsing/persistence, configurable freshness states, fail-cl
 ## Current execution order
 
 1. Keep `ORBITAL_AUTO_ESCALATION_ENABLED=false` until representative physical SDR validation is complete.
-2. Implement pass prediction and AOS/LOS scheduling.
-3. Extend correlation across orbital events, asset alerts, agent posture, and audit evidence.
-4. Add maneuver/conjunction context and improve orbital confidence handling.
-5. Complete fleet policy, staged rollouts, hardware capability validation, and signing-key custody.
-6. Close the remaining v1.0 production gates: authorization review, browser token/CSRF review, HA guidance, production-like DR/load/query validation, and operator documentation.
+2. Extend correlation across orbital events, asset alerts, agent posture, and audit evidence.
+3. Add maneuver/conjunction context and improve orbital confidence handling.
+4. Complete fleet policy, staged rollouts, hardware capability validation, and signing-key custody.
+5. Close the remaining v1.0 production gates: authorization review, browser token/CSRF review, HA guidance, production-like DR/load/query validation, and operator documentation.

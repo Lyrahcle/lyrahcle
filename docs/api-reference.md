@@ -84,6 +84,7 @@ Every backend response includes `X-Request-ID`. A safe incoming `X-Request-ID` m
 | `GET` | `/api/v1/assets/` | Viewer | List assets |
 | `POST` | `/api/v1/assets/` | Operator | Create/update asset |
 | `GET` | `/api/v1/satellites/` | Viewer | Satellites with propagated position |
+| `GET` | `/api/v1/satellites/{satelliteID}/passes` | Viewer | Predict AOS/LOS and peak elevation for a ground station; rejects stale/unusable TLEs |
 | `GET` | `/api/v1/satellites/stream` | Viewer | Live satellite SSE stream |
 | `POST` | `/api/v1/satellites/` | Operator | Register/update satellite TLE |
 | `GET` | `/api/v1/agents/` | Admin | List mTLS agent identity, certificate, version, and device posture |

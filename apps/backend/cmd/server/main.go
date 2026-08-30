@@ -1402,6 +1402,8 @@ func newRouter(
 		})
 
 		r.Route("/satellites", func(r chi.Router) {
+			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)).Get("/{satelliteID}/passes", handleSatellitePassPrediction(satellites, tlePolicy(cfg)))
+
 			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)).Get("/", func(w http.ResponseWriter, r *http.Request) {
 				out, err := satellitesWithPositions(r.Context(), satellites, cache, tlePolicy(cfg))
 				if err != nil {

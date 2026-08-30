@@ -40,7 +40,7 @@ Status values: **Shipped**, **Partial**, **Next**, and **Later**.
 | Telemetry, RF, CVE, and operations charts | Next | v8.3-v9 |
 | Orbital-aware RF detection and TLE freshness gating | Shipped | v9.2/v9.2.2 |
 | Physical SDR validation of Doppler/visibility correlation | Next | Before auto-escalation/v1.0 |
-| Pass prediction and AOS/LOS scheduling | Next | v9.x |
+| Pass prediction and AOS/LOS scheduling | Shipped | v9.3 |
 | Maneuver and conjunction anomaly context | Next | v9.x |
 | More threat-intelligence sources | Later | v9 |
 | ML-assisted anomaly detection | Later | Post-v1 |
@@ -131,8 +131,8 @@ Status values: **Shipped**, **Partial**, **Next**, and **Later**.
 ## Current pre-v1 priorities
 
 1. Validate v9.2/v9.2.2 Doppler and visibility behavior with representative physical SDR captures before enabling automatic orbital escalation.
-2. Add pass prediction, AOS/LOS scheduling, then maneuver/conjunction context.
-3. Extend deterministic correlation across asset alerts, orbital events, agent posture, and audit evidence.
+2. Extend deterministic correlation across asset alerts, orbital events, agent posture, and audit evidence.
+3. Add maneuver/conjunction context and improve orbital confidence handling.
 4. Complete sensitive-endpoint authorization review, browser token/CSRF review, HA guidance, and production-like query/load validation.
 5. Complete fleet policy, staged rollouts, hardware capability validation, and stronger signing-key custody.
 6. Finish operator-facing RF/telemetry/CVE/operations visualizations and connectivity/CVE guides.
