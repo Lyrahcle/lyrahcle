@@ -1,14 +1,15 @@
 import { useState } from 'react'
-import { createOrganization } from '../lib/api.js'
+import { createOrganization, grantPlatformAdministrator, revokePlatformAdministrator } from '../lib/api.js'
 import { useI18n } from '../lib/I18nContext.jsx'
 import TableScroll from './TableScroll.jsx'
 
-export default function PlatformOrganizationsPanel({ organizations, onChanged }) {
+export default function PlatformOrganizationsPanel({ organizations, platformUsers = [], onChanged, onPlatformUsersChanged }) {
   const { t } = useI18n()
   const [slug, setSlug] = useState('')
   const [name, setName] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
+  const [platformBusyId, setPlatformBusyId] = useState(null)
 
   async function submit(event) {
     event.preventDefault()
@@ -23,6 +24,21 @@ export default function PlatformOrganizationsPanel({ organizations, onChanged })
       setError(err.message)
     } finally {
       setBusy(false)
+    }
+  }
+
+
+  async function togglePlatformAdmin(user) {
+    setError(null)
+    setPlatformBusyId(user.id)
+    try {
+      if (user.platform_admin) await revokePlatformAdministrator(user.id)
+      else await grantPlatformAdministrator(user.id)
+      await onPlatformUsersChanged()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setPlatformBusyId(null)
     }
   }
 
@@ -82,6 +98,39 @@ export default function PlatformOrganizationsPanel({ organizations, onChanged })
           </table>
         </TableScroll>
       )}
+
+      <div className="grid gap-3">
+        <h3 className="font-mono text-xs uppercase tracking-wider text-lyra-gold">{t('platform.admins')}</h3>
+        <TableScroll>
+          <table className="w-full text-left text-sm">
+            <thead><tr className="border-b border-lyra-borderSoft">
+              <th className="pb-2 text-[11px] uppercase text-lyra-mutedDim">{t('platform.user')}</th>
+              <th className="pb-2 text-[11px] uppercase text-lyra-mutedDim">{t('platform.organization')}</th>
+              <th className="pb-2 text-[11px] uppercase text-lyra-mutedDim">{t('platform.access')}</th>
+              <th className="pb-2" />
+            </tr></thead>
+            <tbody>
+              {platformUsers.map((user) => (
+                <tr key={user.id} className="border-b border-lyra-borderSoft/60 last:border-0">
+                  <td className="py-3 pr-4"><span className="text-lyra-text">{user.username || user.email}</span><p className="text-xs text-lyra-muted">{user.email}</p></td>
+                  <td className="py-3 pr-4 font-mono text-[11px] text-lyra-mutedDim">{user.organization_id}</td>
+                  <td className="py-3 pr-4 font-mono text-xs">{user.platform_admin ? t('platform.platformAdmin') : t('platform.tenantUser')}</td>
+                  <td className="py-3 text-right">
+                    <button
+                      type="button"
+                      disabled={platformBusyId === user.id || !user.enabled}
+                      onClick={() => togglePlatformAdmin(user)}
+                      className="rounded border border-lyra-border px-3 py-1.5 font-mono text-xs text-lyra-goldBright disabled:opacity-50"
+                    >
+                      {user.platform_admin ? t('platform.revokeAdmin') : t('platform.grantAdmin')}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </TableScroll>
+      </div>
     </div>
   )
 }

@@ -660,3 +660,20 @@ export async function removeUserRBACRole(userId, roleId) {
   const res = await authedFetch(`/api/v1/rbac/users/${encodeURIComponent(userId)}/roles/${encodeURIComponent(roleId)}`, { method: 'DELETE' })
   if (!res.ok) throw new Error(await readErrorText(res, 'failed to remove role'))
 }
+
+
+export async function fetchPlatformUsers() {
+  const res = await authedFetch('/api/v1/organizations/platform-users')
+  if (!res.ok) throw new Error(await readErrorText(res, 'failed to fetch platform users'))
+  return res.json()
+}
+
+export async function grantPlatformAdministrator(userId) {
+  const res = await authedFetch(`/api/v1/organizations/platform-admins/${encodeURIComponent(userId)}`, { method: 'POST' })
+  if (!res.ok) throw new Error(await readErrorText(res, 'failed to grant platform administrator'))
+}
+
+export async function revokePlatformAdministrator(userId) {
+  const res = await authedFetch(`/api/v1/organizations/platform-admins/${encodeURIComponent(userId)}`, { method: 'DELETE' })
+  if (!res.ok) throw new Error(await readErrorText(res, 'failed to revoke platform administrator'))
+}

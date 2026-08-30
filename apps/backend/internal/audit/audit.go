@@ -45,6 +45,8 @@ const (
 	ActionRBACRoleCreated            = "rbac.role_created"
 	ActionRBACRoleAssigned           = "rbac.role_assigned"
 	ActionRBACRoleRemoved            = "rbac.role_removed"
+	ActionPlatformAdminGranted       = "platform_admin.granted"
+	ActionPlatformAdminRevoked       = "platform_admin.revoked"
 
 	ActorUser      = "user"
 	ActorAgent     = "agent"

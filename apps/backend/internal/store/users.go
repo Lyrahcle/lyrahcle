@@ -430,6 +430,53 @@ func (s *UserStore) GrantPlatformAdministrator(ctx context.Context, userID uuid.
 	return nil
 }
 
+func (s *UserStore) ListPlatformAdministratorIDs(ctx context.Context) ([]uuid.UUID, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT pa.user_id
+		FROM platform_administrators pa
+		JOIN users u ON u.id=pa.user_id
+		WHERE u.enabled=true AND u.deleted_at IS NULL
+		ORDER BY pa.created_at, pa.user_id
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []uuid.UUID{}
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		out = append(out, id)
+	}
+	return out, rows.Err()
+}
+
+func (s *UserStore) RevokePlatformAdministrator(ctx context.Context, userID uuid.UUID) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	var count int
+	if err := tx.QueryRow(ctx, `SELECT count(*) FROM platform_administrators`).Scan(&count); err != nil {
+		return err
+	}
+	if count <= 1 {
+		return errors.New("store: cannot revoke last platform administrator")
+	}
+	tag, err := tx.Exec(ctx, `DELETE FROM platform_administrators WHERE user_id=$1`, userID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrUserNotFound
+	}
+	return tx.Commit(ctx)
+}
+
 func isUniqueViolation(err error) bool {
 	var pgErr *pgconn.PgError
 	return errors.As(err, &pgErr) && pgErr.Code == "23505"

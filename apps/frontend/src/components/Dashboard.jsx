@@ -41,6 +41,7 @@ import {
   fetchUsers,
   fetchPlatformAccess,
   fetchOrganizations,
+  fetchPlatformUsers,
   fetchRBACPermissions,
   fetchRBACRoles,
   subscribeSatellites,
@@ -68,6 +69,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
   const [users, setUsers] = useState(null)
   const [platformAdmin, setPlatformAdmin] = useState(false)
   const [organizations, setOrganizations] = useState(null)
+  const [platformUsers, setPlatformUsers] = useState(null)
   const [rbacPermissions, setRbacPermissions] = useState(null)
   const [rbacRoles, setRbacRoles] = useState(null)
   const [backendStatus, setBackendStatus] = useState('checking')
@@ -238,7 +240,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
       }
 
       if (activeTab === 'platform' && platformAdmin) {
-        await safeFetch(fetchOrganizations, setOrganizations)
+        await Promise.all([safeFetch(fetchOrganizations, setOrganizations), safeFetch(fetchPlatformUsers, setPlatformUsers)])
         return
       }
 
@@ -325,6 +327,9 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
   }
   function reloadOrganizations() {
     fetchOrganizations().then(setOrganizations).catch(() => {})
+  }
+  function reloadPlatformUsers() {
+    fetchPlatformUsers().then(setPlatformUsers).catch(() => {})
   }
   function reloadRBAC() {
     Promise.all([fetchRBACPermissions(), fetchRBACRoles()])
@@ -529,7 +534,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
 
                 {activeTab === 'platform' && platformAdmin && (
           <Panel eyebrow={t('platform.eyebrow')} title={t('platform.title')} uppercase>
-            {organizations === null ? <Skeleton /> : <PlatformOrganizationsPanel organizations={organizations} onChanged={reloadOrganizations} />}
+            {organizations === null || platformUsers === null ? <Skeleton /> : <PlatformOrganizationsPanel organizations={organizations} platformUsers={platformUsers} onChanged={reloadOrganizations} onPlatformUsersChanged={reloadPlatformUsers} />}
           </Panel>
         )}
 

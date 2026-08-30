@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/audit"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/auth"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/config"
@@ -95,6 +96,78 @@ func registerOrganizationRoutes(r chi.Router, cfg config.Config, organizations *
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusCreated)
 			json.NewEncoder(w).Encode(org)
+		})
+
+		r.With(requirePlatformAdmin).Get("/platform-users", func(w http.ResponseWriter, r *http.Request) {
+			allUsers, err := users.List(r.Context())
+			if err != nil {
+				http.Error(w, "platform user listing failed", http.StatusInternalServerError)
+				return
+			}
+			adminIDs, err := users.ListPlatformAdministratorIDs(r.Context())
+			if err != nil {
+				http.Error(w, "platform administrator listing failed", http.StatusInternalServerError)
+				return
+			}
+			adminSet := map[uuid.UUID]bool{}
+			for _, id := range adminIDs {
+				adminSet[id] = true
+			}
+			items := make([]map[string]interface{}, 0, len(allUsers))
+			for _, user := range allUsers {
+				items = append(items, map[string]interface{}{
+					"id": user.ID, "organization_id": user.OrganizationID, "email": user.Email,
+					"username": user.Username, "enabled": user.Enabled, "platform_admin": adminSet[user.ID],
+				})
+			}
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(items)
+		})
+
+		r.With(requirePlatformAdmin).Post("/platform-admins/{userID}", func(w http.ResponseWriter, r *http.Request) {
+			claims, ok := auth.FromContext(r.Context())
+			if !ok {
+				http.Error(w, "unauthorized", http.StatusUnauthorized)
+				return
+			}
+			userID, err := uuid.Parse(chi.URLParam(r, "userID"))
+			if err != nil {
+				http.Error(w, "invalid user id", http.StatusBadRequest)
+				return
+			}
+			if userID == claims.UserID {
+				http.Error(w, "self-grant is not allowed", http.StatusConflict)
+				return
+			}
+			if err := users.GrantPlatformAdministrator(r.Context(), userID); err != nil {
+				http.Error(w, "platform administrator grant failed", http.StatusBadRequest)
+				return
+			}
+			logAuditInOrganization(r.Context(), auditLog, claims.OrganizationID, audit.ActorUser, claims.UserID.String(), audit.ActionPlatformAdminGranted, clientIP(r), map[string]interface{}{"target_user_id": userID.String()})
+			w.WriteHeader(http.StatusNoContent)
+		})
+
+		r.With(requirePlatformAdmin).Delete("/platform-admins/{userID}", func(w http.ResponseWriter, r *http.Request) {
+			claims, ok := auth.FromContext(r.Context())
+			if !ok {
+				http.Error(w, "unauthorized", http.StatusUnauthorized)
+				return
+			}
+			userID, err := uuid.Parse(chi.URLParam(r, "userID"))
+			if err != nil {
+				http.Error(w, "invalid user id", http.StatusBadRequest)
+				return
+			}
+			if userID == claims.UserID {
+				http.Error(w, "self-revocation is not allowed", http.StatusConflict)
+				return
+			}
+			if err := users.RevokePlatformAdministrator(r.Context(), userID); err != nil {
+				http.Error(w, err.Error(), http.StatusConflict)
+				return
+			}
+			logAuditInOrganization(r.Context(), auditLog, claims.OrganizationID, audit.ActorUser, claims.UserID.String(), audit.ActionPlatformAdminRevoked, clientIP(r), map[string]interface{}{"target_user_id": userID.String()})
+			w.WriteHeader(http.StatusNoContent)
 		})
 	})
 }

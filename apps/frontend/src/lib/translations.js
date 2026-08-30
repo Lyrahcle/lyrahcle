@@ -1525,3 +1525,12 @@ const rbacTranslations = {
   de: { rbac: { title: 'Rollen & Berechtigungen', roleName: 'Rollenname', description: 'Beschreibung', capabilities: 'Berechtigungen', createRole: 'Benutzerdefinierte Rolle erstellen', roles: 'Verfügbare Rollen', role: 'Rolle', type: 'Typ', system: 'System', custom: 'Benutzerdefiniert', user: 'Benutzer', selectUser: 'Benutzer zur Rollenzuweisung auswählen' } },
 }
 for (const [language, extra] of Object.entries(rbacTranslations)) translations[language].rbac = extra.rbac
+
+
+const platformAdminTranslations = {
+  en: { admins: 'Platform administrators', user: 'User', organization: 'Organization', access: 'Access', platformAdmin: 'Platform admin', tenantUser: 'Tenant user', grantAdmin: 'Grant platform admin', revokeAdmin: 'Revoke platform admin' },
+  es: { admins: 'Administradores de plataforma', user: 'Usuario', organization: 'Organización', access: 'Acceso', platformAdmin: 'Admin de plataforma', tenantUser: 'Usuario de tenant', grantAdmin: 'Conceder admin de plataforma', revokeAdmin: 'Revocar admin de plataforma' },
+  fr: { admins: 'Administrateurs de plateforme', user: 'Utilisateur', organization: 'Organisation', access: 'Accès', platformAdmin: 'Admin plateforme', tenantUser: 'Utilisateur tenant', grantAdmin: 'Accorder admin plateforme', revokeAdmin: 'Révoquer admin plateforme' },
+  de: { admins: 'Plattformadministratoren', user: 'Benutzer', organization: 'Organisation', access: 'Zugriff', platformAdmin: 'Plattformadmin', tenantUser: 'Mandantenbenutzer', grantAdmin: 'Plattformadmin gewähren', revokeAdmin: 'Plattformadmin entziehen' },
+}
+for (const [language, extra] of Object.entries(platformAdminTranslations)) Object.assign(translations[language].platform, extra)
