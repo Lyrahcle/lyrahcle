@@ -28,7 +28,7 @@ func registerRBACRoutes(r chi.Router, cfg config.Config, rbac *store.RBACStore, 
 				http.Error(w, "permissions unavailable", http.StatusInternalServerError)
 				return
 			}
-			writeJSON(w, http.StatusOK, items)
+			writeRBACJSON(w, http.StatusOK, items)
 		})
 
 		r.Get("/roles", func(w http.ResponseWriter, r *http.Request) {
@@ -44,7 +44,7 @@ func registerRBACRoutes(r chi.Router, cfg config.Config, rbac *store.RBACStore, 
 				http.Error(w, "roles unavailable", http.StatusInternalServerError)
 				return
 			}
-			writeJSON(w, http.StatusOK, items)
+			writeRBACJSON(w, http.StatusOK, items)
 		})
 
 		r.Post("/roles", func(w http.ResponseWriter, r *http.Request) {
@@ -77,7 +77,7 @@ func registerRBACRoutes(r chi.Router, cfg config.Config, rbac *store.RBACStore, 
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}
-			writeJSON(w, http.StatusCreated, item)
+			writeRBACJSON(w, http.StatusCreated, item)
 		})
 
 		r.Get("/me", func(w http.ResponseWriter, r *http.Request) {
@@ -91,7 +91,7 @@ func registerRBACRoutes(r chi.Router, cfg config.Config, rbac *store.RBACStore, 
 				http.Error(w, "permissions unavailable", http.StatusInternalServerError)
 				return
 			}
-			writeJSON(w, http.StatusOK, map[string]interface{}{"organization_id": claims.OrganizationID, "permissions": perms})
+			writeRBACJSON(w, http.StatusOK, map[string]interface{}{"organization_id": claims.OrganizationID, "permissions": perms})
 		})
 
 		r.Post("/users/{userID}/roles/{roleID}", func(w http.ResponseWriter, r *http.Request) {
@@ -144,4 +144,10 @@ func registerRBACRoutes(r chi.Router, cfg config.Config, rbac *store.RBACStore, 
 			w.WriteHeader(http.StatusNoContent)
 		})
 	})
+}
+
+func writeRBACJSON(w http.ResponseWriter, status int, value interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(value)
 }

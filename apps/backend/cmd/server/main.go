@@ -80,6 +80,7 @@ func main() {
 	spaceCVEs := store.NewSpaceCVEStore(pool)
 	assetAlerts := store.NewAssetAlertStore(pool)
 	incidents := store.NewIncidentStore(pool)
+	rbac := store.NewRBACStore(pool)
 
 	if err := seedAdmin(ctx, users, cfg); err != nil {
 		log.Printf("seed admin: %v", err)
@@ -192,7 +193,6 @@ func newRouter(
 	orbitalEvents := store.NewOrbitalEventStore(pool)
 	organizations := store.NewOrganizationStore(pool)
 	tenantScope := store.NewTenantScopeStore(pool)
-	rbac := store.NewRBACStore(pool)
 	agentCA, err := buildAgentCA(cfg)
 	if err != nil {
 		panic(fmt.Sprintf("agent CA configuration: %v", err))

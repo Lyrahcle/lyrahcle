@@ -164,7 +164,7 @@ func registerAgentConfigRoutes(
 		json.NewEncoder(w).Encode(item)
 	}
 
-	r.With(admin).Put("/agents/{agentID}/config", func(w http.ResponseWriter, r *http.Request) {
+	r.With(adminManage).Put("/agents/{agentID}/config", func(w http.ResponseWriter, r *http.Request) {
 		agentID := strings.TrimSpace(chi.URLParam(r, "agentID"))
 		if err := validate.AgentID(agentID); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
