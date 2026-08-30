@@ -91,6 +91,7 @@ func registerAgentIdentityRoutes(
 	identities *store.AgentIdentityStore,
 	agentKeys *store.AgentKeyStore,
 	auditLog *store.AuditStore,
+	rbac *store.RBACStore,
 	isTokenRevoked auth.RevocationCheck,
 ) {
 	r.Post("/agents/enroll", func(w http.ResponseWriter, r *http.Request) {

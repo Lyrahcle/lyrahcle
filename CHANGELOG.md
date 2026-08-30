@@ -1,3 +1,4 @@
+- v11.1: enforce granular capabilities across sensitive HTTP read/write surfaces.
 - v11.0.1: fixed backend import paths to match the Go module declared in apps/backend/go.mod.
 - v11.0: granular organization-scoped RBAC foundation with permissions, custom roles, compatibility mappings and permission middleware.
 - v10.6: added tenant-isolation audit gates, full tenant snapshots, source-contract checks and optional database-backed Org-A/Org-B integration tests.

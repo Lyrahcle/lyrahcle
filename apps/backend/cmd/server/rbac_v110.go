@@ -17,9 +17,12 @@ import (
 
 func registerRBACRoutes(r chi.Router, cfg config.Config, rbac *store.RBACStore, isTokenRevoked func(context.Context, *auth.Claims) (bool, error)) {
 	r.Route("/rbac", func(r chi.Router) {
-		r.Use(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleAdmin, isTokenRevoked))
+		r.Use(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked))
 
 		r.Get("/permissions", func(w http.ResponseWriter, r *http.Request) {
+			if !requireRequestPermission(w, r, rbac, "rbac.manage") {
+				return
+			}
 			items, err := rbac.ListPermissions(r.Context())
 			if err != nil {
 				http.Error(w, "permissions unavailable", http.StatusInternalServerError)
@@ -29,6 +32,9 @@ func registerRBACRoutes(r chi.Router, cfg config.Config, rbac *store.RBACStore, 
 		})
 
 		r.Get("/roles", func(w http.ResponseWriter, r *http.Request) {
+			if !requireRequestPermission(w, r, rbac, "rbac.manage") {
+				return
+			}
 			orgID, ok := requestOrganizationID(w, r)
 			if !ok {
 				return
@@ -42,6 +48,9 @@ func registerRBACRoutes(r chi.Router, cfg config.Config, rbac *store.RBACStore, 
 		})
 
 		r.Post("/roles", func(w http.ResponseWriter, r *http.Request) {
+			if !requireRequestPermission(w, r, rbac, "rbac.manage") {
+				return
+			}
 			orgID, ok := requestOrganizationID(w, r)
 			if !ok {
 				return
@@ -86,6 +95,9 @@ func registerRBACRoutes(r chi.Router, cfg config.Config, rbac *store.RBACStore, 
 		})
 
 		r.Post("/users/{userID}/roles/{roleID}", func(w http.ResponseWriter, r *http.Request) {
+			if !requireRequestPermission(w, r, rbac, "rbac.manage") {
+				return
+			}
 			orgID, ok := requestOrganizationID(w, r)
 			if !ok {
 				return
@@ -108,6 +120,9 @@ func registerRBACRoutes(r chi.Router, cfg config.Config, rbac *store.RBACStore, 
 		})
 
 		r.Delete("/users/{userID}/roles/{roleID}", func(w http.ResponseWriter, r *http.Request) {
+			if !requireRequestPermission(w, r, rbac, "rbac.manage") {
+				return
+			}
 			orgID, ok := requestOrganizationID(w, r)
 			if !ok {
 				return

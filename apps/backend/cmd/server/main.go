@@ -112,7 +112,7 @@ func main() {
 
 	go syncTLEs(ctx, cfg.CelestrakGroups, satellites, tlePolicy(cfg))
 
-	r := newRouter(cfg, pool, assets, programs, rf, rfAnomalies, satellites, users, agentKeys, auditLog, spaceCVEs, assetAlerts, incidents, redisClient)
+	r := newRouter(cfg, pool, assets, programs, rf, rfAnomalies, satellites, users, agentKeys, auditLog, spaceCVEs, assetAlerts, incidents, rbac, redisClient)
 
 	srv := &http.Server{
 		Addr:         ":" + cfg.Port,
@@ -177,6 +177,7 @@ func newRouter(
 	spaceCVEs *store.SpaceCVEStore,
 	assetAlerts *store.AssetAlertStore,
 	incidents *store.IncidentStore,
+	rbac *store.RBACStore,
 	redisClient *redis.Client,
 ) http.Handler {
 	detectionRules := store.NewDetectionRuleStore(pool)
@@ -275,8 +276,8 @@ func newRouter(
 			w.Write([]byte(`{"message":"pong from lyrahcle"}`))
 		})
 
-		registerAgentIdentityRoutes(r, cfg, agentCA, agentIdentities, agentKeys, auditLog, isTokenRevoked)
-		registerAgentConfigRoutes(r, cfg, agentConfigSigner, agentConfigs, agentIdentities, satellites, auditLog, isTokenRevoked)
+		registerAgentIdentityRoutes(r, cfg, agentCA, agentIdentities, agentKeys, auditLog, rbac, isTokenRevoked)
+		registerAgentConfigRoutes(r, cfg, agentConfigSigner, agentConfigs, agentIdentities, satellites, auditLog, rbac, isTokenRevoked)
 
 		r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)).Get("/search", func(w http.ResponseWriter, r *http.Request) {
 			query := strings.TrimSpace(r.URL.Query().Get("q"))
@@ -313,6 +314,9 @@ func newRouter(
 				limit, offset := pageParams(r)
 				orgID, ok := requestOrganizationID(w, r)
 				if !ok {
+					return
+				}
+				if !requireRequestPermission(w, r, rbac, "assets.read") {
 					return
 				}
 				page, err := assets.ListByOrganization(r.Context(), orgID, limit, offset)
@@ -354,6 +358,9 @@ func newRouter(
 				if !ok {
 					return
 				}
+				if !requireRequestPermission(w, r, rbac, "assets.manage") {
+					return
+				}
 				if err := assets.UpsertInOrganization(r.Context(), orgID, programID, body.Kind, body.Value); err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
@@ -366,6 +373,9 @@ func newRouter(
 			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)).Get("/", func(w http.ResponseWriter, r *http.Request) {
 				orgID, ok := requestOrganizationID(w, r)
 				if !ok {
+					return
+				}
+				if !requireRequestPermission(w, r, rbac, "programs.read") {
 					return
 				}
 				list, err := programs.ListByOrganization(r.Context(), orgID)
@@ -393,6 +403,9 @@ func newRouter(
 
 				orgID, ok := requestOrganizationID(w, r)
 				if !ok {
+					return
+				}
+				if !requireRequestPermission(w, r, rbac, "programs.manage") {
 					return
 				}
 				program, err := programs.CreateInOrganization(r.Context(), orgID, body.Name)
@@ -827,6 +840,9 @@ func newRouter(
 
 			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 				claims, _ := auth.FromContext(r.Context())
+				if !requireRequestPermission(w, r, rbac, "users.read") {
+					return
+				}
 				list, err := users.ListByOrganization(r.Context(), claims.OrganizationID)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -837,6 +853,9 @@ func newRouter(
 			})
 
 			r.Post("/", func(w http.ResponseWriter, r *http.Request) {
+				if !requireRequestPermission(w, r, rbac, "users.manage") {
+					return
+				}
 				var body struct {
 					Email    string `json:"email"`
 					Password string `json:"password"`
@@ -890,6 +909,9 @@ func newRouter(
 			})
 
 			r.Patch("/{userID}/role", func(w http.ResponseWriter, r *http.Request) {
+				if !requireRequestPermission(w, r, rbac, "users.manage") {
+					return
+				}
 				userID, err := uuid.Parse(chi.URLParam(r, "userID"))
 				if err != nil {
 					http.Error(w, "userID must be a valid UUID", http.StatusBadRequest)
@@ -961,6 +983,9 @@ func newRouter(
 			})
 
 			r.Patch("/{userID}/status", func(w http.ResponseWriter, r *http.Request) {
+				if !requireRequestPermission(w, r, rbac, "users.manage") {
+					return
+				}
 				userID, err := uuid.Parse(chi.URLParam(r, "userID"))
 				if err != nil {
 					http.Error(w, "userID must be a valid UUID", http.StatusBadRequest)
@@ -1021,6 +1046,9 @@ func newRouter(
 			})
 
 			r.Delete("/{userID}", func(w http.ResponseWriter, r *http.Request) {
+				if !requireRequestPermission(w, r, rbac, "users.manage") {
+					return
+				}
 				userID, err := uuid.Parse(chi.URLParam(r, "userID"))
 				if err != nil {
 					http.Error(w, "userID must be a valid UUID", http.StatusBadRequest)
@@ -1109,6 +1137,9 @@ func newRouter(
 					return
 				}
 
+				if !requireRequestPermission(w, r, rbac, "incidents.manage") {
+					return
+				}
 				if err := func() error {
 					orgID, ok := requestOrganizationID(w, r)
 					if !ok {
@@ -1387,6 +1418,11 @@ func newRouter(
 			}
 			agentAuth := auth.RequireAgentCredentialOrRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleOperator, auditedLookup, auditedCertificateLookup, isTokenRevoked)
 			r.With(agentAuth).Post("/ingest", func(w http.ResponseWriter, r *http.Request) {
+				if claims, ok := auth.FromContext(r.Context()); ok && claims.UserID != uuid.Nil {
+					if !requireRequestPermission(w, r, rbac, "rf.ingest") {
+						return
+					}
+				}
 				var reading store.RFReading
 				if err := json.NewDecoder(r.Body).Decode(&reading); err != nil {
 					http.Error(w, "invalid JSON body", http.StatusBadRequest)
@@ -1464,6 +1500,9 @@ func newRouter(
 				if !ok {
 					return
 				}
+				if !requireRequestPermission(w, r, rbac, "rf.read") {
+					return
+				}
 				list, err := rf.RecentByOrganization(r.Context(), orgID, 100)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -1478,6 +1517,9 @@ func newRouter(
 				if !ok {
 					return
 				}
+				if !requireRequestPermission(w, r, rbac, "rf.read") {
+					return
+				}
 				list, err := rfAnomalies.RecentByOrganization(r.Context(), orgID, 100)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -1490,8 +1532,8 @@ func newRouter(
 
 		r.Route("/satellites", func(r chi.Router) {
 			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)).Get("/{satelliteID}/passes", handleSatellitePassPrediction(satellites, tlePolicy(cfg)))
-			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)).Get("/{satelliteID}/orbital-events", handleListOrbitalEvents(orbitalEvents, satellites))
-			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleOperator, isTokenRevoked)).Post("/{satelliteID}/orbital-events", handleCreateOrbitalEvent(orbitalEvents, satellites, auditLog))
+			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked), auth.RequirePermission(rbac, "orbital.read")).Get("/{satelliteID}/orbital-events", handleListOrbitalEvents(orbitalEvents, satellites))
+			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked), auth.RequirePermission(rbac, "orbital.manage")).Post("/{satelliteID}/orbital-events", handleCreateOrbitalEvent(orbitalEvents, satellites, auditLog))
 
 			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)).Get("/", func(w http.ResponseWriter, r *http.Request) {
 				out, err := satellitesWithPositions(r.Context(), satellites, cache, tlePolicy(cfg))
@@ -1504,6 +1546,9 @@ func newRouter(
 			})
 
 			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)).Get("/stream", func(w http.ResponseWriter, r *http.Request) {
+				if !requireRequestPermission(w, r, rbac, "incidents.read") {
+					return
+				}
 				flusher, ok := w.(http.Flusher)
 				if !ok {
 					http.Error(w, "streaming unsupported", http.StatusInternalServerError)
@@ -1689,6 +1734,9 @@ func newRouter(
 			if !ok {
 				return
 			}
+			if !requireRequestPermission(w, r, rbac, "audit.read") {
+				return
+			}
 			page, err := auditLog.ListByOrganization(r.Context(), orgID, limit, offset)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -1752,6 +1800,9 @@ func newRouter(
 				}
 				orgID, ok := requestOrganizationID(w, r)
 				if !ok {
+					return
+				}
+				if !requireRequestPermission(w, r, rbac, "incidents.read") {
 					return
 				}
 				page, err := incidents.ListByOrganization(r.Context(), orgID, limit, offset, filter)
@@ -1899,6 +1950,9 @@ func newRouter(
 					http.Error(w, "Idempotency-Key must contain only safe identifier characters and be at most 128 characters", http.StatusBadRequest)
 					return
 				}
+				if !requireRequestPermission(w, r, rbac, "incidents.manage") {
+					return
+				}
 				incident, err := incidents.Create(r.Context(), store.CreateIncidentInput{
 					OrganizationID: orgID, Title: body.Title, Description: body.Description, Severity: body.Severity, SourceType: "manual",
 					SatelliteID: satelliteID, AgentID: body.AgentID, AssignedTo: assignedTo, CreatedBy: &claims.UserID, IdempotencyKey: idempotencyKey,
@@ -1921,6 +1975,9 @@ func newRouter(
 				}
 				orgID, ok := requestOrganizationID(w, r)
 				if !ok {
+					return
+				}
+				if !requireRequestPermission(w, r, rbac, "incidents.read") {
 					return
 				}
 				detail, err := incidents.GetByOrganization(r.Context(), orgID, incidentID)
@@ -2005,6 +2062,9 @@ func newRouter(
 					}
 				}
 				input.ActorID = claims.UserID
+				if !requireRequestPermission(w, r, rbac, "incidents.manage") {
+					return
+				}
 				incident, err := incidents.UpdateByOrganization(r.Context(), orgID, incidentID, input)
 				if err != nil {
 					if errors.Is(err, store.ErrInvalidIncidentTransition) {
@@ -2097,6 +2157,9 @@ func newRouter(
 				claims, ok := auth.FromContext(r.Context())
 				if !ok {
 					http.Error(w, "unauthorized", http.StatusUnauthorized)
+					return
+				}
+				if !requireRequestPermission(w, r, rbac, "incidents.manage") {
 					return
 				}
 				evidence, err := func() (store.IncidentEvidence, error) {
