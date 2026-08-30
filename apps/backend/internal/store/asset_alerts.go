@@ -131,3 +131,40 @@ func (s *AssetAlertStore) RecentUnacknowledged(ctx context.Context, since time.T
 	}
 	return items, rows.Err()
 }
+
+func (s *AssetAlertStore) ListByOrganization(ctx context.Context, organizationID uuid.UUID, limit, offset int) (Page[AssetCVEAlert], error) {
+	limit, offset = ClampPageParams(limit, offset)
+	var total int
+	if err := s.pool.QueryRow(ctx, `SELECT count(*) FROM asset_cve_alerts a JOIN assets ast ON ast.id=a.asset_id WHERE ast.organization_id=$1`, organizationID).Scan(&total); err != nil {
+		return Page[AssetCVEAlert]{}, err
+	}
+	rows, err := s.pool.Query(ctx, `
+		SELECT a.id,a.asset_id,ast.kind,ast.value,a.cve_id,c.description,COALESCE(c.score,0),
+		       a.matched_keyword,a.severity,a.acknowledged,a.acknowledged_by,a.acknowledged_at,a.created_at
+		FROM asset_cve_alerts a
+		JOIN assets ast ON ast.id=a.asset_id AND ast.organization_id=$1
+		JOIN space_cves c ON c.cve_id=a.cve_id
+		ORDER BY a.acknowledged ASC,a.created_at DESC LIMIT $2 OFFSET $3
+	`, organizationID, limit, offset)
+	if err != nil {
+		return Page[AssetCVEAlert]{}, err
+	}
+	defer rows.Close()
+	items := []AssetCVEAlert{}
+	for rows.Next() {
+		var al AssetCVEAlert
+		if err := rows.Scan(&al.ID, &al.AssetID, &al.AssetKind, &al.AssetValue, &al.CVEID, &al.CVEDescription, &al.CVEScore, &al.MatchedKeyword, &al.Severity, &al.Acknowledged, &al.AcknowledgedBy, &al.AcknowledgedAt, &al.CreatedAt); err != nil {
+			return Page[AssetCVEAlert]{}, err
+		}
+		items = append(items, al)
+	}
+	return Page[AssetCVEAlert]{Items: items, Total: total, Limit: limit, Offset: offset}, rows.Err()
+}
+
+func (s *AssetAlertStore) AcknowledgeInOrganization(ctx context.Context, organizationID, alertID, userID uuid.UUID) (bool, error) {
+	tag, err := s.pool.Exec(ctx, `
+		UPDATE asset_cve_alerts a SET acknowledged=true,acknowledged_by=$3,acknowledged_at=now()
+		FROM assets ast WHERE a.id=$1 AND ast.id=a.asset_id AND ast.organization_id=$2
+	`, alertID, organizationID, userID)
+	return tag.RowsAffected() > 0, err
+}

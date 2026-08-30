@@ -48,7 +48,11 @@ func handleListOrbitalEvents(events *store.OrbitalEventStore, satellites *store.
 				return
 			}
 		}
-		list, err := events.RecentForSatellite(r.Context(), satelliteID, time.Now().UTC().Add(-time.Duration(hours*float64(time.Hour))), limit)
+		orgID, ok := requestOrganizationID(w, r)
+		if !ok {
+			return
+		}
+		list, err := events.RecentForSatelliteInOrganization(r.Context(), orgID, satelliteID, time.Now().UTC().Add(-time.Duration(hours*float64(time.Hour))), limit)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -127,8 +131,12 @@ func handleCreateOrbitalEvent(events *store.OrbitalEventStore, satellites *store
 			id := claims.UserID
 			createdBy = &id
 		}
+		orgID, ok := requestOrganizationID(w, r)
+		if !ok {
+			return
+		}
 		created, err := events.Create(r.Context(), store.CreateOrbitalEventInput{
-			SatelliteID: satelliteID, EventType: body.EventType, EventTime: body.EventTime.UTC(), Source: body.Source,
+			OrganizationID: orgID, SatelliteID: satelliteID, EventType: body.EventType, EventTime: body.EventTime.UTC(), Source: body.Source,
 			Confidence: body.Confidence, Severity: body.Severity, Metadata: body.Metadata, CreatedBy: createdBy,
 		})
 		if err != nil {

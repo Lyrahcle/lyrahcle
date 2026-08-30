@@ -218,3 +218,12 @@ func (s *AgentKeyStore) RevokeInOrganization(ctx context.Context, organizationID
 	}
 	return revokedAt, err
 }
+
+func (s *AgentKeyStore) OrganizationForAgent(ctx context.Context, agentID string) (uuid.UUID, error) {
+	var id uuid.UUID
+	err := s.pool.QueryRow(ctx, `SELECT organization_id FROM agent_keys WHERE agent_id=$1 AND revoked_at IS NULL`, agentID).Scan(&id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return uuid.Nil, ErrAgentKeyNotFound
+	}
+	return id, err
+}

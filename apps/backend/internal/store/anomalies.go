@@ -10,6 +10,7 @@ import (
 
 type RFAnomaly struct {
 	ID             uuid.UUID  `json:"id"`
+	OrganizationID uuid.UUID  `json:"organization_id"`
 	ReadingID      uuid.UUID  `json:"reading_id"`
 	AgentID        string     `json:"agent_id"`
 	SatelliteID    *uuid.UUID `json:"satellite_id,omitempty"`
@@ -36,10 +37,10 @@ func (s *AnomalyStore) Insert(ctx context.Context, a RFAnomaly) error {
 
 func (s *AnomalyStore) InsertReturning(ctx context.Context, a RFAnomaly) (RFAnomaly, error) {
 	err := s.pool.QueryRow(ctx, `
-		INSERT INTO rf_anomalies (reading_id, agent_id, satellite_id, metric, value, baseline_mean, baseline_stddev, z_score)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		INSERT INTO rf_anomalies (organization_id, reading_id, agent_id, satellite_id, metric, value, baseline_mean, baseline_stddev, z_score)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		RETURNING id, detected_at
-	`, a.ReadingID, a.AgentID, a.SatelliteID, a.Metric, a.Value, a.BaselineMean, a.BaselineStddev, a.ZScore).Scan(&a.ID, &a.DetectedAt)
+	`, incidentOrganizationID(a.OrganizationID), a.ReadingID, a.AgentID, a.SatelliteID, a.Metric, a.Value, a.BaselineMean, a.BaselineStddev, a.ZScore).Scan(&a.ID, &a.DetectedAt)
 	return a, err
 }
 
@@ -59,6 +60,27 @@ func (s *AnomalyStore) Recent(ctx context.Context, limit int) ([]RFAnomaly, erro
 	for rows.Next() {
 		var a RFAnomaly
 		if err := rows.Scan(&a.ID, &a.ReadingID, &a.AgentID, &a.SatelliteID, &a.Metric, &a.Value, &a.BaselineMean, &a.BaselineStddev, &a.ZScore, &a.DetectedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, a)
+	}
+	return out, rows.Err()
+}
+
+func (s *AnomalyStore) RecentByOrganization(ctx context.Context, organizationID uuid.UUID, limit int) ([]RFAnomaly, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT id, organization_id, reading_id, agent_id, satellite_id, metric, value, baseline_mean, baseline_stddev, z_score, detected_at
+		FROM rf_anomalies WHERE organization_id=$1
+		ORDER BY detected_at DESC LIMIT $2
+	`, organizationID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []RFAnomaly
+	for rows.Next() {
+		var a RFAnomaly
+		if err := rows.Scan(&a.ID, &a.OrganizationID, &a.ReadingID, &a.AgentID, &a.SatelliteID, &a.Metric, &a.Value, &a.BaselineMean, &a.BaselineStddev, &a.ZScore, &a.DetectedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, a)

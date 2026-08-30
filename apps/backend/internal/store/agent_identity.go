@@ -562,3 +562,12 @@ func (s *AgentIdentityStore) SetStatusInOrganization(ctx context.Context, organi
 	}
 	return s.SetStatus(ctx, agentID, status)
 }
+
+func (s *AgentIdentityStore) OrganizationForAgent(ctx context.Context, agentID string) (uuid.UUID, error) {
+	var id uuid.UUID
+	err := s.pool.QueryRow(ctx, `SELECT organization_id FROM agent_identities WHERE agent_id=$1`, agentID).Scan(&id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return uuid.Nil, ErrAgentIdentityNotFound
+	}
+	return id, err
+}

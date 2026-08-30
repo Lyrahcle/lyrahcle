@@ -1,23 +1,24 @@
 # Organizations and multi-tenancy
 
-## v10.0–v10.3
-Organizations/JWT context, user administration isolation, critical-domain ownership, and tenant-isolated asset/incident/audit handlers.
+## v10.0–v10.4
+Organizations/JWT context, user administration, critical operational domains and the agent security chain are organization-scoped.
 
-## v10.4 — agent security boundary
+## v10.5 — RF, programs, orbital context and search
 
-Agent administration is now organization-scoped:
+Tenant-local ownership now covers:
 
-- admin agent listing;
-- enrollment-token issuance;
-- station updates;
-- lifecycle/status changes;
-- remote configuration read/history/create/rollback;
-- legacy agent-key list/create/revoke.
+- programs;
+- RF readings and RF anomalies;
+- operator/trusted-integration orbital events;
+- asset CVE alert listing/acknowledgement;
+- global search results for assets and incidents.
 
-The dependent credential/config tables carry explicit `organization_id`: enrollment tokens, certificates, config versions/state/acks and legacy keys. Existing rows inherit ownership from `agent_identities`; unmatched legacy keys fall back to the default organization for backward compatibility.
+RF ingest resolves the organization from the authenticated JWT or agent identity/key and persists it with the reading; anomaly records inherit the same tenant.
 
-mTLS self-service endpoints continue to authenticate from the certificate-to-agent binding. Administrative JWT operations additionally require the agent identity to belong to the caller organization.
+### Shared catalogs
 
-## Remaining multi-tenant work
+`satellites` and `space_cves` intentionally remain global reference catalogs. Search may return those shared references to every tenant, while tenant-owned assets/incidents remain isolated.
 
-RF/orbital/program/CVE relationships, global search, background jobs and remaining streaming surfaces still need tenant propagation. Those should be completed before multi-tenancy is advertised as fully production-isolated.
+### Remaining work
+
+Before declaring complete enterprise multi-tenancy, background workers/correlation paths and any remaining domain-specific queries should be audited for tenant propagation, followed by true database-backed Org-A/Org-B negative integration tests.

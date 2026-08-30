@@ -283,7 +283,11 @@ func newRouter(
 				http.Error(w, "q must contain 2-96 characters", http.StatusBadRequest)
 				return
 			}
-			results, err := searchStore.Search(r.Context(), query, 12)
+			orgID, ok := requestOrganizationID(w, r)
+			if !ok {
+				return
+			}
+			results, err := searchStore.SearchByOrganization(r.Context(), orgID, query, 12)
 			if err != nil {
 				http.Error(w, "search failed", http.StatusInternalServerError)
 				return
@@ -359,7 +363,11 @@ func newRouter(
 
 		r.Route("/programs", func(r chi.Router) {
 			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)).Get("/", func(w http.ResponseWriter, r *http.Request) {
-				list, err := programs.List(r.Context())
+				orgID, ok := requestOrganizationID(w, r)
+				if !ok {
+					return
+				}
+				list, err := programs.ListByOrganization(r.Context(), orgID)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
@@ -382,7 +390,11 @@ func newRouter(
 					return
 				}
 
-				program, err := programs.Create(r.Context(), body.Name)
+				orgID, ok := requestOrganizationID(w, r)
+				if !ok {
+					return
+				}
+				program, err := programs.CreateInOrganization(r.Context(), orgID, body.Name)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
@@ -1416,7 +1428,20 @@ func newRouter(
 					}
 				}
 
-				history, err := rf.RecentForAgent(r.Context(), reading.AgentID, anomalyHistoryWindow)
+				var organizationID uuid.UUID
+				if claims, ok := auth.FromContext(r.Context()); ok && claims.OrganizationID != uuid.Nil {
+					organizationID = claims.OrganizationID
+				} else if id, err := agentIdentities.OrganizationForAgent(r.Context(), reading.AgentID); err == nil {
+					organizationID = id
+				} else if id, err := agentKeys.OrganizationForAgent(r.Context(), reading.AgentID); err == nil {
+					organizationID = id
+				} else {
+					http.Error(w, "agent organization unavailable", http.StatusForbidden)
+					return
+				}
+				reading.OrganizationID = organizationID
+
+				history, err := rf.RecentForAgentInOrganization(r.Context(), organizationID, reading.AgentID, anomalyHistoryWindow)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
@@ -1433,7 +1458,11 @@ func newRouter(
 			})
 
 			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)).Get("/readings", func(w http.ResponseWriter, r *http.Request) {
-				list, err := rf.Recent(r.Context(), 100)
+				orgID, ok := requestOrganizationID(w, r)
+				if !ok {
+					return
+				}
+				list, err := rf.RecentByOrganization(r.Context(), orgID, 100)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
@@ -1443,7 +1472,11 @@ func newRouter(
 			})
 
 			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)).Get("/anomalies", func(w http.ResponseWriter, r *http.Request) {
-				list, err := rfAnomalies.Recent(r.Context(), 100)
+				orgID, ok := requestOrganizationID(w, r)
+				if !ok {
+					return
+				}
+				list, err := rfAnomalies.RecentByOrganization(r.Context(), orgID, 100)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
@@ -2091,7 +2124,11 @@ func newRouter(
 		r.Route("/asset-alerts", func(r chi.Router) {
 			r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)).Get("/", func(w http.ResponseWriter, r *http.Request) {
 				limit, offset := pageParams(r)
-				page, err := assetAlerts.List(r.Context(), limit, offset)
+				orgID, ok := requestOrganizationID(w, r)
+				if !ok {
+					return
+				}
+				page, err := assetAlerts.ListByOrganization(r.Context(), orgID, limit, offset)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
@@ -2113,7 +2150,12 @@ func newRouter(
 					return
 				}
 
-				found, err := assetAlerts.Acknowledge(r.Context(), alertID, claims.UserID)
+				orgID, err := auth.OrganizationID(claims)
+				if err != nil {
+					http.Error(w, "organization context required", http.StatusForbidden)
+					return
+				}
+				found, err := assetAlerts.AcknowledgeInOrganization(r.Context(), orgID, alertID, claims.UserID)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
@@ -2353,6 +2395,7 @@ func detectRFAnomalies(ctx context.Context, anomalies *store.AnomalyStore, rules
 			continue
 		}
 		created, err := anomalies.InsertReturning(ctx, store.RFAnomaly{
+			OrganizationID: reading.OrganizationID,
 			ReadingID:      reading.ID,
 			AgentID:        reading.AgentID,
 			SatelliteID:    reading.SatelliteID,
