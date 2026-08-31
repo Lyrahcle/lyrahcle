@@ -3,14 +3,11 @@ package remoteconfig
 import (
 	"crypto/ed25519"
 	"crypto/sha256"
-	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
-	"encoding/pem"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -31,28 +28,20 @@ type Payload struct {
 }
 
 type Verifier struct {
-	publicKey ed25519.PublicKey
-	agentID   string
+	keys    VerificationKeyProvider
+	agentID string
 }
 
 func LoadVerifier(path, agentID string) (*Verifier, error) {
-	pemBytes, err := os.ReadFile(path)
+	return LoadVerifierWithKeyDirectory(path, "", agentID)
+}
+
+func LoadVerifierWithKeyDirectory(legacyPath, keyDir, agentID string) (*Verifier, error) {
+	keys, err := loadVerificationKeyProvider(legacyPath, keyDir)
 	if err != nil {
-		return nil, fmt.Errorf("remote config: read verification key: %w", err)
+		return nil, err
 	}
-	block, _ := pem.Decode(pemBytes)
-	if block == nil || block.Type != "PUBLIC KEY" {
-		return nil, errors.New("remote config: verification key is not public key PEM")
-	}
-	parsed, err := x509.ParsePKIXPublicKey(block.Bytes)
-	if err != nil {
-		return nil, fmt.Errorf("remote config: parse verification key: %w", err)
-	}
-	publicKey, ok := parsed.(ed25519.PublicKey)
-	if !ok {
-		return nil, errors.New("remote config: verification key must be Ed25519")
-	}
-	return &Verifier{publicKey: publicKey, agentID: agentID}, nil
+	return &Verifier{keys: keys, agentID: agentID}, nil
 }
 
 func (v *Verifier) Verify(envelope uplink.RemoteConfigEnvelope) (Payload, error) {
@@ -68,7 +57,19 @@ func (v *Verifier) Verify(envelope uplink.RemoteConfigEnvelope) (Payload, error)
 	if !strings.EqualFold(hex.EncodeToString(checksum[:]), strings.TrimSpace(envelope.Checksum)) {
 		return Payload{}, errors.New("remote config: checksum mismatch")
 	}
-	if !ed25519.Verify(v.publicKey, payloadBytes, signature) {
+	var publicKey ed25519.PublicKey
+	if strings.TrimSpace(envelope.KID) == "" {
+		publicKey, err = v.keys.LegacyKey()
+		if err != nil {
+			return Payload{}, errors.New("remote config: legacy envelope has no configured legacy verification key")
+		}
+	} else {
+		publicKey, err = v.keys.VerificationKey(envelope.KID)
+		if err != nil {
+			return Payload{}, errors.New("remote config: unknown signing key id")
+		}
+	}
+	if !ed25519.Verify(publicKey, payloadBytes, signature) {
 		return Payload{}, errors.New("remote config: signature verification failed")
 	}
 	var payload Payload

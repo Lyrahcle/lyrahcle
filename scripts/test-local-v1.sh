@@ -82,7 +82,11 @@ python3 -m unittest \
   scripts/test_check_platform_organization_parity.py \
   scripts/test_check_satellite_ui_parity.py \
   scripts/test_check_correlation_ui_parity.py \
-  scripts/test_check_http_error_ui.py
+  scripts/test_check_http_error_ui.py \
+  scripts/test_check_keyprovider_kid.py \
+  scripts/test_check_signing_key_lifecycle.py \
+  scripts/test_check_signing_key_automation.py \
+  scripts/test_check_tenant_rate_limiting.py
 python3 scripts/check-command-execution.py .
 python3 scripts/check-frontend-xss.py .
 python3 scripts/check-sql-construction.py .
@@ -92,6 +96,10 @@ python3 scripts/check-platform-organization-parity.py .
 python3 scripts/check-satellite-ui-parity.py .
 python3 scripts/check-correlation-ui-parity.py .
 python3 scripts/check-http-error-ui.py .
+python3 scripts/check-keyprovider-kid.py .
+python3 scripts/check-signing-key-lifecycle.py .
+python3 scripts/check-signing-key-automation.py .
+python3 scripts/check-tenant-rate-limiting.py .
 
 section "Backend tests"
 cd "$ROOT/apps/backend"

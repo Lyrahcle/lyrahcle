@@ -32,6 +32,7 @@ type AgentConfigVersion struct {
 	Payload    []byte              `json:"-"`
 	Signature  []byte              `json:"-"`
 	Checksum   string              `json:"checksum_sha256"`
+	SigningKID string              `json:"signing_kid,omitempty"`
 	CreatedBy  *uuid.UUID          `json:"created_by,omitempty"`
 	CreatedAt  time.Time           `json:"created_at"`
 	AckStatus  string              `json:"ack_status,omitempty"`
@@ -39,7 +40,14 @@ type AgentConfigVersion struct {
 	AckedAt    *time.Time          `json:"acked_at,omitempty"`
 }
 
-type AgentConfigSignFunc func(version int64, settings AgentConfigSettings, issuedAt time.Time) ([]byte, []byte, string, error)
+type AgentConfigSignResult struct {
+	Payload    []byte
+	Signature  []byte
+	Checksum   string
+	SigningKID string
+}
+
+type AgentConfigSignFunc func(version int64, settings AgentConfigSettings, issuedAt time.Time) (AgentConfigSignResult, error)
 
 func NewAgentConfigStore(pool *pgxpool.Pool) *AgentConfigStore {
 	return &AgentConfigStore{pool: pool}
@@ -71,7 +79,7 @@ func (s *AgentConfigStore) Create(ctx context.Context, agentID string, settings 
 		return AgentConfigVersion{}, err
 	}
 	issuedAt := time.Now().UTC()
-	payload, signature, checksum, err := sign(version, settings, issuedAt)
+	signed, err := sign(version, settings, issuedAt)
 	if err != nil {
 		return AgentConfigVersion{}, err
 	}
@@ -79,16 +87,17 @@ func (s *AgentConfigStore) Create(ctx context.Context, agentID string, settings 
 	item.AgentID = agentID
 	item.Settings = settings
 	item.Version = version
-	item.Payload = payload
-	item.Signature = signature
-	item.Checksum = checksum
+	item.Payload = signed.Payload
+	item.Signature = signed.Signature
+	item.Checksum = signed.Checksum
+	item.SigningKID = signed.SigningKID
 	item.CreatedBy = createdBy
 	if err := tx.QueryRow(ctx, `
 		INSERT INTO agent_config_versions (
-			organization_id, agent_id, version, frequency_hz, capture_interval_seconds, satellite_id, payload, signature, checksum_sha256, created_by, created_at
-		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+			organization_id, agent_id, version, frequency_hz, capture_interval_seconds, satellite_id, payload, signature, checksum_sha256, signing_kid, created_by, created_at
+		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
 		RETURNING id, created_at
-	`, organizationID, agentID, version, settings.FrequencyHz, settings.CaptureIntervalSeconds, settings.SatelliteID, payload, signature, checksum, createdBy, issuedAt).Scan(&item.ID, &item.CreatedAt); err != nil {
+	`, organizationID, agentID, version, settings.FrequencyHz, settings.CaptureIntervalSeconds, settings.SatelliteID, signed.Payload, signed.Signature, signed.Checksum, signed.SigningKID, createdBy, issuedAt).Scan(&item.ID, &item.CreatedAt); err != nil {
 		return AgentConfigVersion{}, err
 	}
 	if _, err := tx.Exec(ctx, `
@@ -117,13 +126,13 @@ func (s *AgentConfigStore) Desired(ctx context.Context, agentID string) (AgentCo
 	item.AgentID = agentID
 	err := s.pool.QueryRow(ctx, `
 		SELECT v.id, v.version, v.frequency_hz, v.capture_interval_seconds, v.satellite_id, v.payload, v.signature,
-		       v.checksum_sha256, v.created_by, v.created_at, s.ack_status, s.ack_message, s.acked_at
+		       v.checksum_sha256, v.signing_kid, v.created_by, v.created_at, s.ack_status, s.ack_message, s.acked_at
 		FROM agent_config_state s
 		JOIN agent_config_versions v ON v.agent_id = s.agent_id AND v.version = s.desired_version
 		WHERE s.agent_id = $1
 	`, agentID).Scan(
 		&item.ID, &item.Version, &item.Settings.FrequencyHz, &item.Settings.CaptureIntervalSeconds, &item.Settings.SatelliteID,
-		&item.Payload, &item.Signature, &item.Checksum, &item.CreatedBy, &item.CreatedAt,
+		&item.Payload, &item.Signature, &item.Checksum, &item.SigningKID, &item.CreatedBy, &item.CreatedAt,
 		&item.AckStatus, &item.AckMessage, &item.AckedAt,
 	)
 	if err != nil {
@@ -140,7 +149,7 @@ func (s *AgentConfigStore) History(ctx context.Context, agentID string, limit in
 		limit = 20
 	}
 	rows, err := s.pool.Query(ctx, `
-		SELECT v.id, v.version, v.frequency_hz, v.capture_interval_seconds, v.satellite_id, v.checksum_sha256, v.created_by, v.created_at,
+		SELECT v.id, v.version, v.frequency_hz, v.capture_interval_seconds, v.satellite_id, v.checksum_sha256, v.signing_kid, v.created_by, v.created_at,
 		       COALESCE(a.status, ''), COALESCE(a.message, ''), a.created_at
 		FROM agent_config_versions v
 		LEFT JOIN agent_config_acks a ON a.agent_id = v.agent_id AND a.version = v.version
@@ -156,7 +165,7 @@ func (s *AgentConfigStore) History(ctx context.Context, agentID string, limit in
 	for rows.Next() {
 		var item AgentConfigVersion
 		item.AgentID = agentID
-		if err := rows.Scan(&item.ID, &item.Version, &item.Settings.FrequencyHz, &item.Settings.CaptureIntervalSeconds, &item.Settings.SatelliteID, &item.Checksum, &item.CreatedBy, &item.CreatedAt, &item.AckStatus, &item.AckMessage, &item.AckedAt); err != nil {
+		if err := rows.Scan(&item.ID, &item.Version, &item.Settings.FrequencyHz, &item.Settings.CaptureIntervalSeconds, &item.Settings.SatelliteID, &item.Checksum, &item.SigningKID, &item.CreatedBy, &item.CreatedAt, &item.AckStatus, &item.AckMessage, &item.AckedAt); err != nil {
 			return nil, err
 		}
 		items = append(items, item)

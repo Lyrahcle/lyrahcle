@@ -754,6 +754,12 @@ export async function rollbackAgentConfig(agentId, version) {
 }
 
 
+export async function fetchPlatformRateLimits() {
+  const res = await authedFetch('/api/v1/platform/rate-limits')
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to fetch platform rate limits')
+  return res.json()
+}
+
 export async function fetchPlatformAccess() {
   const res = await authedFetch('/api/v1/organizations/me')
   if (!res.ok) throw await apiErrorFromResponse(res, 'failed to check platform access')
@@ -840,4 +846,48 @@ export async function grantPlatformAdministrator(userId) {
 export async function revokePlatformAdministrator(userId) {
   const res = await authedFetch(`/api/v1/organizations/platform-admins/${encodeURIComponent(userId)}`, { method: 'DELETE' })
   if (!res.ok) throw await apiErrorFromResponse(res, 'failed to revoke platform administrator')
+}
+
+export async function fetchAgentConfigSigningKeys() {
+  const res = await authedFetch('/api/v1/signing-keys/agent-config/')
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to fetch signing keys')
+  return res.json()
+}
+
+export async function updateAgentConfigSigningRotationPolicy(policy) {
+  const res = await authedFetch('/api/v1/signing-keys/agent-config/policy', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(policy),
+  })
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to update signing key rotation policy')
+  return res.json()
+}
+
+export async function prepareAgentConfigSigningKeyRotation() {
+  const res = await authedFetch('/api/v1/signing-keys/agent-config/prepare', { method: 'POST' })
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to prepare signing key rotation')
+  return res.json()
+}
+
+export async function fetchAgentConfigSigningPublicKey(kid) {
+  const res = await authedFetch(`/api/v1/signing-keys/agent-config/${encodeURIComponent(kid)}/public-key`)
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to fetch signing public key')
+  return res.json()
+}
+
+export async function activateAgentConfigSigningKey(kid, graceSeconds) {
+  const res = await authedFetch(`/api/v1/signing-keys/agent-config/${encodeURIComponent(kid)}/activate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ grace_seconds: graceSeconds }),
+  })
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to activate signing key')
+  return res.json()
+}
+
+export async function revokeAgentConfigSigningKey(kid) {
+  const res = await authedFetch(`/api/v1/signing-keys/agent-config/${encodeURIComponent(kid)}/revoke`, { method: 'POST' })
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to revoke signing key')
+  return res.json()
 }

@@ -40,6 +40,7 @@ Backend (Go/chi) <---- SDR Agent
 Human sessions use short-lived JWT bearer tokens. Redis stores active-session metadata and revocation state; users can revoke individual sessions or all sessions. Roles are `viewer`, `auditor`, `analyst`, `operator`, and `admin`, with explicit permissions rather than relying on frontend visibility. Long-running SDR agents should use v9.0 certificate enrollment and mTLS. The backend resolves machine identity from the validated client-certificate fingerprint and active database identity state. Legacy `X-Agent-Key` credentials remain migration-only compatibility; neither certificate- nor key-authenticated requests may select a different agent identity in the request body.
 
 The backend applies request-size limits, input validation, security headers, rate limiting, audit events, request correlation IDs, and authorization at route boundaries.
+Authenticated rate limiting uses tenant aggregate + actor budgets for human requests and a separate tenant + agent namespace for SDR machine traffic. This prevents a noisy tenant or high-rate agent from exhausting another tenant's normal request allowance; the coarse IP limiter is only a higher platform-safety ceiling.
 
 ## Live orbital flow
 

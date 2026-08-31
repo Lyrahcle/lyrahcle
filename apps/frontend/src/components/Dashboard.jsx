@@ -22,6 +22,8 @@ import AuditLogPanel from './AuditLogPanel.jsx'
 import UsersPanel from './UsersPanel.jsx'
 import SettingsPanel from './SettingsPanel.jsx'
 import PlatformOrganizationsPanel from './PlatformOrganizationsPanel.jsx'
+import SigningKeysPanel from './SigningKeysPanel.jsx'
+import RateLimitPolicyPanel from './RateLimitPolicyPanel.jsx'
 import RBACPanel from './RBACPanel.jsx'
 import Footer from './Footer.jsx'
 import ApiStatusBanner from './ApiStatusBanner.jsx'
@@ -614,9 +616,17 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
         )}
 
                 {activeTab === 'platform' && platformAdmin && (
-          <Panel eyebrow={t('platform.eyebrow')} title={t('platform.title')} uppercase>
-            {organizations === null || platformUsers === null ? <Skeleton /> : <PlatformOrganizationsPanel organizations={organizations} platformUsers={platformUsers} onChanged={reloadOrganizations} onPlatformUsersChanged={reloadPlatformUsers} />}
-          </Panel>
+          <div className="grid gap-6">
+            <Panel eyebrow={t('platform.eyebrow')} title={t('platform.title')} uppercase>
+              {organizations === null || platformUsers === null ? <Skeleton /> : <PlatformOrganizationsPanel organizations={organizations} platformUsers={platformUsers} onChanged={reloadOrganizations} onPlatformUsersChanged={reloadPlatformUsers} />}
+            </Panel>
+            <Panel eyebrow={t('signingKeys.eyebrow')} title={t('signingKeys.title')} uppercase>
+              <SigningKeysPanel />
+            </Panel>
+            <Panel eyebrow={t('rateLimits.eyebrow')} title={t('rateLimits.title')} uppercase>
+              <RateLimitPolicyPanel />
+            </Panel>
+          </div>
         )}
 
         {activeTab === 'admin' && adminAccess && (

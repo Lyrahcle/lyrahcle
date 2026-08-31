@@ -20,12 +20,17 @@ The backend currently exports:
 - `lyrahcle_http_request_duration_seconds`
 - `lyrahcle_auth_logins_total`
 - `lyrahcle_sse_connections`
+- `lyrahcle_signing_keys{domain,status}`
+- `lyrahcle_signing_key_rotation_due{domain}`
+- `lyrahcle_signing_key_staged_pending{domain}`
+- `lyrahcle_signing_key_warnings{domain,code}`
+- `lyrahcle_signing_key_automation_total{domain,result}`
 
 HTTP metrics use bounded route labels rather than raw URLs. Authentication metrics expose only result categories and never usernames, tokens, passwords, TOTP secrets, or request bodies.
 
 ## Alerts
 
-Prometheus loads `deploy/prometheus/alerts.yml`. Initial alerts cover elevated server-error rates, p95 latency, authentication failures, and unusually high SSE connection counts.
+Prometheus loads `deploy/prometheus/alerts.yml`. Alerts cover elevated server-error rates, p95 latency, authentication failures, unusually high SSE connection counts, TLE/correlation degradation, and remote-config signing-key lifecycle health. Signing-key alerts include no active key, overdue rotation, staged-key distribution backlog, grace expiry, and automation failures.
 
 ## Correlation
 

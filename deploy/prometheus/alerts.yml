@@ -57,3 +57,38 @@ groups:
           severity: info
         annotations:
           summary: Orbital correlation is being suppressed by TLE data quality
+      - alert: LyrahcleSigningKeyNoActiveKey
+        expr: lyrahcle_signing_key_warnings{domain="agent_config",code="no_active_key"} > 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: Lyrahcle has no active remote-config signing key
+      - alert: LyrahcleSigningKeyRotationDue
+        expr: lyrahcle_signing_key_rotation_due{domain="agent_config"} > 0
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: Lyrahcle remote-config signing key rotation is due
+      - alert: LyrahcleSigningKeyStagedPending
+        expr: lyrahcle_signing_key_warnings{domain="agent_config",code="staged_pending"} > 0
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: A staged Lyrahcle signing key is awaiting distribution and activation
+      - alert: LyrahcleSigningKeyGraceExpiring
+        expr: lyrahcle_signing_key_warnings{domain="agent_config",code="grace_expiring"} > 0
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: A Lyrahcle signing key grace period is approaching expiry
+      - alert: LyrahcleSigningKeyAutomationFailure
+        expr: sum(increase(lyrahcle_signing_key_automation_total{domain="agent_config",result=~"policy_error|list_error|prepare_error"}[30m])) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Lyrahcle signing-key automation encountered an error

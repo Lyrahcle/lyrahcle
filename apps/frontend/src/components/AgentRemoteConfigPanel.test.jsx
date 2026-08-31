@@ -60,6 +60,29 @@ describe('AgentRemoteConfigPanel', () => {
     expect(api.fetchAgentConfigHistory.mock.calls.length).toBeGreaterThanOrEqual(2)
   })
 
+  it('shows the signing KID for desired and historical configuration versions', async () => {
+    const kid = 'ed25519-sha256-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
+    api.fetchAgentConfig.mockResolvedValue({
+      id: 'cfg-current',
+      version: 5,
+      signing_kid: kid,
+      ack_status: 'applied',
+      config: { frequency_hz: 145800000, capture_interval_seconds: 5, satellite_id: 'sat-1' },
+    })
+    api.fetchAgentConfigHistory.mockResolvedValue([{
+      id: 'cfg-history',
+      version: 4,
+      signing_kid: kid,
+      ack_status: 'applied',
+      config: { frequency_hz: 145800000, capture_interval_seconds: 5, satellite_id: 'sat-1' },
+    }])
+    renderPanel()
+
+    await waitFor(() => expect(api.fetchAgentConfigHistory).toHaveBeenCalledWith('sdr-1'))
+    expect(screen.getAllByText(/signing key/i).length).toBeGreaterThanOrEqual(2)
+    expect(screen.getAllByTitle(kid)).toHaveLength(2)
+  })
+
   it('surfaces remote configuration failures', async () => {
     api.applyAgentConfig.mockRejectedValue(new Error('config rejected'))
     renderPanel()

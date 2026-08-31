@@ -1282,7 +1282,7 @@ paths:
       tags:
       - Legacy Agent Keys
       summary: Revoke that agent's key
-      description: 'Requires role: admin.'
+      description: 'Requires agents.read or agents.manage.'
       parameters:
       - name: agentID
         in: path
@@ -2202,7 +2202,7 @@ paths:
     put:
       tags: [Agents]
       summary: Publish a new signed SDR agent configuration
-      description: 'Requires role: admin. Creates an immutable monotonic version. Only active mTLS agents are configurable.'
+      description: 'Requires agents.manage. Creates an immutable monotonic version bound to the signing KID used for that version. Only active mTLS agents are configurable.'
       parameters:
       - name: agentID
         in: path
@@ -2237,7 +2237,7 @@ paths:
     get:
       tags: [Agents]
       summary: List immutable SDR agent configuration history
-      description: 'Requires role: admin. Returns up to the latest 20 versions and acknowledgements.'
+      description: 'Requires agents.read or agents.manage. Returns up to the latest 20 versions, signing KIDs, and acknowledgements.'
       parameters:
       - name: agentID
         in: path
@@ -2249,7 +2249,7 @@ paths:
     post:
       tags: [Agents]
       summary: Roll back SDR agent settings by creating a new signed version
-      description: 'Requires role: admin. Historical rows remain immutable.'
+      description: 'Requires agents.manage. Historical rows remain immutable; rollback creates a newly signed version with the currently active signing KID.'
       parameters:
       - name: agentID
         in: path
@@ -2286,6 +2286,10 @@ paths:
                 type: object
                 required: [payload, signature, checksum_sha256]
                 properties:
+                  kid:
+                    type: string
+                    maxLength: 128
+                    description: Stable signing-key identifier. Omitted only for legacy pre-KID configuration versions.
                   payload: {type: string}
                   signature: {type: string}
                   checksum_sha256: {type: string}
@@ -2313,6 +2317,113 @@ paths:
         '204': {description: Acknowledgement recorded}
         '409': {description: Acknowledgement conflicts with immutable history}
         '401': {description: Active mTLS identity required}
+  /api/v1/platform/rate-limits:
+    get:
+      summary: Read effective tenant-aware rate-limit policy
+      description: Platform-administrator-only visibility into human, tenant, agent, and platform emergency rate-limit budgets. Values are configured operationally through RATE_LIMIT_* environment variables.
+      responses:
+        '200':
+          description: Effective rate-limit policy and Redis distribution state
+        '403':
+          description: Platform administrator required
+  /api/v1/signing-keys/agent-config/:
+    get:
+      summary: List remote-config signing keys
+      description: Platform-administrator-only view of the agent configuration signing-key lifecycle. Private key material is never returned.
+      responses:
+        '200':
+          description: Signing key lifecycle state
+        '403':
+          description: Platform administrator required
+  /api/v1/signing-keys/agent-config/policy:
+    put:
+      summary: Update remote-config signing key rotation policy
+      description: Platform-administrator-only update of prepare-only rotation scheduling and lifecycle warning windows. Automatic activation is never performed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [automatic_prepare, interval_seconds, staged_alert_after_seconds, grace_alert_before_seconds]
+              properties:
+                automatic_prepare: {type: boolean}
+                interval_seconds: {type: integer, minimum: 86400, maximum: 31536000}
+                staged_alert_after_seconds: {type: integer, minimum: 3600, maximum: 2592000}
+                grace_alert_before_seconds: {type: integer, minimum: 3600, maximum: 2592000}
+      responses:
+        '200':
+          description: Updated persisted rotation policy
+        '400':
+          description: Invalid policy
+        '403':
+          description: Platform administrator required
+        '409':
+          description: Managed lifecycle is unavailable
+  /api/v1/signing-keys/agent-config/prepare:
+    post:
+      summary: Prepare remote-config signing key rotation
+      description: Generates a staged Ed25519 key and returns only its public key for distribution to SDR agents.
+      responses:
+        '201':
+          description: Staged key plus public verification key
+        '409':
+          description: A staged key already exists or lifecycle management is unavailable
+  /api/v1/signing-keys/agent-config/{kid}/public-key:
+    get:
+      summary: Export a signing public key
+      parameters:
+        - in: path
+          name: kid
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Public verification key PEM
+        '404':
+          description: Signing key not found
+  /api/v1/signing-keys/agent-config/{kid}/activate:
+    post:
+      summary: Activate a staged signing key
+      description: Makes the staged key active and moves the previous active key into the configured grace period.
+      parameters:
+        - in: path
+          name: kid
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                grace_seconds:
+                  type: integer
+                  minimum: 3600
+                  maximum: 2592000
+      responses:
+        '200':
+          description: Activated signing key metadata
+        '409':
+          description: Signing key is not staged
+  /api/v1/signing-keys/agent-config/{kid}/revoke:
+    post:
+      summary: Revoke a staged or grace signing key
+      description: Immediately removes the key from backend trust. The currently active key cannot be revoked until a replacement is activated.
+      parameters:
+        - in: path
+          name: kid
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Revoked signing key metadata
+        '409':
+          description: Active key cannot be revoked or lifecycle management is unavailable
 components:
   securitySchemes:
     bearerAuth:

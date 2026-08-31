@@ -1,6 +1,7 @@
 package agentconfig
 
 import (
+	"context"
 	"crypto/ed25519"
 	"crypto/x509"
 	"encoding/base64"
@@ -9,6 +10,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/mlko01/lyrahcle/apps/backend/internal/keyprovider"
 )
 
 func TestSignerProducesVerifiableEnvelope(t *testing.T) {
@@ -24,7 +27,7 @@ func TestSignerProducesVerifiableEnvelope(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	envelope, payload, signature, err := signer.Sign("sdr-1", 7, Settings{FrequencyHz: 437500000, CaptureIntervalSeconds: 10}, time.Unix(100, 0))
+	envelope, payload, signature, err := signer.Sign(context.Background(), "sdr-1", 7, Settings{FrequencyHz: 437500000, CaptureIntervalSeconds: 10}, time.Unix(100, 0))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -37,6 +40,13 @@ func TestSignerProducesVerifiableEnvelope(t *testing.T) {
 		t.Fatal(err)
 	}
 	publicKey := parsed.(ed25519.PublicKey)
+	expectedKID, err := keyprovider.Ed25519KID(publicKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if envelope.KID != expectedKID {
+		t.Fatalf("envelope kid = %q, want %q", envelope.KID, expectedKID)
+	}
 	if !ed25519.Verify(publicKey, payload, signature) {
 		t.Fatal("signature did not verify")
 	}

@@ -30,6 +30,16 @@
 | `SMTP_FROM` | unset | Recovery-email sender |
 | `SMTP_SERVER_NAME` | unset | TLS server name used to verify the SMTP certificate |
 | `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` | unset | Optional OTLP/HTTP traces endpoint; HTTPS is required in production |
+| `RATE_LIMIT_PLATFORM_CEILING_PER_MINUTE` | `50000` | Coarse per-IP emergency ceiling; intentionally higher than tenant budgets so it does not become the normal noisy-neighbor boundary |
+| `RATE_LIMIT_TENANT_READ_PER_MINUTE` | `1200` | Aggregate authenticated read budget per tenant |
+| `RATE_LIMIT_ACTOR_READ_PER_MINUTE` | `300` | Authenticated read budget per user within a tenant |
+| `RATE_LIMIT_TENANT_WRITE_PER_MINUTE` | `300` | Aggregate authenticated mutation budget per tenant |
+| `RATE_LIMIT_ACTOR_WRITE_PER_MINUTE` | `120` | Authenticated mutation budget per user within a tenant |
+| `RATE_LIMIT_TENANT_AGENT_PER_MINUTE` | `12000` | Aggregate machine/API budget per tenant, isolated from human budgets |
+| `RATE_LIMIT_AGENT_PER_MINUTE` | `3000` | Per-agent machine/API budget within a tenant |
+
+
+Authenticated rate limiting is tenant-aware. Human traffic is checked against both an aggregate organization budget and a per-user budget, with independent read/write namespaces. Valid SDR-agent traffic uses a separate organization+agent namespace so high-rate ingest cannot consume the human API allowance. Redis keys contain hashes of tenant/actor subjects rather than raw UUIDs. The platform IP ceiling remains as a deliberately higher emergency guard, while login/recovery retain stricter pre-authentication abuse limits. If Redis becomes unavailable after startup, the tenant limiter falls back to an in-process fixed-window counter and emits `lyrahcle_rate_limit_backend_fallback_total`. Production still requires Redis for distributed enforcement across replicas.
 
 The bootstrap admin is created only when the users table is empty and is marked for mandatory password change. Changing `SEED_ADMIN_PASSWORD` later does not reset an existing account. Passwords are validated at 12-72 bytes and must include uppercase, lowercase, a number, and a symbol.
 
@@ -109,7 +119,12 @@ Prometheus alert rules live in `deploy/prometheus/alerts.yml`; Grafana provision
 | `AGENT_VERSION` | Agent software version reported at enrollment | `v9.1` |
 | `AGENT_FIRMWARE_VERSION` | Optional connected-device firmware version | unset |
 | `AGENT_CONFIG_SIGNING_KEY_FILE` | Backend Ed25519 private key for signing remote agent configuration | disabled |
-| `AGENT_CONFIG_VERIFY_KEY` | SDR agent Ed25519 public key used to verify remote configuration | disabled |
+| `AGENT_CONFIG_SIGNING_KEY_DIR` | Managed backend-only directory for staged/active/grace/revoked remote-config signing keys | disabled |
+| `AGENT_CONFIG_SIGNING_GRACE_PERIOD` | Compatibility window for the previous remote-config signing key after activation | `168h` |
+
+Rotation scheduling is configured from **Platform → Remote Config Signing Keys** when `AGENT_CONFIG_SIGNING_KEY_DIR` enables the managed provider. The persisted policy controls prepare-only automation and warning windows; activation always remains manual after public-key distribution.
+| `AGENT_CONFIG_VERIFY_KEY` | SDR agent legacy/default Ed25519 public key; required only for pre-KID envelopes | disabled |
+| `AGENT_CONFIG_VERIFY_KEY_DIR` | SDR agent directory of trusted Ed25519 public-key PEM files resolved by KID | disabled |
 | `AGENT_CONFIG_POLL_INTERVAL` | SDR agent desired-config polling interval | `30s` |
 
 See `docs/agent-enrollment.md` for certificate identity and `docs/agent-remote-configuration.md` for signed remote configuration.

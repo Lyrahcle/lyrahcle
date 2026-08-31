@@ -17,15 +17,31 @@ import (
 	"github.com/mlko01/lyrahcle/apps/backend/internal/audit"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/auth"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/config"
+	"github.com/mlko01/lyrahcle/apps/backend/internal/keyprovider"
+	"github.com/mlko01/lyrahcle/apps/backend/internal/ratelimit"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/store"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/validate"
 )
 
-func buildAgentConfigSigner(cfg config.Config) (*agentconfig.Signer, error) {
-	if cfg.AgentConfigSigningKeyFile == "" {
-		return nil, nil
+func buildAgentConfigSigner(cfg config.Config) (*agentconfig.Signer, keyprovider.Provider, error) {
+	if cfg.AgentConfigSigningKeyDir == "" && cfg.AgentConfigSigningKeyFile == "" {
+		return nil, nil, nil
 	}
-	return agentconfig.LoadSigner(cfg.AgentConfigSigningKeyFile)
+	var provider keyprovider.Provider
+	var err error
+	if cfg.AgentConfigSigningKeyDir != "" {
+		provider, err = keyprovider.NewManagedLocalProvider(cfg.AgentConfigSigningKeyDir, cfg.AgentConfigSigningKeyFile)
+	} else {
+		provider, err = keyprovider.NewLocalProvider(cfg.AgentConfigSigningKeyFile)
+	}
+	if err != nil {
+		return nil, nil, err
+	}
+	signer, err := agentconfig.NewSigner(provider)
+	if err != nil {
+		return nil, nil, err
+	}
+	return signer, provider, nil
 }
 
 func validateRemoteSettings(settings store.AgentConfigSettings) error {
@@ -42,12 +58,14 @@ func registerAgentConfigRoutes(
 	r chi.Router,
 	cfg config.Config,
 	signer *agentconfig.Signer,
+	signingKeys keyprovider.Provider,
 	configs *store.AgentConfigStore,
 	identities *store.AgentIdentityStore,
 	satellites *store.SatelliteStore,
 	auditLog *store.AuditStore,
 	rbac *store.RBACStore,
 	isTokenRevoked auth.RevocationCheck,
+	tenantLimiter *ratelimit.Limiter,
 ) {
 	agentRead := auth.RequireAnyPermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, []string{"agents.read", "agents.manage"}, isTokenRevoked)
 	agentManage := auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "agents.manage", isTokenRevoked)
@@ -125,16 +143,18 @@ func registerAgentConfigRoutes(
 			return
 		}
 		createdBy := claims.UserID
-		item, err := configs.CreateInOrganization(r.Context(), orgID, agentID, settings, &createdBy, func(version int64, value store.AgentConfigSettings, issuedAt time.Time) ([]byte, []byte, string, error) {
-			envelope, payload, signature, err := signer.Sign(agentID, version, agentconfig.Settings{
+		item, err := configs.CreateInOrganization(r.Context(), orgID, agentID, settings, &createdBy, func(version int64, value store.AgentConfigSettings, issuedAt time.Time) (store.AgentConfigSignResult, error) {
+			envelope, payload, signature, err := signer.Sign(r.Context(), agentID, version, agentconfig.Settings{
 				FrequencyHz:            value.FrequencyHz,
 				CaptureIntervalSeconds: value.CaptureIntervalSeconds,
 				SatelliteID:            value.SatelliteID,
 			}, issuedAt)
 			if err != nil {
-				return nil, nil, "", err
+				return store.AgentConfigSignResult{}, err
 			}
-			return payload, signature, envelope.Checksum, nil
+			return store.AgentConfigSignResult{
+				Payload: payload, Signature: signature, Checksum: envelope.Checksum, SigningKID: envelope.KID,
+			}, nil
 		})
 		if err != nil {
 			switch {
@@ -154,6 +174,7 @@ func registerAgentConfigRoutes(
 			"capture_interval_seconds": settings.CaptureIntervalSeconds,
 			"satellite_id":             settings.SatelliteID,
 			"checksum_sha256":          item.Checksum,
+			"signing_kid":              item.SigningKID,
 		}
 		if rollbackFrom > 0 {
 			details["rollback_from_version"] = rollbackFrom
@@ -223,6 +244,14 @@ func registerAgentConfigRoutes(
 			http.Error(w, "invalid agent certificate", http.StatusUnauthorized)
 			return
 		}
+		orgID, err := identities.OrganizationForAgent(r.Context(), agentID)
+		if err != nil {
+			http.Error(w, "agent organization unavailable", http.StatusUnauthorized)
+			return
+		}
+		if !enforceAgentRateLimit(w, r, tenantLimiter, orgID, agentID) {
+			return
+		}
 		afterVersion := int64(0)
 		if raw := strings.TrimSpace(r.URL.Query().Get("after_version")); raw != "" {
 			parsed, err := strconv.ParseInt(raw, 10, 64)
@@ -245,8 +274,15 @@ func registerAgentConfigRoutes(
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}
+		if item.SigningKID != "" && signingKeys != nil {
+			if _, err := signingKeys.SigningKey(r.Context(), item.SigningKID); err != nil {
+				http.Error(w, "desired config signing key is no longer trusted", http.StatusConflict)
+				return
+			}
+		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(agentconfig.Envelope{
+			KID:       item.SigningKID,
 			Payload:   base64.RawURLEncoding.EncodeToString(item.Payload),
 			Signature: base64.RawURLEncoding.EncodeToString(item.Signature),
 			Checksum:  item.Checksum,

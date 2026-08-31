@@ -30,6 +30,7 @@ type Client struct {
 }
 
 type RemoteConfigEnvelope struct {
+	KID       string `json:"kid,omitempty"`
 	Payload   string `json:"payload"`
 	Signature string `json:"signature"`
 	Checksum  string `json:"checksum_sha256"`

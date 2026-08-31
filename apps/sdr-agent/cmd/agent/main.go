@@ -50,6 +50,7 @@ func main() {
 	agentVersion := getEnv("AGENT_VERSION", "v9.1")
 	firmwareVersion := getEnv("AGENT_FIRMWARE_VERSION", "")
 	configVerifyKeyPath := getEnv("AGENT_CONFIG_VERIFY_KEY", "")
+	configVerifyKeyDir := getEnv("AGENT_CONFIG_VERIFY_KEY_DIR", "")
 	rotateBefore, err := time.ParseDuration(getEnv("AGENT_ROTATE_BEFORE", "24h"))
 	if err != nil || rotateBefore < time.Hour {
 		log.Fatal("AGENT_ROTATE_BEFORE must be a duration of at least 1h")
@@ -78,8 +79,8 @@ func main() {
 	if intervalSec < 1 || intervalSec > 3600 {
 		log.Fatal("CAPTURE_INTERVAL_SECONDS must be between 1 and 3600")
 	}
-	if configVerifyKeyPath != "" && clientCertPath == "" {
-		log.Fatal("AGENT_CONFIG_VERIFY_KEY requires mTLS agent identity")
+	if (configVerifyKeyPath != "" || configVerifyKeyDir != "") && clientCertPath == "" {
+		log.Fatal("remote config verification keys require mTLS agent identity")
 	}
 
 	if clientCertPath != "" {
@@ -102,8 +103,8 @@ func main() {
 	var liveConfig atomic.Value
 	liveConfig.Store(runtimeAgentConfig{FrequencyHz: freqHz, CaptureIntervalSeconds: intervalSec})
 	configChanged := make(chan struct{}, 1)
-	if configVerifyKeyPath != "" {
-		verifier, err := remoteconfig.LoadVerifier(configVerifyKeyPath, agentID)
+	if configVerifyKeyPath != "" || configVerifyKeyDir != "" {
+		verifier, err := remoteconfig.LoadVerifierWithKeyDirectory(configVerifyKeyPath, configVerifyKeyDir, agentID)
 		if err != nil {
 			log.Fatalf("remote configuration: %v", err)
 		}

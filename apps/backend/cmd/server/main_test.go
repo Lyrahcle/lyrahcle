@@ -17,6 +17,7 @@ import (
 	"github.com/mlko01/lyrahcle/apps/backend/internal/auth"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/config"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/detection"
+	"github.com/mlko01/lyrahcle/apps/backend/internal/keyprovider"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/store"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/testdb"
 )
@@ -47,10 +48,19 @@ func testRouter(t *testing.T) (http.Handler, *pgxpool.Pool, *store.UserStore) {
 	t.Cleanup(pool.Close)
 
 	cfg := config.Config{
-		JWTSecret:       []byte("test-jwt-secret-for-http-tests-only"),
-		JWTAccessTTL:    time.Hour,
-		WebAuthnRPID:    "localhost",
-		WebAuthnOrigins: []string{"http://localhost:5173"},
+		JWTSecret:                         []byte("test-jwt-secret-for-http-tests-only"),
+		JWTAccessTTL:                      time.Hour,
+		WebAuthnRPID:                      "localhost",
+		WebAuthnOrigins:                   []string{"http://localhost:5173"},
+		AgentConfigSigningKeyDir:          t.TempDir(),
+		AgentConfigSigningGracePeriod:     24 * time.Hour,
+		RateLimitPlatformCeilingPerMinute: 50000,
+		RateLimitTenantReadPerMinute:      1200,
+		RateLimitActorReadPerMinute:       300,
+		RateLimitTenantWritePerMinute:     300,
+		RateLimitActorWritePerMinute:      120,
+		RateLimitTenantAgentPerMinute:     12000,
+		RateLimitAgentPerMinute:           3000,
 	}
 
 	assets := store.NewAssetStore(pool)
@@ -1401,5 +1411,126 @@ func TestSatelliteUpdateRejectsDuplicateNoradID(t *testing.T) {
 	})
 	if rec.Code != http.StatusConflict {
 		t.Fatalf("duplicate NORAD update: status = %d, want %d; body=%s", rec.Code, http.StatusConflict, rec.Body.String())
+	}
+}
+
+func TestSigningKeyLifecycleUsesPlatformBoundaryAndAudits(t *testing.T) {
+	router, pool, users := testRouter(t)
+	platformToken := seedUserAndLogin(t, router, users, "platform-key-admin@example.com", "Correct-Horse-Battery-9!", string(auth.RoleAdmin))
+	platformUser, err := users.GetByEmail(context.Background(), "platform-key-admin@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := users.GrantPlatformAdministrator(context.Background(), platformUser.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	list := doJSON(t, router, http.MethodGet, "/api/v1/signing-keys/agent-config/", platformToken, nil)
+	if list.Code != http.StatusOK {
+		t.Fatalf("list status=%d body=%s", list.Code, list.Body.String())
+	}
+	var before struct {
+		Managed        bool                           `json:"managed"`
+		Keys           []struct{ KID, Status string } `json:"keys"`
+		RotationPolicy *keyprovider.RotationPolicy    `json:"rotation_policy"`
+		Health         *keyprovider.RotationHealth    `json:"health"`
+	}
+	if err := json.Unmarshal(list.Body.Bytes(), &before); err != nil {
+		t.Fatal(err)
+	}
+	if !before.Managed || len(before.Keys) != 1 || before.Keys[0].Status != "active" || before.RotationPolicy == nil || before.Health == nil {
+		t.Fatalf("before=%#v", before)
+	}
+	oldKID := before.Keys[0].KID
+
+	policyUpdate := doJSON(t, router, http.MethodPut, "/api/v1/signing-keys/agent-config/policy", platformToken, map[string]interface{}{
+		"automatic_prepare": true, "interval_seconds": 3888000, "staged_alert_after_seconds": 43200, "grace_alert_before_seconds": 21600,
+	})
+	if policyUpdate.Code != http.StatusOK {
+		t.Fatalf("policy update status=%d body=%s", policyUpdate.Code, policyUpdate.Body.String())
+	}
+	var updatedPolicy keyprovider.RotationPolicy
+	if err := json.Unmarshal(policyUpdate.Body.Bytes(), &updatedPolicy); err != nil {
+		t.Fatal(err)
+	}
+	if !updatedPolicy.AutomaticPrepare || updatedPolicy.IntervalSeconds != 3888000 {
+		t.Fatalf("updated policy=%+v", updatedPolicy)
+	}
+
+	prepare := doJSON(t, router, http.MethodPost, "/api/v1/signing-keys/agent-config/prepare", platformToken, nil)
+	if prepare.Code != http.StatusCreated {
+		t.Fatalf("prepare status=%d body=%s", prepare.Code, prepare.Body.String())
+	}
+	var prepared struct {
+		Key          struct{ KID, Status string } `json:"key"`
+		PublicKeyPEM string                       `json:"public_key_pem"`
+	}
+	if err := json.Unmarshal(prepare.Body.Bytes(), &prepared); err != nil {
+		t.Fatal(err)
+	}
+	if prepared.Key.Status != "staged" || prepared.Key.KID == "" || prepared.PublicKeyPEM == "" {
+		t.Fatalf("prepared=%#v", prepared)
+	}
+
+	activate := doJSON(t, router, http.MethodPost, "/api/v1/signing-keys/agent-config/"+prepared.Key.KID+"/activate", platformToken, map[string]int64{"grace_seconds": 3600})
+	if activate.Code != http.StatusOK {
+		t.Fatalf("activate status=%d body=%s", activate.Code, activate.Body.String())
+	}
+
+	revoke := doJSON(t, router, http.MethodPost, "/api/v1/signing-keys/agent-config/"+oldKID+"/revoke", platformToken, nil)
+	if revoke.Code != http.StatusOK {
+		t.Fatalf("revoke status=%d body=%s", revoke.Code, revoke.Body.String())
+	}
+
+	activeRevoke := doJSON(t, router, http.MethodPost, "/api/v1/signing-keys/agent-config/"+prepared.Key.KID+"/revoke", platformToken, nil)
+	if activeRevoke.Code != http.StatusConflict {
+		t.Fatalf("active revoke status=%d want 409", activeRevoke.Code)
+	}
+
+	tenantToken := seedUserAndLogin(t, router, users, "tenant-key-admin@example.com", "Correct-Horse-Battery-9!", string(auth.RoleAdmin))
+	denied := doJSON(t, router, http.MethodGet, "/api/v1/signing-keys/agent-config/", tenantToken, nil)
+	if denied.Code != http.StatusForbidden {
+		t.Fatalf("tenant list status=%d want 403", denied.Code)
+	}
+
+	var auditCount int
+	if err := pool.QueryRow(context.Background(), `SELECT count(*) FROM audit_log WHERE action = ANY($1::text[])`, []string{"signing_key.policy_updated", "signing_key.prepared", "signing_key.activated", "signing_key.revoked"}).Scan(&auditCount); err != nil {
+		t.Fatal(err)
+	}
+	if auditCount != 4 {
+		t.Fatalf("signing key audit count=%d want 4", auditCount)
+	}
+}
+
+func TestPlatformRateLimitStatusUsesPlatformBoundary(t *testing.T) {
+	router, _, users := testRouter(t)
+	platformToken := seedUserAndLogin(t, router, users, "platform-rate-admin@example.com", "Correct-Horse-Battery-9!", string(auth.RoleAdmin))
+	platformUser, err := users.GetByEmail(context.Background(), "platform-rate-admin@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := users.GrantPlatformAdministrator(context.Background(), platformUser.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	rec := doJSON(t, router, http.MethodGet, "/api/v1/platform/rate-limits", platformToken, nil)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("platform rate limits status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	var status rateLimitStatusResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &status); err != nil {
+		t.Fatal(err)
+	}
+	if status.TenantReadPerMinute != 1200 || status.ActorReadPerMinute != 300 || status.TenantAgentPerMinute != 12000 {
+		t.Fatalf("unexpected rate-limit status: %+v", status)
+	}
+	if !status.HumanAndMachineBudgetsSeparate {
+		t.Fatal("human and machine namespaces must be reported as separated")
+	}
+
+	tenantToken := seedUserAndLogin(t, router, users, "tenant-rate-admin@example.com", "Correct-Horse-Battery-9!", string(auth.RoleAdmin))
+	denied := doJSON(t, router, http.MethodGet, "/api/v1/platform/rate-limits", tenantToken, nil)
+	if denied.Code != http.StatusForbidden {
+		t.Fatalf("tenant admin rate limits status=%d, want 403; body=%s", denied.Code, denied.Body.String())
 	}
 }

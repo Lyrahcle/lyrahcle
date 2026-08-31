@@ -7,6 +7,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/mlko01/lyrahcle/apps/backend/internal/keyprovider"
 )
 
 var (
@@ -55,10 +57,44 @@ var (
 		Name: "lyrahcle_celestrak_sync_failures_total",
 		Help: "CelesTrak synchronization failures by group",
 	}, []string{"group"})
+
+	SigningKeyStatus = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "lyrahcle_signing_keys",
+		Help: "Number of managed remote-config signing keys by lifecycle status",
+	}, []string{"domain", "status"})
+
+	SigningKeyRotationDue = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "lyrahcle_signing_key_rotation_due",
+		Help: "Whether a managed signing-key rotation is due",
+	}, []string{"domain"})
+
+	SigningKeyStagedPending = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "lyrahcle_signing_key_staged_pending",
+		Help: "Whether a staged signing key is awaiting distribution and activation",
+	}, []string{"domain"})
+
+	SigningKeyWarnings = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "lyrahcle_signing_key_warnings",
+		Help: "Current signing-key lifecycle warnings by code",
+	}, []string{"domain", "code"})
+
+	RateLimitDecisions = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "lyrahcle_rate_limit_decisions_total",
+		Help: "Authenticated tenant-aware rate-limit decisions by scope, class, and result",
+	}, []string{"scope", "class", "result"})
+
+	RateLimitBackendFallback = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "lyrahcle_rate_limit_backend_fallback_total",
+		Help: "Rate-limit backend fallbacks by backend and scope",
+	}, []string{"backend", "scope"})
+	SigningKeyAutomationTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "lyrahcle_signing_key_automation_total",
+		Help: "Automated signing-key lifecycle checks by result",
+	}, []string{"domain", "result"})
 )
 
 func init() {
-	prometheus.MustRegister(RequestsTotal, RequestDuration, AuthLoginsTotal, SSEConnections, TLEAgeSeconds, TLEStale, TLECorrelationEligible, OrbitalCorrelationSuppressedTotal, CelestrakSyncFailuresTotal)
+	prometheus.MustRegister(RequestsTotal, RequestDuration, AuthLoginsTotal, SSEConnections, TLEAgeSeconds, TLEStale, TLECorrelationEligible, OrbitalCorrelationSuppressedTotal, CelestrakSyncFailuresTotal, RateLimitDecisions, RateLimitBackendFallback, SigningKeyStatus, SigningKeyRotationDue, SigningKeyStagedPending, SigningKeyWarnings, SigningKeyAutomationTotal)
 }
 
 type statusRecorder struct {
@@ -108,4 +144,32 @@ func Middleware(next http.Handler) http.Handler {
 		RequestsTotal.WithLabelValues(r.Method, route, strconv.Itoa(recorder.status)).Inc()
 		RequestDuration.WithLabelValues(r.Method, route).Observe(time.Since(start).Seconds())
 	})
+}
+
+func RecordSigningKeyLifecycle(domain string, keys []keyprovider.KeyMetadata, health keyprovider.RotationHealth) {
+	if domain == "" {
+		domain = "unknown"
+	}
+	for _, status := range []keyprovider.KeyStatus{keyprovider.KeyStatusActive, keyprovider.KeyStatusStaged, keyprovider.KeyStatusGrace, keyprovider.KeyStatusRevoked} {
+		SigningKeyStatus.WithLabelValues(domain, string(status)).Set(0)
+	}
+	for _, key := range keys {
+		SigningKeyStatus.WithLabelValues(domain, string(key.Status)).Inc()
+	}
+	due := 0.0
+	if health.RotationDue {
+		due = 1
+	}
+	SigningKeyRotationDue.WithLabelValues(domain).Set(due)
+	staged := 0.0
+	if health.StagedPending {
+		staged = 1
+	}
+	SigningKeyStagedPending.WithLabelValues(domain).Set(staged)
+	for _, code := range []string{"no_active_key", "rotation_due", "staged_pending", "grace_expiring"} {
+		SigningKeyWarnings.WithLabelValues(domain, code).Set(0)
+	}
+	for _, warning := range health.Warnings {
+		SigningKeyWarnings.WithLabelValues(domain, warning.Code).Set(1)
+	}
 }

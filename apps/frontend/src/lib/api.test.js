@@ -41,6 +41,13 @@ import {
   ApiError,
   API_ERROR_EVENT,
   fetchEffectivePermissions,
+  fetchAgentConfigSigningKeys,
+  fetchPlatformRateLimits,
+  updateAgentConfigSigningRotationPolicy,
+  prepareAgentConfigSigningKeyRotation,
+  fetchAgentConfigSigningPublicKey,
+  activateAgentConfigSigningKey,
+  revokeAgentConfigSigningKey,
 } from './api.js'
 
 function mockFetchOnce(ok, body, status = ok ? 200 : 500, headers = {}) {
@@ -384,4 +391,50 @@ describe('api client', () => {
     expect(fetch).toHaveBeenCalledWith('/api/v1/auth/sessions/', expect.objectContaining({ method: 'DELETE' }))
   })
 
+
+
+  it('platform rate limit policy is visible through the authenticated platform endpoint', async () => {
+    sessionStorage.setItem('lyra_token', 'test-token')
+    mockFetchOnce(true, { tenant_read_per_minute: 1200, actor_read_per_minute: 300 })
+    const result = await fetchPlatformRateLimits()
+    expect(result.tenant_read_per_minute).toBe(1200)
+    expect(fetch).toHaveBeenLastCalledWith('/api/v1/platform/rate-limits', { headers: { Authorization: 'Bearer test-token' } })
+  })
+
+
+  it('signing key lifecycle client uses platform key-management endpoints', async () => {
+    sessionStorage.setItem('lyra_token', 'test-token')
+    mockFetchOnce(true, { provider: 'local-managed', managed: true, keys: [] })
+    await fetchAgentConfigSigningKeys()
+    expect(fetch).toHaveBeenLastCalledWith('/api/v1/signing-keys/agent-config/', { headers: { Authorization: 'Bearer test-token' } })
+
+    const policy = { automatic_prepare: true, interval_seconds: 7776000, staged_alert_after_seconds: 86400, grace_alert_before_seconds: 43200 }
+    mockFetchOnce(true, policy)
+    await updateAgentConfigSigningRotationPolicy(policy)
+    expect(fetch).toHaveBeenLastCalledWith('/api/v1/signing-keys/agent-config/policy', {
+      method: 'PUT',
+      headers: { Authorization: 'Bearer test-token', 'Content-Type': 'application/json' },
+      body: JSON.stringify(policy),
+    })
+
+    mockFetchOnce(true, { key: { kid: 'kid-a', status: 'staged' }, public_key_pem: 'PUBLIC' }, 201)
+    await prepareAgentConfigSigningKeyRotation()
+    expect(fetch).toHaveBeenLastCalledWith('/api/v1/signing-keys/agent-config/prepare', { method: 'POST', headers: { Authorization: 'Bearer test-token' } })
+
+    mockFetchOnce(true, { kid: 'kid-a', public_key_pem: 'PUBLIC' })
+    await fetchAgentConfigSigningPublicKey('kid/a')
+    expect(fetch).toHaveBeenLastCalledWith('/api/v1/signing-keys/agent-config/kid%2Fa/public-key', { headers: { Authorization: 'Bearer test-token' } })
+
+    mockFetchOnce(true, { kid: 'kid-a', status: 'active' })
+    await activateAgentConfigSigningKey('kid-a', 3600)
+    expect(fetch).toHaveBeenLastCalledWith('/api/v1/signing-keys/agent-config/kid-a/activate', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer test-token', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ grace_seconds: 3600 }),
+    })
+
+    mockFetchOnce(true, { kid: 'kid-old', status: 'revoked' })
+    await revokeAgentConfigSigningKey('kid-old')
+    expect(fetch).toHaveBeenLastCalledWith('/api/v1/signing-keys/agent-config/kid-old/revoke', { method: 'POST', headers: { Authorization: 'Bearer test-token' } })
+  })
 })

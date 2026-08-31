@@ -23,14 +23,27 @@ Mount the private key only into the backend:
 
 ```bash
 AGENT_CONFIG_SIGNING_KEY_FILE=/run/secrets/agent-config-signing.key
+AGENT_CONFIG_SIGNING_KEY_DIR=/var/lib/lyrahcle/agent-config-signing
+AGENT_CONFIG_SIGNING_GRACE_PERIOD=168h
 ```
 
-Distribute only the public key to each enrolled SDR agent:
+Distribute only public keys to enrolled SDR agents. New signed envelopes carry a stable `kid` derived from the Ed25519 public key, so agents can select the correct verification key during rotation:
 
 ```bash
-AGENT_CONFIG_VERIFY_KEY=/etc/lyrahcle/agent-config-verify.pub
+AGENT_CONFIG_VERIFY_KEY_DIR=/etc/lyrahcle/agent-config-keys
 AGENT_CONFIG_POLL_INTERVAL=30s
 ```
+
+The directory may contain multiple regular `*.pem` public keys (for example, the current key plus a grace-period key). PEM symlinks are rejected. The filename is not trusted as the identifier; Lyrahcle derives the KID from the public key itself.
+
+For compatibility with signed envelopes created before KID support, keep the old public key explicitly configured while legacy versions may still be delivered:
+
+```bash
+AGENT_CONFIG_VERIFY_KEY=/etc/lyrahcle/agent-config-verify-legacy.pub
+AGENT_CONFIG_VERIFY_KEY_DIR=/etc/lyrahcle/agent-config-keys
+```
+
+Legacy envelopes without `kid` are verified only with `AGENT_CONFIG_VERIFY_KEY`; Lyrahcle does not try every key in the keyring. Once no pre-KID versions remain relevant, the legacy variable can be removed.
 
 The signing key must be protected independently from the SDR Agent CA key. Compromise of one key must not silently grant both certificate issuance and configuration signing.
 
@@ -38,9 +51,9 @@ The signing key must be protected independently from the SDR Agent CA key. Compr
 
 1. An administrator publishes settings for an `active` agent.
 2. The backend creates a monotonic immutable version.
-3. The backend signs the exact JSON payload with Ed25519 and stores its SHA-256 checksum.
-4. The agent polls over its authenticated mTLS channel.
-5. The agent verifies checksum, signature, `agent_id`, version, and bounds before applying anything.
+3. The backend asks a `KeyProvider` for the active signing key, signs the exact JSON payload with Ed25519, and stores the SHA-256 checksum plus that key's stable KID with the immutable version.
+4. The agent polls over its authenticated mTLS channel and receives the persisted KID in the signed envelope.
+5. The agent resolves the public key by KID, then verifies checksum, signature, `agent_id`, version, and bounds before applying anything.
 6. The agent acknowledges `applied` or `rejected`.
 7. The acknowledgement and administrative action are retained for audit.
 
@@ -64,3 +77,6 @@ Use small staged changes, confirm `applied` acknowledgements, and quarantine an 
 A signed configuration may include an optional `satellite_id`. The backend accepts only a currently tracked satellite UUID. The SDR agent verifies the signed payload before updating its target and propagates that ID in subsequent RF readings.
 
 The satellite target is metadata for correlation and does not grant command authority over a spacecraft.
+
+
+For managed rotation, prepare the new key in Platform → Signing Keys, copy only the returned public key into each agent's `AGENT_CONFIG_VERIFY_KEY_DIR`, then activate the staged KID. Do not activate before public-key distribution is complete.

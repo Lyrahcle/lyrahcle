@@ -845,3 +845,56 @@ func TestSatelliteStoreUpdateByID(t *testing.T) {
 		t.Fatal("updated TLE epoch was not persisted")
 	}
 }
+
+func TestAgentConfigSigningKIDRoundTripsWithImmutableVersion(t *testing.T) {
+	pool := testPool(t)
+	ctx := context.Background()
+	identities := NewAgentIdentityStore(pool)
+	configs := NewAgentConfigStore(pool)
+
+	tokenHash := "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+	agentID := "sdr-config-kid"
+	if err := identities.CreateEnrollmentToken(ctx, agentID, tokenHash, time.Now().UTC().Add(15*time.Minute)); err != nil {
+		t.Fatal(err)
+	}
+	cert := AgentCertificate{
+		SerialNumber:      "kid-roundtrip",
+		FingerprintSHA256: "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+		CertificatePEM:    "test-certificate",
+		NotBefore:         time.Now().UTC().Add(-time.Minute),
+		NotAfter:          time.Now().UTC().Add(time.Hour),
+	}
+	if _, err := identities.ConsumeEnrollmentToken(ctx, tokenHash, cert, "v13.5", ""); err != nil {
+		t.Fatal(err)
+	}
+
+	const signingKID = "ed25519-sha256-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+	item, err := configs.Create(ctx, agentID, AgentConfigSettings{FrequencyHz: 437500000, CaptureIntervalSeconds: 10}, nil, func(version int64, settings AgentConfigSettings, issuedAt time.Time) (AgentConfigSignResult, error) {
+		return AgentConfigSignResult{
+			Payload:    []byte("signed-payload"),
+			Signature:  make([]byte, 64),
+			Checksum:   "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+			SigningKID: signingKID,
+		}, nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if item.SigningKID != signingKID {
+		t.Fatalf("created signing_kid = %q, want %q", item.SigningKID, signingKID)
+	}
+	desired, err := configs.Desired(ctx, agentID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if desired.SigningKID != signingKID {
+		t.Fatalf("desired signing_kid = %q, want %q", desired.SigningKID, signingKID)
+	}
+	history, err := configs.History(ctx, agentID, 20)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(history) != 1 || history[0].SigningKID != signingKID {
+		t.Fatalf("history signing_kid = %#v, want %q", history, signingKID)
+	}
+}

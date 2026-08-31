@@ -23,6 +23,7 @@ import (
 	"github.com/mlko01/lyrahcle/apps/backend/internal/audit"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/auth"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/config"
+	"github.com/mlko01/lyrahcle/apps/backend/internal/ratelimit"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/store"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/validate"
 )
@@ -93,6 +94,7 @@ func registerAgentIdentityRoutes(
 	auditLog *store.AuditStore,
 	rbac *store.RBACStore,
 	isTokenRevoked auth.RevocationCheck,
+	tenantLimiter *ratelimit.Limiter,
 ) {
 	r.Post("/agents/enroll", func(w http.ResponseWriter, r *http.Request) {
 		if ca == nil {
@@ -336,6 +338,14 @@ func registerAgentIdentityRoutes(
 		agentID, ok := auth.AgentIDFromContext(r.Context())
 		if !ok {
 			http.Error(w, "client certificate required", http.StatusUnauthorized)
+			return
+		}
+		orgID, err := identities.OrganizationForAgent(r.Context(), agentID)
+		if err != nil {
+			http.Error(w, "agent organization unavailable", http.StatusUnauthorized)
+			return
+		}
+		if !enforceAgentRateLimit(w, r, tenantLimiter, orgID, agentID) {
 			return
 		}
 		var body struct {

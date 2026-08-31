@@ -3,6 +3,7 @@ package config
 import (
 	"log"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -10,38 +11,47 @@ import (
 )
 
 type Config struct {
-	DatabaseURL               string
-	RedisURL                  string
-	Port                      string
-	CelestrakGroups           []string
-	TLECorrelationMaxAge      time.Duration
-	TLEStaleMaxAge            time.Duration
-	OrbitalAutoEscalation     bool
-	JWTSecret                 []byte
-	JWTPreviousSecret         []byte
-	JWTAccessTTL              time.Duration
-	TLSCertFile               string
-	TLSKeyFile                string
-	SeedAdminEmail            string
-	SeedAdminPass             string
-	Environment               string
-	WebAuthnRPID              string
-	WebAuthnOrigins           []string
-	CORSAllowedOrigins        []string
-	PasswordRecoveryEnabled   bool
-	PasswordResetBaseURL      string
-	SMTPHost                  string
-	SMTPPort                  string
-	SMTPUser                  string
-	SMTPPassword              string
-	SMTPFrom                  string
-	SMTPServerName            string
-	OTLPTraceEndpoint         string
-	AgentCACertFile           string
-	AgentCAKeyFile            string
-	AgentCertificateTTL       time.Duration
-	AgentEnrollmentTTL        time.Duration
-	AgentConfigSigningKeyFile string
+	DatabaseURL                       string
+	RedisURL                          string
+	Port                              string
+	CelestrakGroups                   []string
+	TLECorrelationMaxAge              time.Duration
+	TLEStaleMaxAge                    time.Duration
+	OrbitalAutoEscalation             bool
+	JWTSecret                         []byte
+	JWTPreviousSecret                 []byte
+	JWTAccessTTL                      time.Duration
+	TLSCertFile                       string
+	TLSKeyFile                        string
+	SeedAdminEmail                    string
+	SeedAdminPass                     string
+	Environment                       string
+	WebAuthnRPID                      string
+	WebAuthnOrigins                   []string
+	CORSAllowedOrigins                []string
+	PasswordRecoveryEnabled           bool
+	PasswordResetBaseURL              string
+	SMTPHost                          string
+	SMTPPort                          string
+	SMTPUser                          string
+	SMTPPassword                      string
+	SMTPFrom                          string
+	SMTPServerName                    string
+	OTLPTraceEndpoint                 string
+	AgentCACertFile                   string
+	AgentCAKeyFile                    string
+	AgentCertificateTTL               time.Duration
+	AgentEnrollmentTTL                time.Duration
+	AgentConfigSigningKeyFile         string
+	AgentConfigSigningKeyDir          string
+	AgentConfigSigningGracePeriod     time.Duration
+	RateLimitPlatformCeilingPerMinute int
+	RateLimitTenantReadPerMinute      int
+	RateLimitActorReadPerMinute       int
+	RateLimitTenantWritePerMinute     int
+	RateLimitActorWritePerMinute      int
+	RateLimitTenantAgentPerMinute     int
+	RateLimitAgentPerMinute           int
 }
 
 func Load() Config {
@@ -65,6 +75,10 @@ func Load() Config {
 	if err != nil || agentEnrollmentTTL < 5*time.Minute || agentEnrollmentTTL > time.Hour {
 		log.Fatal("FATAL: AGENT_ENROLLMENT_TTL must be between 5m and 1h")
 	}
+	agentConfigSigningGracePeriod, err := time.ParseDuration(getEnv("AGENT_CONFIG_SIGNING_GRACE_PERIOD", "168h"))
+	if err != nil || agentConfigSigningGracePeriod < time.Hour || agentConfigSigningGracePeriod > 30*24*time.Hour {
+		log.Fatal("FATAL: AGENT_CONFIG_SIGNING_GRACE_PERIOD must be between 1h and 720h")
+	}
 	tLECorrelationMaxAge, err := time.ParseDuration(getEnv("TLE_CORRELATION_MAX_AGE", "24h"))
 	if err != nil || tLECorrelationMaxAge < time.Hour || tLECorrelationMaxAge > 7*24*time.Hour {
 		log.Fatal("FATAL: TLE_CORRELATION_MAX_AGE must be between 1h and 168h")
@@ -75,38 +89,61 @@ func Load() Config {
 	}
 
 	cfg := Config{
-		DatabaseURL:               getEnv("DATABASE_URL", "postgres://lyrahcle:lyrahcle@localhost:5432/lyrahcle?sslmode=disable"),
-		RedisURL:                  getEnv("REDIS_URL", "localhost:6379"),
-		Port:                      getEnv("PORT", "8080"),
-		CelestrakGroups:           strings.Split(getEnv("CELESTRAK_GROUPS", "stations"), ","),
-		TLECorrelationMaxAge:      tLECorrelationMaxAge,
-		TLEStaleMaxAge:            tLEStaleMaxAge,
-		OrbitalAutoEscalation:     strings.EqualFold(getEnv("ORBITAL_AUTO_ESCALATION_ENABLED", "false"), "true"),
-		JWTSecret:                 []byte(secret),
-		JWTPreviousSecret:         []byte(getEnv("JWT_SECRET_PREVIOUS", "")),
-		JWTAccessTTL:              ttl,
-		TLSCertFile:               getEnv("TLS_CERT_FILE", ""),
-		TLSKeyFile:                getEnv("TLS_KEY_FILE", ""),
-		SeedAdminEmail:            getEnv("SEED_ADMIN_EMAIL", "admin"),
-		SeedAdminPass:             getEnv("SEED_ADMIN_PASSWORD", "admin"),
-		Environment:               getEnv("ENV", "development"),
-		WebAuthnRPID:              getEnv("WEBAUTHN_RP_ID", "localhost"),
-		WebAuthnOrigins:           splitCSV(getEnv("WEBAUTHN_ORIGINS", "http://localhost:5173")),
-		CORSAllowedOrigins:        splitCSV(getEnv("CORS_ALLOWED_ORIGINS", "")),
-		PasswordRecoveryEnabled:   strings.EqualFold(getEnv("PASSWORD_RECOVERY_ENABLED", "false"), "true"),
-		PasswordResetBaseURL:      getEnv("PASSWORD_RESET_BASE_URL", "http://localhost:5173/"),
-		SMTPHost:                  getEnv("SMTP_HOST", ""),
-		SMTPPort:                  getEnv("SMTP_PORT", "465"),
-		SMTPUser:                  getEnv("SMTP_USER", ""),
-		SMTPPassword:              getEnv("SMTP_PASSWORD", ""),
-		SMTPFrom:                  getEnv("SMTP_FROM", ""),
-		SMTPServerName:            getEnv("SMTP_SERVER_NAME", ""),
-		OTLPTraceEndpoint:         getEnv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", ""),
-		AgentCACertFile:           getEnv("AGENT_CA_CERT_FILE", ""),
-		AgentCAKeyFile:            getEnv("AGENT_CA_KEY_FILE", ""),
-		AgentCertificateTTL:       agentCertTTL,
-		AgentEnrollmentTTL:        agentEnrollmentTTL,
-		AgentConfigSigningKeyFile: getEnv("AGENT_CONFIG_SIGNING_KEY_FILE", ""),
+		DatabaseURL:                       getEnv("DATABASE_URL", "postgres://lyrahcle:lyrahcle@localhost:5432/lyrahcle?sslmode=disable"),
+		RedisURL:                          getEnv("REDIS_URL", "localhost:6379"),
+		Port:                              getEnv("PORT", "8080"),
+		CelestrakGroups:                   strings.Split(getEnv("CELESTRAK_GROUPS", "stations"), ","),
+		TLECorrelationMaxAge:              tLECorrelationMaxAge,
+		TLEStaleMaxAge:                    tLEStaleMaxAge,
+		OrbitalAutoEscalation:             strings.EqualFold(getEnv("ORBITAL_AUTO_ESCALATION_ENABLED", "false"), "true"),
+		JWTSecret:                         []byte(secret),
+		JWTPreviousSecret:                 []byte(getEnv("JWT_SECRET_PREVIOUS", "")),
+		JWTAccessTTL:                      ttl,
+		TLSCertFile:                       getEnv("TLS_CERT_FILE", ""),
+		TLSKeyFile:                        getEnv("TLS_KEY_FILE", ""),
+		SeedAdminEmail:                    getEnv("SEED_ADMIN_EMAIL", "admin"),
+		SeedAdminPass:                     getEnv("SEED_ADMIN_PASSWORD", "admin"),
+		Environment:                       getEnv("ENV", "development"),
+		WebAuthnRPID:                      getEnv("WEBAUTHN_RP_ID", "localhost"),
+		WebAuthnOrigins:                   splitCSV(getEnv("WEBAUTHN_ORIGINS", "http://localhost:5173")),
+		CORSAllowedOrigins:                splitCSV(getEnv("CORS_ALLOWED_ORIGINS", "")),
+		PasswordRecoveryEnabled:           strings.EqualFold(getEnv("PASSWORD_RECOVERY_ENABLED", "false"), "true"),
+		PasswordResetBaseURL:              getEnv("PASSWORD_RESET_BASE_URL", "http://localhost:5173/"),
+		SMTPHost:                          getEnv("SMTP_HOST", ""),
+		SMTPPort:                          getEnv("SMTP_PORT", "465"),
+		SMTPUser:                          getEnv("SMTP_USER", ""),
+		SMTPPassword:                      getEnv("SMTP_PASSWORD", ""),
+		SMTPFrom:                          getEnv("SMTP_FROM", ""),
+		SMTPServerName:                    getEnv("SMTP_SERVER_NAME", ""),
+		OTLPTraceEndpoint:                 getEnv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", ""),
+		AgentCACertFile:                   getEnv("AGENT_CA_CERT_FILE", ""),
+		AgentCAKeyFile:                    getEnv("AGENT_CA_KEY_FILE", ""),
+		AgentCertificateTTL:               agentCertTTL,
+		AgentEnrollmentTTL:                agentEnrollmentTTL,
+		AgentConfigSigningKeyFile:         getEnv("AGENT_CONFIG_SIGNING_KEY_FILE", ""),
+		AgentConfigSigningKeyDir:          getEnv("AGENT_CONFIG_SIGNING_KEY_DIR", ""),
+		AgentConfigSigningGracePeriod:     agentConfigSigningGracePeriod,
+		RateLimitPlatformCeilingPerMinute: envInt("RATE_LIMIT_PLATFORM_CEILING_PER_MINUTE", 50000, 1000, 500000),
+		RateLimitTenantReadPerMinute:      envInt("RATE_LIMIT_TENANT_READ_PER_MINUTE", 1200, 10, 100000),
+		RateLimitActorReadPerMinute:       envInt("RATE_LIMIT_ACTOR_READ_PER_MINUTE", 300, 5, 50000),
+		RateLimitTenantWritePerMinute:     envInt("RATE_LIMIT_TENANT_WRITE_PER_MINUTE", 300, 5, 50000),
+		RateLimitActorWritePerMinute:      envInt("RATE_LIMIT_ACTOR_WRITE_PER_MINUTE", 120, 2, 20000),
+		RateLimitTenantAgentPerMinute:     envInt("RATE_LIMIT_TENANT_AGENT_PER_MINUTE", 12000, 60, 500000),
+		RateLimitAgentPerMinute:           envInt("RATE_LIMIT_AGENT_PER_MINUTE", 3000, 30, 100000),
+	}
+
+	if cfg.RateLimitActorReadPerMinute > cfg.RateLimitTenantReadPerMinute || cfg.RateLimitActorWritePerMinute > cfg.RateLimitTenantWritePerMinute || cfg.RateLimitAgentPerMinute > cfg.RateLimitTenantAgentPerMinute {
+		log.Fatal("FATAL: actor/agent rate limits must not exceed their tenant budgets")
+	}
+	maxTenantBudget := cfg.RateLimitTenantReadPerMinute
+	if cfg.RateLimitTenantWritePerMinute > maxTenantBudget {
+		maxTenantBudget = cfg.RateLimitTenantWritePerMinute
+	}
+	if cfg.RateLimitTenantAgentPerMinute > maxTenantBudget {
+		maxTenantBudget = cfg.RateLimitTenantAgentPerMinute
+	}
+	if cfg.RateLimitPlatformCeilingPerMinute <= maxTenantBudget {
+		log.Fatal("FATAL: RATE_LIMIT_PLATFORM_CEILING_PER_MINUTE must exceed every tenant-scoped budget")
 	}
 
 	production := cfg.IsProduction()
@@ -201,11 +238,11 @@ func Load() Config {
 	if production && (cfg.AgentCACertFile == "" || cfg.AgentCAKeyFile == "") {
 		log.Println("WARNING: agent mTLS enrollment is disabled because AGENT_CA_CERT_FILE/AGENT_CA_KEY_FILE are not configured")
 	}
-	if cfg.AgentConfigSigningKeyFile != "" && cfg.AgentCACertFile == "" {
-		log.Fatal("FATAL: AGENT_CONFIG_SIGNING_KEY_FILE requires agent mTLS enrollment")
+	if (cfg.AgentConfigSigningKeyFile != "" || cfg.AgentConfigSigningKeyDir != "") && cfg.AgentCACertFile == "" {
+		log.Fatal("FATAL: agent config signing requires agent mTLS enrollment")
 	}
-	if production && cfg.AgentConfigSigningKeyFile == "" {
-		log.Println("WARNING: secure remote agent configuration is disabled because AGENT_CONFIG_SIGNING_KEY_FILE is not configured")
+	if production && cfg.AgentConfigSigningKeyFile == "" && cfg.AgentConfigSigningKeyDir == "" {
+		log.Println("WARNING: secure remote agent configuration is disabled because AGENT_CONFIG_SIGNING_KEY_FILE/AGENT_CONFIG_SIGNING_KEY_DIR are not configured")
 	}
 
 	return cfg
@@ -225,6 +262,15 @@ func splitCSV(value string) []string {
 		}
 	}
 	return out
+}
+
+func envInt(key string, fallback, min, max int) int {
+	raw := getEnv(key, strconv.Itoa(fallback))
+	value, err := strconv.Atoi(raw)
+	if err != nil || value < min || value > max {
+		log.Fatalf("FATAL: %s must be an integer between %d and %d", key, min, max)
+	}
+	return value
 }
 
 func getEnv(key, fallback string) string {

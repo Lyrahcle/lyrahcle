@@ -3,6 +3,12 @@ import { applyAgentConfig, fetchAgentConfig, fetchAgentConfigHistory, rollbackAg
 import { useI18n } from '../lib/I18nContext.jsx'
 import TableScroll from './TableScroll.jsx'
 
+function shortKID(kid, legacyLabel) {
+  if (!kid) return legacyLabel
+  if (kid.length <= 40) return kid
+  return `${kid.slice(0, 24)}…${kid.slice(-12)}`
+}
+
 export default function AgentRemoteConfigPanel({ agents, satellites = [], canManage = true }) {
   const { t } = useI18n()
   const activeAgents = useMemo(() => agents.filter((agent) => agent.status === 'active'), [agents])
@@ -115,8 +121,10 @@ export default function AgentRemoteConfigPanel({ agents, satellites = [], canMan
       {error && <p role="alert" className="mt-3 text-sm text-lyra-bad">{error}</p>}
       {current && (
         <div className="mt-4 rounded border border-lyra-borderSoft bg-lyra-bgSoft/40 p-3 font-mono text-xs text-lyra-muted">
-          {t('connectivity.remoteDesiredVersion', { version: current.version })} · {t('connectivity.remoteAck', { status: current.ack_status || 'pending' })}
-          {current.acked_at && ` · ${new Date(current.acked_at).toLocaleString()}`}
+          <div>{t('connectivity.remoteDesiredVersion', { version: current.version })} · {t('connectivity.remoteAck', { status: current.ack_status || 'pending' })}{current.acked_at && ` · ${new Date(current.acked_at).toLocaleString()}`}</div>
+          <div className="mt-1 break-all text-[10px] text-lyra-mutedDim">
+            {t('connectivity.remoteSigningKey')}: <span className="text-lyra-goldBright" title={current.signing_kid || ''}>{shortKID(current.signing_kid, t('connectivity.remoteLegacySigningKey'))}</span>
+          </div>
         </div>
       )}
 
@@ -131,6 +139,7 @@ export default function AgentRemoteConfigPanel({ agents, satellites = [], canMan
                   <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">{t('connectivity.remoteFrequency')}</th>
                   <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">{t('connectivity.remoteInterval')}</th>
                   <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">{t('connectivity.remoteSatellite')}</th>
+                  <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">{t('connectivity.remoteSigningKey')}</th>
                   <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">{t('connectivity.remoteAckLabel')}</th>
                   <th className="pb-2" />
                 </tr>
@@ -142,6 +151,7 @@ export default function AgentRemoteConfigPanel({ agents, satellites = [], canMan
                     <td className="py-2.5 font-mono text-xs text-lyra-text">{item.config.frequency_hz}</td>
                     <td className="py-2.5 font-mono text-xs text-lyra-text">{item.config.capture_interval_seconds}s</td>
                     <td className="py-2.5 font-mono text-xs text-lyra-mutedDim">{satellites.find((satellite) => satellite.id === item.config.satellite_id)?.name || '—'}</td>
+                    <td className="max-w-[260px] break-all py-2.5 pr-4 font-mono text-[10px] text-lyra-mutedDim" title={item.signing_kid || ''}>{shortKID(item.signing_kid, t('connectivity.remoteLegacySigningKey'))}</td>
                     <td className="py-2.5 font-mono text-xs text-lyra-mutedDim">{item.ack_status || '—'}</td>
                     <td className="py-2.5 text-right">
                       {canManage && item.version !== current?.version && <button type="button" disabled={busy} onClick={() => rollback(item.version)} className="font-mono text-xs uppercase text-lyra-goldBright hover:underline disabled:opacity-50">{t('connectivity.remoteRollback')}</button>}

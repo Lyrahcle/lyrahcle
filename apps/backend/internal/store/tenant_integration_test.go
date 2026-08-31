@@ -2,31 +2,19 @@ package store
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func TestTenantIsolationSnapshotIntegration(t *testing.T) {
-	dsn := os.Getenv("LYRAHCLE_TEST_DATABASE_URL")
-	if dsn == "" {
-		t.Skip("set LYRAHCLE_TEST_DATABASE_URL to run database-backed tenant isolation tests")
-	}
-
+	pool := testPool(t)
 	ctx := context.Background()
-	pool, err := pgxpool.New(ctx, dsn)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer pool.Close()
-
 	scope := NewTenantScopeStore(pool)
 	orgA := uuid.New()
 	orgB := uuid.New()
 
-	_, err = pool.Exec(ctx, `INSERT INTO organizations (id,slug,name) VALUES
+	_, err := pool.Exec(ctx, `INSERT INTO organizations (id,slug,name) VALUES
 		($1,$2,$3),($4,$5,$6)`,
 		orgA, "tenant-a-"+orgA.String()[:8], "Tenant A",
 		orgB, "tenant-b-"+orgB.String()[:8], "Tenant B")

@@ -25,6 +25,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/redis/go-redis/v9"
 
+	"github.com/mlko01/lyrahcle/apps/backend/internal/agentconfig"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/alerts"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/anomaly"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/audit"
@@ -33,6 +34,7 @@ import (
 	"github.com/mlko01/lyrahcle/apps/backend/internal/config"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/db"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/detection"
+	"github.com/mlko01/lyrahcle/apps/backend/internal/keyprovider"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/mailer"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/metrics"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/observability"
@@ -83,6 +85,11 @@ func main() {
 	incidents := store.NewIncidentStore(pool)
 	rbac := store.NewRBACStore(pool)
 
+	agentConfigSigner, agentConfigKeyProvider, err := buildAgentConfigSigner(cfg)
+	if err != nil {
+		log.Fatalf("agent config signing configuration: %v", err)
+	}
+
 	if err := seedAdmin(ctx, users, cfg); err != nil {
 		log.Printf("seed admin: %v", err)
 	}
@@ -113,12 +120,25 @@ func main() {
 	}); err != nil {
 		log.Fatalf("scheduler: register tle-sync: %v", err)
 	}
+	if _, ok := agentConfigKeyProvider.(keyprovider.LifecycleProvider); ok {
+		if err := sched.Every("17 * * * *", "signing-key-rotation-check", func() {
+			if err := runSigningKeyRotationCheck(context.Background(), agentConfigKeyProvider, auditLog, time.Now().UTC()); err != nil {
+				log.Printf("signing-key rotation check failed: %v", err)
+			}
+		}); err != nil {
+			log.Fatalf("scheduler: register signing-key-rotation-check: %v", err)
+		}
+	}
 	sched.Start()
 	defer sched.Stop()
 
 	go syncTLEs(ctx, cfg.CelestrakGroups, satellites, tlePolicy(cfg))
 
-	r := newRouter(cfg, pool, assets, programs, rf, rfAnomalies, satellites, users, agentKeys, auditLog, spaceCVEs, assetAlerts, incidents, rbac, redisClient)
+	if err := runSigningKeyRotationCheck(ctx, agentConfigKeyProvider, auditLog, time.Now().UTC()); err != nil {
+		log.Printf("initial signing-key rotation check failed: %v", err)
+	}
+
+	r := newRouterWithAgentConfigSigning(cfg, pool, assets, programs, rf, rfAnomalies, satellites, users, agentKeys, auditLog, spaceCVEs, assetAlerts, incidents, rbac, redisClient, agentConfigSigner, agentConfigKeyProvider)
 
 	srv := &http.Server{
 		Addr:         ":" + cfg.Port,
@@ -188,6 +208,32 @@ func newRouter(
 	rbac *store.RBACStore,
 	redisClient *redis.Client,
 ) http.Handler {
+	agentConfigSigner, agentConfigKeyProvider, err := buildAgentConfigSigner(cfg)
+	if err != nil {
+		panic(fmt.Sprintf("agent config signing configuration: %v", err))
+	}
+	return newRouterWithAgentConfigSigning(cfg, pool, assets, programs, rf, rfAnomalies, satellites, users, agentKeys, auditLog, spaceCVEs, assetAlerts, incidents, rbac, redisClient, agentConfigSigner, agentConfigKeyProvider)
+}
+
+func newRouterWithAgentConfigSigning(
+	cfg config.Config,
+	pool *pgxpool.Pool,
+	assets *store.AssetStore,
+	programs *store.ProgramStore,
+	rf *store.RFStore,
+	rfAnomalies *store.AnomalyStore,
+	satellites *store.SatelliteStore,
+	users *store.UserStore,
+	agentKeys *store.AgentKeyStore,
+	auditLog *store.AuditStore,
+	spaceCVEs *store.SpaceCVEStore,
+	assetAlerts *store.AssetAlertStore,
+	incidents *store.IncidentStore,
+	rbac *store.RBACStore,
+	redisClient *redis.Client,
+	agentConfigSigner *agentconfig.Signer,
+	agentConfigKeyProvider keyprovider.Provider,
+) http.Handler {
 	detectionRules := store.NewDetectionRuleStore(pool)
 	blocklist := tokenblocklist.New(redisClient)
 	sessions := sessionstore.New(redisClient)
@@ -203,10 +249,6 @@ func newRouter(
 	agentCA, err := buildAgentCA(cfg)
 	if err != nil {
 		panic(fmt.Sprintf("agent CA configuration: %v", err))
-	}
-	agentConfigSigner, err := buildAgentConfigSigner(cfg)
-	if err != nil {
-		panic(fmt.Sprintf("agent config signing configuration: %v", err))
 	}
 	webAuthnFlows := webauthnflow.New(redisClient)
 	webAuthnHandler := buildWebAuthnHandler(cfg)
@@ -232,11 +274,23 @@ func newRouter(
 		return blocklist.Check(ctx, claims.ID, claims.UserID.String(), issuedAt)
 	}
 
-	globalLimiter := httprate.Limit(120, time.Minute, httprate.WithKeyByIP())
+	globalLimiter := httprate.Limit(cfg.RateLimitPlatformCeilingPerMinute, time.Minute, httprate.WithKeyByIP())
 	loginLimiter := httprate.Limit(10, time.Minute, httprate.WithKeyByIP())
 	if redisClient != nil {
-		globalLimiter = httprate.Limit(120, time.Minute, httprate.WithKeyByIP(), httprate.WithLimitCounter(ratelimit.NewRedisCounter(redisClient, "global")))
+		globalLimiter = httprate.Limit(cfg.RateLimitPlatformCeilingPerMinute, time.Minute, httprate.WithKeyByIP(), httprate.WithLimitCounter(ratelimit.NewRedisCounter(redisClient, "platform-ceiling")))
 		loginLimiter = httprate.Limit(10, time.Minute, httprate.WithKeyByIP(), httprate.WithLimitCounter(ratelimit.NewRedisCounter(redisClient, "login")))
+	}
+	tenantLimiter, err := ratelimit.NewTenantLimiter(redisClient, ratelimit.Policy{
+		Window:           time.Minute,
+		TenantReadLimit:  cfg.RateLimitTenantReadPerMinute,
+		ActorReadLimit:   cfg.RateLimitActorReadPerMinute,
+		TenantWriteLimit: cfg.RateLimitTenantWritePerMinute,
+		ActorWriteLimit:  cfg.RateLimitActorWritePerMinute,
+		TenantAgentLimit: cfg.RateLimitTenantAgentPerMinute,
+		AgentLimit:       cfg.RateLimitAgentPerMinute,
+	})
+	if err != nil {
+		panic(fmt.Sprintf("tenant rate-limit policy: %v", err))
 	}
 
 	r := chi.NewRouter()
@@ -280,12 +334,13 @@ func newRouter(
 	r.Handle("/metrics", promhttp.Handler())
 
 	r.Route("/api/v1", func(r chi.Router) {
+		r.Use(authenticatedTenantRateLimit(cfg.JWTSecret, cfg.JWTPreviousSecret, tenantLimiter))
 		r.Get("/ping", func(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte(`{"message":"pong from lyrahcle"}`))
 		})
 
-		registerAgentIdentityRoutes(r, cfg, agentCA, agentIdentities, agentKeys, auditLog, rbac, isTokenRevoked)
-		registerAgentConfigRoutes(r, cfg, agentConfigSigner, agentConfigs, agentIdentities, satellites, auditLog, rbac, isTokenRevoked)
+		registerAgentIdentityRoutes(r, cfg, agentCA, agentIdentities, agentKeys, auditLog, rbac, isTokenRevoked, tenantLimiter)
+		registerAgentConfigRoutes(r, cfg, agentConfigSigner, agentConfigKeyProvider, agentConfigs, agentIdentities, satellites, auditLog, rbac, isTokenRevoked, tenantLimiter)
 
 		r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)).Get("/search", func(w http.ResponseWriter, r *http.Request) {
 			query := strings.TrimSpace(r.URL.Query().Get("q"))
@@ -971,6 +1026,8 @@ func newRouter(
 		})
 
 		registerOrganizationRoutes(r, cfg, organizations, users, auditLog, isTokenRevoked)
+		registerSigningKeyRoutes(r, cfg, agentConfigKeyProvider, users, auditLog, isTokenRevoked)
+		registerRateLimitStatusRoutes(r, cfg, users, isTokenRevoked, redisClient != nil)
 		registerTenantScopeRoutes(r, cfg, tenantScope, rbac, isTokenRevoked)
 		registerRBACRoutes(r, cfg, rbac, auditLog, isTokenRevoked)
 
@@ -1362,6 +1419,18 @@ func newRouter(
 				return
 			}
 
+			orgID, err := agentIdentities.OrganizationForAgent(r.Context(), agentID)
+			if err != nil {
+				orgID, err = agentKeys.OrganizationForAgent(r.Context(), agentID)
+			}
+			if err != nil {
+				http.Error(w, "agent organization unavailable", http.StatusUnauthorized)
+				return
+			}
+			if !enforceAgentRateLimit(w, r, tenantLimiter, orgID, agentID) {
+				return
+			}
+
 			var body store.AgentDeviceInfo
 			if err := decodeStrictJSON(r, &body); err != nil {
 				http.Error(w, "invalid JSON body", http.StatusBadRequest)
@@ -1578,6 +1647,19 @@ func newRouter(
 			}
 			agentAuth := auth.RequireAgentCredentialOrPermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "rf.ingest", auditedLookup, auditedCertificateLookup, isTokenRevoked)
 			r.With(agentAuth).Post("/ingest", func(w http.ResponseWriter, r *http.Request) {
+				if authenticatedAgentID, ok := auth.AgentIDFromContext(r.Context()); ok {
+					orgID, err := agentIdentities.OrganizationForAgent(r.Context(), authenticatedAgentID)
+					if err != nil {
+						orgID, err = agentKeys.OrganizationForAgent(r.Context(), authenticatedAgentID)
+					}
+					if err != nil {
+						http.Error(w, "agent organization unavailable", http.StatusUnauthorized)
+						return
+					}
+					if !enforceAgentRateLimit(w, r, tenantLimiter, orgID, authenticatedAgentID) {
+						return
+					}
+				}
 				var reading store.RFReading
 				if err := decodeStrictJSON(r, &reading); err != nil {
 					http.Error(w, "invalid JSON body", http.StatusBadRequest)
