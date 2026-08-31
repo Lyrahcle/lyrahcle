@@ -141,6 +141,10 @@ jobs:
         run: |
           python3 -m unittest scripts/test_check_command_execution.py
           python3 scripts/check-command-execution.py .
+      - name: Script executable permission contract
+        run: |
+          python3 -m unittest scripts/test_check_script_permissions.py
+          python3 scripts/check-script-permissions.py .
       - name: Go toolchain contract
         run: |
           python3 -m unittest scripts/test_check_go_toolchain.py

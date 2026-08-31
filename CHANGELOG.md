@@ -1,4 +1,8 @@
 - v11.16: fixed PostgreSQL asset projection/scan parity exposed by CI integration tests and completed capability-based auth for hybrid RF ingest, detection rules, RF reads, alerts, and machine-only agent self-service routes.
+- UI: harden Fleet staged rollouts with cohort progress, per-agent states, soak countdown, rejection guardrails, and rollback confirmation.
+- Fixed the local CI gate to invoke the script-permission contract through Python and hardened the Orbital Dashboard KPI test for duplicate ratios.
+- Added Orbital Dashboard v2 with constellation KPIs, TLE freshness, operator attention queue, recent updates, and quick navigation to orbital operations.
+- Hardened local/CI validation: restored executable script modes, added a script-permission contract, and fixed the incident-response external-link noopener contract.
 - Fixed the top-left navigation dropdown to use an opaque background for consistent readability.
 
 ### Fixed
@@ -193,3 +197,17 @@ Notable changes are tracked here until versioned release notes take over.
 - Added a Lyrahcle incident-response runbook covering privileged-account, signing-key, SDR-agent, edge-tamper, cross-tenant, secret, database, evidence-preservation, recovery, and post-incident procedures, with a Platform quick-action panel.
 
 - Added the SDR hardware/firmware supply-chain threat model and hardened security account dialogs with viewport portals and responsive modal layout.
+
+### Platform Operations Dashboard
+- Added a Platform health overview with backend dependency readiness, secret-provider health, signing-custody posture, organization count, and platform-admin count.
+- The overview reuses `/readyz` plus existing protected platform security endpoints and does not expose secret material.
+
+### Connectivity operations dashboard
+- Adds a unified Connectivity fleet posture view with healthy/attention/offline counts, agent search and posture filters.
+- Surfaces last contact, hardware compatibility and edge-integrity state before the detailed identity/config/hardware panels.
+
+## Incident operations UX
+- Added an operational incident posture summary with active, urgent and unassigned counts for the visible page.
+- Added quick filters for new, investigating and critical incidents plus a one-click filter reset.
+- Added compact incident context metadata and a visual event timeline in the selected-incident detail.
+- Added frontend coverage for posture counters and quick-filter behavior.

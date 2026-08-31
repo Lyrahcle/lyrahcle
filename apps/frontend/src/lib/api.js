@@ -918,6 +918,13 @@ export async function agentRolloutAction(id, action) {
   return res.json()
 }
 
+export async function fetchPlatformReadiness() {
+  const res = await fetch('/readyz')
+  let body = {}
+  try { body = await res.json() } catch { body = { status: res.ok ? 'ready' : 'not_ready' } }
+  return { ...body, ok: res.ok }
+}
+
 export async function fetchPlatformSecretStatus() {
   const res = await authedFetch('/api/v1/platform/secrets')
   if (!res.ok) throw await apiErrorFromResponse(res, 'failed to fetch secret provider status')

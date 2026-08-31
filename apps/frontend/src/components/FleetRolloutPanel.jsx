@@ -2,6 +2,55 @@ import { useEffect, useMemo, useState } from 'react'
 import { agentRolloutAction, createAgentRollout, fetchAgentRollout, fetchAgentRollouts } from '../lib/api.js'
 import TableScroll from './TableScroll.jsx'
 
+const STATUS_TONE = {
+  applied: 'text-lyra-good border-lyra-good/30 bg-lyra-good/10',
+  running: 'text-lyra-goldBright border-lyra-gold/30 bg-lyra-gold/10',
+  issued: 'text-lyra-goldBright border-lyra-gold/30 bg-lyra-gold/10',
+  rejected: 'text-lyra-bad border-lyra-bad/30 bg-lyra-bad/10',
+  rolled_back: 'text-lyra-muted border-lyra-border bg-lyra-panel',
+  paused: 'text-lyra-warn border-lyra-warn/30 bg-lyra-warn/10',
+  pending: 'text-lyra-muted border-lyra-border bg-lyra-panel',
+  draft: 'text-lyra-muted border-lyra-border bg-lyra-panel',
+}
+
+function StatusPill({ status }) {
+  return <span className={`inline-flex rounded border px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide ${STATUS_TONE[status] || STATUS_TONE.pending}`}>{String(status || 'unknown').replaceAll('_', ' ')}</span>
+}
+
+function rolloutStats(targets = []) {
+  const counts = { pending: 0, issued: 0, applied: 0, rejected: 0, rolled_back: 0 }
+  for (const target of targets) counts[target.status] = (counts[target.status] || 0) + 1
+  const total = targets.length
+  const complete = counts.applied + counts.rejected + counts.rolled_back
+  const progress = total ? Math.round((complete / total) * 100) : 0
+  return { ...counts, total, complete, progress }
+}
+
+function currentBatch(targets = [], batchSize = 1) {
+  const active = targets.filter((target) => target.status === 'issued')
+  if (!active.length) return null
+  const firstOrdinal = Math.min(...active.map((target) => Number(target.ordinal || 0)))
+  return Math.floor(firstOrdinal / Math.max(1, Number(batchSize || 1))) + 1
+}
+
+function latestIssuedAt(targets = []) {
+  const timestamps = targets.map((target) => target.issued_at ? new Date(target.issued_at).getTime() : 0).filter(Boolean)
+  return timestamps.length ? Math.max(...timestamps) : null
+}
+
+function SoakStatus({ rollout, now }) {
+  const issuedAt = latestIssuedAt(rollout.targets)
+  if (!issuedAt || !rollout.soak_seconds || rollout.status !== 'running') return null
+  const elapsed = Math.max(0, Math.floor((now - issuedAt) / 1000))
+  const remaining = Math.max(0, rollout.soak_seconds - elapsed)
+  const mins = Math.floor(remaining / 60)
+  const secs = remaining % 60
+  return <div className="rounded border border-lyra-borderSoft bg-lyra-bg/30 px-3 py-2" aria-label="Soak timer">
+    <p className="text-[10px] uppercase tracking-[0.15em] text-lyra-mutedDim">Soak timer</p>
+    <p className="mt-1 font-mono text-sm text-lyra-text">{remaining === 0 ? 'Ready to promote' : `${mins}:${String(secs).padStart(2, '0')} remaining`}</p>
+  </div>
+}
+
 export default function FleetRolloutPanel({ agents, satellites = [], canManage = true }) {
   const activeAgents = useMemo(() => agents.filter((a) => a.status === 'active'), [agents])
   const [items, setItems] = useState([])
@@ -16,6 +65,7 @@ export default function FleetRolloutPanel({ agents, satellites = [], canManage =
   const [agentIds, setAgentIds] = useState([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
+  const [now, setNow] = useState(Date.now())
 
   async function reload(selectId = selected?.id) {
     const list = await fetchAgentRollouts()
@@ -23,6 +73,10 @@ export default function FleetRolloutPanel({ agents, satellites = [], canManage =
     if (selectId) setSelected(await fetchAgentRollout(selectId))
   }
   useEffect(() => { reload().catch((e) => setError(e.message)) }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000)
+    return () => window.clearInterval(timer)
+  }, [])
 
   function toggleAgent(id) { setAgentIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]) }
   async function create(e) {
@@ -33,9 +87,16 @@ export default function FleetRolloutPanel({ agents, satellites = [], canManage =
     } catch (e) { setError(e.message) } finally { setBusy(false) }
   }
   async function act(action) {
-    if (!selected) return; setBusy(true); setError(null)
+    if (!selected) return
+    if (action === 'rollback' && !window.confirm(`Rollback ${selected.name}? A compensating config will be issued to eligible targets.`)) return
+    setBusy(true); setError(null)
     try { const updated = await agentRolloutAction(selected.id, action); setSelected(updated); await reload(updated.id) } catch (e) { setError(e.message) } finally { setBusy(false) }
   }
+
+  const stats = rolloutStats(selected?.targets)
+  const batch = selected ? currentBatch(selected.targets, selected.batch_size) : null
+  const rejectionRate = stats.total ? Math.round((stats.rejected / stats.total) * 100) : 0
+  const thresholdExceeded = selected && stats.rejected > 0 && rejectionRate > Number(selected.failure_threshold_percent || 0)
 
   return <section className="mt-8 border-t border-lyra-borderSoft pt-5" aria-labelledby="fleet-rollout-title">
     <div className="flex flex-wrap items-center justify-between gap-2"><div><h3 id="fleet-rollout-title" className="font-mono text-sm uppercase tracking-wider text-lyra-gold">Fleet staged rollouts</h3><p className="mt-1 text-sm text-lyra-muted">Issue signed configuration as operator-promoted canary batches. Promotion blocks while a batch is unacknowledged and fails closed when the rejection threshold is exceeded.</p></div></div>
@@ -44,7 +105,7 @@ export default function FleetRolloutPanel({ agents, satellites = [], canManage =
       <label className="grid gap-1 text-xs text-lyra-muted">Frequency Hz<input type="number" min="100000" max="6000000000" value={frequencyHz} onChange={(e)=>setFrequencyHz(e.target.value)} className="rounded border border-lyra-border bg-lyra-bgSoft px-2 py-2 text-lyra-text" /></label>
       <label className="grid gap-1 text-xs text-lyra-muted">Capture interval (s)<input type="number" min="1" max="3600" value={intervalSeconds} onChange={(e)=>setIntervalSeconds(e.target.value)} className="rounded border border-lyra-border bg-lyra-bgSoft px-2 py-2 text-lyra-text" /></label>
       <label className="grid gap-1 text-xs text-lyra-muted">Satellite<select value={satelliteId} onChange={(e)=>setSatelliteId(e.target.value)} className="rounded border border-lyra-border bg-lyra-bgSoft px-2 py-2 text-lyra-text"><option value="">None</option>{satellites.map((s)=><option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
-      <label className="grid gap-1 text-xs text-lyra-muted">Batch size<input type="number" min="1" value={batchSize} onChange={(e)=>setBatchSize(e.target.value)} className="rounded border border-lyra-border bg-lyra-bgSoft px-2 py-2 text-lyra-text" /></label>
+      <label className="grid gap-1 text-xs text-lyra-muted">Batch size<input type="number" min="1" max={Math.max(1, activeAgents.length)} value={batchSize} onChange={(e)=>setBatchSize(e.target.value)} className="rounded border border-lyra-border bg-lyra-bgSoft px-2 py-2 text-lyra-text" /></label>
       <label className="grid gap-1 text-xs text-lyra-muted">Failure threshold %<input type="number" min="0" max="100" value={failureThreshold} onChange={(e)=>setFailureThreshold(e.target.value)} className="rounded border border-lyra-border bg-lyra-bgSoft px-2 py-2 text-lyra-text" /></label>
       <label className="grid gap-1 text-xs text-lyra-muted">Soak target (s)<input type="number" min="0" max="86400" value={soakSeconds} onChange={(e)=>setSoakSeconds(e.target.value)} className="rounded border border-lyra-border bg-lyra-bgSoft px-2 py-2 text-lyra-text" /></label>
       <fieldset className="md:col-span-2"><legend className="text-xs text-lyra-muted">Active agents</legend><div className="mt-1 flex max-h-28 flex-wrap gap-2 overflow-auto">{activeAgents.map((a)=><label key={a.agent_id} className="rounded border border-lyra-borderSoft px-2 py-1 font-mono text-xs text-lyra-muted"><input type="checkbox" className="mr-1" checked={agentIds.includes(a.agent_id)} onChange={()=>toggleAgent(a.agent_id)} />{a.agent_id}</label>)}</div></fieldset>
@@ -52,8 +113,17 @@ export default function FleetRolloutPanel({ agents, satellites = [], canManage =
     </form>}
     {error && <p role="alert" className="mt-3 text-sm text-lyra-bad">{error}</p>}
     <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_1.4fr]">
-      <TableScroll><table className="w-full text-sm"><thead><tr><th className="pb-2 text-left text-xs text-lyra-muted">Rollout</th><th className="pb-2 text-left text-xs text-lyra-muted">Status</th></tr></thead><tbody>{items.map((r)=><tr key={r.id} className="border-t border-lyra-borderSoft"><td className="py-2"><button onClick={()=>fetchAgentRollout(r.id).then(setSelected).catch((e)=>setError(e.message))} className="text-left text-lyra-goldBright hover:underline">{r.name}</button></td><td className="font-mono text-xs text-lyra-muted">{r.status}</td></tr>)}</tbody></table></TableScroll>
-      <div className="rounded border border-lyra-borderSoft p-3">{selected ? <><div className="flex flex-wrap items-center justify-between gap-2"><div><p className="font-medium text-lyra-text">{selected.name}</p><p className="font-mono text-xs text-lyra-muted">{selected.status} · batch {selected.batch_size} · reject &gt; {selected.failure_threshold_percent}%</p></div>{canManage && <div className="flex flex-wrap gap-2">{selected.status==='draft'&&<button disabled={busy} onClick={()=>act('start')} className="rounded border border-lyra-gold px-2 py-1 text-xs text-lyra-gold">Start canary</button>}{selected.status==='running'&&<><button disabled={busy} onClick={()=>act('advance')} className="rounded border border-lyra-gold px-2 py-1 text-xs text-lyra-gold">Advance batch</button><button disabled={busy} onClick={()=>act('pause')} className="rounded border border-lyra-border px-2 py-1 text-xs text-lyra-muted">Pause</button></>}{selected.status==='paused'&&<button disabled={busy} onClick={()=>act('resume')} className="rounded border border-lyra-gold px-2 py-1 text-xs text-lyra-gold">Resume</button>}{!['rolled_back','draft'].includes(selected.status)&&<button disabled={busy} onClick={()=>act('rollback')} className="rounded border border-lyra-bad px-2 py-1 text-xs text-lyra-bad">Rollback</button>}</div>}</div><div className="mt-3 space-y-1">{selected.targets?.map((t)=><div key={t.agent_id} className="flex justify-between border-t border-lyra-borderSoft py-1 font-mono text-xs"><span>{t.agent_id}</span><span className="text-lyra-muted">{t.status}{t.config_version ? ` · v${t.config_version}` : ''}</span></div>)}</div></> : <p className="text-sm text-lyra-muted">Select a rollout to inspect targets and promote it.</p>}</div>
+      <TableScroll><table className="w-full text-sm"><thead><tr><th className="pb-2 text-left text-xs text-lyra-muted">Rollout</th><th className="pb-2 text-left text-xs text-lyra-muted">Status</th></tr></thead><tbody>{items.map((r)=><tr key={r.id} className="border-t border-lyra-borderSoft"><td className="py-2"><button onClick={()=>fetchAgentRollout(r.id).then(setSelected).catch((e)=>setError(e.message))} className="text-left text-lyra-goldBright hover:underline">{r.name}</button></td><td><StatusPill status={r.status} /></td></tr>)}</tbody></table></TableScroll>
+      <div className="rounded border border-lyra-borderSoft p-3">{selected ? <><div className="flex flex-wrap items-start justify-between gap-3"><div><div className="flex flex-wrap items-center gap-2"><p className="font-medium text-lyra-text">{selected.name}</p><StatusPill status={selected.status} /></div><p className="mt-1 font-mono text-xs text-lyra-muted">batch {selected.batch_size} · reject &gt; {selected.failure_threshold_percent}% · soak {selected.soak_seconds}s</p></div>{canManage && <div className="flex flex-wrap gap-2">{selected.status==='draft'&&<button disabled={busy} onClick={()=>act('start')} className="rounded border border-lyra-gold px-2 py-1 text-xs text-lyra-gold disabled:opacity-50">Start canary</button>}{selected.status==='running'&&<><button disabled={busy || thresholdExceeded || stats.issued > 0} title={stats.issued > 0 ? 'Wait for the active batch to acknowledge' : thresholdExceeded ? 'Rejection threshold exceeded' : ''} onClick={()=>act('advance')} className="rounded border border-lyra-gold px-2 py-1 text-xs text-lyra-gold disabled:opacity-40">Advance batch</button><button disabled={busy} onClick={()=>act('pause')} className="rounded border border-lyra-border px-2 py-1 text-xs text-lyra-muted disabled:opacity-50">Pause</button></>}{selected.status==='paused'&&<button disabled={busy} onClick={()=>act('resume')} className="rounded border border-lyra-gold px-2 py-1 text-xs text-lyra-gold disabled:opacity-50">Resume</button>}{!['rolled_back','draft'].includes(selected.status)&&<button disabled={busy} onClick={()=>act('rollback')} className="rounded border border-lyra-bad px-2 py-1 text-xs text-lyra-bad disabled:opacity-50">Rollback</button>}</div>}</div>
+        <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded border border-lyra-borderSoft bg-lyra-bg/30 px-3 py-2"><p className="text-[10px] uppercase tracking-[0.15em] text-lyra-mutedDim">Progress</p><p className="mt-1 font-mono text-sm text-lyra-text">{stats.complete}/{stats.total} · {stats.progress}%</p></div>
+          <div className="rounded border border-lyra-borderSoft bg-lyra-bg/30 px-3 py-2"><p className="text-[10px] uppercase tracking-[0.15em] text-lyra-mutedDim">Current batch</p><p className="mt-1 font-mono text-sm text-lyra-text">{batch ? `#${batch}` : '—'}</p></div>
+          <div className={`rounded border px-3 py-2 ${thresholdExceeded ? 'border-lyra-bad/40 bg-lyra-bad/10' : 'border-lyra-borderSoft bg-lyra-bg/30'}`}><p className="text-[10px] uppercase tracking-[0.15em] text-lyra-mutedDim">Rejections</p><p className={`mt-1 font-mono text-sm ${thresholdExceeded ? 'text-lyra-bad' : 'text-lyra-text'}`}>{stats.rejected}/{stats.total} · {rejectionRate}%</p></div>
+          <SoakStatus rollout={selected} now={now} />
+        </div>
+        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-lyra-borderSoft" aria-label={`Rollout progress ${stats.progress}%`}><div className="h-full bg-lyra-gold transition-[width]" style={{ width: `${stats.progress}%` }} /></div>
+        {thresholdExceeded && <p role="alert" className="mt-3 rounded border border-lyra-bad/30 bg-lyra-bad/10 px-3 py-2 text-xs text-lyra-bad">Promotion is blocked because the rejection rate exceeds this rollout's failure threshold.</p>}
+        <div className="mt-3 space-y-1">{selected.targets?.map((t)=><div key={t.agent_id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-t border-lyra-borderSoft py-2 font-mono text-xs"><div className="min-w-0"><span className="block truncate text-lyra-text">{t.agent_id}</span><span className="text-[10px] text-lyra-mutedDim">cohort {Math.floor(Number(t.ordinal || 0) / Math.max(1, Number(selected.batch_size || 1))) + 1}{t.config_version ? ` · config v${t.config_version}` : ''}</span></div><StatusPill status={t.status} /></div>)}</div></> : <p className="text-sm text-lyra-muted">Select a rollout to inspect targets and promote it.</p>}</div>
     </div>
   </section>
 }

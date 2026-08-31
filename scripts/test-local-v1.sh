@@ -89,6 +89,7 @@ python3 -m unittest \
   scripts/test_check_tenant_rate_limiting.py \
   scripts/test_check_background_job_idempotency.py \
   scripts/test_check_agent_hardware_ui.py
+  python3 -m unittest scripts/test_check_script_permissions.py
 python3 scripts/check-command-execution.py .
 python3 scripts/check-frontend-xss.py .
 python3 scripts/check-sql-construction.py .
@@ -104,6 +105,7 @@ python3 scripts/check-signing-key-automation.py .
 python3 scripts/check-tenant-rate-limiting.py .
 python3 scripts/check-background-job-idempotency.py .
 python3 scripts/check-agent-hardware-ui.py .
+python3 scripts/check-script-permissions.py .
 
 section "Backend tests"
 cd "$ROOT/apps/backend"

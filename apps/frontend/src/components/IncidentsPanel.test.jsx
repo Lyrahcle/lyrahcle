@@ -44,6 +44,22 @@ describe('IncidentsPanel', () => {
     expect(screen.getByText(/no incidents match/i)).toBeInTheDocument()
   })
 
+  it('summarizes incident posture and applies quick filters', () => {
+    setEffectivePermissions(['incidents.read'])
+    const onFiltersChange = vi.fn()
+    const items = [
+      { id: 'i1', reference: 'INC-1', title: 'Critical RF', severity: 'critical', status: 'new', source_type: 'rf', updated_at: '2026-08-31T12:00:00Z', assigned_to: '' },
+      { id: 'i2', reference: 'INC-2', title: 'Contained issue', severity: 'medium', status: 'contained', source_type: 'agent', updated_at: '2026-08-31T12:05:00Z', assigned_to: 'user-1' },
+    ]
+    renderPanel({ page: { items, total: 7, limit: 25, offset: 0 }, onFiltersChange })
+
+    expect(screen.getByRole('heading', { name: /incident posture/i })).toBeInTheDocument()
+    expect(screen.getByText('7')).toBeInTheDocument()
+    expect(screen.getAllByText('1')).toHaveLength(2)
+    fireEvent.click(screen.getByRole('button', { name: /critical only/i }))
+    expect(onFiltersChange).toHaveBeenCalledWith(expect.objectContaining({ severity: 'critical' }))
+  })
+
   it('creates incidents for a custom role with incidents.manage', async () => {
     setEffectivePermissions(['incidents.read', 'incidents.manage'])
     api.createIncident.mockResolvedValue({})

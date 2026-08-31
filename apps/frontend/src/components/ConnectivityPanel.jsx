@@ -8,6 +8,7 @@ import AgentKeysPanel from './AgentKeysPanel.jsx'
 import AgentIdentityPanel from './AgentIdentityPanel.jsx'
 import AgentRemoteConfigPanel from './AgentRemoteConfigPanel.jsx'
 import AgentHardwarePanel from './AgentHardwarePanel.jsx'
+import ConnectivityOperationsOverview from './ConnectivityOperationsOverview.jsx'
 
 const SDR_DEVICES = [
   {
@@ -116,6 +117,9 @@ export default function ConnectivityPanel({ agentKeys, agentIdentities, satellit
 
   return (
     <div className="grid gap-6">
+      {canAccessAgents && agentIdentities !== null && agentKeys !== null && (
+        <ConnectivityOperationsOverview agentIdentities={agentIdentities} agentKeys={agentKeys} />
+      )}
       <Panel eyebrow={t('panels.connectivity')} title={t('connectivity.supportedDevices')} uppercase>
         <p className="mb-5 text-sm text-lyra-muted">{t('connectivity.supportedDevicesHint')}</p>
         <div className="grid gap-4 sm:grid-cols-2">

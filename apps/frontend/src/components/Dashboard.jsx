@@ -8,6 +8,7 @@ import AnomaliesPanel from './AnomaliesPanel.jsx'
 import DetectionRulesPanel from './DetectionRulesPanel.jsx'
 import SatellitesPanel from './SatellitesPanel.jsx'
 import OrbitalOperationsPanel from './OrbitalOperationsPanel.jsx'
+import OrbitalDashboardOverview from './OrbitalDashboardOverview.jsx'
 import WorldMap from './WorldMap.jsx'
 import ThreatIntelPanel from './ThreatIntelPanel.jsx'
 import AssetAlertsPanel from './AssetAlertsPanel.jsx'
@@ -21,6 +22,7 @@ import AuditLogPanel from './AuditLogPanel.jsx'
 import UsersPanel from './UsersPanel.jsx'
 import SettingsPanel from './SettingsPanel.jsx'
 import PlatformOrganizationsPanel from './PlatformOrganizationsPanel.jsx'
+import PlatformOperationsOverview from './PlatformOperationsOverview.jsx'
 import SigningKeysPanel from './SigningKeysPanel.jsx'
 import RateLimitPolicyPanel from './RateLimitPolicyPanel.jsx'
 import SecretProviderPanel from './SecretProviderPanel.jsx'
@@ -436,6 +438,8 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
       <main id="main-content" className="mx-auto max-w-7xl px-6 py-10 sm:px-8">
         {activeTab === 'orbital' && (
           <div className="grid gap-6">
+            {satellites === null ? <Skeleton rows={2} /> : <OrbitalDashboardOverview satellites={satellites} live={satellitesLive} />}
+            <div id="orbital-ground-track">
             <Panel
               eyebrow={t('panels.groundTrack')}
               title={t('panels.liveOrbitalPositions')}
@@ -460,17 +464,22 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
                 </div>
               )}
             </Panel>
+            </div>
             <Panel eyebrow={t('panels.orbitalTracking')} title="Orbital altitude profile">
               {satellites === null ? <Skeleton /> : <OrbitalAltitudeChart satellites={satellites} />}
             </Panel>
+            <div id="orbital-management">
             <Panel eyebrow={t('panels.orbitalTracking')} title={t('panels.trackedSatellites')} uppercase>
               {hasPermission('orbital.manage') && <NewSatelliteForm onCreated={reloadSatellites} />}
               {satellites === null ? <Skeleton /> : <SatellitesPanel satellites={satellites} canManage={hasPermission('orbital.manage')} onChanged={reloadSatellites} />}
             </Panel>
+            </div>
             {(hasPermission('orbital.read') || hasPermission('orbital.manage')) && (
+              <div id="orbital-operations">
               <Panel eyebrow={t('panels.orbitalOperations')} title={t('orbitalOperations.title')}>
                 {satellites === null ? <Skeleton /> : <OrbitalOperationsPanel satellites={satellites} />}
               </Panel>
+              </div>
             )}
           </div>
         )}
@@ -620,6 +629,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
 
                 {activeTab === 'platform' && platformAdmin && (
           <div className="grid gap-6">
+            <PlatformOperationsOverview organizations={organizations ?? []} platformUsers={platformUsers ?? []} />
             <Panel eyebrow={t('platform.eyebrow')} title={t('platform.title')} uppercase>
               {organizations === null || platformUsers === null ? <Skeleton /> : <PlatformOrganizationsPanel organizations={organizations} platformUsers={platformUsers} onChanged={reloadOrganizations} onPlatformUsersChanged={reloadPlatformUsers} />}
             </Panel>

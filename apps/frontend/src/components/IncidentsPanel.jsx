@@ -51,6 +51,13 @@ export default function IncidentsPanel({ page, filters, onFiltersChange, onPrev,
 
   const selected = detail?.incident
   const orderedUsers = useMemo(() => [...users].sort((a, b) => (a.username || a.email).localeCompare(b.username || b.email)), [users])
+  const visibleActive = incidents.filter((incident) => !['resolved', 'false_positive'].includes(incident.status)).length
+  const visibleUrgent = incidents.filter((incident) => ['critical', 'high'].includes(incident.severity)).length
+  const visibleUnassigned = incidents.filter((incident) => !incident.assigned_to).length
+
+  function applyQuickFilter(next) {
+    onFiltersChange({ ...filters, ...next })
+  }
 
   async function handleCreate(event) {
     event.preventDefault()
@@ -129,6 +136,37 @@ export default function IncidentsPanel({ page, filters, onFiltersChange, onPrev,
   return (
     <div className="grid gap-6">
       {error && <p role="alert" className="text-sm text-lyra-bad">{error}</p>}
+
+      <section aria-labelledby="incident-operations-heading" className="grid gap-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.18em] text-lyra-mutedDim">{t('incidents.operationsEyebrow')}</p>
+            <h2 id="incident-operations-heading" className="mt-1 font-display text-xl font-medium text-lyra-text">{t('incidents.operationsTitle')}</h2>
+            <p className="mt-1 text-sm text-lyra-muted">{t('incidents.operationsDescription')}</p>
+          </div>
+          <button type="button" onClick={() => applyQuickFilter({ status: '', severity: '', agentId: '', satelliteId: '' })} className="self-start rounded border border-lyra-border bg-lyra-panel px-3 py-2 text-xs text-lyra-muted hover:text-lyra-text">
+            {t('incidents.clearFilters')}
+          </button>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {[
+            [t('incidents.matchingIncidents'), page?.total ?? 0, 'text-lyra-text'],
+            [t('incidents.visibleActive'), visibleActive, visibleActive ? 'text-lyra-warn' : 'text-lyra-good'],
+            [t('incidents.visibleUrgent'), visibleUrgent, visibleUrgent ? 'text-lyra-bad' : 'text-lyra-good'],
+            [t('incidents.visibleUnassigned'), visibleUnassigned, visibleUnassigned ? 'text-lyra-warn' : 'text-lyra-good'],
+          ].map(([label, value, tone]) => (
+            <div key={label} className="rounded-lg border border-lyra-border bg-lyra-panel/50 px-5 py-4">
+              <p className="text-[10px] uppercase tracking-[0.15em] text-lyra-muted">{label}</p>
+              <p className={`mt-2 font-mono text-2xl font-medium ${tone}`}>{value}</p>
+            </div>
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-2" aria-label={t('incidents.quickFilters')}>
+          <button type="button" onClick={() => applyQuickFilter({ status: 'new' })} className="rounded-full border border-lyra-border px-3 py-1.5 text-xs text-lyra-muted hover:border-lyra-gold/40 hover:text-lyra-text">{t('incidents.statuses.new')}</button>
+          <button type="button" onClick={() => applyQuickFilter({ status: 'investigating' })} className="rounded-full border border-lyra-border px-3 py-1.5 text-xs text-lyra-muted hover:border-lyra-gold/40 hover:text-lyra-text">{t('incidents.statuses.investigating')}</button>
+          <button type="button" onClick={() => applyQuickFilter({ severity: 'critical' })} className="rounded-full border border-lyra-bad/30 px-3 py-1.5 text-xs text-lyra-bad hover:bg-lyra-bad/10">{t('incidents.criticalOnly')}</button>
+        </div>
+      </section>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <label className="grid gap-1 text-xs text-lyra-muted">
@@ -224,6 +262,13 @@ export default function IncidentsPanel({ page, filters, onFiltersChange, onPrev,
             <SeverityBadge severity={selected.severity} />
           </div>
 
+          <div className="grid gap-3 rounded border border-lyra-borderSoft bg-lyra-bgSoft/30 p-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div><p className="text-[10px] uppercase tracking-wider text-lyra-mutedDim">{t('incidents.status')}</p><p className="mt-1 font-mono text-xs uppercase text-lyra-text">{t(`incidents.statuses.${selected.status}`)}</p></div>
+            <div><p className="text-[10px] uppercase tracking-wider text-lyra-mutedDim">{t('incidents.agent')}</p><p className="mt-1 truncate font-mono text-xs text-lyra-text">{selected.agent_id || '—'}</p></div>
+            <div><p className="text-[10px] uppercase tracking-wider text-lyra-mutedDim">{t('incidents.satellite')}</p><p className="mt-1 truncate text-xs text-lyra-text">{satellites.find((satellite) => satellite.id === selected.satellite_id)?.name || selected.satellite_id || '—'}</p></div>
+            <div><p className="text-[10px] uppercase tracking-wider text-lyra-mutedDim">{t('incidents.updated')}</p><p className="mt-1 font-mono text-xs text-lyra-text">{new Date(selected.updated_at).toLocaleString()}</p></div>
+          </div>
+
           {canManage && (
             <div className="grid gap-3 sm:grid-cols-3">
               <select aria-label={t('incidents.status')} value={selected.status} disabled={saving} onChange={(e) => applyUpdate({ status: e.target.value })} className="rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 text-sm text-lyra-text">
@@ -245,9 +290,9 @@ export default function IncidentsPanel({ page, filters, onFiltersChange, onPrev,
 
           <div>
             <h4 className="mb-2 font-mono text-xs uppercase tracking-wider text-lyra-muted">{t('incidents.timeline')}</h4>
-            <div className="grid gap-2">
+            <div className="relative grid gap-2 before:absolute before:bottom-2 before:left-[7px] before:top-2 before:w-px before:bg-lyra-borderSoft">
               {(detail.events || []).map((event) => (
-                <div key={event.id} className="rounded border border-lyra-borderSoft px-3 py-2">
+                <div key={event.id} className="relative ml-5 rounded border border-lyra-borderSoft px-3 py-2 before:absolute before:-left-[18px] before:top-3 before:h-2 before:w-2 before:rounded-full before:border before:border-lyra-gold before:bg-lyra-bg">
                   <div className="flex flex-wrap justify-between gap-2">
                     <span className="font-mono text-[11px] uppercase text-lyra-goldBright">{event.event_type}</span>
                     <span className="font-mono text-[11px] text-lyra-mutedDim">{new Date(event.created_at).toLocaleString()}</span>
