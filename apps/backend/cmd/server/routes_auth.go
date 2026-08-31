@@ -103,7 +103,9 @@ func (a *apiRoutes) registerAuthenticationRoutes(r chi.Router) {
 			}
 
 			metrics.AuthLoginsTotal.WithLabelValues("success").Inc()
-			logAudit(r.Context(), auditLog, audit.ActorUser, user.ID.String(), audit.ActionLogin, clientIP(r), map[string]interface{}{"email": user.Email})
+			// Login happens before authentication middleware can attach tenant claims,
+			// so bind the audit event explicitly to the authenticated user's organization.
+			logAuditInOrganization(r.Context(), auditLog, user.OrganizationID, audit.ActorUser, user.ID.String(), audit.ActionLogin, clientIP(r), map[string]interface{}{"email": user.Email})
 
 			w.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(w).Encode(map[string]interface{}{"token": token, "role": user.Role, "must_change_password": user.MustChangePassword})

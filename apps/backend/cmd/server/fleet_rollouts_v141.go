@@ -70,6 +70,7 @@ func registerFleetRolloutRoutes(r chi.Router, cfg config.Config, signer *agentco
 			BatchSize               int                       `json:"batch_size"`
 			FailureThresholdPercent int                       `json:"failure_threshold_percent"`
 			SoakSeconds             int                       `json:"soak_seconds"`
+			AckTimeoutSeconds       int                       `json:"ack_timeout_seconds"`
 		}
 		if err := decodeAgentJSON(w, req, 16<<10, &body); err != nil {
 			http.Error(w, "invalid JSON body", 400)
@@ -98,6 +99,13 @@ func registerFleetRolloutRoutes(r chi.Router, cfg config.Config, signer *agentco
 			http.Error(w, "soak_seconds must be 0-86400", 400)
 			return
 		}
+		if body.AckTimeoutSeconds == 0 {
+			body.AckTimeoutSeconds = 900
+		}
+		if body.AckTimeoutSeconds < 30 || body.AckTimeoutSeconds > 86400 {
+			http.Error(w, "ack_timeout_seconds must be 30-86400", 400)
+			return
+		}
 		if body.Config.SatelliteID != nil {
 			exists, err := satellites.Exists(req.Context(), *body.Config.SatelliteID)
 			if err != nil || !exists {
@@ -106,8 +114,9 @@ func registerFleetRolloutRoutes(r chi.Router, cfg config.Config, signer *agentco
 			}
 		}
 		seen := map[string]bool{}
-		for _, id := range body.AgentIDs {
+		for i, id := range body.AgentIDs {
 			id = strings.TrimSpace(id)
+			body.AgentIDs[i] = id
 			if id == "" || seen[id] {
 				http.Error(w, "agent_ids must be unique and non-empty", 400)
 				return
@@ -120,8 +129,17 @@ func registerFleetRolloutRoutes(r chi.Router, cfg config.Config, signer *agentco
 			http.Error(w, "organization context required", 403)
 			return
 		}
+		eligibility, err := rollouts.EvaluateTargets(req.Context(), orgID, body.AgentIDs, body.Config.FrequencyHz)
+		if err != nil {
+			http.Error(w, "failed to validate rollout target policy", 500)
+			return
+		}
+		if reason := fleetEligibilityFailure(eligibility); reason != "" {
+			http.Error(w, "rollout target policy rejected: "+reason, http.StatusUnprocessableEntity)
+			return
+		}
 		createdBy := claims.UserID
-		item, err := rollouts.Create(req.Context(), orgID, body.Name, body.Config, body.BatchSize, body.FailureThresholdPercent, body.SoakSeconds, body.AgentIDs, &createdBy)
+		item, err := rollouts.Create(req.Context(), orgID, body.Name, body.Config, body.BatchSize, body.FailureThresholdPercent, body.SoakSeconds, body.AckTimeoutSeconds, body.AgentIDs, &createdBy)
 		if errors.Is(err, store.ErrAgentIdentityNotFound) {
 			http.Error(w, "all rollout agents must be active and belong to the organization", 400)
 			return
@@ -130,7 +148,7 @@ func registerFleetRolloutRoutes(r chi.Router, cfg config.Config, signer *agentco
 			http.Error(w, "failed to create rollout", 500)
 			return
 		}
-		logAudit(req.Context(), auditLog, audit.ActorUser, claims.UserID.String(), audit.ActionAgentRolloutCreated, clientIP(req), map[string]interface{}{"rollout_id": item.ID, "targets": len(item.Targets), "batch_size": item.BatchSize})
+		logAudit(req.Context(), auditLog, audit.ActorUser, claims.UserID.String(), audit.ActionAgentRolloutCreated, clientIP(req), map[string]interface{}{"rollout_id": item.ID, "targets": len(item.Targets), "batch_size": item.BatchSize, "ack_timeout_seconds": item.AckTimeoutSeconds})
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(201)
 		json.NewEncoder(w).Encode(item)
@@ -155,6 +173,7 @@ func registerFleetRolloutRoutes(r chi.Router, cfg config.Config, signer *agentco
 			http.Error(w, "rollout not found", 404)
 			return
 		}
+		claims, _ := auth.FromContext(req.Context())
 		if err := rollouts.RefreshAcknowledgements(req.Context(), orgID, id); err != nil {
 			http.Error(w, "failed to refresh rollout", 500)
 			return
@@ -167,10 +186,22 @@ func registerFleetRolloutRoutes(r chi.Router, cfg config.Config, signer *agentco
 		decided := applied + rejected
 		if decided > 0 && rejected*100/decided > item.FailureThresholdPercent {
 			_ = rollouts.SetStatus(req.Context(), orgID, id, []string{"running", "paused"}, "failed")
+			logAudit(req.Context(), auditLog, audit.ActorUser, claims.UserID.String(), audit.ActionAgentRolloutFailed, clientIP(req), map[string]interface{}{"rollout_id": id, "reason": "failure_threshold", "applied": applied, "rejected": rejected})
 			http.Error(w, "rollout failure threshold exceeded", 409)
 			return
 		}
 		if issued > 0 {
+			overdue, err := rollouts.OverdueIssuedCount(req.Context(), orgID, id, item.AckTimeoutSeconds)
+			if err != nil {
+				http.Error(w, "failed to inspect rollout acknowledgement deadline", 500)
+				return
+			}
+			if overdue > 0 {
+				_ = rollouts.SetStatus(req.Context(), orgID, id, []string{"running", "paused"}, "failed")
+				logAudit(req.Context(), auditLog, audit.ActorUser, claims.UserID.String(), audit.ActionAgentRolloutFailed, clientIP(req), map[string]interface{}{"rollout_id": id, "reason": "ack_timeout", "overdue_targets": overdue, "ack_timeout_seconds": item.AckTimeoutSeconds})
+				http.Error(w, "rollout acknowledgement timeout exceeded", 409)
+				return
+			}
 			http.Error(w, "wait for the current batch acknowledgements before advancing", 409)
 			return
 		}
@@ -189,16 +220,30 @@ func registerFleetRolloutRoutes(r chi.Router, cfg config.Config, signer *agentco
 		if start {
 			allowed = []string{"draft"}
 		}
-		if err := rollouts.SetStatus(req.Context(), orgID, id, allowed, "running"); err != nil {
-			http.Error(w, "rollout is not in a promotable state", 409)
-			return
-		}
 		targets, err := rollouts.NextPending(req.Context(), orgID, id, item.BatchSize)
 		if err != nil {
 			http.Error(w, "failed to select rollout batch", 500)
 			return
 		}
-		claims, _ := auth.FromContext(req.Context())
+		targetIDs := make([]string, 0, len(targets))
+		for _, target := range targets {
+			targetIDs = append(targetIDs, target.AgentID)
+		}
+		eligibility, err := rollouts.EvaluateTargets(req.Context(), orgID, targetIDs, item.Settings.FrequencyHz)
+		if err != nil {
+			http.Error(w, "failed to revalidate rollout target policy", 500)
+			return
+		}
+		if reason := fleetEligibilityFailure(eligibility); reason != "" {
+			_ = rollouts.SetStatus(req.Context(), orgID, id, allowed, "failed")
+			logAudit(req.Context(), auditLog, audit.ActorUser, claims.UserID.String(), audit.ActionAgentRolloutFailed, clientIP(req), map[string]interface{}{"rollout_id": id, "reason": "target_policy", "details": reason})
+			http.Error(w, "rollout target policy changed: "+reason, 409)
+			return
+		}
+		if err := rollouts.SetStatus(req.Context(), orgID, id, allowed, "running"); err != nil {
+			http.Error(w, "rollout is not in a promotable state", 409)
+			return
+		}
 		createdBy := claims.UserID
 		for _, target := range targets {
 			var previous *int64
@@ -215,6 +260,7 @@ func registerFleetRolloutRoutes(r chi.Router, cfg config.Config, signer *agentco
 			})
 			if err != nil {
 				_ = rollouts.SetStatus(req.Context(), orgID, id, []string{"running"}, "failed")
+				logAudit(req.Context(), auditLog, audit.ActorUser, claims.UserID.String(), audit.ActionAgentRolloutFailed, clientIP(req), map[string]interface{}{"rollout_id": id, "reason": "config_issue", "agent_id": target.AgentID})
 				http.Error(w, "failed to issue rollout batch", 500)
 				return
 			}
@@ -292,6 +338,28 @@ func registerFleetRolloutRoutes(r chi.Router, cfg config.Config, signer *agentco
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(updated)
 	})
+}
+
+func fleetEligibilityFailure(items []store.FleetTargetEligibility) string {
+	parts := make([]string, 0, 3)
+	remaining := 0
+	for _, item := range items {
+		if item.Eligible {
+			continue
+		}
+		if len(parts) < 3 {
+			parts = append(parts, item.AgentID+": "+item.Reason)
+		} else {
+			remaining++
+		}
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+	if remaining > 0 {
+		parts = append(parts, "and additional ineligible targets")
+	}
+	return strings.Join(parts, "; ")
 }
 
 func changeRolloutStatus(w http.ResponseWriter, req *http.Request, rollouts *store.FleetRolloutStore, auditLog *store.AuditStore, allowed []string, status, action string) {

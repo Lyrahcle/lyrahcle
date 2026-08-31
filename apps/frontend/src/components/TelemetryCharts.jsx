@@ -220,62 +220,6 @@ export function CVETimelineChart({ cves }) {
   return <TimeBucketBars items={cves} timestampKey="published" label="CVE publication timeline" emptyText="No CVE timeline data in the current result set." />
 }
 
-export function RFStationMapChart({ agents, readings }) {
-  const latestByAgent = new Map()
-  for (const reading of readings ?? []) {
-    const current = latestByAgent.get(reading.agent_id)
-    if (!current || new Date(reading.captured_at) > new Date(current.captured_at)) {
-      latestByAgent.set(reading.agent_id, reading)
-    }
-  }
-
-  const stations = (agents ?? [])
-    .filter((agent) => agent.station && Number.isFinite(Number(agent.station.latitude_deg)) && Number.isFinite(Number(agent.station.longitude_deg)))
-    .map((agent) => ({
-      id: agent.agent_id,
-      lat: Number(agent.station.latitude_deg),
-      lon: Number(agent.station.longitude_deg),
-      power: Number(latestByAgent.get(agent.agent_id)?.power_dbm),
-    }))
-
-  if (!stations.length) return <EmptyChart>No SDR station coordinates configured.</EmptyChart>
-
-  return (
-    <figure>
-      <div className="mb-4 flex items-end justify-between gap-4">
-        <figcaption className="text-xs uppercase tracking-[0.16em] text-lyra-mutedDim">RF station coverage</figcaption>
-        <span className="font-mono text-xs text-lyra-mutedDim">{stations.length} configured station{stations.length === 1 ? '' : 's'}</span>
-      </div>
-      <div className="relative h-52 overflow-hidden rounded border border-lyra-borderSoft bg-lyra-bgSoft" role="img" aria-label="Configured SDR stations positioned by latitude and longitude">
-        <div className="absolute inset-x-0 top-1/2 border-t border-lyra-borderSoft/80" />
-        <div className="absolute inset-y-0 left-1/2 border-l border-lyra-borderSoft/80" />
-        {[25, 75].map((value) => (
-          <div key={`v-${value}`} className="absolute inset-y-0 border-l border-lyra-borderSoft/40" style={{ left: `${value}%` }} />
-        ))}
-        {[25, 75].map((value) => (
-          <div key={`h-${value}`} className="absolute inset-x-0 border-t border-lyra-borderSoft/40" style={{ top: `${value}%` }} />
-        ))}
-        {stations.map((station) => {
-          const left = ((station.lon + 180) / 360) * 100
-          const top = ((90 - station.lat) / 180) * 100
-          return (
-            <div
-              key={station.id}
-              className="absolute -translate-x-1/2 -translate-y-1/2"
-              style={{ left: `${left}%`, top: `${top}%` }}
-              title={`${station.id} · ${station.lat.toFixed(2)}°, ${station.lon.toFixed(2)}°${Number.isFinite(station.power) ? ` · ${station.power.toFixed(1)} dBm` : ''}`}
-            >
-              <span className="block h-3 w-3 rounded-full border border-lyra-goldBright bg-lyra-gold shadow-[0_0_10px_rgb(var(--lyra-gold)/0.65)]" />
-            </div>
-          )
-        })}
-        <span className="absolute bottom-1 left-2 font-mono text-[9px] text-lyra-mutedDim">180°W</span>
-        <span className="absolute bottom-1 right-2 font-mono text-[9px] text-lyra-mutedDim">180°E</span>
-      </div>
-    </figure>
-  )
-}
-
 export function OrbitalAltitudeChart({ satellites }) {
   const rows = (satellites ?? [])
     .filter((satellite) => Number.isFinite(Number(satellite.position?.altitude_km)))

@@ -23,8 +23,19 @@ type Store struct {
 	ttl    time.Duration
 }
 
+var consumeCeremonyScript = redis.NewScript(`
+if redis.call("GET", KEYS[1]) == ARGV[1] then
+	return redis.call("DEL", KEYS[1])
+end
+return 0
+`)
+
 func New(client *redis.Client) *Store {
 	return &Store{client: client, ttl: 5 * time.Minute}
+}
+
+func ceremonyKey(id string) string {
+	return "lyrahcle:webauthn:" + id
 }
 
 func (s *Store) Create(ctx context.Context, ceremony Ceremony) (string, error) {
@@ -36,7 +47,7 @@ func (s *Store) Create(ctx context.Context, ceremony Ceremony) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if err := s.client.Set(ctx, "lyrahcle:webauthn:"+id, raw, s.ttl).Err(); err != nil {
+	if err := s.client.Set(ctx, ceremonyKey(id), raw, s.ttl).Err(); err != nil {
 		return "", err
 	}
 	return id, nil
@@ -49,7 +60,8 @@ func (s *Store) Consume(ctx context.Context, id, purpose string) (Ceremony, erro
 	if _, err := uuid.Parse(id); err != nil {
 		return Ceremony{}, errors.New("invalid ceremony id")
 	}
-	raw, err := s.client.GetDel(ctx, "lyrahcle:webauthn:"+id).Bytes()
+	key := ceremonyKey(id)
+	raw, err := s.client.Get(ctx, key).Bytes()
 	if err != nil {
 		return Ceremony{}, errors.New("webauthn ceremony expired or invalid")
 	}
@@ -59,6 +71,10 @@ func (s *Store) Consume(ctx context.Context, id, purpose string) (Ceremony, erro
 	}
 	if ceremony.Purpose != purpose || ceremony.UserID == uuid.Nil {
 		return Ceremony{}, errors.New("webauthn ceremony mismatch")
+	}
+	deleted, err := consumeCeremonyScript.Run(ctx, s.client, []string{key}, raw).Int64()
+	if err != nil || deleted != 1 {
+		return Ceremony{}, errors.New("webauthn ceremony expired or invalid")
 	}
 	return ceremony, nil
 }

@@ -93,6 +93,15 @@
 - [x] Authentication E2E coverage for Google Authenticator enable/disable and session invalidation
 - [x] Optional distributed tracing with OpenTelemetry OTLP/HTTP export
 
+## v14.6.3 HTTP tenant-boundary security E2E
+
+- [x] HTTP-level cross-tenant IDOR regression coverage with valid foreign asset, incident and user UUIDs
+- [x] Foreign parent/reference rejection across tenant-owned resources
+- [x] Viewer read-vs-manage capability enforcement through the real router
+- [x] Forged `organization_id` JWT claim fails closed against persisted user tenancy
+- [x] Persisted `auth_version`/role changes invalidate already-issued access tokens
+- [x] Successful login audit events are attributed to the authenticated user's organization and remain tenant-isolated through `/api/v1/audit-log`
+
 ## Next identity and authorization review
 
 - [x] Force password change for the default seeded administrator on first successful login
@@ -123,7 +132,7 @@
 - Delivered mTLS-only polling and acknowledgement endpoints with checksum binding.
 - Delivered rollback as a newly signed version instead of history mutation.
 - Kept remote shell execution and arbitrary command payloads out of the control plane.
-- Next: fleet policy, staged rollouts, hardware capability attestation, and stronger signing-key custody.
+- Delivered: fleet staged-rollout policy now enforces fresh compatible hardware, unchanged integrity posture, frequency coverage, per-batch revalidation, and bounded acknowledgement deadlines. Next: physical RTL-SDR/HackRF lab validation and stronger signing-key custody.
 
 
 ## v9.2 orbital-aware security correlation

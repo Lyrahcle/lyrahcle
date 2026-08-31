@@ -30,7 +30,8 @@ import IncidentResponsePanel from './IncidentResponsePanel.jsx'
 import RBACPanel from './RBACPanel.jsx'
 import Footer from './Footer.jsx'
 import ApiStatusBanner from './ApiStatusBanner.jsx'
-import { AnomalyTimelineChart, CVESeverityChart, CVETimelineChart, IncidentSeverityChart, IncidentTimelineChart, OrbitalAltitudeChart, RFPowerChart, RFSpectrumChart, RFStationMapChart } from './TelemetryCharts.jsx'
+import { AnomalyTimelineChart, CVESeverityChart, CVETimelineChart, IncidentSeverityChart, IncidentTimelineChart, OrbitalAltitudeChart, RFPowerChart, RFSpectrumChart } from './TelemetryCharts.jsx'
+import RFHeatMap from './RFHeatMap.jsx'
 import { hasPermission } from '../lib/permissions.js'
 import { useI18n } from '../lib/I18nContext.jsx'
 import {
@@ -528,9 +529,9 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
                 </div>
               )}
             </Panel>
-            <Panel eyebrow={t('panels.signalIntelligence')} title="RF station coverage">
+            <Panel eyebrow={t('panels.signalIntelligence')} title={t('rfHeatMap.panelTitle')}>
               {rfReadings === null || agentIdentities === null ? <Skeleton /> : (
-                <RFStationMapChart agents={agentIdentities} readings={rfReadings} />
+                <RFHeatMap agents={agentIdentities} readings={rfReadings} />
               )}
             </Panel>
             <Panel eyebrow={t('panels.anomalyDetection')} title={t('panels.flaggedAnomalies')}>

@@ -1938,3 +1938,43 @@ for (const [language, extra] of Object.entries(uiPolishTranslations)) {
   translations[language].agentKeys = extra.agentKeys
   translations[language].secretProvider = extra.secretProvider
 }
+
+const rfHeatMapTranslations = {
+  en: {
+    panelTitle: 'RF heat map', title: 'RF signal heat map', subtitle: 'Per-station RF intensity from the loaded reading set. No geographic interpolation is applied.',
+    agent: 'Agent', allAgents: 'All agents', timeWindow: 'Time window', allTime: 'All loaded readings', last15m: 'Last 15 minutes', last1h: 'Last hour', last6h: 'Last 6 hours', last24h: 'Last 24 hours',
+    minFrequency: 'Minimum frequency (MHz)', maxFrequency: 'Maximum frequency (MHz)', reset: 'Reset filters',
+    summary: 'Stations: {active}/{configured} active · Samples: {readings}', noStations: 'No SDR station coordinates configured.', noMatches: 'No RF readings match the current heat-map filters.', invalidRange: 'Minimum frequency cannot be greater than maximum frequency.',
+    mapAria: 'RF signal heat map by configured SDR station', markerAria: '{agent}, average {average} dBm, peak {peak} dBm, {readings} readings', markerNoDataAria: '{agent}, no readings match the current filters',
+    averagePower: 'Average power', peakPower: 'Peak power', frequencyRange: 'Frequency range', readings: 'Readings', lastCapture: 'Last capture', noData: 'No matching readings for this station.',
+    legendAria: 'RF power intensity legend', legendWeak: 'Weak · -120 dBm', legendStrong: 'Strong · -30 dBm', methodNote: 'Halo size and opacity represent average filtered power per station; coverage between stations is not inferred.',
+  },
+  es: {
+    panelTitle: 'Mapa de calor RF', title: 'Mapa de calor de señal RF', subtitle: 'Intensidad RF por estación a partir del conjunto de lecturas cargado. No se aplica interpolación geográfica.',
+    agent: 'Agente', allAgents: 'Todos los agentes', timeWindow: 'Ventana temporal', allTime: 'Todas las lecturas cargadas', last15m: 'Últimos 15 minutos', last1h: 'Última hora', last6h: 'Últimas 6 horas', last24h: 'Últimas 24 horas',
+    minFrequency: 'Frecuencia mínima (MHz)', maxFrequency: 'Frecuencia máxima (MHz)', reset: 'Restablecer filtros',
+    summary: 'Estaciones: {active}/{configured} activas · Muestras: {readings}', noStations: 'No hay coordenadas configuradas para estaciones SDR.', noMatches: 'Ninguna lectura RF coincide con los filtros actuales del mapa de calor.', invalidRange: 'La frecuencia mínima no puede ser mayor que la frecuencia máxima.',
+    mapAria: 'Mapa de calor de señal RF por estación SDR configurada', markerAria: '{agent}, media {average} dBm, pico {peak} dBm, {readings} lecturas', markerNoDataAria: '{agent}, ninguna lectura coincide con los filtros actuales',
+    averagePower: 'Potencia media', peakPower: 'Potencia pico', frequencyRange: 'Rango de frecuencia', readings: 'Lecturas', lastCapture: 'Última captura', noData: 'No hay lecturas coincidentes para esta estación.',
+    legendAria: 'Leyenda de intensidad de potencia RF', legendWeak: 'Débil · -120 dBm', legendStrong: 'Fuerte · -30 dBm', methodNote: 'El tamaño y la opacidad del halo representan la potencia media filtrada por estación; no se infiere cobertura entre estaciones.',
+  },
+  fr: {
+    panelTitle: 'Carte thermique RF', title: 'Carte thermique du signal RF', subtitle: 'Intensité RF par station à partir de l’ensemble de mesures chargé. Aucune interpolation géographique n’est appliquée.',
+    agent: 'Agent', allAgents: 'Tous les agents', timeWindow: 'Fenêtre temporelle', allTime: 'Toutes les mesures chargées', last15m: '15 dernières minutes', last1h: 'Dernière heure', last6h: '6 dernières heures', last24h: '24 dernières heures',
+    minFrequency: 'Fréquence minimale (MHz)', maxFrequency: 'Fréquence maximale (MHz)', reset: 'Réinitialiser les filtres',
+    summary: 'Stations : {active}/{configured} actives · Échantillons : {readings}', noStations: 'Aucune coordonnée de station SDR n’est configurée.', noMatches: 'Aucune mesure RF ne correspond aux filtres actuels de la carte thermique.', invalidRange: 'La fréquence minimale ne peut pas être supérieure à la fréquence maximale.',
+    mapAria: 'Carte thermique du signal RF par station SDR configurée', markerAria: '{agent}, moyenne {average} dBm, pic {peak} dBm, {readings} mesures', markerNoDataAria: '{agent}, aucune mesure ne correspond aux filtres actuels',
+    averagePower: 'Puissance moyenne', peakPower: 'Puissance de crête', frequencyRange: 'Plage de fréquence', readings: 'Mesures', lastCapture: 'Dernière capture', noData: 'Aucune mesure correspondante pour cette station.',
+    legendAria: 'Légende d’intensité de puissance RF', legendWeak: 'Faible · -120 dBm', legendStrong: 'Fort · -30 dBm', methodNote: 'La taille et l’opacité du halo représentent la puissance moyenne filtrée par station ; aucune couverture n’est déduite entre les stations.',
+  },
+  de: {
+    panelTitle: 'RF-Heatmap', title: 'RF-Signal-Heatmap', subtitle: 'RF-Intensität pro Station aus dem geladenen Messwertsatz. Es wird keine geografische Interpolation angewendet.',
+    agent: 'Agent', allAgents: 'Alle Agenten', timeWindow: 'Zeitfenster', allTime: 'Alle geladenen Messwerte', last15m: 'Letzte 15 Minuten', last1h: 'Letzte Stunde', last6h: 'Letzte 6 Stunden', last24h: 'Letzte 24 Stunden',
+    minFrequency: 'Minimale Frequenz (MHz)', maxFrequency: 'Maximale Frequenz (MHz)', reset: 'Filter zurücksetzen',
+    summary: 'Stationen: {active}/{configured} aktiv · Messwerte: {readings}', noStations: 'Keine SDR-Stationskoordinaten konfiguriert.', noMatches: 'Keine RF-Messwerte entsprechen den aktuellen Heatmap-Filtern.', invalidRange: 'Die minimale Frequenz darf nicht größer als die maximale Frequenz sein.',
+    mapAria: 'RF-Signal-Heatmap nach konfigurierter SDR-Station', markerAria: '{agent}, Mittelwert {average} dBm, Spitze {peak} dBm, {readings} Messwerte', markerNoDataAria: '{agent}, keine Messwerte entsprechen den aktuellen Filtern',
+    averagePower: 'Mittlere Leistung', peakPower: 'Spitzenleistung', frequencyRange: 'Frequenzbereich', readings: 'Messwerte', lastCapture: 'Letzte Erfassung', noData: 'Keine passenden Messwerte für diese Station.',
+    legendAria: 'Legende der RF-Leistungsintensität', legendWeak: 'Schwach · -120 dBm', legendStrong: 'Stark · -30 dBm', methodNote: 'Größe und Deckkraft des Halos stellen die durchschnittliche gefilterte Leistung pro Station dar; zwischen Stationen wird keine Abdeckung abgeleitet.',
+  },
+}
+for (const [language, extra] of Object.entries(rfHeatMapTranslations)) translations[language].rfHeatMap = extra

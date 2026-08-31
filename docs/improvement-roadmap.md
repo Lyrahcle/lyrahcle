@@ -44,7 +44,7 @@ Status values: **Shipped**, **Partial**, **Next**, and **Later**.
 | Typed RF detection rules and deterministic correlation | Shipped | Current |
 | Explainable cross-domain correlation | Shipped | v9.4 |
 | Correlation-driven severity policy after production validation | Later | Before v1.0 |
-| RF heat map | Next | v9 |
+| RF heat map | Shipped | v14.6.2 |
 | Telemetry, RF, CVE, and operations charts | Next | v8.3-v9 |
 | Orbital-aware RF detection and TLE freshness gating | Shipped | v9.2/v9.2.2 |
 | Physical SDR validation of Doppler/visibility correlation | Next | Before auto-escalation/v1.0 |
@@ -63,8 +63,8 @@ Status values: **Shipped**, **Partial**, **Next**, and **Later**.
 | CVE filter indexes | Shipped | Current |
 | Response/orbital/CVE caching | Partial | v8.3-v9 (now also covers incidents, asset-alerts, RF readings/anomalies; response caching for other high-traffic reads still open) |
 | Satellite-load optimization | Shipped | v8.5 |
-| Index review for all filtered searches | Partial | v8.5-v9 |
-| SQL query optimization | Partial | v8.5-v9 |
+| Index review for all filtered searches | Partial | v14.6.4 adds tenant-aware RF/audit/incident hot-path indexes; remaining query families stay under review |
+| SQL query optimization | Partial | v14.6.4 removes fleet target N+1 inserts and collapses tenant snapshots to one DB round trip; broader load-driven tuning remains |
 | Load-test tooling | Shipped | v8.4 |
 | Station federation | Later | v9+ |
 | Multi-tenant architecture | Shipped | v10.x (see Identity, authentication, and authorization) |
@@ -81,7 +81,7 @@ Status values: **Shipped**, **Partial**, **Next**, and **Later**.
 | Security design review for enterprise modules | Later | Enterprise |
 | Compliance-readiness checklist | Shipped | Current |
 | Full >80% application coverage | Partial | Before v1.0 |
-| Security E2E coverage | Partial | Before v1.0 |
+| Security E2E coverage | Partial | v14.6.3 adds a dedicated HTTP tenant-boundary/IDOR/RBAC/audit gate; broader agent/WebAuthn/remote-config end-to-end matrices remain before v1.0 |
 | HashiCorp Vault integration | Later | v9 / production |
 | Automated backup and restore drills | Shipped | v8.5 |
 
@@ -128,7 +128,7 @@ Status values: **Shipped**, **Partial**, **Next**, and **Later**.
 | Shared `rf-lib` | Later | Post-v1 |
 | Shared `tle-lib` | Later | Post-v1 |
 | Shared UI component library | Later | Post-v1 |
-| Fleet policy and staged agent rollouts | Next | Before v1.0 |
+| Fleet policy and staged agent rollouts | Shipped | v14.6.5 |
 | Agent hardware capability reporting | Shipped | v13.10 |
 | Agent hardware capability physical lab-validation gate | Next | Before v1.0 |
 | Stronger remote-config signing-key custody | Next | Before v1.0 |
@@ -139,7 +139,7 @@ Note: multi-tenancy moved from "Enterprise architecture / Later" to the core Ide
 
 1. Validate orbital-aware Doppler/visibility correlation with representative physical SDR captures before enabling automatic orbital escalation (currently disabled).
 2. Reach and hold >80% coverage on security-critical code paths, including security-focused end-to-end coverage.
-3. Publish HA/DR and production-load guidance, and complete fleet policy plus staged agent rollouts.
+3. Publish HA/DR and production-load guidance, continue load-driven database tuning, and harden remote-config signing-key custody.
 4. Complete the agent hardware-capability physical lab-validation gate (RTL-SDR/HackRF) — `compatible` currently reflects self-reported software capability only.
 5. Ship the RF heat map and finish remaining operator-facing user guides.
 

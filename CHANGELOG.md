@@ -16,6 +16,50 @@
 
 
 
+## v14.6.5 — Fleet staged-rollout policy and ACK deadline hardening
+
+- Enforced staged-rollout target eligibility against the latest tenant-scoped SDR hardware report: active status, fresh `compatible` RX posture, unchanged integrity baseline, and requested-frequency coverage are now required at creation and revalidated before every batch.
+- Added operator-visible fleet-policy eligibility in Connectivity so incompatible, stale, tampered, missing-report, and out-of-range agents are shown as blocked and cannot be selected for a staged rollout.
+- Added configurable `ack_timeout_seconds` (30-86400 seconds, default 900) and a partial issued-target deadline index; promotion fails closed when an issued target exceeds the acknowledgement deadline.
+- Added an ACK deadline/countdown to the rollout UI and a `Fail overdue batch` action that reconciles the server state to `failed` through the existing guarded rollout action path.
+- Aligned the UI rejection-rate calculation with the backend safety rule by using only decided targets (`applied + rejected`) rather than the full pending cohort.
+- Added centralized `agent.rollout_failed` auditing for rejection-threshold, acknowledgement-timeout, target-policy, and configuration-issuance failures.
+- Added PostgreSQL-backed fleet eligibility/deadline regression coverage, frontend policy/deadline tests, and an explicit v14.6.5 fleet hardening gate to `scripts/test-local-v1.sh`.
+- Adds migration `0042_fleet_rollout_hardening.sql`; no new runtime dependencies.
+
+## v14.6.4 — Database hot-path and fleet performance hardening
+
+- Replaced per-agent fleet-rollout target insertion with one set-based `unnest(... WITH ORDINALITY)` statement, preserving caller order while keeping the entire rollout transaction atomic when an agent is missing or inactive.
+- Collapsed tenant-isolation posture snapshots from nine sequential count queries into one PostgreSQL round trip.
+- Added tenant-aware hot-path indexes for RF history by agent, recent audit evidence by actor, and incident filtering by agent, assignee, and satellite.
+- Tightened fleet acknowledgement refreshes to join `agent_config_acks` on `organization_id`, matching the tenant-aware index and avoiding unnecessary cross-tenant candidates.
+- Added migration/implementation regression coverage plus an explicit PostgreSQL-backed performance hardening gate to `scripts/test-local-v1.sh`.
+- Adds migration `0041_performance_hot_paths.sql`; no new runtime dependencies.
+
+## v14.6.3 — HTTP security E2E and tenant-boundary hardening
+
+- Added a dedicated HTTP-level security E2E gate covering tenant-isolated asset lists, cross-tenant asset/incident/user IDOR attempts with valid foreign UUIDs, foreign parent references, viewer-vs-manage RBAC, forged organization claims and auth-version token invalidation.
+- Added tenant-scoped audit E2E coverage proving one organization cannot read another organization's login events.
+- Fixed successful login auditing to bind the event explicitly to the authenticated user's organization; login executes before authentication middleware attaches tenant claims, so the previous generic audit helper incorrectly attributed non-default-tenant logins to the default organization.
+- Wired `TestSecurityE2E*` into `scripts/test-local-v1.sh` as an explicit PostgreSQL-backed release gate in addition to the normal server integration suite.
+- No database schema changes and no new runtime dependencies.
+
+## v14.6.2 — RF signal heat map and local integration preflight
+
+- Replaced the signal dashboard's coordinate-only station coverage panel with an operator-facing RF heat map driven by captured `power_dbm`, `frequency_hz`, `captured_at` and configured station coordinates.
+- Added agent, frequency-range and time-window filters, per-station average/peak power details, accessible markers, a calibrated -120 to -30 dBm intensity legend and explicit no-interpolation semantics so the UI does not imply unmeasured geographic coverage.
+- Added English, Spanish, French and German RF heat-map copy plus frontend regression coverage for aggregation, filtering, invalid ranges and missing coordinates.
+- Hardened the local v1 runner with a real PostgreSQL connection/database preflight and made Redis integration tests retain the configured PostgreSQL URL, allowing mixed Redis+database alert tests to execute instead of being skipped when both services are available.
+- No database schema changes and no new runtime dependencies.
+
+## v14.6.1 — WebAuthn ceremony and secret-provider coverage hardening
+
+- Hardened WebAuthn ceremony consumption so purpose/user validation happens before the one-time Redis delete; a mismatched purpose can no longer destroy a legitimate ceremony, while an atomic compare-and-delete still permits only one successful consumer.
+- Expanded `internal/secretprovider` regression coverage across environment/file/remote custody, including path/key validation, symlink and permission defenses, remote HTTPS/status/payload failures, bearer authentication and health checks.
+- Expanded `internal/correlation` boundary coverage for confidence clamps, severity ordering and domain deduplication.
+- Added >=80% local coverage gates for `internal/secretprovider` and `internal/correlation`, plus a Redis-backed >=80% gate for `internal/webauthnflow` when `TEST_REDIS_ADDR` is configured.
+- No database schema changes.
+
 ## v14.6.0 — Scheduler and singleton-job HA hardening
 
 - Added token-guarded Redis lease heartbeats so long-running singleton jobs retain their lease beyond the original TTL while renewal succeeds on the owning backend replica.

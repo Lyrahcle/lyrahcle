@@ -47,6 +47,11 @@ PY
     local db_host db_port
     IFS=$'\t' read -r db_host db_port <<< "$db_endpoint"
     require_tcp_endpoint "PostgreSQL test service" "$db_host" "$db_port"
+    if ! (cd "$ROOT/apps/backend" && go run ./cmd/testdbcheck "$DB_URL"); then
+      printf '\nERROR: TEST_DATABASE_URL is reachable at the TCP level but the configured PostgreSQL database cannot be opened.\n' >&2
+      printf 'Verify database name, credentials and migrations/test-database provisioning before running the gate.\n' >&2
+      return 1
+    fi
   fi
 
   if [[ -n "$REDIS_ADDR" ]]; then
@@ -82,7 +87,7 @@ TEST_DATABASE_URL= TEST_REDIS_ADDR= go test ./...
 
 if [[ -n "$REDIS_ADDR" ]]; then
   section "Backend Redis integration tests"
-  TEST_DATABASE_URL= TEST_REDIS_ADDR="$REDIS_ADDR" go test \
+  TEST_DATABASE_URL="$DB_URL" TEST_REDIS_ADDR="$REDIS_ADDR" go test \
     ./internal/ratelimit/... \
     ./internal/joblock/... \
     ./internal/alerts/... \
@@ -97,6 +102,20 @@ if [[ -n "$DB_URL" ]]; then
   section "Backend PostgreSQL integration tests"
   TEST_DATABASE_URL="$DB_URL" TEST_REDIS_ADDR="$REDIS_ADDR" go test ./internal/store/... -v
   TEST_DATABASE_URL="$DB_URL" TEST_REDIS_ADDR="$REDIS_ADDR" go test ./cmd/server/... -v
+
+  section "Security E2E HTTP tenant-boundary gate"
+  TEST_DATABASE_URL="$DB_URL" TEST_REDIS_ADDR="$REDIS_ADDR" go test ./cmd/server/... \
+    -run '^TestSecurityE2E' -count=1 -v
+
+  section "Database performance hardening gate"
+  TEST_DATABASE_URL="$DB_URL" TEST_REDIS_ADDR="$REDIS_ADDR" go test ./internal/store/... \
+    -run '^(TestPerformanceHardeningContractV1464|TestFleetRolloutBulkTargetsV1464)$' -count=1 -v
+
+  section "Fleet rollout policy and ACK deadline gate"
+  TEST_DATABASE_URL="$DB_URL" TEST_REDIS_ADDR="$REDIS_ADDR" go test ./internal/store/... \
+    -run '^TestFleetTargetEligibilityAndAckDeadlineV1465$' -count=1 -v
+  TEST_DATABASE_URL="$DB_URL" TEST_REDIS_ADDR="$REDIS_ADDR" go test ./cmd/server/... \
+    -run '^TestFleetRolloutHardeningContractV1465$' -count=1 -v
 else
   printf 'TEST_DATABASE_URL is not set; DB-backed integration tests will be skipped by the test harness.\n'
 fi
@@ -143,6 +162,14 @@ section "Critical backend security coverage"
   go test ./internal/auth/... -coverprofile=coverage-auth.out
   ../../scripts/check-go-coverage.sh coverage-auth.out 80
   rm -f coverage-auth.out
+
+  go test ./internal/secretprovider/... -coverprofile=coverage-secretprovider.out
+  ../../scripts/check-go-coverage.sh coverage-secretprovider.out 80
+  rm -f coverage-secretprovider.out
+
+  go test ./internal/correlation/... -coverprofile=coverage-correlation.out
+  ../../scripts/check-go-coverage.sh coverage-correlation.out 80
+  rm -f coverage-correlation.out
 )
 
 section "Agent trust-boundary coverage"
@@ -159,7 +186,7 @@ section "Agent trust-boundary coverage"
 )
 
 if [[ -n "$REDIS_ADDR" ]]; then
-  section "Session and token revocation coverage"
+  section "Session, token revocation, and WebAuthn coverage"
   (
     cd "$ROOT/apps/backend"
     TEST_REDIS_ADDR="$REDIS_ADDR" go test ./internal/sessionstore/... -coverprofile=coverage-sessionstore.out
@@ -169,9 +196,13 @@ if [[ -n "$REDIS_ADDR" ]]; then
     TEST_REDIS_ADDR="$REDIS_ADDR" go test ./internal/tokenblocklist/... -coverprofile=coverage-tokenblocklist.out
     ../../scripts/check-go-coverage.sh coverage-tokenblocklist.out 80
     rm -f coverage-tokenblocklist.out
+
+    TEST_REDIS_ADDR="$REDIS_ADDR" go test ./internal/webauthnflow/... -coverprofile=coverage-webauthnflow.out
+    ../../scripts/check-go-coverage.sh coverage-webauthnflow.out 80
+    rm -f coverage-webauthnflow.out
   )
 else
-  printf 'TEST_REDIS_ADDR is not set; session/token coverage gates requiring Redis are skipped.\n'
+  printf 'TEST_REDIS_ADDR is not set; session/token/WebAuthn coverage gates requiring Redis are skipped.\n'
 fi
 
 section "Tenant scope and rate-limit coverage"

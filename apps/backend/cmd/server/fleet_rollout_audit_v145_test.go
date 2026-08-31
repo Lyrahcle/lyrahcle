@@ -20,6 +20,7 @@ func TestFleetRolloutAdministrativeTransitionsAreAudited(t *testing.T) {
 		"audit.ActionAgentRolloutPaused",
 		"audit.ActionAgentRolloutResumed",
 		"audit.ActionAgentRolloutRolledBack",
+		"audit.ActionAgentRolloutFailed",
 		`map[string]interface{}{"rollout_id":`,
 	} {
 		if !strings.Contains(handler, token) {
@@ -34,6 +35,7 @@ func TestFleetRolloutAdministrativeTransitionsAreAudited(t *testing.T) {
 		`"agent.rollout_paused"`,
 		`"agent.rollout_resumed"`,
 		`"agent.rollout_rolled_back"`,
+		`"agent.rollout_failed"`,
 	} {
 		if strings.Contains(handler, raw) {
 			t.Fatalf("fleet rollout handler must use centralized audit constants instead of raw event %s", raw)
@@ -55,6 +57,7 @@ func TestFleetRolloutAuditActionsAreCentralized(t *testing.T) {
 		"ActionAgentRolloutPaused":     "agent.rollout_paused",
 		"ActionAgentRolloutResumed":    "agent.rollout_resumed",
 		"ActionAgentRolloutRolledBack": "agent.rollout_rolled_back",
+		"ActionAgentRolloutFailed":     "agent.rollout_failed",
 	} {
 		if !strings.Contains(auditSource, name) || !strings.Contains(auditSource, `"`+value+`"`) {
 			t.Fatalf("central audit action catalog missing %s=%q", name, value)

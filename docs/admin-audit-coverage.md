@@ -18,6 +18,7 @@ Covered control-plane and RBAC actions:
 - fleet rollout pause -> `agent.rollout_paused`
 - fleet rollout resume -> `agent.rollout_resumed`
 - fleet rollout rollback -> `agent.rollout_rolled_back`
+- fleet rollout fail-closed transition -> `agent.rollout_failed`
 - agent enrollment token issue -> `agent.enrollment_issued`
 - agent station update -> `agent.station_updated`
 - agent status change -> `agent.status_changed`
@@ -36,7 +37,7 @@ as `actor_organization_id`.
 RBAC read operations (`/rbac/permissions` and `/rbac/roles`) use `rbac.read`; writes
 continue to require `rbac.manage`. Fleet rollout write operations require
 `agents.manage`, record the authenticated actor in the tenant audit stream, and use
-centralized audit action constants so transition names cannot silently drift.
+centralized audit action constants so transition names cannot silently drift. Automatic fail-closed transitions caused by rejection thresholds, acknowledgement deadlines, target-policy drift, or configuration issuance failures are recorded as `agent.rollout_failed` with a machine-readable reason.
 
 `fleet_rollout_audit_v145_test.go` is the machine-verifiable contract for the full
 rollout transition set. `admin_audit_matrix_v1452_test.go` extends that contract across

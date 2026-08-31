@@ -36,6 +36,7 @@ const (
 	ActionAgentRolloutPaused         = "agent.rollout_paused"
 	ActionAgentRolloutResumed        = "agent.rollout_resumed"
 	ActionAgentRolloutRolledBack     = "agent.rollout_rolled_back"
+	ActionAgentRolloutFailed         = "agent.rollout_failed"
 	ActionSigningKeyPrepared         = "signing_key.prepared"
 	ActionSigningKeyAutoPrepared     = "signing_key.auto_prepared"
 	ActionSigningKeyActivated        = "signing_key.activated"
