@@ -24,7 +24,8 @@ Teams operating satellites and ground infrastructure often lack the RF and orbit
 - RF ingestion, anomaly detection, signed detection rules, incident correlation, and IQ forensic replay.
 - AX.25, CCSDS, PUS, and CSP decoding plus NVD-backed space CVE intelligence.
 - Secure SDR fleet management with enrollment, mTLS identity, certificate lifecycle, and signed remote configuration.
-- JWT sessions, Google Authenticator TOTP, WebAuthn security keys, RBAC, audit logging, and request/trace IDs.
+- Multi-tenant organizations with database-enforced row-level isolation and a dedicated platform-administrator boundary.
+- JWT sessions, Google Authenticator TOTP, WebAuthn security keys, granular per-organization RBAC with custom roles, audit logging, and request/trace IDs.
 - Prometheus, Grafana, optional OpenTelemetry export, SBOMs, signed releases, and build provenance.
 
 ## Quick start

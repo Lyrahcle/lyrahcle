@@ -22,11 +22,18 @@ Status values: **Shipped**, **Partial**, **Next**, and **Later**.
 | Automatic agent certificate rotation | Shipped | v9.0 |
 | Agent enrollment and mTLS | Shipped | v9.0 |
 | Additional roles such as analyst and auditor | Shipped | Current |
-| Administrator subroles | Later | v9 |
+| Administrator subroles | Shipped | v9 |
 | Explicit permission matrix | Shipped | Current |
 | Disable and soft-delete users | Shipped | Current |
 | Complete sensitive-endpoint authorization review | Partial | Before v1.0 |
 | Complete administrative audit-coverage review | Partial | Before v1.0 |
+| Multi-tenant organizations with tenant-scoped RBAC | Shipped | v10.0-v10.6 |
+| Database-enforced tenant isolation (PostgreSQL row-level security) | Shipped | v14.2 |
+| Platform-administrator control-plane boundary | Shipped | v10.x |
+| Granular per-organization RBAC with custom roles and capability enforcement | Shipped | v11.0-v11.1 |
+| Detection-rule and operational RBAC capability migration | Shipped | v11.7 |
+| Signing-key management abstraction (`KeyProvider`) | Shipped | Current |
+| Secret-provider boundary (`env`/`file`, production hardening) | Shipped | Current |
 
 ## Detection, RF, and orbital security
 
@@ -60,7 +67,7 @@ Status values: **Shipped**, **Partial**, **Next**, and **Later**.
 | SQL query optimization | Partial | v8.5-v9 |
 | Load-test tooling | Shipped | v8.4 |
 | Station federation | Later | v9+ |
-| Multi-tenant architecture | Later | Enterprise |
+| Multi-tenant architecture | Shipped | v10.x (see Identity, authentication, and authorization) |
 
 ## Platform security and supply chain
 
@@ -118,33 +125,23 @@ Status values: **Shipped**, **Partial**, **Next**, and **Later**.
 |---|---|---|
 | Executive/compliance reports | Later | Enterprise |
 | Licensing | Later | Enterprise |
-| Multi-tenancy | Later | Enterprise |
 | Shared `rf-lib` | Later | Post-v1 |
 | Shared `tle-lib` | Later | Post-v1 |
 | Shared UI component library | Later | Post-v1 |
-| Fleet policy and staged agent rollouts | Next | v9.x |
-| Agent hardware capability validation | Next | v9.x |
+| Fleet policy and staged agent rollouts | Next | Before v1.0 |
+| Agent hardware capability reporting | Shipped | v13.10 |
+| Agent hardware capability physical lab-validation gate | Next | Before v1.0 |
 | Stronger remote-config signing-key custody | Next | Before v1.0 |
 
-| Agent quarantine and irreversible certificate revocation | Shipped | v9.0 |
-| Signed remote SDR configuration | Shipped | v9.1 |
-| Orbital-aware RF correlation | Shipped | v9.2 |
+Note: multi-tenancy moved from "Enterprise architecture / Later" to the core Identity, authentication, and authorization table once it shipped in v10.0; it is core, not an enterprise-only module.
 
 ## Current pre-v1 priorities
 
-1. Validate v9.2/v9.2.2 Doppler and visibility behavior with representative physical SDR captures before enabling automatic orbital escalation.
-2. Extend deterministic correlation across asset alerts, orbital events, agent posture, and audit evidence.
-3. Add maneuver/conjunction context and improve orbital confidence handling.
-4. Complete sensitive-endpoint authorization review, browser token/CSRF review, HA guidance, and production-like query/load validation.
-5. Complete fleet policy, staged rollouts, hardware capability validation, and stronger signing-key custody.
-6. Finish operator-facing RF/telemetry/CVE/operations visualizations and connectivity/CVE guides.
+1. Validate orbital-aware Doppler/visibility correlation with representative physical SDR captures before enabling automatic orbital escalation (currently disabled).
+2. Complete sensitive-endpoint authorization review and CSRF review for any cookie-based auth path (both partial).
+3. Reach and hold >80% coverage on security-critical code paths, including security-focused end-to-end coverage.
+4. Publish HA/DR and production-load guidance, and complete fleet policy plus staged agent rollouts.
+5. Complete the agent hardware-capability physical lab-validation gate (RTL-SDR/HackRF) — `compatible` currently reflects self-reported software capability only.
+6. Ship the RF heat map and finish remaining operator-facing user guides.
 
-## v9.1 delivered
-
-- Signed declarative SDR remote configuration
-- Immutable configuration history and acknowledgements
-- Runtime frequency and capture-interval updates
-- Safe rollback through a new signed version
-- No generic remote command execution
-
-Next agent-fleet work should focus on staged rollout, policy constraints, hardware capability validation, and signing-key custody rather than expanding the payload into arbitrary commands.
+Per-release delivery detail (what shipped in v9.1, v10.x, v11.x, and later) lives in `CHANGELOG.md`, not here, to avoid a second history that can drift out of sync with this backlog.
