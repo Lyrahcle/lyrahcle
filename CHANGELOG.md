@@ -1,5 +1,8 @@
 # Changelog
 
+## Unreleased
+
+- Made the dashboard's active section deep-linkable via a lightweight hash-based route (`#/orbital`, `#/admin`, ...), enabling bookmarking and browser back/forward without adding a router dependency or requiring SPA-fallback server configuration.
 
 
 

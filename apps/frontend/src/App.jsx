@@ -7,16 +7,27 @@ import { isAuthenticated, logout, passwordChangeRequired } from './lib/auth.js'
 import { clearEffectivePermissions, loadEffectivePermissions } from './lib/permissions.js'
 import { UnauthorizedError } from './lib/api.js'
 import { useI18n } from './lib/I18nContext.jsx'
+import { DEFAULT_TAB, getTabFromLocation, setTabInLocation, subscribeTabChanges } from './lib/routeTabs.js'
 
 function App() {
   const { t } = useI18n()
   const [authenticated, setAuthenticated] = useState(isAuthenticated())
-  const [activeTab, setActiveTab] = useState('orbital')
+  const [activeTab, setActiveTab] = useState(() => getTabFromLocation(DEFAULT_TAB))
   const [permissionsReady, setPermissionsReady] = useState(false)
   const [authNotice, setAuthNotice] = useState('')
   const [permissionsError, setPermissionsError] = useState(null)
   const [permissionsRetry, setPermissionsRetry] = useState(0)
   const mustChangePassword = authenticated && passwordChangeRequired()
+
+  const handleChangeTab = useCallback((tab) => {
+    setActiveTab(tab)
+    setTabInLocation(tab)
+  }, [])
+
+  useEffect(() => {
+    setTabInLocation(activeTab, { replace: true })
+    return subscribeTabChanges(setActiveTab)
+  }, [])
 
   const handleLogout = useCallback(() => {
     clearEffectivePermissions()
@@ -88,7 +99,7 @@ function App() {
       onLogout={handleLogout}
       onSessionExpired={handleSessionExpired}
       activeTab={activeTab}
-      onChangeTab={setActiveTab}
+      onChangeTab={handleChangeTab}
     />
   )
 }
