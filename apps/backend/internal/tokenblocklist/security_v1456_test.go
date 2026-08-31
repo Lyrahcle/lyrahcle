@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -79,7 +80,7 @@ func TestRedisOutageIsReturnedBySecurityCriticalChecks(t *testing.T) {
 func TestCheckRejectsCorruptUserCutoff(t *testing.T) {
 	client := testClient(t)
 	ctx := context.Background()
-	userID := "corrupt-cutoff-" + t.Name()
+	userID := "corrupt-cutoff-" + uuid.NewString()
 	if err := client.Set(ctx, userKey(userID), "not-a-number", time.Minute).Err(); err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +97,7 @@ func TestPerTokenRevocationTakesPrecedenceOverUserState(t *testing.T) {
 	client := testClient(t)
 	ctx := context.Background()
 	b := New(client)
-	jti := "precedence-" + t.Name()
+	jti := "precedence-" + uuid.NewString()
 	if err := b.Revoke(ctx, jti, time.Minute); err != nil {
 		t.Fatal(err)
 	}
@@ -114,7 +115,7 @@ func TestUserRevocationBoundaryIsInclusive(t *testing.T) {
 	client := testClient(t)
 	ctx := context.Background()
 	b := New(client)
-	userID := "boundary-" + t.Name()
+	userID := "boundary-" + uuid.NewString()
 	cutoff := time.Now().UTC().Truncate(time.Microsecond)
 	if err := b.RevokeUser(ctx, userID, cutoff, time.Minute); err != nil {
 		t.Fatal(err)

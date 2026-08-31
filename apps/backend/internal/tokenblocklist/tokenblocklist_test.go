@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -26,7 +27,7 @@ func testClient(t *testing.T) *redis.Client {
 func TestRevokeThenIsRevoked(t *testing.T) {
 	b := New(testClient(t))
 	ctx := context.Background()
-	jti := "test-jti-revoke-" + t.Name()
+	jti := "test-jti-revoke-" + uuid.NewString()
 
 	if b.IsRevoked(ctx, jti) {
 		t.Fatal("a jti that was never revoked reported as revoked")
@@ -44,7 +45,7 @@ func TestRevokeThenIsRevoked(t *testing.T) {
 func TestRevokeExpiresWithTTL(t *testing.T) {
 	b := New(testClient(t))
 	ctx := context.Background()
-	jti := "test-jti-ttl-" + t.Name()
+	jti := "test-jti-ttl-" + uuid.NewString()
 
 	if err := b.Revoke(ctx, jti, 50*time.Millisecond); err != nil {
 		t.Fatalf("Revoke: %v", err)
@@ -99,10 +100,11 @@ func TestNewWithNilClientIsSafe(t *testing.T) {
 func TestRevokeUserInvalidatesExistingTokens(t *testing.T) {
 	b := New(testClient(t))
 	ctx := context.Background()
-	userID := "user-" + t.Name()
+	userID := "user-" + uuid.NewString()
+	jti := "jti-" + uuid.NewString()
 	issuedAt := time.Now().Add(-time.Minute).UTC()
 
-	revoked, err := b.Check(ctx, "jti-"+t.Name(), userID, issuedAt)
+	revoked, err := b.Check(ctx, jti, userID, issuedAt)
 	if err != nil {
 		t.Fatalf("Check before revocation: %v", err)
 	}
@@ -114,7 +116,7 @@ func TestRevokeUserInvalidatesExistingTokens(t *testing.T) {
 		t.Fatalf("RevokeUser: %v", err)
 	}
 
-	revoked, err = b.Check(ctx, "jti-"+t.Name(), userID, issuedAt)
+	revoked, err = b.Check(ctx, jti, userID, issuedAt)
 	if err != nil {
 		t.Fatalf("Check after revocation: %v", err)
 	}
@@ -126,14 +128,15 @@ func TestRevokeUserInvalidatesExistingTokens(t *testing.T) {
 func TestRevokeUserKeepsNewerTokensValid(t *testing.T) {
 	b := New(testClient(t))
 	ctx := context.Background()
-	userID := "user-new-" + t.Name()
+	userID := "user-new-" + uuid.NewString()
+	jti := "new-jti-" + uuid.NewString()
 	cutoff := time.Now().UTC()
 
 	if err := b.RevokeUser(ctx, userID, cutoff, time.Minute); err != nil {
 		t.Fatalf("RevokeUser: %v", err)
 	}
 
-	revoked, err := b.Check(ctx, "new-jti-"+t.Name(), userID, cutoff.Add(time.Second))
+	revoked, err := b.Check(ctx, jti, userID, cutoff.Add(time.Second))
 	if err != nil {
 		t.Fatalf("Check: %v", err)
 	}

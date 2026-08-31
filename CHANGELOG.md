@@ -7,6 +7,15 @@
 
 
 
+
+## v14.6.0 — Scheduler and singleton-job HA hardening
+
+- Added token-guarded Redis lease heartbeats so long-running singleton jobs retain their lease beyond the original TTL while renewal succeeds on the owning backend replica.
+- Lease renewal stops if ownership is lost, and stale owners still cannot remove a replacement lease.
+- Hardened the scheduler with panic recovery, same-replica overlap prevention, explicit job validation and graceful stop waiting for active jobs.
+- Added >=80% local scheduler coverage and a Redis-backed >=80% job-lock coverage gate when `TEST_REDIS_ADDR` is available.
+- No database schema changes.
+
 ## v14.5.9 — Agent identity coverage completion
 
 - Added CA/parser coverage for legacy EC and PKCS#1 private-key formats, missing CA files, non-signing CA certificates, accepted/rejected agent public-key classes, malformed public-key comparisons, RSA-2048 client certificates and non-positive certificate TTLs.

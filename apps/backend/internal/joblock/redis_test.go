@@ -53,31 +53,27 @@ func TestDistributedLeaseAllowsOnlyOneReplica(t *testing.T) {
 	}
 }
 
-func TestExpiredOwnerCannotDeleteReplacementLease(t *testing.T) {
+func TestStaleOwnerCannotDeleteReplacementLease(t *testing.T) {
 	client := testRedis(t)
 	ctx := context.Background()
-	job := "test-expiry-" + uuid.NewString()
+	job := "test-replacement-" + uuid.NewString()
 
 	first := New(client)
-	second := New(client)
 	third := New(client)
-	unlockFirst, acquired, err := first.Try(ctx, job, 30*time.Millisecond)
+	unlockFirst, acquired, err := first.Try(ctx, job, time.Minute)
 	if err != nil || !acquired {
 		t.Fatalf("first Try: acquired=%v err=%v", acquired, err)
 	}
-	time.Sleep(50 * time.Millisecond)
-	unlockSecond, acquired, err := second.Try(ctx, job, time.Minute)
-	if err != nil || !acquired {
-		t.Fatalf("second Try after expiry: acquired=%v err=%v", acquired, err)
+
+	key := defaultPrefix + job
+	if err := client.Set(ctx, key, "replacement-owner", time.Minute).Err(); err != nil {
+		t.Fatal(err)
 	}
 	if err := unlockFirst(ctx); err != nil {
 		t.Fatalf("stale owner unlock: %v", err)
 	}
 	if _, acquired, err := third.Try(ctx, job, time.Minute); err != nil || acquired {
 		t.Fatalf("third Try after stale unlock: acquired=%v err=%v, replacement lease must remain", acquired, err)
-	}
-	if err := unlockSecond(ctx); err != nil {
-		t.Fatalf("unlock second: %v", err)
 	}
 }
 

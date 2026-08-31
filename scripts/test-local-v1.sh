@@ -227,4 +227,20 @@ section "Tenant scope and rate-limit coverage"
   fi
 )
 
+section "Scheduler and singleton-job HA coverage"
+(
+  cd "$ROOT/apps/backend"
+  go test ./internal/scheduler/... -coverprofile=coverage-scheduler.out
+  ../../scripts/check-go-coverage.sh coverage-scheduler.out 80
+  rm -f coverage-scheduler.out
+
+  if [[ -n "$REDIS_ADDR" ]]; then
+    TEST_REDIS_ADDR="$REDIS_ADDR" go test ./internal/joblock/... -coverprofile=coverage-joblock.out
+    ../../scripts/check-go-coverage.sh coverage-joblock.out 80
+    rm -f coverage-joblock.out
+  else
+    printf 'TEST_REDIS_ADDR is not set; distributed job-lock coverage is skipped.\n'
+  fi
+)
+
 section "Local v1 test gate passed"
