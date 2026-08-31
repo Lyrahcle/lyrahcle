@@ -30,7 +30,7 @@ export default function IncidentResponsePanel() {
       <div className="rounded border border-lyra-border p-4">
         <p className="text-xs uppercase tracking-wider text-lyra-mutedDim">Recovery gates</p>
         <p className="mt-2 text-xs leading-5 text-lyra-muted">Do not close an incident until containment is verified, compromised trust is revoked/rotated, integrity is restored, regression tests exist for boundary failures, monitoring is active, and evidence/disclosure decisions are recorded.</p>
-        <a className="mt-3 inline-flex text-xs font-medium text-lyra-goldBright underline underline-offset-4" href="https://github.com/mlko01/lyrahcle/blob/main/docs/incident-response-runbook.md" target="_blank" rel="noopener noreferrer" rel="noreferrer">Open full incident response runbook ↗</a>
+        <a className="mt-3 inline-flex text-xs font-medium text-lyra-goldBright underline underline-offset-4" href="https://github.com/mlko01/lyrahcle/blob/main/docs/incident-response-runbook.md" target="_blank" rel="noopener noreferrer">Open full incident response runbook ↗</a>
       </div>
     </div>
   )

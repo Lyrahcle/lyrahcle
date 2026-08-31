@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { createAgentKey, revokeAgentKey } from '../lib/api.js'
 import TableScroll from './TableScroll.jsx'
+import { useI18n } from '../lib/I18nContext.jsx'
 
 export default function AgentKeysPanel({ keys, onChanged, canManage = true }) {
+  const { t } = useI18n()
   const [newAgentId, setNewAgentId] = useState('')
   const [issuedKey, setIssuedKey] = useState(null)
   const [error, setError] = useState(null)
@@ -39,7 +41,7 @@ export default function AgentKeysPanel({ keys, onChanged, canManage = true }) {
       {canManage && <form onSubmit={handleCreate} className="mb-5 flex flex-wrap items-end gap-3">
         <div>
           <label htmlFor="new-agent-id" className="mb-1 block text-[11px] uppercase tracking-wider text-lyra-mutedDim">
-            New agent_id
+            {t('agentKeys.newAgentId')}
           </label>
           <input
             id="new-agent-id"
@@ -55,7 +57,7 @@ export default function AgentKeysPanel({ keys, onChanged, canManage = true }) {
           disabled={busy}
           className="rounded bg-lyra-gold px-4 py-1.5 text-sm font-medium text-lyra-bg outline-none transition-opacity hover:opacity-90 disabled:opacity-50"
         >
-          {busy ? 'Issuing…' : 'Issue key'}
+          {busy ? t('agentKeys.issuing') : t('agentKeys.issueKey')}
         </button>
       </form>}
 
@@ -68,30 +70,30 @@ export default function AgentKeysPanel({ keys, onChanged, canManage = true }) {
       {issuedKey && (
         <div role="status" className="mb-5 rounded border border-lyra-good/30 bg-lyra-good/10 p-3">
           <p className="text-xs text-lyra-good">
-            Key issued for <span className="font-mono">{issuedKey.agent_id}</span> — shown once, copy it now:
+            {t('agentKeys.keyIssuedFor', { agent: issuedKey.agent_id })}
           </p>
           <p className="mt-1 break-all font-mono text-xs text-lyra-text">{issuedKey.api_key}</p>
         </div>
       )}
 
       {!keys.length ? (
-        <p className="text-sm text-lyra-muted">No agent keys issued yet.</p>
+        <p className="text-sm text-lyra-muted">{t('agentKeys.empty')}</p>
       ) : (
         <TableScroll>
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-lyra-borderSoft">
                 <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
-                  Agent
+                  {t('agentKeys.agent')}
                 </th>
                 <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
-                  Created
+                  {t('agentKeys.created')}
                 </th>
                 <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
-                  Last used
+                  {t('agentKeys.lastUsed')}
                 </th>
                 <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
-                  Status
+                  {t('agentKeys.status')}
                 </th>
                 <th scope="col" className="pb-2" />
               </tr>
@@ -108,17 +110,17 @@ export default function AgentKeysPanel({ keys, onChanged, canManage = true }) {
                   </td>
                   <td className="py-2.5">
                     <span className={`font-mono text-xs ${k.revoked ? 'text-lyra-bad' : 'text-lyra-good'}`}>
-                      {k.revoked ? 'revoked' : 'active'}
+                      {k.revoked ? t('agentKeys.revoked') : t('agentKeys.active')}
                     </span>
                   </td>
                   <td className="py-2.5 text-right">
                     {canManage && !k.revoked && (
                       <button
                         onClick={() => handleRevoke(k.agent_id)}
-                        aria-label={`Revoke key for ${k.agent_id}`}
+                        aria-label={t('agentKeys.revokeLabel', { agent: k.agent_id })}
                         className="font-mono text-xs uppercase tracking-wide text-lyra-bad outline-none hover:underline"
                       >
-                        Revoke
+                        {t('agentKeys.revoke')}
                       </button>
                     )}
                   </td>

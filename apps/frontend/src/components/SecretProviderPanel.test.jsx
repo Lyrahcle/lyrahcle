@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { I18nProvider } from '../lib/I18nContext.jsx'
 import SecretProviderPanel from './SecretProviderPanel.jsx'
 import { fetchPlatformSecretStatus } from '../lib/api.js'
 
@@ -9,7 +10,11 @@ describe('SecretProviderPanel', () => {
   beforeEach(() => vi.clearAllMocks())
   it('shows provider metadata without secret values', async () => {
     fetchPlatformSecretStatus.mockResolvedValue({ provider:'remote', external:true, location:'https://secrets.internal', healthy:true, managed_keys:['JWT_SECRET'] })
-    render(<SecretProviderPanel />)
+    render(
+      <I18nProvider>
+        <SecretProviderPanel />
+      </I18nProvider>,
+    )
     expect(await screen.findByText('remote')).toBeInTheDocument()
     expect(screen.getByText('External custody')).toBeInTheDocument()
     expect(screen.getByText('JWT_SECRET')).toBeInTheDocument()

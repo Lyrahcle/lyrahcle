@@ -1,4 +1,5 @@
 import TableScroll from './TableScroll.jsx'
+import { useI18n } from '../lib/I18nContext.jsx'
 
 const METRIC_LABELS = {
   power_dbm: 'Signal power',
@@ -18,14 +19,13 @@ function severityTone(absZ) {
 }
 
 export default function AnomaliesPanel({ anomalies }) {
+  const { t } = useI18n()
+
   if (!anomalies.length) {
     return (
       <div className="rounded border border-dashed border-lyra-border px-5 py-10 text-center">
-        <p className="text-sm text-lyra-muted">No anomalies detected.</p>
-        <p className="mt-1 text-xs text-lyra-mutedDim">
-          Each reading is checked two ways: a spot outlier against a robust median/MAD baseline,
-          and a sustained-drift check against an EWMA trend baseline.
-        </p>
+        <p className="text-sm text-lyra-muted">{t('anomalies.empty')}</p>
+        <p className="mt-1 text-xs text-lyra-mutedDim">{t('anomalies.emptyHint')}</p>
       </div>
     )
   }
@@ -36,22 +36,22 @@ export default function AnomaliesPanel({ anomalies }) {
         <thead>
           <tr className="border-b border-lyra-borderSoft">
             <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
-              Agent
+              {t('anomalies.agent')}
             </th>
             <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
-              Metric
+              {t('anomalies.metric')}
             </th>
             <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
-              Value
+              {t('anomalies.value')}
             </th>
             <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
-              Baseline
+              {t('anomalies.baseline')}
             </th>
             <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
-              Z-score
+              {t('anomalies.zscore')}
             </th>
             <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
-              Detected
+              {t('anomalies.detected')}
             </th>
           </tr>
         </thead>

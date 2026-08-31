@@ -1895,3 +1895,46 @@ const connectivityOperationsTranslations = {
   de: { connectivity: { opsEyebrow: 'Flottenstatus', opsTitle: 'Connectivity-Betrieb', opsHint: 'Vereinheitlichte Agent-Gesundheit, letzter Kontakt, Hardware-Kompatibilität und Edge-Integrität für schnellere Diagnose.', opsMetric: { healthy: 'Gesunde Agenten', attention: 'Handlungsbedarf', offline: 'Offline / veraltet', reported: 'Hardware gemeldet' }, opsFilterLabel: 'Agent-Status filtern', opsFilter: { all: 'Alle Agenten', healthy: 'Gesund', attention: 'Handlungsbedarf', offline: 'Offline / veraltet' }, opsSearch: 'Agent-ID suchen', opsEmpty: 'Keine Agenten entsprechen den aktuellen Filtern.', opsState: { healthy: 'Gesund', attention: 'Achtung', offline: 'Offline' }, opsNeverSeen: 'Nie gesehen', opsIntegrityUnknown: 'Integrität nicht gemeldet' } },
 }
 for (const [language, extra] of Object.entries(connectivityOperationsTranslations)) Object.assign(translations[language].connectivity, extra.connectivity)
+
+const uiPolishTranslations = {
+  en: {
+    navigation: { open: 'Open navigation', title: 'Lyrahcle navigation', defaultDashboard: 'Default dashboard', primary: 'Primary navigation' },
+    auditLog: { when: 'When', action: 'Action', actor: 'Actor', ip: 'IP', empty: 'No audit events recorded yet.' },
+    anomalies: { agent: 'Agent', metric: 'Metric', value: 'Value', baseline: 'Baseline', zscore: 'Z-score', detected: 'Detected', empty: 'No anomalies detected.', emptyHint: 'Each reading is checked two ways: a spot outlier against a robust median/MAD baseline, and a sustained-drift check against an EWMA trend baseline.' },
+    rf: { agent: 'Agent', frequency: 'Frequency', signal: 'Signal', captured: 'Captured', empty: 'No RF readings yet.', emptyHint: 'Start an sdr-agent to begin streaming spectrum data.' },
+    agentKeys: { agent: 'Agent', newAgentId: 'New agent_id', issuing: 'Issuing…', issueKey: 'Issue key', keyIssuedFor: 'Key issued for {agent} — shown once, copy it now:', created: 'Created', lastUsed: 'Last used', status: 'Status', revoked: 'revoked', active: 'active', revoke: 'Revoke', revokeLabel: 'Revoke key for {agent}', empty: 'No agent keys issued yet.' },
+    secretProvider: { loading: 'Loading secret provider status…', healthy: 'Healthy', unhealthy: 'Unhealthy', externalCustody: 'External custody', localCustody: 'Local custody', location: 'Location: {location}', managedRefs: 'Managed secret references', disclaimer: 'Secret values are never returned by this endpoint or rendered in the browser. Provider writes and rotation remain in the external custody system.' },
+  },
+  es: {
+    navigation: { open: 'Abrir navegación', title: 'Navegación de Lyrahcle', defaultDashboard: 'Panel predeterminado', primary: 'Navegación principal' },
+    auditLog: { when: 'Cuándo', action: 'Acción', actor: 'Actor', ip: 'IP', empty: 'Todavía no se han registrado eventos de auditoría.' },
+    anomalies: { agent: 'Agente', metric: 'Métrica', value: 'Valor', baseline: 'Referencia', zscore: 'Puntuación Z', detected: 'Detectado', empty: 'No se han detectado anomalías.', emptyHint: 'Cada lectura se comprueba de dos formas: un valor atípico puntual frente a una referencia robusta de mediana/MAD, y una comprobación de deriva sostenida frente a una referencia de tendencia EWMA.' },
+    rf: { agent: 'Agente', frequency: 'Frecuencia', signal: 'Señal', captured: 'Capturado', empty: 'Todavía no hay lecturas de RF.', emptyHint: 'Inicia un sdr-agent para empezar a transmitir datos de espectro.' },
+    agentKeys: { agent: 'Agente', newAgentId: 'Nuevo agent_id', issuing: 'Emitiendo…', issueKey: 'Emitir clave', keyIssuedFor: 'Clave emitida para {agent}: se muestra una sola vez, cópiala ahora:', created: 'Creada', lastUsed: 'Último uso', status: 'Estado', revoked: 'revocada', active: 'activa', revoke: 'Revocar', revokeLabel: 'Revocar clave de {agent}', empty: 'Todavía no se han emitido claves de agente.' },
+    secretProvider: { loading: 'Cargando el estado del proveedor de secretos…', healthy: 'Saludable', unhealthy: 'No saludable', externalCustody: 'Custodia externa', localCustody: 'Custodia local', location: 'Ubicación: {location}', managedRefs: 'Referencias de secretos gestionados', disclaimer: 'Este endpoint nunca devuelve los valores de los secretos ni se muestran en el navegador. Las escrituras y la rotación del proveedor permanecen en el sistema de custodia externo.' },
+  },
+  fr: {
+    navigation: { open: 'Ouvrir la navigation', title: 'Navigation Lyrahcle', defaultDashboard: 'Tableau de bord par défaut', primary: 'Navigation principale' },
+    auditLog: { when: 'Quand', action: 'Action', actor: 'Acteur', ip: 'IP', empty: 'Aucun événement d’audit enregistré pour le moment.' },
+    anomalies: { agent: 'Agent', metric: 'Métrique', value: 'Valeur', baseline: 'Référence', zscore: 'Score Z', detected: 'Détecté', empty: 'Aucune anomalie détectée.', emptyHint: 'Chaque mesure est vérifiée de deux façons : une valeur aberrante ponctuelle par rapport à une référence robuste médiane/MAD, et une vérification de dérive soutenue par rapport à une référence de tendance EWMA.' },
+    rf: { agent: 'Agent', frequency: 'Fréquence', signal: 'Signal', captured: 'Capturé', empty: 'Aucune mesure RF pour le moment.', emptyHint: 'Démarrez un sdr-agent pour commencer à transmettre les données de spectre.' },
+    agentKeys: { agent: 'Agent', newAgentId: 'Nouvel agent_id', issuing: 'Émission…', issueKey: 'Émettre la clé', keyIssuedFor: 'Clé émise pour {agent} — affichée une seule fois, copiez-la maintenant :', created: 'Créée', lastUsed: 'Dernière utilisation', status: 'État', revoked: 'révoquée', active: 'active', revoke: 'Révoquer', revokeLabel: 'Révoquer la clé de {agent}', empty: 'Aucune clé d’agent émise pour le moment.' },
+    secretProvider: { loading: 'Chargement de l’état du fournisseur de secrets…', healthy: 'Sain', unhealthy: 'Défaillant', externalCustody: 'Garde externe', localCustody: 'Garde locale', location: 'Emplacement : {location}', managedRefs: 'Références des secrets gérés', disclaimer: 'Cet endpoint ne renvoie jamais les valeurs des secrets et elles ne sont jamais affichées dans le navigateur. Les écritures et la rotation du fournisseur restent dans le système de garde externe.' },
+  },
+  de: {
+    navigation: { open: 'Navigation öffnen', title: 'Lyrahcle-Navigation', defaultDashboard: 'Standard-Dashboard', primary: 'Hauptnavigation' },
+    auditLog: { when: 'Wann', action: 'Aktion', actor: 'Akteur', ip: 'IP', empty: 'Es wurden noch keine Audit-Ereignisse aufgezeichnet.' },
+    anomalies: { agent: 'Agent', metric: 'Metrik', value: 'Wert', baseline: 'Basislinie', zscore: 'Z-Score', detected: 'Erkannt', empty: 'Keine Anomalien erkannt.', emptyHint: 'Jeder Messwert wird auf zwei Arten geprüft: ein punktueller Ausreißer gegenüber einer robusten Median/MAD-Basislinie und eine Prüfung auf anhaltende Drift gegenüber einer EWMA-Trendbasislinie.' },
+    rf: { agent: 'Agent', frequency: 'Frequenz', signal: 'Signal', captured: 'Erfasst', empty: 'Noch keine HF-Messwerte.', emptyHint: 'Starten Sie einen sdr-agent, um mit dem Streaming von Spektrumdaten zu beginnen.' },
+    agentKeys: { agent: 'Agent', newAgentId: 'Neue agent_id', issuing: 'Wird ausgestellt…', issueKey: 'Schlüssel ausstellen', keyIssuedFor: 'Schlüssel ausgestellt für {agent} — wird nur einmal angezeigt, jetzt kopieren:', created: 'Erstellt', lastUsed: 'Zuletzt verwendet', status: 'Status', revoked: 'widerrufen', active: 'aktiv', revoke: 'Widerrufen', revokeLabel: 'Schlüssel für {agent} widerrufen', empty: 'Es wurden noch keine Agent-Schlüssel ausgestellt.' },
+    secretProvider: { loading: 'Status des Secret-Providers wird geladen…', healthy: 'Gesund', unhealthy: 'Fehlerhaft', externalCustody: 'Externe Verwahrung', localCustody: 'Lokale Verwahrung', location: 'Standort: {location}', managedRefs: 'Verwaltete Secret-Referenzen', disclaimer: 'Dieser Endpunkt gibt niemals Secret-Werte zurück, und sie werden nicht im Browser angezeigt. Schreibvorgänge und Rotation des Providers verbleiben im externen Verwahrungssystem.' },
+  },
+}
+for (const [language, extra] of Object.entries(uiPolishTranslations)) {
+  translations[language].navigation = extra.navigation
+  translations[language].auditLog = extra.auditLog
+  translations[language].anomalies = extra.anomalies
+  translations[language].rf = extra.rf
+  translations[language].agentKeys = extra.agentKeys
+  translations[language].secretProvider = extra.secretProvider
+}

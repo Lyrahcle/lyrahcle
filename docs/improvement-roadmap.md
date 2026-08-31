@@ -18,14 +18,14 @@ Status values: **Shipped**, **Partial**, **Next**, and **Later**.
 | Force password change on first default-admin login | Shipped | Current |
 | Stronger password policy | Shipped | Current |
 | Enforce TLS for all production authentication traffic | Shipped | Current |
-| CSRF protection if cookie-based authentication is introduced | Partial | Before v1.0 |
+| CSRF protection if cookie-based authentication is introduced | Shipped | Current (N/A today: bearer-token-only auth, no cookies; `check-csrf-cookie-auth.py` fails the build the moment a handler sets one without CSRF protection) |
 | Automatic agent certificate rotation | Shipped | v9.0 |
 | Agent enrollment and mTLS | Shipped | v9.0 |
 | Additional roles such as analyst and auditor | Shipped | Current |
 | Administrator subroles | Shipped | v9 |
 | Explicit permission matrix | Shipped | Current |
 | Disable and soft-delete users | Shipped | Current |
-| Complete sensitive-endpoint authorization review | Partial | Before v1.0 |
+| Complete sensitive-endpoint authorization review | Shipped | Current (`check-route-authorization.py` audits every route in `cmd/server/*.go` and fails CI if a new route lacks a recognizable role/permission/mTLS/token gate) |
 | Complete administrative audit-coverage review | Partial | Before v1.0 |
 | Multi-tenant organizations with tenant-scoped RBAC | Shipped | v10.0-v10.6 |
 | Database-enforced tenant isolation (PostgreSQL row-level security) | Shipped | v14.2 |
@@ -61,7 +61,7 @@ Status values: **Shipped**, **Partial**, **Next**, and **Later**.
 | Improvement | Status | Target |
 |---|---|---|
 | CVE filter indexes | Shipped | Current |
-| Response/orbital/CVE caching | Partial | v8.3-v9 |
+| Response/orbital/CVE caching | Partial | v8.3-v9 (now also covers incidents, asset-alerts, RF readings/anomalies; response caching for other high-traffic reads still open) |
 | Satellite-load optimization | Shipped | v8.5 |
 | Index review for all filtered searches | Partial | v8.5-v9 |
 | SQL query optimization | Partial | v8.5-v9 |
@@ -138,10 +138,9 @@ Note: multi-tenancy moved from "Enterprise architecture / Later" to the core Ide
 ## Current pre-v1 priorities
 
 1. Validate orbital-aware Doppler/visibility correlation with representative physical SDR captures before enabling automatic orbital escalation (currently disabled).
-2. Complete sensitive-endpoint authorization review and CSRF review for any cookie-based auth path (both partial).
-3. Reach and hold >80% coverage on security-critical code paths, including security-focused end-to-end coverage.
-4. Publish HA/DR and production-load guidance, and complete fleet policy plus staged agent rollouts.
-5. Complete the agent hardware-capability physical lab-validation gate (RTL-SDR/HackRF) — `compatible` currently reflects self-reported software capability only.
-6. Ship the RF heat map and finish remaining operator-facing user guides.
+2. Reach and hold >80% coverage on security-critical code paths, including security-focused end-to-end coverage.
+3. Publish HA/DR and production-load guidance, and complete fleet policy plus staged agent rollouts.
+4. Complete the agent hardware-capability physical lab-validation gate (RTL-SDR/HackRF) — `compatible` currently reflects self-reported software capability only.
+5. Ship the RF heat map and finish remaining operator-facing user guides.
 
 Per-release delivery detail (what shipped in v9.1, v10.x, v11.x, and later) lives in `CHANGELOG.md`, not here, to avoid a second history that can drift out of sync with this backlog.

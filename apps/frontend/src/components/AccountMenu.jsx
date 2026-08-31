@@ -40,7 +40,7 @@ export default function AccountMenu({ onLogout }) {
     <div className="relative" ref={menuRef}>
       <button
         onClick={() => setMenuOpen((v) => !v)}
-        aria-haspopup="true"
+        aria-haspopup="menu"
         aria-expanded={menuOpen}
         className="flex items-center gap-2 rounded border border-lyra-border px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-lyra-muted outline-none transition-colors hover:border-lyra-gold/40 hover:text-lyra-goldBright focus-visible:ring-1 focus-visible:ring-lyra-gold"
       >
@@ -50,8 +50,9 @@ export default function AccountMenu({ onLogout }) {
       </button>
 
       {menuOpen && (
-        <div className="absolute right-0 top-full mt-2 w-48 overflow-hidden rounded border border-lyra-border bg-lyra-panel shadow-lg">
+        <div role="menu" aria-label={t('header.account')} className="absolute right-0 top-full mt-2 w-48 overflow-hidden rounded border border-lyra-border bg-lyra-panel shadow-lg">
           <button
+            role="menuitem"
             onClick={() => {
               setChangingPassword(true)
               setMenuOpen(false)
@@ -61,6 +62,7 @@ export default function AccountMenu({ onLogout }) {
             {t('header.changePassword')}
           </button>
           <button
+            role="menuitem"
             onClick={() => {
               setManagingTwoFactor(true)
               setMenuOpen(false)
@@ -70,6 +72,7 @@ export default function AccountMenu({ onLogout }) {
             {t('header.twoFactor')}
           </button>
           <button
+            role="menuitem"
             onClick={() => {
               setManagingSessions(true)
               setMenuOpen(false)
@@ -79,6 +82,7 @@ export default function AccountMenu({ onLogout }) {
             {t('header.sessions')}
           </button>
           <button
+            role="menuitem"
             onClick={() => {
               setMenuOpen(false)
               onLogout()

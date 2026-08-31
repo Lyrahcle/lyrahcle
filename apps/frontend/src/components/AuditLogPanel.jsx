@@ -1,11 +1,13 @@
 import TableScroll from './TableScroll.jsx'
 import Pagination from './Pagination.jsx'
+import { useI18n } from '../lib/I18nContext.jsx'
 
 export default function AuditLogPanel({ page, onPrev, onNext }) {
+  const { t } = useI18n()
   const entries = page.items
 
   if (!entries.length) {
-    return <p className="text-sm text-lyra-muted">No audit events recorded yet.</p>
+    return <p className="text-sm text-lyra-muted">{t('auditLog.empty')}</p>
   }
 
   return (
@@ -15,16 +17,16 @@ export default function AuditLogPanel({ page, onPrev, onNext }) {
           <thead>
             <tr className="border-b border-lyra-borderSoft">
               <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
-                When
+                {t('auditLog.when')}
               </th>
               <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
-                Action
+                {t('auditLog.action')}
               </th>
               <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
-                Actor
+                {t('auditLog.actor')}
               </th>
               <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
-                IP
+                {t('auditLog.ip')}
               </th>
             </tr>
           </thead>

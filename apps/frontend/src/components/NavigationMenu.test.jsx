@@ -1,6 +1,15 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
+import { I18nProvider } from '../lib/I18nContext.jsx'
 import NavigationMenu from './NavigationMenu.jsx'
+
+function renderMenu(props) {
+  return render(
+    <I18nProvider>
+      <NavigationMenu {...props} />
+    </I18nProvider>,
+  )
+}
 
 describe('NavigationMenu', () => {
   const items = [
@@ -11,7 +20,7 @@ describe('NavigationMenu', () => {
 
   it('opens from the top-left control and navigates to a selected page', () => {
     const onChange = vi.fn()
-    render(<NavigationMenu items={items} active="orbital" onChange={onChange} />)
+    renderMenu({ items, active: 'orbital', onChange })
 
     const trigger = screen.getByRole('button', { name: 'Open navigation' })
     expect(trigger).toHaveAttribute('aria-expanded', 'false')
@@ -25,7 +34,7 @@ describe('NavigationMenu', () => {
   })
 
   it('marks the active page', () => {
-    render(<NavigationMenu items={items} active="assets" onChange={() => {}} />)
+    renderMenu({ items, active: 'assets', onChange: () => {} })
     fireEvent.click(screen.getByRole('button', { name: 'Open navigation' }))
     expect(screen.getByRole('menuitem', { name: /Assets/i })).toHaveAttribute('aria-current', 'page')
   })

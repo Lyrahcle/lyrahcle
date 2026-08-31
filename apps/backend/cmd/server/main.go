@@ -1755,6 +1755,13 @@ func newRouterWithAgentConfigSigning(
 
 				detectRFAnomalies(r.Context(), rfAnomalies, detectionRules, incidents, auditLog, assetAlerts, satellites, agentIdentities, spaceCVEs, orbitalEvents, tlePolicy(cfg), cfg.OrbitalAutoEscalation, reading, history)
 
+				if err := cache.Delete(r.Context(), rfReadingsCacheKey(organizationID)); err != nil {
+					log.Printf("rf: cache invalidation failed after ingest (readings): %v", err)
+				}
+				if err := cache.Delete(r.Context(), rfAnomaliesCacheKey(organizationID)); err != nil {
+					log.Printf("rf: cache invalidation failed after ingest (anomalies): %v", err)
+				}
+
 				w.WriteHeader(http.StatusCreated)
 			})
 
@@ -1763,11 +1770,19 @@ func newRouterWithAgentConfigSigning(
 				if !ok {
 					return
 				}
+				cacheKey := rfReadingsCacheKey(orgID)
+				var list []store.RFReading
+				if hit, _ := cache.Get(r.Context(), cacheKey, &list); hit {
+					w.Header().Set("Content-Type", "application/json")
+					json.NewEncoder(w).Encode(list)
+					return
+				}
 				list, err := rf.RecentByOrganization(r.Context(), orgID, 100)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
 				}
+				cache.Set(r.Context(), cacheKey, list, 3*time.Second)
 				w.Header().Set("Content-Type", "application/json")
 				json.NewEncoder(w).Encode(list)
 			})
@@ -1777,11 +1792,19 @@ func newRouterWithAgentConfigSigning(
 				if !ok {
 					return
 				}
+				cacheKey := rfAnomaliesCacheKey(orgID)
+				var list []store.RFAnomaly
+				if hit, _ := cache.Get(r.Context(), cacheKey, &list); hit {
+					w.Header().Set("Content-Type", "application/json")
+					json.NewEncoder(w).Encode(list)
+					return
+				}
 				list, err := rfAnomalies.RecentByOrganization(r.Context(), orgID, 100)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
 				}
+				cache.Set(r.Context(), cacheKey, list, 3*time.Second)
 				w.Header().Set("Content-Type", "application/json")
 				json.NewEncoder(w).Encode(list)
 			})
@@ -2060,11 +2083,19 @@ func newRouterWithAgentConfigSigning(
 				if !requireRequestPermission(w, r, rbac, "incidents.read") {
 					return
 				}
-				page, err := incidents.ListByOrganization(r.Context(), orgID, limit, offset, filter)
+				cacheKey := incidentsCacheKey(orgID, limit, offset, filter)
+				var page store.Page[store.Incident]
+				if hit, _ := cache.Get(r.Context(), cacheKey, &page); hit {
+					w.Header().Set("Content-Type", "application/json")
+					json.NewEncoder(w).Encode(page)
+					return
+				}
+				page, err = incidents.ListByOrganization(r.Context(), orgID, limit, offset, filter)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
 				}
+				cache.Set(r.Context(), cacheKey, page, 3*time.Second)
 				w.Header().Set("Content-Type", "application/json")
 				json.NewEncoder(w).Encode(page)
 			})
@@ -2210,6 +2241,9 @@ func newRouterWithAgentConfigSigning(
 					return
 				}
 				logAudit(r.Context(), auditLog, audit.ActorUser, claims.UserID.String(), audit.ActionIncidentCreated, clientIP(r), map[string]interface{}{"incident_id": incident.ID.String(), "reference": incident.Reference})
+				if err := cache.Delete(r.Context(), incidentsCacheKeyDefault(orgID)); err != nil {
+					log.Printf("incidents: cache invalidation failed after create: %v", err)
+				}
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusCreated)
 				json.NewEncoder(w).Encode(incident)
@@ -2317,6 +2351,9 @@ func newRouterWithAgentConfigSigning(
 					return
 				}
 				logAudit(r.Context(), auditLog, audit.ActorUser, claims.UserID.String(), audit.ActionIncidentUpdated, clientIP(r), map[string]interface{}{"incident_id": incident.ID.String(), "reference": incident.Reference})
+				if err := cache.Delete(r.Context(), incidentsCacheKeyDefault(orgID)); err != nil {
+					log.Printf("incidents: cache invalidation failed after update: %v", err)
+				}
 				w.Header().Set("Content-Type", "application/json")
 				json.NewEncoder(w).Encode(incident)
 			})
@@ -2428,11 +2465,19 @@ func newRouterWithAgentConfigSigning(
 				if !ok {
 					return
 				}
+				cacheKey := assetAlertsCacheKey(orgID, limit, offset)
+				var page store.Page[store.AssetCVEAlert]
+				if hit, _ := cache.Get(r.Context(), cacheKey, &page); hit {
+					w.Header().Set("Content-Type", "application/json")
+					json.NewEncoder(w).Encode(page)
+					return
+				}
 				page, err := assetAlerts.ListByOrganization(r.Context(), orgID, limit, offset)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
 				}
+				cache.Set(r.Context(), cacheKey, page, 3*time.Second)
 				w.Header().Set("Content-Type", "application/json")
 				json.NewEncoder(w).Encode(page)
 			})
@@ -2465,6 +2510,9 @@ func newRouterWithAgentConfigSigning(
 				}
 
 				logAudit(r.Context(), auditLog, audit.ActorUser, claims.UserID.String(), audit.ActionAssetAlertAcked, clientIP(r), map[string]interface{}{"alert_id": alertID.String()})
+				if err := cache.Delete(r.Context(), assetAlertsCacheKeyDefault(orgID)); err != nil {
+					log.Printf("asset-alerts: cache invalidation failed after acknowledge: %v", err)
+				}
 				w.WriteHeader(http.StatusNoContent)
 			})
 		})
@@ -2627,6 +2675,43 @@ func parseIncidentFilter(r *http.Request) (store.IncidentFilter, error) {
 	}
 	filter.SatelliteID = satelliteID
 	return filter, nil
+}
+
+func incidentsCacheKey(orgID uuid.UUID, limit, offset int, filter store.IncidentFilter) string {
+	assignedTo := ""
+	if filter.AssignedTo != nil {
+		assignedTo = filter.AssignedTo.String()
+	}
+	satelliteID := ""
+	if filter.SatelliteID != nil {
+		satelliteID = filter.SatelliteID.String()
+	}
+	return fmt.Sprintf("lyrahcle:cache:incidents:%s:%d:%d:%s:%s:%s:%s:%s",
+		orgID, limit, offset, filter.Status, filter.Severity, filter.AgentID, assignedTo, satelliteID)
+}
+
+// incidentsCacheKeyDefault is the key for the unfiltered first page, the
+// view every dashboard poll requests by default. Mutations invalidate only
+// this key; any other filter/offset combination relies on the short TTL to
+// bound staleness instead of being invalidated precisely.
+func incidentsCacheKeyDefault(orgID uuid.UUID) string {
+	return incidentsCacheKey(orgID, 50, 0, store.IncidentFilter{})
+}
+
+func assetAlertsCacheKey(orgID uuid.UUID, limit, offset int) string {
+	return fmt.Sprintf("lyrahcle:cache:asset-alerts:%s:%d:%d", orgID, limit, offset)
+}
+
+func assetAlertsCacheKeyDefault(orgID uuid.UUID) string {
+	return assetAlertsCacheKey(orgID, 50, 0)
+}
+
+func rfReadingsCacheKey(orgID uuid.UUID) string {
+	return fmt.Sprintf("lyrahcle:cache:rf:readings:%s", orgID)
+}
+
+func rfAnomaliesCacheKey(orgID uuid.UUID) string {
+	return fmt.Sprintf("lyrahcle:cache:rf:anomalies:%s", orgID)
 }
 
 func parseSpaceCVEFilter(r *http.Request) store.SpaceCVEFilter {

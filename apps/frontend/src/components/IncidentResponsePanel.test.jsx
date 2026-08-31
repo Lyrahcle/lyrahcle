@@ -9,7 +9,7 @@ describe('IncidentResponsePanel', () => {
     expect(screen.getByText('Signing key')).toBeInTheDocument()
     expect(screen.getByText('Cross-tenant exposure')).toBeInTheDocument()
     expect(screen.getByText(/Never disable RLS/i)).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /full incident response runbook/i })).toHaveAttribute('rel', 'noreferrer')
+    expect(screen.getByRole('link', { name: /full incident response runbook/i })).toHaveAttribute('rel', 'noopener noreferrer')
     expect(document.body.textContent).not.toMatch(/password_hash|totp_secret|bearer token/i)
   })
 })

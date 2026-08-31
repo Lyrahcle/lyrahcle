@@ -37,11 +37,21 @@ for path in FRONTEND.rglob("*"):
     # Every new-tab link must explicitly sever opener and referrer relationships.
     for match in re.finditer(r"<a\b[^>]*target=[\"']_blank[\"'][^>]*>", text, re.S):
         tag = match.group(0)
-        rel_match = re.search(r"\brel=[\"']([^\"']*)[\"']", tag)
-        tokens = set(rel_match.group(1).split()) if rel_match else set()
+        line = text.count("\n", 0, match.start()) + 1
+        rel_matches = re.findall(r"\brel=[\"']([^\"']*)[\"']", tag)
+        if len(rel_matches) > 1:
+            # A duplicate JSX attribute is valid JS (later key wins in the
+            # transpiled object literal), so only the LAST rel value is
+            # actually applied at runtime -- any earlier one is silently
+            # discarded. This has previously masked a missing `noopener`.
+            errors.append(
+                f"{rel}:{line}: target=_blank has {len(rel_matches)} rel attributes; "
+                "only the last is applied at runtime, so this is always a bug"
+            )
+            continue
+        tokens = set(rel_matches[0].split()) if rel_matches else set()
         missing = {"noopener", "noreferrer"} - tokens
         if missing:
-            line = text.count("\n", 0, match.start()) + 1
             errors.append(f"{rel}:{line}: target=_blank missing rel tokens: {', '.join(sorted(missing))}")
 
 if errors:

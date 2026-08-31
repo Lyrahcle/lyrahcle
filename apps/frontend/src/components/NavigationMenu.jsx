@@ -13,6 +13,7 @@ import {
   Building2,
   ChevronDown,
 } from 'lucide-react'
+import { useI18n } from '../lib/I18nContext.jsx'
 
 const ICONS = {
   orbital: Orbit,
@@ -28,6 +29,7 @@ const ICONS = {
 }
 
 export default function NavigationMenu({ items, active, onChange }) {
+  const { t } = useI18n()
   const [open, setOpen] = useState(false)
   const rootRef = useRef(null)
   const activeItem = items.find((item) => item.id === active) ?? items[0]
@@ -58,7 +60,7 @@ export default function NavigationMenu({ items, active, onChange }) {
         type="button"
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label="Open navigation"
+        aria-label={t('navigation.open')}
         onClick={() => setOpen((value) => !value)}
         className="flex h-9 items-center gap-2 rounded border border-lyra-border bg-lyra-panel/70 px-2.5 text-lyra-muted outline-none transition-colors hover:border-lyra-gold/40 hover:text-lyra-goldBright focus-visible:ring-1 focus-visible:ring-lyra-gold"
       >
@@ -72,11 +74,11 @@ export default function NavigationMenu({ items, active, onChange }) {
       {open && (
         <div
           role="menu"
-          aria-label="Primary navigation"
+          aria-label={t('navigation.primary')}
           className="absolute left-0 top-full z-[70] mt-2 w-[min(19rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-lyra-border bg-lyra-panel p-2 shadow-2xl backdrop-blur-xl"
         >
           <div className="px-2 pb-2 pt-1 font-mono text-[9px] uppercase tracking-[0.24em] text-lyra-mutedDim">
-            Lyrahcle navigation
+            {t('navigation.title')}
           </div>
           <div className="grid gap-1">
             {items.map((item) => {
@@ -101,7 +103,7 @@ export default function NavigationMenu({ items, active, onChange }) {
                   <span className="min-w-0">
                     <span className="block truncate text-sm font-medium">{item.label}</span>
                     {item.id === 'orbital' && (
-                      <span className="mt-0.5 block font-mono text-[9px] uppercase tracking-[0.16em] text-lyra-mutedDim">Default dashboard</span>
+                      <span className="mt-0.5 block font-mono text-[9px] uppercase tracking-[0.16em] text-lyra-mutedDim">{t('navigation.defaultDashboard')}</span>
                     )}
                   </span>
                 </button>

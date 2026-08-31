@@ -1,14 +1,15 @@
 import SignalBar from './SignalBar.jsx'
 import TableScroll from './TableScroll.jsx'
+import { useI18n } from '../lib/I18nContext.jsx'
 
 export default function RfPanel({ readings }) {
+  const { t } = useI18n()
+
   if (!readings.length) {
     return (
       <div className="rounded border border-dashed border-lyra-border px-5 py-10 text-center">
-        <p className="text-sm text-lyra-muted">No RF readings yet.</p>
-        <p className="mt-1 text-xs text-lyra-mutedDim">
-          Start an sdr-agent to begin streaming spectrum data.
-        </p>
+        <p className="text-sm text-lyra-muted">{t('rf.empty')}</p>
+        <p className="mt-1 text-xs text-lyra-mutedDim">{t('rf.emptyHint')}</p>
       </div>
     )
   }
@@ -19,16 +20,16 @@ export default function RfPanel({ readings }) {
         <thead>
           <tr className="border-b border-lyra-borderSoft">
             <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
-              Agent
+              {t('rf.agent')}
             </th>
             <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
-              Frequency
+              {t('rf.frequency')}
             </th>
             <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
-              Signal
+              {t('rf.signal')}
             </th>
             <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
-              Captured
+              {t('rf.captured')}
             </th>
           </tr>
         </thead>

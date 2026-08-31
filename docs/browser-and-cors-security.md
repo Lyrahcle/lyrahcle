@@ -22,6 +22,16 @@ application does not require `unsafe-inline` in `script-src`.
 `sessionStorage` reduces token persistence but remains readable by JavaScript.
 Consequently CSP and XSS prevention remain part of the authentication boundary.
 
+## CSRF
+
+No backend handler sets an authentication cookie; the bearer token in the
+`Authorization` header is never attached automatically by the browser the
+way a cookie would be, so a forged cross-origin request cannot carry it.
+CSRF protection therefore does not apply to the current session model.
+`scripts/check-csrf-cookie-auth.py` enforces this: it fails the build the
+moment any handler starts setting a cookie, so a cookie-based session can
+never be introduced without CSRF protection being added at the same time.
+
 When the API is intentionally moved to another origin, update the frontend CSP
 `connect-src` directive to include that exact HTTPS API origin as well as enabling
 the backend CORS allowlist.
