@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import ConfirmDialog from './ConfirmDialog.jsx'
 import { deleteProgram, updateProgram } from '../lib/api.js'
 import { hasPermission } from '../lib/permissions.js'
 import { useI18n } from '../lib/I18nContext.jsx'
@@ -10,6 +11,7 @@ export default function ProgramManager({ programs = [], onChanged }) {
   const [name, setName] = useState('')
   const [busyId, setBusyId] = useState(null)
   const [error, setError] = useState(null)
+  const [pendingDelete, setPendingDelete] = useState(null)
 
   function beginEdit(program) {
     setEditingId(program.id)
@@ -36,13 +38,15 @@ export default function ProgramManager({ programs = [], onChanged }) {
     }
   }
 
-  async function remove(program) {
-    if (!window.confirm(t('assetInventory.deleteProgramConfirm', { name: program.name }))) return
+  async function confirmRemove() {
+    const program = pendingDelete
+    if (!program) return
     setBusyId(program.id)
     setError(null)
     try {
       await deleteProgram(program.id)
       if (editingId === program.id) setEditingId(null)
+      setPendingDelete(null)
       await onChanged?.()
     } catch (err) {
       setError(err.message)
@@ -118,7 +122,7 @@ export default function ProgramManager({ programs = [], onChanged }) {
                       <button
                         type="button"
                         disabled={busyId === program.id}
-                        onClick={() => remove(program)}
+                        onClick={() => setPendingDelete(program)}
                         className="rounded border border-lyra-bad/40 px-3 py-1 text-xs text-lyra-bad hover:bg-lyra-bad/10 disabled:opacity-50"
                       >
                         {busyId === program.id ? t('assetInventory.deleting') : t('assetInventory.delete')}
@@ -130,6 +134,15 @@ export default function ProgramManager({ programs = [], onChanged }) {
             </div>
           ))}
         </div>
+      )}
+      {pendingDelete && (
+        <ConfirmDialog
+          message={t('assetInventory.deleteProgramConfirm', { name: pendingDelete.name })}
+          confirmLabel={t('assetInventory.delete')}
+          busy={busyId === pendingDelete.id}
+          onConfirm={confirmRemove}
+          onCancel={() => setPendingDelete(null)}
+        />
       )}
     </section>
   )

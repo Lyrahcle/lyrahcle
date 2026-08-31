@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { agentRolloutAction, createAgentRollout, fetchAgentRollout, fetchAgentRollouts } from '../lib/api.js'
+import ConfirmDialog from './ConfirmDialog.jsx'
 import TableScroll from './TableScroll.jsx'
 
 const STATUS_TONE = {
@@ -66,6 +67,7 @@ export default function FleetRolloutPanel({ agents, satellites = [], canManage =
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const [now, setNow] = useState(Date.now())
+  const [pendingRollback, setPendingRollback] = useState(false)
 
   async function reload(selectId = selected?.id) {
     const list = await fetchAgentRollouts()
@@ -88,9 +90,15 @@ export default function FleetRolloutPanel({ agents, satellites = [], canManage =
   }
   async function act(action) {
     if (!selected) return
-    if (action === 'rollback' && !window.confirm(`Rollback ${selected.name}? A compensating config will be issued to eligible targets.`)) return
+    if (action === 'rollback') { setPendingRollback(true); return }
     setBusy(true); setError(null)
     try { const updated = await agentRolloutAction(selected.id, action); setSelected(updated); await reload(updated.id) } catch (e) { setError(e.message) } finally { setBusy(false) }
+  }
+
+  async function confirmRollback() {
+    if (!selected) return
+    setBusy(true); setError(null)
+    try { const updated = await agentRolloutAction(selected.id, 'rollback'); setSelected(updated); setPendingRollback(false); await reload(updated.id) } catch (e) { setError(e.message) } finally { setBusy(false) }
   }
 
   const stats = rolloutStats(selected?.targets)
@@ -125,5 +133,15 @@ export default function FleetRolloutPanel({ agents, satellites = [], canManage =
         {thresholdExceeded && <p role="alert" className="mt-3 rounded border border-lyra-bad/30 bg-lyra-bad/10 px-3 py-2 text-xs text-lyra-bad">Promotion is blocked because the rejection rate exceeds this rollout's failure threshold.</p>}
         <div className="mt-3 space-y-1">{selected.targets?.map((t)=><div key={t.agent_id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-t border-lyra-borderSoft py-2 font-mono text-xs"><div className="min-w-0"><span className="block truncate text-lyra-text">{t.agent_id}</span><span className="text-[10px] text-lyra-mutedDim">cohort {Math.floor(Number(t.ordinal || 0) / Math.max(1, Number(selected.batch_size || 1))) + 1}{t.config_version ? ` · config v${t.config_version}` : ''}</span></div><StatusPill status={t.status} /></div>)}</div></> : <p className="text-sm text-lyra-muted">Select a rollout to inspect targets and promote it.</p>}</div>
     </div>
+    {pendingRollback && (
+      <ConfirmDialog
+        title="Rollback rollout"
+        message={`Rollback ${selected?.name}? A compensating config will be issued to eligible targets.`}
+        confirmLabel="Rollback"
+        busy={busy}
+        onConfirm={confirmRollback}
+        onCancel={() => setPendingRollback(false)}
+      />
+    )}
   </section>
 }

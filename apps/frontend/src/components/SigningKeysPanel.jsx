@@ -8,6 +8,7 @@ import {
   updateAgentConfigSigningRotationPolicy,
 } from '../lib/api.js'
 import { useI18n } from '../lib/I18nContext.jsx'
+import ConfirmDialog from './ConfirmDialog.jsx'
 import TableScroll from './TableScroll.jsx'
 
 function shortKID(kid = '') {
@@ -42,6 +43,7 @@ export default function SigningKeysPanel() {
   const [state, setState] = useState(null)
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
+  const [pendingAction, setPendingAction] = useState(null)
   const [publicKey, setPublicKey] = useState(null)
   const [graceHours, setGraceHours] = useState('168')
   const [policyDraft, setPolicyDraft] = useState(policyDraftFromState(null))
@@ -115,28 +117,19 @@ export default function SigningKeysPanel() {
     }
   }
 
-  async function activate(kid) {
-    if (!window.confirm(t('signingKeys.activateConfirm'))) return
+  async function confirmPendingAction() {
+    if (!pendingAction) return
+    const { type, kid } = pendingAction
     setBusy(true)
     setError(null)
     try {
-      await activateAgentConfigSigningKey(kid, Number(graceHours) * 3600)
+      if (type === 'activate') {
+        await activateAgentConfigSigningKey(kid, Number(graceHours) * 3600)
+      } else {
+        await revokeAgentConfigSigningKey(kid)
+      }
       setPublicKey(null)
-      await reload()
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function revoke(kid) {
-    if (!window.confirm(t('signingKeys.revokeConfirm'))) return
-    setBusy(true)
-    setError(null)
-    try {
-      await revokeAgentConfigSigningKey(kid)
-      setPublicKey(null)
+      setPendingAction(null)
       await reload()
     } catch (err) {
       setError(err.message)
@@ -257,10 +250,10 @@ export default function SigningKeysPanel() {
                     <div className="flex flex-wrap justify-end gap-2">
                       {state.managed && <button type="button" disabled={busy} onClick={() => showPublicKey(key.kid)} className="font-mono text-xs text-lyra-goldBright hover:underline disabled:opacity-50">{t('signingKeys.publicKey')}</button>}
                       {key.status === 'staged' && (
-                        <button type="button" disabled={busy} onClick={() => activate(key.kid)} className="font-mono text-xs text-lyra-ok hover:underline disabled:opacity-50">{t('signingKeys.activate')}</button>
+                        <button type="button" disabled={busy} onClick={() => setPendingAction({ type: 'activate', kid: key.kid })} className="font-mono text-xs text-lyra-ok hover:underline disabled:opacity-50">{t('signingKeys.activate')}</button>
                       )}
                       {(key.status === 'staged' || key.status === 'grace') && (
-                        <button type="button" disabled={busy} onClick={() => revoke(key.kid)} className="font-mono text-xs text-lyra-bad hover:underline disabled:opacity-50">{t('signingKeys.revoke')}</button>
+                        <button type="button" disabled={busy} onClick={() => setPendingAction({ type: 'revoke', kid: key.kid })} className="font-mono text-xs text-lyra-bad hover:underline disabled:opacity-50">{t('signingKeys.revoke')}</button>
                       )}
                     </div>
                   </td>
@@ -290,6 +283,16 @@ export default function SigningKeysPanel() {
           <p className="mt-3 text-xs text-lyra-muted">{t('signingKeys.distributeHint')}</p>
           <pre className="mt-3 overflow-x-auto whitespace-pre-wrap break-all rounded border border-lyra-borderSoft bg-lyra-bg p-3 text-[10px] text-lyra-text">{publicKey.pem}</pre>
         </section>
+      )}
+      {pendingAction && (
+        <ConfirmDialog
+          message={pendingAction.type === 'activate' ? t('signingKeys.activateConfirm') : t('signingKeys.revokeConfirm')}
+          confirmLabel={pendingAction.type === 'activate' ? t('signingKeys.activate') : t('signingKeys.revoke')}
+          danger={pendingAction.type === 'revoke'}
+          busy={busy}
+          onConfirm={confirmPendingAction}
+          onCancel={() => setPendingAction(null)}
+        />
       )}
     </div>
   )

@@ -17,6 +17,8 @@ export const translations = {
       copy: 'Copy',
       copied: 'Copied',
       copyValue: 'Copy {label}',
+      confirm: 'Confirm',
+      confirmActionTitle: 'Confirm action',
     },
     header: {
       tagline: 'Constellation Analytics',
@@ -374,6 +376,8 @@ export const translations = {
       copy: 'Copiar',
       copied: 'Copiado',
       copyValue: 'Copiar {label}',
+      confirm: 'Confirmar',
+      confirmActionTitle: 'Confirmar acción',
     },
     header: {
       tagline: 'Constellation Analytics',
@@ -731,6 +735,8 @@ export const translations = {
       copy: 'Copier',
       copied: 'Copié',
       copyValue: 'Copier {label}',
+      confirm: 'Confirmer',
+      confirmActionTitle: 'Confirmer l’action',
     },
     header: {
       tagline: 'Constellation Analytics',
@@ -1088,6 +1094,8 @@ export const translations = {
       copy: 'Kopieren',
       copied: 'Kopiert',
       copyValue: '{label} kopieren',
+      confirm: 'Bestätigen',
+      confirmActionTitle: 'Aktion bestätigen',
     },
     header: {
       tagline: 'Constellation Analytics',

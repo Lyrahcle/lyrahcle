@@ -1,6 +1,7 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import FleetRolloutPanel from './FleetRolloutPanel.jsx'
+import { I18nProvider } from '../lib/I18nContext.jsx'
 import { agentRolloutAction, fetchAgentRollout, fetchAgentRollouts } from '../lib/api.js'
 
 vi.mock('../lib/api.js', () => ({
@@ -28,7 +29,7 @@ describe('FleetRolloutPanel', () => {
   })
 
   it('exposes staged rollout controls in the UI', async () => {
-    render(<FleetRolloutPanel agents={[{ agent_id: 'station-a', status: 'active' }]} canManage />)
+    render(<I18nProvider><FleetRolloutPanel agents={[{ agent_id: 'station-a', status: 'active' }]} canManage /></I18nProvider>)
     expect(await screen.findByText('Fleet staged rollouts')).toBeInTheDocument()
     expect(screen.getByText('station-a')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Create staged rollout' })).toBeDisabled()
@@ -39,7 +40,7 @@ describe('FleetRolloutPanel', () => {
   it('shows cohort progress and blocks promotion while the active batch is unacknowledged', async () => {
     fetchAgentRollouts.mockResolvedValue([{ id: 'rollout-1', name: 'Canary alpha', status: 'running' }])
     fetchAgentRollout.mockResolvedValue(running)
-    render(<FleetRolloutPanel agents={[]} canManage />)
+    render(<I18nProvider><FleetRolloutPanel agents={[]} canManage /></I18nProvider>)
     fireEvent.click(await screen.findByRole('button', { name: 'Canary alpha' }))
     expect(await screen.findByText('2/4 · 50%')).toBeInTheDocument()
     expect(screen.getByText('#2')).toBeInTheDocument()
@@ -52,12 +53,30 @@ describe('FleetRolloutPanel', () => {
   it('requires confirmation before rollback', async () => {
     fetchAgentRollouts.mockResolvedValue([{ id: 'rollout-1', name: 'Canary alpha', status: 'running' }])
     fetchAgentRollout.mockResolvedValue({ ...running, targets: running.targets.map((target) => ({ ...target, status: 'applied' })) })
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
-    render(<FleetRolloutPanel agents={[]} canManage />)
+    render(<I18nProvider><FleetRolloutPanel agents={[]} canManage /></I18nProvider>)
     fireEvent.click(await screen.findByRole('button', { name: 'Canary alpha' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Rollback' }))
-    expect(confirmSpy).toHaveBeenCalled()
+
+    const dialog = await screen.findByRole('alertdialog')
+    expect(within(dialog).getByText(/Canary alpha/)).toBeInTheDocument()
+    fireEvent.click(within(dialog).getByRole('button', { name: /^cancel$/i }))
+
     expect(agentRolloutAction).not.toHaveBeenCalled()
-    confirmSpy.mockRestore()
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+  })
+
+  it('rolls back only after the dialog is confirmed', async () => {
+    fetchAgentRollouts.mockResolvedValue([{ id: 'rollout-1', name: 'Canary alpha', status: 'running' }])
+    fetchAgentRollout.mockResolvedValue({ ...running, targets: running.targets.map((target) => ({ ...target, status: 'applied' })) })
+    agentRolloutAction.mockResolvedValue({ ...running, status: 'rolled_back' })
+    render(<I18nProvider><FleetRolloutPanel agents={[]} canManage /></I18nProvider>)
+    fireEvent.click(await screen.findByRole('button', { name: 'Canary alpha' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Rollback' }))
+
+    const dialog = await screen.findByRole('alertdialog')
+    fireEvent.click(within(dialog).getByRole('button', { name: /^rollback$/i }))
+
+    await vi.waitFor(() => expect(agentRolloutAction).toHaveBeenCalledWith('rollout-1', 'rollback'))
+    await vi.waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
   })
 })

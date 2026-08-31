@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import KindBadge from './KindBadge.jsx'
 import CopyButton from './CopyButton.jsx'
+import ConfirmDialog from './ConfirmDialog.jsx'
 import TableScroll from './TableScroll.jsx'
 import Pagination from './Pagination.jsx'
 import { deleteAsset, updateAsset } from '../lib/api.js'
@@ -18,6 +19,7 @@ export default function AssetsTable({ page, programs = [], onPrev, onNext, onCha
   const [draft, setDraft] = useState({ programId: '', kind: 'domain', value: '' })
   const [busyId, setBusyId] = useState(null)
   const [error, setError] = useState(null)
+  const [pendingDelete, setPendingDelete] = useState(null)
 
   function beginEdit(asset) {
     setEditingId(asset.id)
@@ -44,13 +46,15 @@ export default function AssetsTable({ page, programs = [], onPrev, onNext, onCha
     }
   }
 
-  async function remove(asset) {
-    if (!window.confirm(t('assetInventory.deleteAssetConfirm', { value: asset.value }))) return
+  async function confirmRemove() {
+    const asset = pendingDelete
+    if (!asset) return
     setBusyId(asset.id)
     setError(null)
     try {
       await deleteAsset(asset.id)
       if (editingId === asset.id) setEditingId(null)
+      setPendingDelete(null)
       await onChanged?.()
     } catch (err) {
       setError(err.message)
@@ -58,6 +62,7 @@ export default function AssetsTable({ page, programs = [], onPrev, onNext, onCha
       setBusyId(null)
     }
   }
+
 
   if (!assets.length) {
     return (
@@ -138,7 +143,7 @@ export default function AssetsTable({ page, programs = [], onPrev, onNext, onCha
                         ) : (
                           <>
                             <button type="button" onClick={() => beginEdit(asset)} className="rounded border border-lyra-border px-2.5 py-1 text-xs text-lyra-muted hover:border-lyra-gold/40 hover:text-lyra-goldBright">{t('assetInventory.edit')}</button>
-                            <button type="button" disabled={busyId === asset.id} onClick={() => remove(asset)} className="rounded border border-lyra-bad/40 px-2.5 py-1 text-xs text-lyra-bad hover:bg-lyra-bad/10 disabled:opacity-50">{busyId === asset.id ? t('assetInventory.deleting') : t('assetInventory.delete')}</button>
+                            <button type="button" disabled={busyId === asset.id} onClick={() => setPendingDelete(asset)} className="rounded border border-lyra-bad/40 px-2.5 py-1 text-xs text-lyra-bad hover:bg-lyra-bad/10 disabled:opacity-50">{busyId === asset.id ? t('assetInventory.deleting') : t('assetInventory.delete')}</button>
                           </>
                         )}
                       </div>
@@ -151,6 +156,15 @@ export default function AssetsTable({ page, programs = [], onPrev, onNext, onCha
         </table>
       </TableScroll>
       <Pagination total={page.total} limit={page.limit} offset={page.offset} onPrev={onPrev} onNext={onNext} />
+      {pendingDelete && (
+        <ConfirmDialog
+          message={t('assetInventory.deleteAssetConfirm', { value: pendingDelete.value })}
+          confirmLabel={t('assetInventory.delete')}
+          busy={busyId === pendingDelete.id}
+          onConfirm={confirmRemove}
+          onCancel={() => setPendingDelete(null)}
+        />
+      )}
     </div>
   )
 }

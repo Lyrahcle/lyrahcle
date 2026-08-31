@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { I18nProvider } from '../lib/I18nContext.jsx'
 import { clearEffectivePermissions, setEffectivePermissions } from '../lib/permissions.js'
@@ -63,14 +63,29 @@ describe('AssetsTable management UI', () => {
 
   it('deletes an asset only after confirmation', async () => {
     setEffectivePermissions(['assets.read', 'assets.manage'])
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
     api.deleteAsset.mockResolvedValue(undefined)
     const onChanged = vi.fn()
     renderTable({ onChanged })
 
     fireEvent.click(screen.getByRole('button', { name: /^delete$/i }))
+    expect(api.deleteAsset).not.toHaveBeenCalled()
+
+    const dialog = await screen.findByRole('alertdialog')
+    fireEvent.click(within(dialog).getByRole('button', { name: /^delete$/i }))
 
     await waitFor(() => expect(api.deleteAsset).toHaveBeenCalledWith('asset-1'))
     expect(onChanged).toHaveBeenCalledOnce()
+  })
+
+  it('does not delete an asset when the confirmation is cancelled', async () => {
+    setEffectivePermissions(['assets.read', 'assets.manage'])
+    renderTable()
+
+    fireEvent.click(screen.getByRole('button', { name: /^delete$/i }))
+    const dialog = await screen.findByRole('alertdialog')
+    fireEvent.click(within(dialog).getByRole('button', { name: /^cancel$/i }))
+
+    expect(api.deleteAsset).not.toHaveBeenCalled()
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
   })
 })

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { I18nProvider } from '../lib/I18nContext.jsx'
 import { clearEffectivePermissions, setEffectivePermissions } from '../lib/permissions.js'
@@ -46,14 +46,29 @@ describe('ProgramManager', () => {
 
   it('deletes a program after a destructive confirmation', async () => {
     setEffectivePermissions(['programs.read', 'programs.manage'])
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
     api.deleteProgram.mockResolvedValue(undefined)
     const onChanged = vi.fn()
     renderManager({ onChanged })
 
     fireEvent.click(screen.getByRole('button', { name: /^delete$/i }))
+    expect(api.deleteProgram).not.toHaveBeenCalled()
+
+    const dialog = await screen.findByRole('alertdialog')
+    fireEvent.click(within(dialog).getByRole('button', { name: /^delete$/i }))
 
     await waitFor(() => expect(api.deleteProgram).toHaveBeenCalledWith('program-1'))
     expect(onChanged).toHaveBeenCalledOnce()
+  })
+
+  it('does not delete a program when the confirmation is cancelled', async () => {
+    setEffectivePermissions(['programs.read', 'programs.manage'])
+    renderManager()
+
+    fireEvent.click(screen.getByRole('button', { name: /^delete$/i }))
+    const dialog = await screen.findByRole('alertdialog')
+    fireEvent.click(within(dialog).getByRole('button', { name: /^cancel$/i }))
+
+    expect(api.deleteProgram).not.toHaveBeenCalled()
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
   })
 })

@@ -3,6 +3,7 @@ import { Search } from 'lucide-react'
 import { createUser, deleteUser, updateUserRole, updateUserStatus } from '../lib/api.js'
 import { decodeToken, getToken } from '../lib/auth.js'
 import { useI18n } from '../lib/I18nContext.jsx'
+import ConfirmDialog from './ConfirmDialog.jsx'
 import TableScroll from './TableScroll.jsx'
 
 const ROLES = ['viewer', 'auditor', 'analyst', 'operator', 'admin']
@@ -104,6 +105,7 @@ export default function UsersPanel({ users, onChanged }) {
   const [error, setError] = useState(null)
   const [savingId, setSavingId] = useState(null)
   const [query, setQuery] = useState('')
+  const [pendingDeleteId, setPendingDeleteId] = useState(null)
 
   const currentUserId = decodeToken(getToken())?.user_id
 
@@ -139,12 +141,14 @@ export default function UsersPanel({ users, onChanged }) {
     }
   }
 
-  async function handleDelete(userId) {
-    if (!window.confirm(t('users.deleteConfirm'))) return
+  async function confirmDelete() {
+    const userId = pendingDeleteId
+    if (!userId) return
     setError(null)
     setSavingId(userId)
     try {
       await deleteUser(userId)
+      setPendingDeleteId(null)
       onChanged()
     } catch (err) {
       setError(err.message)
@@ -249,7 +253,7 @@ export default function UsersPanel({ users, onChanged }) {
                       <button
                         type="button"
                         disabled={savingId === u.id}
-                        onClick={() => handleDelete(u.id)}
+                        onClick={() => setPendingDeleteId(u.id)}
                         className="rounded border border-lyra-bad/40 px-2 py-1 font-mono text-[11px] text-lyra-bad outline-none hover:bg-lyra-bad/10 disabled:opacity-40"
                       >
                         {t('users.delete')}
@@ -261,6 +265,14 @@ export default function UsersPanel({ users, onChanged }) {
             </tbody>
           </table>
         </TableScroll>
+      )}
+      {pendingDeleteId && (
+        <ConfirmDialog
+          message={t('users.deleteConfirm')}
+          busy={savingId === pendingDeleteId}
+          onConfirm={confirmDelete}
+          onCancel={() => setPendingDeleteId(null)}
+        />
       )}
     </div>
   )

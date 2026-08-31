@@ -25,7 +25,6 @@ function managed(keys = [active], extra = {}) {
 describe('SigningKeysPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
   })
 
   afterEach(() => vi.restoreAllMocks())
@@ -53,7 +52,40 @@ describe('SigningKeysPanel', () => {
     const table = await screen.findByRole('table')
     fireEvent.change(screen.getByLabelText(/grace period \(hours\)/i), { target: { value: '24' } })
     fireEvent.click(within(table).getByRole('button', { name: /^activate$/i }))
+    expect(api.activateAgentConfigSigningKey).not.toHaveBeenCalled()
+
+    const dialog = await screen.findByRole('alertdialog')
+    fireEvent.click(within(dialog).getByRole('button', { name: /^activate$/i }))
     await waitFor(() => expect(api.activateAgentConfigSigningKey).toHaveBeenCalledWith(staged.kid, 86400))
+  })
+
+  it('does not activate a key when the confirmation is cancelled', async () => {
+    api.fetchAgentConfigSigningKeys.mockResolvedValue(managed([active, staged], { health: { ...health, staged_pending: true } }))
+
+    render(<I18nProvider><SigningKeysPanel /></I18nProvider>)
+    const table = await screen.findByRole('table')
+    fireEvent.click(within(table).getByRole('button', { name: /^activate$/i }))
+    const dialog = await screen.findByRole('alertdialog')
+    fireEvent.click(within(dialog).getByRole('button', { name: /^cancel$/i }))
+
+    expect(api.activateAgentConfigSigningKey).not.toHaveBeenCalled()
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+  })
+
+  it('revokes a key only after a destructive confirmation', async () => {
+    api.fetchAgentConfigSigningKeys
+      .mockResolvedValueOnce(managed([active, staged], { health: { ...health, staged_pending: true } }))
+      .mockResolvedValueOnce(managed([active]))
+    api.revokeAgentConfigSigningKey.mockResolvedValue({ ...staged, status: 'revoked' })
+
+    render(<I18nProvider><SigningKeysPanel /></I18nProvider>)
+    const table = await screen.findByRole('table')
+    fireEvent.click(within(table).getByRole('button', { name: /^revoke$/i }))
+    expect(api.revokeAgentConfigSigningKey).not.toHaveBeenCalled()
+
+    const dialog = await screen.findByRole('alertdialog')
+    fireEvent.click(within(dialog).getByRole('button', { name: /^revoke$/i }))
+    await waitFor(() => expect(api.revokeAgentConfigSigningKey).toHaveBeenCalledWith(staged.kid))
   })
 
   it('persists automatic staging policy from the platform UI', async () => {
