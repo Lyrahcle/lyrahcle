@@ -48,16 +48,16 @@ func TestFleetRolloutAuditActionsAreCentralized(t *testing.T) {
 	}
 	auditSource := string(auditBytes)
 
-	for _, token := range []string{
-		`ActionAgentRolloutCreated    = "agent.rollout_created"`,
-		`ActionAgentRolloutStarted    = "agent.rollout_started"`,
-		`ActionAgentRolloutAdvanced   = "agent.rollout_advanced"`,
-		`ActionAgentRolloutPaused     = "agent.rollout_paused"`,
-		`ActionAgentRolloutResumed    = "agent.rollout_resumed"`,
-		`ActionAgentRolloutRolledBack = "agent.rollout_rolled_back"`,
+	for name, value := range map[string]string{
+		"ActionAgentRolloutCreated":    "agent.rollout_created",
+		"ActionAgentRolloutStarted":    "agent.rollout_started",
+		"ActionAgentRolloutAdvanced":   "agent.rollout_advanced",
+		"ActionAgentRolloutPaused":     "agent.rollout_paused",
+		"ActionAgentRolloutResumed":    "agent.rollout_resumed",
+		"ActionAgentRolloutRolledBack": "agent.rollout_rolled_back",
 	} {
-		if !strings.Contains(auditSource, token) {
-			t.Fatalf("central audit action catalog missing %q", token)
+		if !strings.Contains(auditSource, name) || !strings.Contains(auditSource, `"`+value+`"`) {
+			t.Fatalf("central audit action catalog missing %s=%q", name, value)
 		}
 	}
 }

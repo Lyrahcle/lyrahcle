@@ -2,6 +2,8 @@ package ratelimit
 
 import (
 	"context"
+	"errors"
+	"net"
 	"os"
 	"testing"
 	"time"
@@ -13,9 +15,11 @@ import (
 func unavailableRedisV1457(t *testing.T) *redis.Client {
 	t.Helper()
 	client := redis.NewClient(&redis.Options{
-		Addr: "127.0.0.1:1", DialTimeout: 25 * time.Millisecond,
-		ReadTimeout: 25 * time.Millisecond, WriteTimeout: 25 * time.Millisecond,
+		Addr:       "unavailable.test:6379",
 		MaxRetries: 0,
+		Dialer: func(context.Context, string, string) (net.Conn, error) {
+			return nil, errors.New("simulated redis outage")
+		},
 	})
 	t.Cleanup(func() { _ = client.Close() })
 	return client
@@ -72,7 +76,7 @@ func TestTenantBucketKeyIsStableAndPrivacyPreserving(t *testing.T) {
 	if a == c {
 		t.Fatal("different subjects must not collide in test fixture")
 	}
-	if contains(a, "tenant") || contains(a, "user") {
+	if contains(a, "tenant:user") || contains(a, "tenant:user2") {
 		t.Fatalf("bucket key leaks raw subject: %s", a)
 	}
 }

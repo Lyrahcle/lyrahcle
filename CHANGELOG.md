@@ -5,6 +5,20 @@
 
 
 
+
+
+## v14.5.9 — Agent identity coverage completion
+
+- Added CA/parser coverage for legacy EC and PKCS#1 private-key formats, missing CA files, non-signing CA certificates, accepted/rejected agent public-key classes, malformed public-key comparisons, RSA-2048 client certificates and non-positive certificate TTLs.
+- Keeps the critical `internal/agentidentity` coverage gate at >=80%; the threshold is not relaxed.
+- No runtime or database schema changes.
+
+## v14.5.8 — Key-provider coverage completion
+
+- Added lifecycle/error-path coverage for nil providers, bootstrap imports, managed activation/revocation failures, staged rotation conflicts, public-key export verification, generated key-pair round trips and malformed managed manifests.
+- Keeps the critical `internal/keyprovider` coverage gate at >=80%; the threshold is not relaxed.
+- No runtime or database schema changes.
+
 ## v14.5.7 — Tenant rate-limit and scope hardening
 
 - Expanded tenant-aware rate-limit regression coverage for invalid policy budgets, identity/class validation, privacy-preserving bucket keys, Redis-outage fallback behavior and cross-instance tenant isolation.
