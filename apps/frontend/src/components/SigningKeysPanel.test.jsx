@@ -94,6 +94,19 @@ describe('SigningKeysPanel', () => {
     expect(screen.getByText(/auto-staging never activates a key/i)).toBeInTheDocument()
   })
 
+  it('shows external custody health without exposing service credentials', async () => {
+    api.fetchAgentConfigSigningKeys.mockResolvedValue({
+      provider: 'external-remote', managed: false, grace_period_seconds: 604800, keys: [active],
+      provider_info: { name: 'external-remote', external: true, endpoint: 'https://signer.internal', active_kid: active.kid, algorithm: 'Ed25519' },
+      provider_health: { healthy: true, checked_at: '2026-08-31T12:00:00Z' },
+    })
+    render(<I18nProvider><SigningKeysPanel /></I18nProvider>)
+    expect(await screen.findByText(/external key custody/i)).toBeInTheDocument()
+    expect(screen.getByText(/signer healthy/i)).toBeInTheDocument()
+    expect(screen.getByText('https://signer.internal')).toBeInTheDocument()
+    expect(screen.queryByText(/service-secret|bearer/i)).not.toBeInTheDocument()
+  })
+
   it('does not expose lifecycle controls for a legacy provider', async () => {
     api.fetchAgentConfigSigningKeys.mockResolvedValue({ provider: 'local-legacy', managed: false, grace_period_seconds: 604800, keys: [active] })
     render(<I18nProvider><SigningKeysPanel /></I18nProvider>)

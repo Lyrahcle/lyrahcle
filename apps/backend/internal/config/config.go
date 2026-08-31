@@ -1,12 +1,15 @@
 package config
 
 import (
+	"context"
+	"errors"
 	"log"
 	"os"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/mlko01/lyrahcle/apps/backend/internal/secretprovider"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/validate"
 )
 
@@ -44,6 +47,10 @@ type Config struct {
 	AgentEnrollmentTTL                time.Duration
 	AgentConfigSigningKeyFile         string
 	AgentConfigSigningKeyDir          string
+	AgentConfigSignerEndpoint         string
+	AgentConfigSignerToken            string
+	AgentConfigSignerKID              string
+	AgentConfigSignerAlgorithm        string
 	AgentConfigSigningGracePeriod     time.Duration
 	RateLimitPlatformCeilingPerMinute int
 	RateLimitTenantReadPerMinute      int
@@ -52,10 +59,23 @@ type Config struct {
 	RateLimitActorWritePerMinute      int
 	RateLimitTenantAgentPerMinute     int
 	RateLimitAgentPerMinute           int
+	SecretProviderName                string
+	SecretProviderExternal            bool
+	SecretProviderLocation            string
+	SecretProviderHealthy             bool
 }
 
 func Load() Config {
-	secret := getEnv("JWT_SECRET", "")
+	environment := getEnv("ENV", "development")
+	production := strings.EqualFold(environment, "production") || strings.EqualFold(environment, "prod")
+	secretSource := loadSecretProvider(production)
+	providerInfo := secretSource.Info()
+	providerHealth := secretSource.Health(context.Background())
+	if production && !providerHealth.Healthy {
+		log.Fatalf("FATAL: secret provider %s is unhealthy: %s", providerInfo.Name, providerHealth.Message)
+	}
+
+	secret := getSecret(secretSource, "JWT_SECRET", "")
 	insecureDefault := false
 	if secret == "" {
 		secret = "insecure-dev-secret-change-me"
@@ -89,21 +109,21 @@ func Load() Config {
 	}
 
 	cfg := Config{
-		DatabaseURL:                       getEnv("DATABASE_URL", "postgres://lyrahcle:lyrahcle@localhost:5432/lyrahcle?sslmode=disable"),
-		RedisURL:                          getEnv("REDIS_URL", "localhost:6379"),
+		DatabaseURL:                       getSecret(secretSource, "DATABASE_URL", "postgres://lyrahcle:lyrahcle@localhost:5432/lyrahcle?sslmode=disable"),
+		RedisURL:                          getSecret(secretSource, "REDIS_URL", "localhost:6379"),
 		Port:                              getEnv("PORT", "8080"),
 		CelestrakGroups:                   strings.Split(getEnv("CELESTRAK_GROUPS", "stations"), ","),
 		TLECorrelationMaxAge:              tLECorrelationMaxAge,
 		TLEStaleMaxAge:                    tLEStaleMaxAge,
 		OrbitalAutoEscalation:             strings.EqualFold(getEnv("ORBITAL_AUTO_ESCALATION_ENABLED", "false"), "true"),
 		JWTSecret:                         []byte(secret),
-		JWTPreviousSecret:                 []byte(getEnv("JWT_SECRET_PREVIOUS", "")),
+		JWTPreviousSecret:                 []byte(getSecret(secretSource, "JWT_SECRET_PREVIOUS", "")),
 		JWTAccessTTL:                      ttl,
 		TLSCertFile:                       getEnv("TLS_CERT_FILE", ""),
 		TLSKeyFile:                        getEnv("TLS_KEY_FILE", ""),
 		SeedAdminEmail:                    getEnv("SEED_ADMIN_EMAIL", "admin"),
-		SeedAdminPass:                     getEnv("SEED_ADMIN_PASSWORD", "admin"),
-		Environment:                       getEnv("ENV", "development"),
+		SeedAdminPass:                     getSecret(secretSource, "SEED_ADMIN_PASSWORD", "admin"),
+		Environment:                       environment,
 		WebAuthnRPID:                      getEnv("WEBAUTHN_RP_ID", "localhost"),
 		WebAuthnOrigins:                   splitCSV(getEnv("WEBAUTHN_ORIGINS", "http://localhost:5173")),
 		CORSAllowedOrigins:                splitCSV(getEnv("CORS_ALLOWED_ORIGINS", "")),
@@ -112,7 +132,7 @@ func Load() Config {
 		SMTPHost:                          getEnv("SMTP_HOST", ""),
 		SMTPPort:                          getEnv("SMTP_PORT", "465"),
 		SMTPUser:                          getEnv("SMTP_USER", ""),
-		SMTPPassword:                      getEnv("SMTP_PASSWORD", ""),
+		SMTPPassword:                      getSecret(secretSource, "SMTP_PASSWORD", ""),
 		SMTPFrom:                          getEnv("SMTP_FROM", ""),
 		SMTPServerName:                    getEnv("SMTP_SERVER_NAME", ""),
 		OTLPTraceEndpoint:                 getEnv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", ""),
@@ -122,6 +142,10 @@ func Load() Config {
 		AgentEnrollmentTTL:                agentEnrollmentTTL,
 		AgentConfigSigningKeyFile:         getEnv("AGENT_CONFIG_SIGNING_KEY_FILE", ""),
 		AgentConfigSigningKeyDir:          getEnv("AGENT_CONFIG_SIGNING_KEY_DIR", ""),
+		AgentConfigSignerEndpoint:         getEnv("AGENT_CONFIG_SIGNER_ENDPOINT", ""),
+		AgentConfigSignerToken:            getSecret(secretSource, "AGENT_CONFIG_SIGNER_TOKEN", ""),
+		AgentConfigSignerKID:              getEnv("AGENT_CONFIG_SIGNER_KID", ""),
+		AgentConfigSignerAlgorithm:        getEnv("AGENT_CONFIG_SIGNER_ALGORITHM", "Ed25519"),
 		AgentConfigSigningGracePeriod:     agentConfigSigningGracePeriod,
 		RateLimitPlatformCeilingPerMinute: envInt("RATE_LIMIT_PLATFORM_CEILING_PER_MINUTE", 50000, 1000, 500000),
 		RateLimitTenantReadPerMinute:      envInt("RATE_LIMIT_TENANT_READ_PER_MINUTE", 1200, 10, 100000),
@@ -130,6 +154,10 @@ func Load() Config {
 		RateLimitActorWritePerMinute:      envInt("RATE_LIMIT_ACTOR_WRITE_PER_MINUTE", 120, 2, 20000),
 		RateLimitTenantAgentPerMinute:     envInt("RATE_LIMIT_TENANT_AGENT_PER_MINUTE", 12000, 60, 500000),
 		RateLimitAgentPerMinute:           envInt("RATE_LIMIT_AGENT_PER_MINUTE", 3000, 30, 100000),
+		SecretProviderName:                providerInfo.Name,
+		SecretProviderExternal:            providerInfo.External,
+		SecretProviderLocation:            providerInfo.Location,
+		SecretProviderHealthy:             providerHealth.Healthy,
 	}
 
 	if cfg.RateLimitActorReadPerMinute > cfg.RateLimitTenantReadPerMinute || cfg.RateLimitActorWritePerMinute > cfg.RateLimitTenantWritePerMinute || cfg.RateLimitAgentPerMinute > cfg.RateLimitTenantAgentPerMinute {
@@ -146,7 +174,7 @@ func Load() Config {
 		log.Fatal("FATAL: RATE_LIMIT_PLATFORM_CEILING_PER_MINUTE must exceed every tenant-scoped budget")
 	}
 
-	production := cfg.IsProduction()
+	production = cfg.IsProduction()
 	for _, origin := range cfg.CORSAllowedOrigins {
 		origin = strings.TrimSpace(origin)
 		if origin == "" {
@@ -161,6 +189,9 @@ func Load() Config {
 		if production && !strings.HasPrefix(strings.ToLower(origin), "https://") {
 			log.Fatalf("FATAL: CORS origin %q must use HTTPS in production", origin)
 		}
+	}
+	if production && cfg.SecretProviderName == "env" {
+		log.Fatal("FATAL: ENV=production requires SECRET_PROVIDER=file or SECRET_PROVIDER=remote; process-environment secret custody is not allowed")
 	}
 	if cfg.OrbitalAutoEscalation {
 		log.Println("WARNING: orbital automatic severity escalation is enabled; validate RF/orbital performance against representative station data before production use")
@@ -238,10 +269,17 @@ func Load() Config {
 	if production && (cfg.AgentCACertFile == "" || cfg.AgentCAKeyFile == "") {
 		log.Println("WARNING: agent mTLS enrollment is disabled because AGENT_CA_CERT_FILE/AGENT_CA_KEY_FILE are not configured")
 	}
-	if (cfg.AgentConfigSigningKeyFile != "" || cfg.AgentConfigSigningKeyDir != "") && cfg.AgentCACertFile == "" {
+	signerConfigured := cfg.AgentConfigSigningKeyFile != "" || cfg.AgentConfigSigningKeyDir != "" || cfg.AgentConfigSignerEndpoint != ""
+	if signerConfigured && cfg.AgentCACertFile == "" {
 		log.Fatal("FATAL: agent config signing requires agent mTLS enrollment")
 	}
-	if production && cfg.AgentConfigSigningKeyFile == "" && cfg.AgentConfigSigningKeyDir == "" {
+	if cfg.AgentConfigSignerEndpoint != "" && (cfg.AgentConfigSigningKeyFile != "" || cfg.AgentConfigSigningKeyDir != "") {
+		log.Fatal("FATAL: external remote signer cannot be combined with local agent-config signing key settings")
+	}
+	if cfg.AgentConfigSignerEndpoint != "" && (cfg.AgentConfigSignerKID == "" || !strings.HasPrefix(strings.ToLower(cfg.AgentConfigSignerEndpoint), "https://")) {
+		log.Fatal("FATAL: AGENT_CONFIG_SIGNER_ENDPOINT requires HTTPS and AGENT_CONFIG_SIGNER_KID")
+	}
+	if production && !signerConfigured {
 		log.Println("WARNING: secure remote agent configuration is disabled because AGENT_CONFIG_SIGNING_KEY_FILE/AGENT_CONFIG_SIGNING_KEY_DIR are not configured")
 	}
 
@@ -250,6 +288,53 @@ func Load() Config {
 
 func (c Config) IsProduction() bool {
 	return strings.EqualFold(c.Environment, "production") || strings.EqualFold(c.Environment, "prod")
+}
+
+func loadSecretProvider(production bool) secretprovider.Provider {
+	mode := strings.ToLower(strings.TrimSpace(getEnv("SECRET_PROVIDER", "env")))
+	switch mode {
+	case "env":
+		return secretprovider.EnvProvider{}
+	case "file":
+		dir := strings.TrimSpace(getEnv("SECRET_FILE_DIR", ""))
+		if dir == "" {
+			log.Fatal("FATAL: SECRET_PROVIDER=file requires SECRET_FILE_DIR")
+		}
+		return secretprovider.FileProvider{Dir: dir}
+	case "remote":
+		endpoint := strings.TrimSpace(getEnv("SECRET_PROVIDER_ENDPOINT", ""))
+		if endpoint == "" {
+			log.Fatal("FATAL: SECRET_PROVIDER=remote requires SECRET_PROVIDER_ENDPOINT")
+		}
+		token := strings.TrimSpace(getEnv("SECRET_PROVIDER_TOKEN", ""))
+		if tokenFile := strings.TrimSpace(getEnv("SECRET_PROVIDER_TOKEN_FILE", "")); token == "" && tokenFile != "" {
+			b, err := os.ReadFile(tokenFile)
+			if err != nil {
+				log.Fatalf("FATAL: read SECRET_PROVIDER_TOKEN_FILE: %v", err)
+			}
+			token = strings.TrimSpace(string(b))
+		}
+		provider := secretprovider.RemoteProvider{Endpoint: endpoint, Token: token}
+		if production && !provider.Health(context.Background()).Healthy {
+			log.Fatal("FATAL: remote secret provider health check failed")
+		}
+		return provider
+	default:
+		log.Fatalf("FATAL: unsupported SECRET_PROVIDER %q (expected env, file, or remote)", mode)
+	}
+	return secretprovider.EnvProvider{}
+}
+
+func getSecret(provider secretprovider.Provider, key, fallback string) string {
+	value, err := provider.Get(context.Background(), key)
+	if err == nil {
+		return value
+	}
+	if errors.Is(err, secretprovider.ErrNotFound) {
+		return fallback
+	}
+	log.Fatalf("FATAL: resolve secret %s from %s provider: %v", key, provider.Info().Name, err)
+	return fallback
 }
 
 func splitCSV(value string) []string {

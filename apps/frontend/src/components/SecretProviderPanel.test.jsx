@@ -1,0 +1,18 @@
+import { render, screen } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import SecretProviderPanel from './SecretProviderPanel.jsx'
+import { fetchPlatformSecretStatus } from '../lib/api.js'
+
+vi.mock('../lib/api.js', () => ({ fetchPlatformSecretStatus: vi.fn() }))
+
+describe('SecretProviderPanel', () => {
+  beforeEach(() => vi.clearAllMocks())
+  it('shows provider metadata without secret values', async () => {
+    fetchPlatformSecretStatus.mockResolvedValue({ provider:'remote', external:true, location:'https://secrets.internal', healthy:true, managed_keys:['JWT_SECRET'] })
+    render(<SecretProviderPanel />)
+    expect(await screen.findByText('remote')).toBeInTheDocument()
+    expect(screen.getByText('External custody')).toBeInTheDocument()
+    expect(screen.getByText('JWT_SECRET')).toBeInTheDocument()
+    expect(document.body.textContent).not.toContain('managed-secret')
+  })
+})

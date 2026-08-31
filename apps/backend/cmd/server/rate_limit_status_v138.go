@@ -9,6 +9,7 @@ import (
 
 	"github.com/mlko01/lyrahcle/apps/backend/internal/auth"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/config"
+	"github.com/mlko01/lyrahcle/apps/backend/internal/dbscope"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/store"
 )
 
@@ -48,7 +49,8 @@ func registerRateLimitStatusRoutes(
 				http.Error(w, "platform administrator required", http.StatusForbidden)
 				return
 			}
-			next.ServeHTTP(w, r)
+			ctx := dbscope.WithPlatformControlPlane(r.Context())
+			next.ServeHTTP(w, r.WithContext(ctx))
 		}))
 	}
 

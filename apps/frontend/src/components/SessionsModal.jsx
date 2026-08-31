@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { fetchSessions, revokeAllSessions, revokeSession } from '../lib/api.js'
 import { useI18n } from '../lib/I18nContext.jsx'
 import { useFocusTrap } from '../lib/useFocusTrap.js'
@@ -89,15 +90,16 @@ export default function SessionsModal({ onClose, onCurrentSessionRevoked }) {
     }
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-6">
+  return createPortal(
+    <div className="fixed inset-0 z-[100] overflow-y-auto bg-black/70 p-4 backdrop-blur-[2px] sm:p-6">
+      <div className="flex min-h-full items-center justify-center">
       <div
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="sessions-title"
         tabIndex={-1}
-        className="w-full max-w-2xl rounded-lg border border-lyra-border bg-lyra-panel p-6 outline-none"
+        className="w-full max-w-2xl overflow-hidden rounded-xl border border-lyra-border bg-lyra-panel p-5 shadow-2xl shadow-black/40 outline-none sm:p-6"
       >
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
@@ -173,6 +175,8 @@ export default function SessionsModal({ onClose, onCurrentSessionRevoked }) {
           </button>
         </div>
       </div>
-    </div>
+      </div>
+    </div>,
+    document.body,
   )
 }

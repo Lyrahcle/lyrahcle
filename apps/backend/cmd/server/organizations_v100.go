@@ -4,15 +4,18 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 	"regexp"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/audit"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/auth"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/config"
+	"github.com/mlko01/lyrahcle/apps/backend/internal/dbscope"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/store"
 )
 
@@ -50,7 +53,8 @@ func registerOrganizationRoutes(r chi.Router, cfg config.Config, organizations *
 					http.Error(w, "platform administrator required", http.StatusForbidden)
 					return
 				}
-				next.ServeHTTP(w, r)
+				ctx := dbscope.WithPlatformControlPlane(r.Context())
+				next.ServeHTTP(w, r.WithContext(ctx))
 			}))
 		}
 		r.With(requirePlatformAdmin).Get("/", func(w http.ResponseWriter, r *http.Request) {
@@ -142,26 +146,11 @@ func registerOrganizationRoutes(r chi.Router, cfg config.Config, organizations *
 		})
 
 		r.With(requirePlatformAdmin).Get("/platform-users", func(w http.ResponseWriter, r *http.Request) {
-			allUsers, err := users.List(r.Context())
+			items, err := users.ListPlatformUsers(r.Context())
 			if err != nil {
+				log.Printf("platform user listing failed request_id=%s: %v", middleware.GetReqID(r.Context()), err)
 				http.Error(w, "platform user listing failed", http.StatusInternalServerError)
 				return
-			}
-			adminIDs, err := users.ListPlatformAdministratorIDs(r.Context())
-			if err != nil {
-				http.Error(w, "platform administrator listing failed", http.StatusInternalServerError)
-				return
-			}
-			adminSet := map[uuid.UUID]bool{}
-			for _, id := range adminIDs {
-				adminSet[id] = true
-			}
-			items := make([]map[string]interface{}, 0, len(allUsers))
-			for _, user := range allUsers {
-				items = append(items, map[string]interface{}{
-					"id": user.ID, "organization_id": user.OrganizationID, "email": user.Email,
-					"username": user.Username, "enabled": user.Enabled, "platform_admin": adminSet[user.ID],
-				})
 			}
 			w.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(w).Encode(items)

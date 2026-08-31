@@ -27,20 +27,24 @@ type Device interface {
 }
 
 type DeviceCapabilities struct {
-	Architecture    string
-	OS              string
-	DriverVersion   string
-	FirmwareVersion string
-	FrequencyMinHz  int64
-	FrequencyMaxHz  int64
-	SampleRatesHz   []int64
-	BandwidthsHz    []int64
-	GainElements    []string
-	Channels        int
-	GPS             bool
-	PPS             bool
-	TemperatureC    *float64
-	SampleDrops     int64
+	Architecture            string
+	OS                      string
+	DriverVersion           string
+	FirmwareVersion         string
+	FrequencyMinHz          int64
+	FrequencyMaxHz          int64
+	SampleRatesHz           []int64
+	BandwidthsHz            []int64
+	GainElements            []string
+	Channels                int
+	GPS                     bool
+	PPS                     bool
+	TemperatureC            *float64
+	SampleDrops             int64
+	IntegrityManifestSHA256 string
+	IntegrityMachineIDHash  string
+	IntegrityBootID         string
+	IntegrityFileCount      int
 }
 
 type DeviceInfo struct {

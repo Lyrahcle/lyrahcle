@@ -280,3 +280,17 @@ func (s *AgentConfigStore) CreateInOrganization(ctx context.Context, organizatio
 	}
 	return s.Create(ctx, agentID, settings, createdBy, sign)
 }
+
+// ClearDesiredInOrganization removes the desired configuration pointer without deleting
+// immutable signed history. It is used when rolling back a staged rollout for an agent
+// that had no desired configuration before the rollout started.
+func (s *AgentConfigStore) ClearDesiredInOrganization(ctx context.Context, organizationID uuid.UUID, agentID string) error {
+	tag, err := s.pool.Exec(ctx, `DELETE FROM agent_config_state WHERE organization_id=$1 AND agent_id=$2`, organizationID, agentID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrAgentConfigNotFound
+	}
+	return nil
+}

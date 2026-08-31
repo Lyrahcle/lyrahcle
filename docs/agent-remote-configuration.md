@@ -80,3 +80,9 @@ The satellite target is metadata for correlation and does not grant command auth
 
 
 For managed rotation, prepare the new key in Platform → Signing Keys, copy only the returned public key into each agent's `AGENT_CONFIG_VERIFY_KEY_DIR`, then activate the staged KID. Do not activate before public-key distribution is complete.
+
+## Fleet staged rollouts (v1.4.1)
+
+Tenant operators with `agents.manage` can create staged fleet rollouts from the Connectivity UI. A rollout stores an explicit active-agent cohort, signed desired configuration, batch size, rejection threshold, and soak target. Promotion is operator-controlled: `start` issues the first canary batch and `advance` is accepted only after the current batch has acknowledged and the soak interval has elapsed. If the cumulative decided targets exceed the configured rejection percentage, promotion fails closed and the rollout enters `failed`.
+
+Operators can pause/resume a running rollout and roll it back from the UI. Rollback restores each target's previous desired version; agents that had no desired configuration before the rollout have their desired pointer cleared while immutable signed history is retained. All rollout routes are tenant scoped and guarded by `agents.read` / `agents.manage`, and the authorization inventory test treats every rollout endpoint as a reviewed sensitive route.

@@ -9,6 +9,10 @@ vi.mock('../lib/api.js', () => ({
   fetchAgentConfig: vi.fn(),
   fetchAgentConfigHistory: vi.fn(),
   rollbackAgentConfig: vi.fn(),
+  fetchAgentRollouts: vi.fn(),
+  fetchAgentRollout: vi.fn(),
+  createAgentRollout: vi.fn(),
+  agentRolloutAction: vi.fn(),
 }))
 
 function renderPanel() {
@@ -27,6 +31,7 @@ describe('AgentRemoteConfigPanel', () => {
     vi.clearAllMocks()
     api.fetchAgentConfig.mockResolvedValue(null)
     api.fetchAgentConfigHistory.mockResolvedValue([])
+    api.fetchAgentRollouts.mockResolvedValue([])
   })
 
   it('loads desired config and history for the active agent', async () => {

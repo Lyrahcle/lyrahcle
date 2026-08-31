@@ -120,6 +120,10 @@ Prometheus alert rules live in `deploy/prometheus/alerts.yml`; Grafana provision
 | `AGENT_FIRMWARE_VERSION` | Optional connected-device firmware version | unset |
 | `AGENT_CONFIG_SIGNING_KEY_FILE` | Backend Ed25519 private key for signing remote agent configuration | disabled |
 | `AGENT_CONFIG_SIGNING_KEY_DIR` | Managed backend-only directory for staged/active/grace/revoked remote-config signing keys | disabled |
+| `AGENT_CONFIG_SIGNER_ENDPOINT` | HTTPS endpoint for an external Vault/KMS/HSM signing gateway; mutually exclusive with local signing-key settings | disabled |
+| `AGENT_CONFIG_SIGNER_TOKEN` | Optional bearer credential sent only to the external signer; never returned by APIs/UI | disabled |
+| `AGENT_CONFIG_SIGNER_KID` | Active external signing key identifier | required with external signer |
+| `AGENT_CONFIG_SIGNER_ALGORITHM` | External signer algorithm | `Ed25519` |
 | `AGENT_CONFIG_SIGNING_GRACE_PERIOD` | Compatibility window for the previous remote-config signing key after activation | `168h` |
 
 Rotation scheduling is configured from **Platform → Remote Config Signing Keys** when `AGENT_CONFIG_SIGNING_KEY_DIR` enables the managed provider. The persisted policy controls prepare-only automation and warning windows; activation always remains manual after public-key distribution.

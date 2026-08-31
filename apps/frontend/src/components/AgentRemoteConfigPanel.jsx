@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { applyAgentConfig, fetchAgentConfig, fetchAgentConfigHistory, rollbackAgentConfig } from '../lib/api.js'
 import { useI18n } from '../lib/I18nContext.jsx'
 import TableScroll from './TableScroll.jsx'
+import FleetRolloutPanel from './FleetRolloutPanel.jsx'
 
 function shortKID(kid, legacyLabel) {
   if (!kid) return legacyLabel
@@ -163,6 +164,7 @@ export default function AgentRemoteConfigPanel({ agents, satellites = [], canMan
           </TableScroll>
         </div>
       )}
+      <FleetRolloutPanel agents={agents} satellites={satellites} canManage={canManage} />
     </div>
   )
 }

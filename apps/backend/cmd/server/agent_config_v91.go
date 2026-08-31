@@ -24,12 +24,14 @@ import (
 )
 
 func buildAgentConfigSigner(cfg config.Config) (*agentconfig.Signer, keyprovider.Provider, error) {
-	if cfg.AgentConfigSigningKeyDir == "" && cfg.AgentConfigSigningKeyFile == "" {
+	if cfg.AgentConfigSigningKeyDir == "" && cfg.AgentConfigSigningKeyFile == "" && cfg.AgentConfigSignerEndpoint == "" {
 		return nil, nil, nil
 	}
 	var provider keyprovider.Provider
 	var err error
-	if cfg.AgentConfigSigningKeyDir != "" {
+	if cfg.AgentConfigSignerEndpoint != "" {
+		provider, err = keyprovider.NewRemoteProvider(cfg.AgentConfigSignerEndpoint, cfg.AgentConfigSignerToken, cfg.AgentConfigSignerKID, cfg.AgentConfigSignerAlgorithm, 5*time.Second)
+	} else if cfg.AgentConfigSigningKeyDir != "" {
 		provider, err = keyprovider.NewManagedLocalProvider(cfg.AgentConfigSigningKeyDir, cfg.AgentConfigSigningKeyFile)
 	} else {
 		provider, err = keyprovider.NewLocalProvider(cfg.AgentConfigSigningKeyFile)

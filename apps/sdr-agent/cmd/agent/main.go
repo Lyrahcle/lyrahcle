@@ -11,6 +11,7 @@ import (
 	"github.com/mlko01/lyrahcle/apps/sdr-agent/internal/capture"
 	"github.com/mlko01/lyrahcle/apps/sdr-agent/internal/forensics"
 	"github.com/mlko01/lyrahcle/apps/sdr-agent/internal/identity"
+	"github.com/mlko01/lyrahcle/apps/sdr-agent/internal/integrity"
 	"github.com/mlko01/lyrahcle/apps/sdr-agent/internal/remoteconfig"
 	"github.com/mlko01/lyrahcle/apps/sdr-agent/internal/replay"
 	"github.com/mlko01/lyrahcle/apps/sdr-agent/internal/soapy"
@@ -139,6 +140,15 @@ func main() {
 	var source capture.Source = capture.MockSource{}
 
 	if info := soapy.NewMockDevice().GetDeviceInfo(); info != nil {
+		report, err := integrity.Measure(integrity.PathsFromCSV(getEnv("AGENT_INTEGRITY_PATHS", "")))
+		if err != nil {
+			log.Printf("edge integrity measurement failed (non-fatal): %v", err)
+		} else {
+			info.Capabilities.IntegrityManifestSHA256 = report.ManifestSHA256
+			info.Capabilities.IntegrityMachineIDHash = report.MachineIDHash
+			info.Capabilities.IntegrityBootID = report.BootID
+			info.Capabilities.IntegrityFileCount = report.FileCount
+		}
 		if err := client.ReportDevice(info); err != nil {
 			log.Printf("device self-report failed (non-fatal): %v", err)
 		}

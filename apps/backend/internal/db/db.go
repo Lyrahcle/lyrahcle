@@ -6,11 +6,35 @@ import (
 	"os"
 	"sort"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/mlko01/lyrahcle/apps/backend/internal/dbscope"
 )
 
 func Connect(ctx context.Context, dsn string) (*pgxpool.Pool, error) {
-	pool, err := pgxpool.New(ctx, dsn)
+	cfg, err := pgxpool.ParseConfig(dsn)
+	if err != nil {
+		return nil, fmt.Errorf("db: parse config: %w", err)
+	}
+	cfg.BeforeAcquire = func(acquireCtx context.Context, conn *pgx.Conn) bool {
+		request := dbscope.IsRequest(acquireCtx) && !dbscope.IsPlatformControlPlane(acquireCtx)
+		organizationID, hasOrganization := dbscope.OrganizationID(acquireCtx)
+		requestValue := "off"
+		organizationValue := ""
+		if request {
+			requestValue = "on"
+			if hasOrganization {
+				organizationValue = organizationID.String()
+			}
+		}
+		_, err := conn.Exec(acquireCtx, `SELECT set_config('lyrahcle.rls_request', $1, false), set_config('lyrahcle.organization_id', $2, false)`, requestValue, organizationValue)
+		return err == nil
+	}
+	cfg.AfterRelease = func(conn *pgx.Conn) bool {
+		_, err := conn.Exec(context.Background(), `RESET lyrahcle.rls_request; RESET lyrahcle.organization_id`)
+		return err == nil
+	}
+	pool, err := pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {
 		return nil, fmt.Errorf("db: connect: %w", err)
 	}

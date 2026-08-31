@@ -101,3 +101,18 @@ Default policy:
 Accepted limits are 1–365 days for the rotation interval and 1–720 hours for each warning window.
 
 The backend exports bounded Prometheus metrics for key counts, rotation due state, staged pending state, lifecycle warning codes, and automation outcomes. Prometheus rules alert on no active key, overdue rotation, staged keys awaiting activation, approaching grace expiry, and automation failures.
+
+
+## External signer custody
+
+Production deployments can keep remote-configuration signing key bytes entirely outside the Lyrahcle backend by configuring `AGENT_CONFIG_SIGNER_ENDPOINT` and `AGENT_CONFIG_SIGNER_KID`. This mode is mutually exclusive with the local key file/directory providers and requires an absolute HTTPS endpoint. The optional `AGENT_CONFIG_SIGNER_TOKEN` is used as a service credential and is never exposed by the platform API or UI.
+
+The signer gateway contract is deliberately small so it can front Vault, a cloud KMS, or an HSM:
+
+- `GET /health` returns any 2xx status when the signer is ready.
+- `POST /v1/sign` accepts `{ "kid", "algorithm", "payload_b64" }` and returns `{ "kid", "signature_b64" }`.
+- The configured KID is checked on every response; unexpected key IDs fail closed.
+- Lyrahcle currently requires Ed25519 for SDR-agent remote configuration compatibility.
+- Private key material must never be returned by the gateway.
+
+Platform → Remote Config Signing Keys displays external-custody status, the non-secret endpoint, active KID, algorithm, and signer health. Lifecycle operations remain disabled for this generic external provider; rotation must be performed in the custody system and the configured active KID updated after trust distribution to agents. A provider-specific lifecycle adapter may add staged rotation later without weakening the no-key-export boundary.

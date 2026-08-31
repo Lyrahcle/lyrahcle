@@ -166,7 +166,20 @@ export default function SigningKeysPanel() {
         </button>
       </div>
 
-      {!state?.managed && state?.provider !== 'disabled' && (
+      {state?.provider_info?.external && (
+        <section aria-label="External signing custody" className="rounded border border-lyra-ok/30 bg-lyra-ok/5 p-3 text-xs text-lyra-text">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="font-mono uppercase text-lyra-ok">External key custody</span>
+            <span className={state?.provider_health?.healthy ? 'text-lyra-ok' : 'text-lyra-bad'}>
+              {state?.provider_health?.healthy ? 'Signer healthy' : 'Signer unavailable'}
+            </span>
+          </div>
+          <p className="mt-2 break-all font-mono text-[10px] text-lyra-muted">{state.provider_info.endpoint}</p>
+          <p className="mt-1 font-mono text-[10px] text-lyra-muted">KID: {state.provider_info.active_kid || '—'} · {state.provider_info.algorithm || '—'}</p>
+          {state?.provider_health?.error && <p className="mt-2 text-lyra-bad">{state.provider_health.error}</p>}
+        </section>
+      )}
+      {!state?.managed && state?.provider !== 'disabled' && !state?.provider_info?.external && (
         <p className="rounded border border-lyra-warn/30 bg-lyra-warn/5 p-3 text-xs text-lyra-warn">{t('signingKeys.legacyHint')}</p>
       )}
       {state?.provider === 'disabled' && (

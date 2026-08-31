@@ -1,5 +1,18 @@
 - v11.16: fixed PostgreSQL asset projection/scan parity exposed by CI integration tests and completed capability-based auth for hybrid RF ingest, detection rules, RF reads, alerts, and machine-only agent self-service routes.
+- Fixed the top-left navigation dropdown to use an opaque background for consistent readability.
+
+### Fixed
+- Render Active Sessions through the same viewport portal shell used by Change Password and Google Authenticator, avoiding clipping/stacking inside the account menu.
+- Make navigation contract tests portable under Vitest/jsdom by resolving source files from `process.cwd()` instead of `import.meta.url`.
 - v11.1: enforce granular capabilities across sensitive HTTP read/write surfaces.
+
+### Navigation shell: top-left page menu
+
+- Replaced the horizontal primary tabs with a top-left dropdown navigation menu.
+- Orbital is the default landing dashboard and remains reachable from the Lyrahcle logo.
+- Navigation entries are permission-aware and expose Admin/Platform only when authorized.
+- Added Settings to the primary page menu and active-page indication with keyboard/Escape/outside-click behavior.
+
 - v11.0.1: fixed backend import paths to match the Go module declared in apps/backend/go.mod.
 - v11.0: granular organization-scoped RBAC foundation with permissions, custom roles, compatibility mappings and permission middleware.
 - v10.6: added tenant-isolation audit gates, full tenant snapshots, source-contract checks and optional database-backed Org-A/Org-B integration tests.
@@ -164,3 +177,19 @@ Notable changes are tracked here until versioned release notes take over.
 - Added automatic certificate rotation, quarantine, irreversible revocation, certificate fingerprints, versions, and last-seen posture.
 - Added mTLS identity management to Connectivity while retaining legacy API keys only for migration.
 - Added migration `0021_agent_identity_mtls.sql` and SDR Agent CA generation tooling.
+
+### v14.2 tenant database isolation
+- Added PostgreSQL `FORCE ROW LEVEL SECURITY` for core tenant-owned operational tables.
+- Added request/organization propagation into pgx pooled sessions with mandatory reset on release.
+- HTTP database access without an organization now fails closed at the database policy layer.
+- Added parent-derived RLS for incident events and asset CVE alerts.
+
+### Security hardening v1.43
+- Added centralized backend secret-provider abstraction (`env`, hardened file, HTTPS remote) with production fail-closed behavior for process-environment custody.
+- Added Platform UI visibility for secret-provider health/metadata without exposing secret values.
+- Added an explicit post-authorization platform control-plane DB scope so global Platform operations remain compatible with PostgreSQL RLS without granting tenant users a bypass.
+
+- Added SDR edge-node integrity measurements with backend-owned baselines and UI tamper status.
+- Added a Lyrahcle incident-response runbook covering privileged-account, signing-key, SDR-agent, edge-tamper, cross-tenant, secret, database, evidence-preservation, recovery, and post-incident procedures, with a Platform quick-action panel.
+
+- Added the SDR hardware/firmware supply-chain threat model and hardened security account dialogs with viewport portals and responsive modal layout.

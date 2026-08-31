@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -33,6 +34,7 @@ import (
 	"github.com/mlko01/lyrahcle/apps/backend/internal/celestrak"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/config"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/db"
+	"github.com/mlko01/lyrahcle/apps/backend/internal/dbscope"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/detection"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/joblock"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/keyprovider"
@@ -255,6 +257,7 @@ func newRouterWithAgentConfigSigning(
 	searchStore := store.NewSearchStore(pool)
 	agentIdentities := store.NewAgentIdentityStore(pool)
 	agentConfigs := store.NewAgentConfigStore(pool)
+	fleetRollouts := store.NewFleetRolloutStore(pool)
 	orbitalEvents := store.NewOrbitalEventStore(pool)
 	organizations := store.NewOrganizationStore(pool)
 	tenantScope := store.NewTenantScopeStore(pool)
@@ -306,6 +309,7 @@ func newRouterWithAgentConfigSigning(
 	}
 
 	r := chi.NewRouter()
+	r.Use(dbscope.Middleware)
 	r.Use(sanitizeRequestID)
 	r.Use(middleware.RequestID)
 	r.Use(requestIDResponseHeader)
@@ -353,6 +357,7 @@ func newRouterWithAgentConfigSigning(
 
 		registerAgentIdentityRoutes(r, cfg, agentCA, agentIdentities, agentKeys, auditLog, rbac, isTokenRevoked, tenantLimiter)
 		registerAgentConfigRoutes(r, cfg, agentConfigSigner, agentConfigKeyProvider, agentConfigs, agentIdentities, satellites, auditLog, rbac, isTokenRevoked, tenantLimiter)
+		registerFleetRolloutRoutes(r, cfg, agentConfigSigner, fleetRollouts, agentConfigs, satellites, auditLog, rbac, isTokenRevoked)
 
 		r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)).Get("/search", func(w http.ResponseWriter, r *http.Request) {
 			query := strings.TrimSpace(r.URL.Query().Get("q"))
@@ -1040,6 +1045,7 @@ func newRouterWithAgentConfigSigning(
 		registerOrganizationRoutes(r, cfg, organizations, users, auditLog, isTokenRevoked)
 		registerSigningKeyRoutes(r, cfg, agentConfigKeyProvider, users, auditLog, isTokenRevoked)
 		registerRateLimitStatusRoutes(r, cfg, users, isTokenRevoked, redisClient != nil)
+		registerSecretStatusRoutes(r, cfg, users, isTokenRevoked)
 		registerTenantScopeRoutes(r, cfg, tenantScope, rbac, isTokenRevoked)
 		registerRBACRoutes(r, cfg, rbac, auditLog, isTokenRevoked)
 
@@ -1734,6 +1740,7 @@ func newRouterWithAgentConfigSigning(
 					return
 				}
 				reading.OrganizationID = organizationID
+				r = r.WithContext(dbscope.WithOrganization(r.Context(), organizationID))
 
 				history, err := rf.RecentForAgentInOrganization(r.Context(), organizationID, reading.AgentID, anomalyHistoryWindow)
 				if err != nil {
@@ -2466,14 +2473,53 @@ func newRouterWithAgentConfigSigning(
 	return r
 }
 
+type statusCapturingResponseWriter struct {
+	http.ResponseWriter
+	status int
+	bytes  int
+}
+
+func (w *statusCapturingResponseWriter) WriteHeader(status int) {
+	if w.status != 0 {
+		return
+	}
+	w.status = status
+	w.ResponseWriter.WriteHeader(status)
+}
+
+func (w *statusCapturingResponseWriter) Write(body []byte) (int, error) {
+	if w.status == 0 {
+		w.WriteHeader(http.StatusOK)
+	}
+	n, err := w.ResponseWriter.Write(body)
+	w.bytes += n
+	return n, err
+}
+
+func (w *statusCapturingResponseWriter) Flush() {
+	if w.status == 0 {
+		w.WriteHeader(http.StatusOK)
+	}
+	if flusher, ok := w.ResponseWriter.(http.Flusher); ok {
+		flusher.Flush()
+	}
+}
+
 func structuredRequestLogger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
-		next.ServeHTTP(w, r)
+		captured := &statusCapturingResponseWriter{ResponseWriter: w}
+		next.ServeHTTP(captured, r)
+		status := captured.status
+		if status == 0 {
+			status = http.StatusOK
+		}
 		event := map[string]interface{}{
 			"event":       "http_request",
 			"method":      r.Method,
 			"path":        r.URL.Path,
+			"status":      status,
+			"bytes":       captured.bytes,
 			"request_id":  middleware.GetReqID(r.Context()),
 			"remote_ip":   clientIP(r),
 			"duration_ms": time.Since(start).Milliseconds(),
@@ -2848,6 +2894,22 @@ func validateAgentDeviceReport(info store.AgentDeviceInfo) error {
 		}
 	}
 	c := info.Capabilities
+	if c.IntegrityBaselineSHA256 != "" || c.IntegrityStatus != "" {
+		return errors.New("integrity baseline and status are read-only")
+	}
+	for _, digest := range []string{c.IntegrityManifestSHA256, c.IntegrityMachineIDHash} {
+		if digest != "" {
+			if len(digest) != 64 {
+				return errors.New("invalid integrity SHA-256 digest")
+			}
+			if _, err := hex.DecodeString(digest); err != nil {
+				return errors.New("invalid integrity SHA-256 digest")
+			}
+		}
+	}
+	if len(c.IntegrityBootID) > 64 || c.IntegrityFileCount < 0 || c.IntegrityFileCount > 1024 {
+		return errors.New("invalid edge integrity metadata")
+	}
 	if len(c.Architecture) > 64 || len(c.OS) > 64 || len(c.DriverVersion) > 128 || len(c.FirmwareVersion) > 128 {
 		return errors.New("hardware capability metadata is too long")
 	}

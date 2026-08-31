@@ -14,7 +14,7 @@ This policy covers the open-core repository, including `apps/`, `packages/`, dep
 
 Production deployments must use a `JWT_SECRET` of at least 32 bytes, a short `JWT_ACCESS_TTL`, non-default bootstrap credentials, TLS, protected PostgreSQL/Redis access, certificate-backed mTLS identities for long-running SDR agents, and current dependencies. The backend refuses several insecure defaults when `ENV=production`.
 
-See [docs/ieee3536-threat-model.md](./docs/ieee3536-threat-model.md) for the current STRIDE model, [docs/compliance-checklist.md](./docs/compliance-checklist.md) for readiness evidence, [SECURITY_ROADMAP.md](./SECURITY_ROADMAP.md) for implementation status and [docs/deployment.md](./docs/deployment.md) for deployment requirements.
+See [docs/incident-response-runbook.md](./docs/incident-response-runbook.md) for Lyrahcle security-incident containment and recovery, see [docs/ieee3536-threat-model.md](./docs/ieee3536-threat-model.md) for the current stride model, [docs/compliance-checklist.md](./docs/compliance-checklist.md) for readiness evidence, [SECURITY_ROADMAP.md](./SECURITY_ROADMAP.md) for implementation status and [docs/deployment.md](./docs/deployment.md) for deployment requirements.
 
 ## SDR Agent CA
 
@@ -24,3 +24,5 @@ The SDR Agent CA private key can issue machine identities and must be treated as
 ## Agent remote configuration signing key
 
 The v9.1 Ed25519 configuration-signing key is a separate high-value secret from the SDR Agent CA. Keep the private key backend-only and distribute only its public verification key to agents. Remote configuration remains restricted to typed capture settings; do not extend the channel with shell commands or arbitrary executable payloads.
+
+See `docs/sdr-hardware-supply-chain-threat-model.md` for SDR hardware, firmware, FPGA, USB and edge supply-chain threats and acceptance controls.

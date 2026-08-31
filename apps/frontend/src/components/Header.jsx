@@ -3,6 +3,7 @@ import LogoMark from './LogoMark.jsx'
 import Clock from './Clock.jsx'
 import AccountMenu from './AccountMenu.jsx'
 import SearchBar from './SearchBar.jsx'
+import NavigationMenu from './NavigationMenu.jsx'
 import SystemStatusField from './SystemStatusField.jsx'
 import { useI18n } from '../lib/I18nContext.jsx'
 
@@ -10,6 +11,9 @@ export default function Header({
   onLogout,
   onHome,
   onOpenSettings,
+  navigationItems,
+  activePage,
+  onNavigate,
   backendStatus,
   dbStatus,
   sdrStatus,
@@ -23,10 +27,14 @@ export default function Header({
   return (
     <header className="sticky top-0 z-40 border-b border-lyra-borderSoft bg-lyra-bg/85 backdrop-blur">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-6 py-3.5 sm:px-8">
-        <button
-          onClick={onHome}
-          className="flex items-center gap-3 rounded outline-none focus-visible:ring-1 focus-visible:ring-lyra-gold"
-        >
+        <div className="flex min-w-0 items-center gap-3">
+          {navigationItems?.length > 0 && (
+            <NavigationMenu items={navigationItems} active={activePage} onChange={onNavigate} />
+          )}
+          <button
+            onClick={onHome}
+            className="flex min-w-0 items-center gap-3 rounded outline-none focus-visible:ring-1 focus-visible:ring-lyra-gold"
+          >
           <LogoMark className="h-9 w-9" />
           <span className="font-display text-lg font-medium tracking-tight text-lyra-goldBright">
             Lyrahcle
@@ -34,7 +42,8 @@ export default function Header({
           <span className="hidden font-mono text-[10px] uppercase tracking-[0.25em] text-lyra-mutedDim sm:inline">
             {t('header.tagline')}
           </span>
-        </button>
+          </button>
+        </div>
 
         <div className="flex items-center gap-3">
           <SystemStatusField backendStatus={backendStatus} dbStatus={dbStatus} sdrStatus={sdrStatus} />

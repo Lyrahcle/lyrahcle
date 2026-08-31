@@ -13,6 +13,7 @@ import (
 	"github.com/mlko01/lyrahcle/apps/backend/internal/audit"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/auth"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/config"
+	"github.com/mlko01/lyrahcle/apps/backend/internal/dbscope"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/keyprovider"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/metrics"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/store"
@@ -25,6 +26,8 @@ type signingKeyListResponse struct {
 	Keys               []keyprovider.KeyMetadata   `json:"keys"`
 	RotationPolicy     *keyprovider.RotationPolicy `json:"rotation_policy,omitempty"`
 	Health             *keyprovider.RotationHealth `json:"health,omitempty"`
+	ProviderInfo       *keyprovider.ProviderInfo   `json:"provider_info,omitempty"`
+	ProviderHealth     *keyprovider.ProviderHealth `json:"provider_health,omitempty"`
 }
 
 func registerSigningKeyRoutes(
@@ -51,7 +54,8 @@ func registerSigningKeyRoutes(
 				http.Error(w, "platform administrator required", http.StatusForbidden)
 				return
 			}
-			next.ServeHTTP(w, r)
+			ctx := dbscope.WithPlatformControlPlane(r.Context())
+			next.ServeHTTP(w, r.WithContext(ctx))
 		}))
 	}
 
@@ -68,6 +72,15 @@ func registerSigningKeyRoutes(
 			if provider == nil {
 				writeSigningJSON(w, response)
 				return
+			}
+			if infoProvider, ok := provider.(keyprovider.InfoProvider); ok {
+				info := infoProvider.ProviderInfo()
+				response.Provider = info.Name
+				response.ProviderInfo = &info
+			}
+			if healthProvider, ok := provider.(keyprovider.HealthProvider); ok {
+				health := healthProvider.Health(r.Context())
+				response.ProviderHealth = &health
 			}
 			if lifecycle, ok := provider.(keyprovider.LifecycleProvider); ok {
 				keys, err := lifecycle.Keys(r.Context())
@@ -95,7 +108,9 @@ func registerSigningKeyRoutes(
 				http.Error(w, "failed to read active signing key", http.StatusInternalServerError)
 				return
 			}
-			response.Provider = "local-legacy"
+			if response.Provider == "disabled" {
+				response.Provider = "local-legacy"
+			}
 			response.Keys = []keyprovider.KeyMetadata{{KID: active.KID(), Algorithm: active.Algorithm(), Status: keyprovider.KeyStatusActive}}
 			writeSigningJSON(w, response)
 		})

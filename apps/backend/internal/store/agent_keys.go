@@ -40,20 +40,26 @@ type AgentKeySummary struct {
 }
 
 type AgentDeviceCapabilities struct {
-	Architecture    string   `json:"architecture,omitempty"`
-	OS              string   `json:"os,omitempty"`
-	DriverVersion   string   `json:"driver_version,omitempty"`
-	FirmwareVersion string   `json:"firmware_version,omitempty"`
-	FrequencyMinHz  int64    `json:"frequency_min_hz,omitempty"`
-	FrequencyMaxHz  int64    `json:"frequency_max_hz,omitempty"`
-	SampleRatesHz   []int64  `json:"sample_rates_hz,omitempty"`
-	BandwidthsHz    []int64  `json:"bandwidths_hz,omitempty"`
-	GainElements    []string `json:"gain_elements,omitempty"`
-	Channels        int      `json:"channels,omitempty"`
-	GPS             bool     `json:"gps"`
-	PPS             bool     `json:"pps"`
-	TemperatureC    *float64 `json:"temperature_c,omitempty"`
-	SampleDrops     int64    `json:"sample_drops"`
+	Architecture            string   `json:"architecture,omitempty"`
+	OS                      string   `json:"os,omitempty"`
+	DriverVersion           string   `json:"driver_version,omitempty"`
+	FirmwareVersion         string   `json:"firmware_version,omitempty"`
+	FrequencyMinHz          int64    `json:"frequency_min_hz,omitempty"`
+	FrequencyMaxHz          int64    `json:"frequency_max_hz,omitempty"`
+	SampleRatesHz           []int64  `json:"sample_rates_hz,omitempty"`
+	BandwidthsHz            []int64  `json:"bandwidths_hz,omitempty"`
+	GainElements            []string `json:"gain_elements,omitempty"`
+	Channels                int      `json:"channels,omitempty"`
+	GPS                     bool     `json:"gps"`
+	PPS                     bool     `json:"pps"`
+	TemperatureC            *float64 `json:"temperature_c,omitempty"`
+	SampleDrops             int64    `json:"sample_drops"`
+	IntegrityManifestSHA256 string   `json:"integrity_manifest_sha256,omitempty"`
+	IntegrityMachineIDHash  string   `json:"integrity_machine_id_hash,omitempty"`
+	IntegrityBootID         string   `json:"integrity_boot_id,omitempty"`
+	IntegrityFileCount      int      `json:"integrity_file_count,omitempty"`
+	IntegrityBaselineSHA256 string   `json:"integrity_baseline_sha256,omitempty"`
+	IntegrityStatus         string   `json:"integrity_status,omitempty"`
 }
 
 type AgentDeviceInfo struct {
@@ -68,6 +74,33 @@ type AgentDeviceInfo struct {
 	ReportedAt          time.Time               `json:"reported_at"`
 	Compatibility       string                  `json:"compatibility"`
 	CompatibilityReason string                  `json:"compatibility_reason"`
+}
+
+func applyIntegrityBaseline(previous AgentDeviceCapabilities, current *AgentDeviceCapabilities) {
+	if current == nil {
+		return
+	}
+	if current.IntegrityManifestSHA256 == "" {
+		current.IntegrityBaselineSHA256 = previous.IntegrityBaselineSHA256
+		current.IntegrityStatus = previous.IntegrityStatus
+		return
+	}
+	baseline := previous.IntegrityBaselineSHA256
+	if baseline == "" {
+		if previous.IntegrityManifestSHA256 != "" {
+			baseline = previous.IntegrityManifestSHA256
+		} else {
+			baseline = current.IntegrityManifestSHA256
+		}
+	}
+	current.IntegrityBaselineSHA256 = baseline
+	if previous.IntegrityBaselineSHA256 == "" && previous.IntegrityManifestSHA256 == "" {
+		current.IntegrityStatus = "baseline"
+	} else if current.IntegrityManifestSHA256 == baseline {
+		current.IntegrityStatus = "healthy"
+	} else {
+		current.IntegrityStatus = "changed"
+	}
 }
 
 func finalizeAgentDeviceInfo(info *AgentDeviceInfo, now time.Time) {
@@ -180,6 +213,12 @@ func (s *AgentKeyStore) ReportDevice(ctx context.Context, agentID string, info A
 }
 
 func (s *AgentKeyStore) ReportDeviceInOrganization(ctx context.Context, organizationID uuid.UUID, agentID string, info AgentDeviceInfo) error {
+	var previousJSON []byte
+	var previous AgentDeviceCapabilities
+	if err := s.pool.QueryRow(ctx, `SELECT device_capabilities FROM agent_keys WHERE agent_id=$1 AND organization_id=$2 AND revoked_at IS NULL`, agentID, organizationID).Scan(&previousJSON); err == nil {
+		_ = json.Unmarshal(previousJSON, &previous)
+	}
+	applyIntegrityBaseline(previous, &info.Capabilities)
 	capabilities, err := json.Marshal(info.Capabilities)
 	if err != nil {
 		return err

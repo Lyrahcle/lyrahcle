@@ -202,3 +202,4 @@ func TestManagedProviderRejectsSymlinkDirectory(t *testing.T) {
 		t.Fatal("expected symlink key directory to be rejected")
 	}
 }
+

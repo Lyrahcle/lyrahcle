@@ -27,6 +27,7 @@ This directory contains the technical documentation for Lyrahcle. The root `READ
 | [Software supply chain](./supply-chain.md) | SBOMs, dependency gates, signed releases, provenance |
 | [Improvement roadmap](./improvement-roadmap.md) | Canonical shipped/partial/next/later product backlog |
 | [Documentation maintenance](./documentation-maintenance.md) | Source-of-truth hierarchy and consistency rules |
+| [Incident response runbook](./incident-response-runbook.md) | Containment, key/agent compromise, tenant breach, evidence, and recovery procedures |
 | [Security policy](../SECURITY.md) | Private vulnerability reporting and supported scope |
 | [Security roadmap](../SECURITY_ROADMAP.md) | Security controls, evidence, and remaining v1.0 security gates |
 | [Development plan](../PLAN.md) | Execution order and milestone intent |
@@ -44,3 +45,5 @@ The backend embeds the OpenAPI specification at `/openapi.yaml` and serves Swagg
 - `CHANGELOG.md` is historical and must not be interpreted as current status.
 - `apps/backend/cmd/server/openapi.yaml` is the canonical machine-readable HTTP API description; endpoint descriptions must track the route/authentication implementation.
 - `docs/configuration.md` is the canonical human-readable configuration reference; code defaults and production validation remain authoritative if a discrepancy is discovered.
+
+- [`sdr-hardware-supply-chain-threat-model.md`](sdr-hardware-supply-chain-threat-model.md) — STRIDE analysis and acceptance gates for SDR hardware, firmware, FPGA, USB and edge dependencies.

@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import Header from './Header.jsx'
 import Panel from './Panel.jsx'
-import Tabs from './Tabs.jsx'
 import Skeleton from './Skeleton.jsx'
 import AssetsTable from './AssetsTable.jsx'
 import RfPanel from './RfPanel.jsx'
@@ -24,6 +23,8 @@ import SettingsPanel from './SettingsPanel.jsx'
 import PlatformOrganizationsPanel from './PlatformOrganizationsPanel.jsx'
 import SigningKeysPanel from './SigningKeysPanel.jsx'
 import RateLimitPolicyPanel from './RateLimitPolicyPanel.jsx'
+import SecretProviderPanel from './SecretProviderPanel.jsx'
+import IncidentResponsePanel from './IncidentResponsePanel.jsx'
 import RBACPanel from './RBACPanel.jsx'
 import Footer from './Footer.jsx'
 import ApiStatusBanner from './ApiStatusBanner.jsx'
@@ -164,6 +165,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
     { id: 'connectivity', label: t('tabs.connectivity') },
     ...(adminAccess ? [{ id: 'admin', label: t('tabs.admin') }] : []),
     ...(platformAdmin ? [{ id: 'platform', label: t('tabs.platform') }] : []),
+    { id: 'settings', label: t('tabs.settings') },
   ]
 
   useEffect(() => {
@@ -414,6 +416,9 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
         onLogout={onLogout}
         onHome={() => onChangeTab('orbital')}
         onOpenSettings={() => onChangeTab('settings')}
+        navigationItems={tabs}
+        activePage={activeTab}
+        onNavigate={onChangeTab}
         backendStatus={backendStatus}
         dbStatus={dbStatus}
         sdrStatus={sdrStatus}
@@ -429,8 +434,6 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
       />
 
       <main id="main-content" className="mx-auto max-w-7xl px-6 py-10 sm:px-8">
-        <Tabs tabs={tabs} active={activeTab} onChange={onChangeTab} />
-
         {activeTab === 'orbital' && (
           <div className="grid gap-6">
             <Panel
@@ -623,8 +626,14 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
             <Panel eyebrow={t('signingKeys.eyebrow')} title={t('signingKeys.title')} uppercase>
               <SigningKeysPanel />
             </Panel>
+            <Panel eyebrow="Secret Management" title="Secret Provider" uppercase>
+              <SecretProviderPanel />
+            </Panel>
             <Panel eyebrow={t('rateLimits.eyebrow')} title={t('rateLimits.title')} uppercase>
               <RateLimitPolicyPanel />
+            </Panel>
+            <Panel eyebrow="Security Operations" title="Incident Response" uppercase>
+              <IncidentResponsePanel />
             </Panel>
           </div>
         )}

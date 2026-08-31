@@ -6,6 +6,9 @@ import (
 	"encoding/hex"
 	"net/http"
 	"strings"
+
+	"github.com/google/uuid"
+	"github.com/mlko01/lyrahcle/apps/backend/internal/dbscope"
 )
 
 type contextKey string
@@ -67,6 +70,9 @@ func requireRole(current, previous []byte, minimum Role, isRevoked ...Revocation
 			}
 
 			ctx := context.WithValue(r.Context(), claimsContextKey, claims)
+			if claims.OrganizationID != uuid.Nil {
+				ctx = dbscope.WithOrganization(ctx, claims.OrganizationID)
+			}
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

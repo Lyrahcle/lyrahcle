@@ -358,6 +358,12 @@ func (s *AgentIdentityStore) ReportDevice(ctx context.Context, agentID string, i
 }
 
 func (s *AgentIdentityStore) ReportDeviceInOrganization(ctx context.Context, organizationID uuid.UUID, agentID string, info AgentDeviceInfo) error {
+	var previousJSON []byte
+	var previous AgentDeviceCapabilities
+	if err := s.pool.QueryRow(ctx, `SELECT device_capabilities FROM agent_identities WHERE agent_id=$1 AND organization_id=$2 AND status='active'`, agentID, organizationID).Scan(&previousJSON); err == nil {
+		_ = json.Unmarshal(previousJSON, &previous)
+	}
+	applyIntegrityBaseline(previous, &info.Capabilities)
 	capabilities, err := json.Marshal(info.Capabilities)
 	if err != nil {
 		return err

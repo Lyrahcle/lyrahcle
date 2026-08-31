@@ -3,13 +3,14 @@ import { authHeaders, logout } from './auth.js'
 export const API_ERROR_EVENT = 'lyrahcle:api-error'
 
 export class ApiError extends Error {
-  constructor(message, { status = 0, kind = 'unknown', retryAfterSeconds = 0, requestId = '', cause } = {}) {
+  constructor(message, { status = 0, kind = 'unknown', retryAfterSeconds = 0, requestId = '', endpoint = '', cause } = {}) {
     super(message, cause ? { cause } : undefined)
     this.name = 'ApiError'
     this.status = status
     this.kind = kind
     this.retryAfterSeconds = retryAfterSeconds
     this.requestId = requestId
+    this.endpoint = endpoint
     this.retryable = kind === 'network' || kind === 'rate_limited' || kind === 'server'
   }
 }
@@ -57,13 +58,14 @@ async function readErrorText(res, fallback) {
   return message.trim() || fallback
 }
 
-async function apiErrorFromResponse(res, fallback) {
+async function apiErrorFromResponse(res, fallback, endpoint = '') {
   const message = await readErrorText(res, fallback)
   const error = new ApiError(message, {
     status: res.status,
     kind: classifyStatus(res.status),
     retryAfterSeconds: retryAfterSeconds(res),
     requestId: requestIdFrom(res),
+    endpoint: endpoint || res?.url || '',
   })
   publishApiError(error)
   return error
@@ -889,5 +891,35 @@ export async function activateAgentConfigSigningKey(kid, graceSeconds) {
 export async function revokeAgentConfigSigningKey(kid) {
   const res = await authedFetch(`/api/v1/signing-keys/agent-config/${encodeURIComponent(kid)}/revoke`, { method: 'POST' })
   if (!res.ok) throw await apiErrorFromResponse(res, 'failed to revoke signing key')
+  return res.json()
+}
+
+export async function fetchAgentRollouts() {
+  const res = await authedFetch('/api/v1/agent-rollouts')
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to fetch fleet rollouts')
+  return res.json()
+}
+
+export async function fetchAgentRollout(id) {
+  const res = await authedFetch(`/api/v1/agent-rollouts/${encodeURIComponent(id)}`)
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to fetch fleet rollout')
+  return res.json()
+}
+
+export async function createAgentRollout(payload) {
+  const res = await authedFetch('/api/v1/agent-rollouts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to create fleet rollout')
+  return res.json()
+}
+
+export async function agentRolloutAction(id, action) {
+  const res = await authedFetch(`/api/v1/agent-rollouts/${encodeURIComponent(id)}/${action}`, { method: 'POST' })
+  if (!res.ok) throw await apiErrorFromResponse(res, `failed to ${action} fleet rollout`)
+  return res.json()
+}
+
+export async function fetchPlatformSecretStatus() {
+  const res = await authedFetch('/api/v1/platform/secrets')
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to fetch secret provider status')
   return res.json()
 }

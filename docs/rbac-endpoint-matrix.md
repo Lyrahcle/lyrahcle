@@ -23,3 +23,30 @@ must enforce capabilities rather than `RoleAdmin`/`RoleOperator` directly.
 Global organization administration is intentionally outside tenant-local RBAC: `/api/v1/organizations/*` uses the platform-administrator boundary. `organizations.read` currently protects the tenant scope summary; `organizations.manage` remains reserved for future tenant-local organization settings.
 
 Machine-only self-service routes such as `/api/v1/agents/me/device` and certificate rotation remain credential-scoped. RF ingestion is intentionally hybrid: mTLS/agent-key traffic is authenticated as the agent, while human JWT traffic must hold `rf.ingest`; there is no `RoleOperator` fallback. Static regression tests cover the sensitive human domains and explicitly reject legacy role coupling.
+
+## Pre-v1.0 authorization audit gate
+
+The release audit distinguishes **authentication-only boundaries** from tenant-sensitive
+capability checks. `apps/backend/cmd/server/authorization_audit_v140_test.go` is a CI
+tripwire for this distinction:
+
+- tenant-sensitive administration and analyst routes are inventoried with the capability
+  that must guard them;
+- direct legacy `admin`, `operator`, `analyst`, or `auditor` role middleware is rejected
+  for server routes;
+- the small set of `viewer`-only boundaries is counted explicitly. A new viewer-only
+  boundary fails the test until it is reviewed and deliberately added to the audit.
+
+Viewer-only boundaries are currently accepted only for authentication/self-service,
+stateless TM/TC decoding, search/system metadata, read-only CVE intelligence, and
+control-plane wrappers that perform a separate platform-administrator check. Machine
+self-service remains credential-scoped as described above.
+
+This is intentionally a release guard rather than a claim that route authorization can be
+inferred from role names. New tenant-sensitive routes should use
+`RequirePermissionWithFallback`, `RequireAnyPermissionWithFallback`, or an equivalent
+explicit `requireRequestPermission` capability check and must update this matrix.
+
+## PostgreSQL RLS defense in depth (v14.2)
+
+Tenant authorization remains permission-driven at the HTTP layer, while PostgreSQL now independently enforces organization boundaries for core operational tables through `0040_postgres_row_level_security.sql`. HTTP database access without an authenticated organization is fail-closed. Connection-scoped RLS settings are reset before pool reuse to prevent tenant scope leakage between requests.

@@ -143,3 +143,5 @@
 - [ ] Validate Doppler/visibility false-positive rates against physical SDR capture datasets
 - [ ] Pass prediction windows and AOS/LOS scheduling
 - [ ] Maneuver and conjunction anomaly context
+
+See `docs/sdr-hardware-supply-chain-threat-model.md` for SDR hardware, firmware, FPGA, USB and edge supply-chain threats and acceptance controls.

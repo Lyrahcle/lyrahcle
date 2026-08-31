@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { Cpu, Radio, Satellite, Thermometer, TimerReset } from 'lucide-react'
+import { Cpu, Radio, Satellite, ShieldCheck, Thermometer, TimerReset } from 'lucide-react'
 import { useI18n } from '../lib/I18nContext.jsx'
 import TableScroll from './TableScroll.jsx'
 
@@ -104,6 +104,9 @@ export default function AgentHardwarePanel({ agents = [], legacyKeys = [] }) {
                           <span className="flex items-center gap-1.5"><Satellite className="h-3.5 w-3.5" />GPS {caps.gps ? '✓' : '—'} · PPS {caps.pps ? '✓' : '—'} · RX {device.rx ? '✓' : '—'} · TX {device.tx ? '✓' : '—'}</span>
                           {caps.temperature_c != null && <span className="flex items-center gap-1.5"><Thermometer className="h-3.5 w-3.5" />{caps.temperature_c.toFixed(1)} °C</span>}
                           <span className="flex items-center gap-1.5"><TimerReset className="h-3.5 w-3.5" />{t('connectivity.sampleDrops')}: {caps.sample_drops ?? 0}</span>
+                          <span className="flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5" />{t('connectivity.edgeIntegrity')}: {caps.integrity_status ? t(`connectivity.integrity.${caps.integrity_status}`) : '—'}</span>
+                          {caps.integrity_manifest_sha256 && <span className="break-all font-mono text-[10px]">SHA-256 {caps.integrity_manifest_sha256}</span>}
+                          {caps.integrity_file_count != null && <span>{t('connectivity.integrityFiles')}: {caps.integrity_file_count}</span>}
                         </div>
                       </details>
                     ) : '—'}

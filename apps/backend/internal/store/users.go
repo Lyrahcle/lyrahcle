@@ -31,6 +31,15 @@ type User struct {
 	AuthVersion        int64     `json:"-"`
 }
 
+type PlatformUserSummary struct {
+	ID             uuid.UUID `json:"id"`
+	OrganizationID uuid.UUID `json:"organization_id"`
+	Email          string    `json:"email"`
+	Username       string    `json:"username"`
+	Enabled        bool      `json:"enabled"`
+	PlatformAdmin  bool      `json:"platform_admin"`
+}
+
 type UserStore struct {
 	pool *pgxpool.Pool
 }
@@ -428,6 +437,30 @@ func (s *UserStore) GrantPlatformAdministrator(ctx context.Context, userID uuid.
 		}
 	}
 	return nil
+}
+
+func (s *UserStore) ListPlatformUsers(ctx context.Context) ([]PlatformUserSummary, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT u.id, u.organization_id, u.email, u.username, u.enabled,
+		       (pa.user_id IS NOT NULL) AS platform_admin
+		FROM users u
+		LEFT JOIN platform_administrators pa ON pa.user_id = u.id
+		WHERE u.deleted_at IS NULL
+		ORDER BY u.created_at ASC, u.id ASC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []PlatformUserSummary{}
+	for rows.Next() {
+		var item PlatformUserSummary
+		if err := rows.Scan(&item.ID, &item.OrganizationID, &item.Email, &item.Username, &item.Enabled, &item.PlatformAdmin); err != nil {
+			return nil, err
+		}
+		out = append(out, item)
+	}
+	return out, rows.Err()
 }
 
 func (s *UserStore) ListPlatformAdministratorIDs(ctx context.Context) ([]uuid.UUID, error) {
