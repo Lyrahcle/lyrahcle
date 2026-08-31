@@ -18,6 +18,7 @@ This inventory defines the minimum audit expectation for security-sensitive oper
 | Users | delete | `user.deleted` |
 | Agents | key create/revoke | `agent_key.created` / `agent_key.revoked` |
 | Agents | failed key authentication | `agent_key.auth_failed` |
+| Agents | fleet rollout create/start/advance/pause/resume/rollback | `agent.rollout_created` / `agent.rollout_started` / `agent.rollout_advanced` / `agent.rollout_paused` / `agent.rollout_resumed` / `agent.rollout_rolled_back` |
 | Satellites | create/update TLE | `satellite.upserted` |
 | Detection | create/update rule | `detection_rule.created` / `detection_rule.updated` |
 | Incidents | create/update | `incident.created` / `incident.updated` |

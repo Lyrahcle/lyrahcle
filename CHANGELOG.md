@@ -4,6 +4,7 @@ Notable changes are tracked here until versioned release notes take over.
 
 ## Unreleased
 
+- Completed fleet-rollout administrative audit coverage: create/start/advance/pause/resume/rollback now use centralized audit action constants, pause/resume emit tenant audit events, and a backend contract prevents transition coverage from silently regressing.
 - Enforced the route-authorization regression contract directly in GitHub Actions, not only through local v1 validation.
 - Enforced the bearer-cookie/CSRF regression contract directly in GitHub Actions so introducing browser cookies without CSRF protection fails CI.
 - Aligned the improvement roadmap with the actual local and CI enforcement paths for both security contracts.

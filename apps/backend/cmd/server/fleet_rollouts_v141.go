@@ -130,7 +130,7 @@ func registerFleetRolloutRoutes(r chi.Router, cfg config.Config, signer *agentco
 			http.Error(w, "failed to create rollout", 500)
 			return
 		}
-		logAudit(req.Context(), auditLog, audit.ActorUser, claims.UserID.String(), "agent.rollout_created", clientIP(req), map[string]interface{}{"rollout_id": item.ID, "targets": len(item.Targets), "batch_size": item.BatchSize})
+		logAudit(req.Context(), auditLog, audit.ActorUser, claims.UserID.String(), audit.ActionAgentRolloutCreated, clientIP(req), map[string]interface{}{"rollout_id": item.ID, "targets": len(item.Targets), "batch_size": item.BatchSize})
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(201)
 		json.NewEncoder(w).Encode(item)
@@ -228,17 +228,21 @@ func registerFleetRolloutRoutes(r chi.Router, cfg config.Config, signer *agentco
 			_ = rollouts.SetStatus(req.Context(), orgID, id, []string{"running"}, "completed")
 		}
 		updated, _ := rollouts.Get(req.Context(), orgID, id)
-		logAudit(req.Context(), auditLog, audit.ActorUser, claims.UserID.String(), "agent.rollout_advanced", clientIP(req), map[string]interface{}{"rollout_id": id, "batch": len(targets)})
+		action := audit.ActionAgentRolloutAdvanced
+		if start {
+			action = audit.ActionAgentRolloutStarted
+		}
+		logAudit(req.Context(), auditLog, audit.ActorUser, claims.UserID.String(), action, clientIP(req), map[string]interface{}{"rollout_id": id, "batch": len(targets)})
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(updated)
 	}
 	r.With(manage).Post("/agent-rollouts/{rolloutID}/start", func(w http.ResponseWriter, req *http.Request) { issueBatch(w, req, true) })
 	r.With(manage).Post("/agent-rollouts/{rolloutID}/advance", func(w http.ResponseWriter, req *http.Request) { issueBatch(w, req, false) })
 	r.With(manage).Post("/agent-rollouts/{rolloutID}/pause", func(w http.ResponseWriter, req *http.Request) {
-		changeRolloutStatus(w, req, rollouts, []string{"running"}, "paused")
+		changeRolloutStatus(w, req, rollouts, auditLog, []string{"running"}, "paused", audit.ActionAgentRolloutPaused)
 	})
 	r.With(manage).Post("/agent-rollouts/{rolloutID}/resume", func(w http.ResponseWriter, req *http.Request) {
-		changeRolloutStatus(w, req, rollouts, []string{"paused"}, "running")
+		changeRolloutStatus(w, req, rollouts, auditLog, []string{"paused"}, "running", audit.ActionAgentRolloutResumed)
 	})
 	r.With(manage).Post("/agent-rollouts/{rolloutID}/rollback", func(w http.ResponseWriter, req *http.Request) {
 		orgID, ok := requestOrganizationID(w, req)
@@ -284,13 +288,13 @@ func registerFleetRolloutRoutes(r chi.Router, cfg config.Config, signer *agentco
 		}
 		_ = rollouts.SetStatus(req.Context(), orgID, id, []string{"draft", "running", "paused", "completed", "failed"}, "rolled_back")
 		updated, _ := rollouts.Get(req.Context(), orgID, id)
-		logAudit(req.Context(), auditLog, audit.ActorUser, claims.UserID.String(), "agent.rollout_rolled_back", clientIP(req), map[string]interface{}{"rollout_id": id})
+		logAudit(req.Context(), auditLog, audit.ActorUser, claims.UserID.String(), audit.ActionAgentRolloutRolledBack, clientIP(req), map[string]interface{}{"rollout_id": id})
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(updated)
 	})
 }
 
-func changeRolloutStatus(w http.ResponseWriter, req *http.Request, rollouts *store.FleetRolloutStore, allowed []string, status string) {
+func changeRolloutStatus(w http.ResponseWriter, req *http.Request, rollouts *store.FleetRolloutStore, auditLog *store.AuditStore, allowed []string, status, action string) {
 	orgID, ok := requestOrganizationID(w, req)
 	if !ok {
 		return
@@ -305,6 +309,8 @@ func changeRolloutStatus(w http.ResponseWriter, req *http.Request, rollouts *sto
 		return
 	}
 	item, _ := rollouts.Get(req.Context(), orgID, id)
+	claims, _ := auth.FromContext(req.Context())
+	logAudit(req.Context(), auditLog, audit.ActorUser, claims.UserID.String(), action, clientIP(req), map[string]interface{}{"rollout_id": id, "status": status})
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(item)
 }
