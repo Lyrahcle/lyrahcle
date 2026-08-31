@@ -7,11 +7,7 @@ import (
 )
 
 func TestDetectionAndOperationalPermissionContractsV117(t *testing.T) {
-	data, err := os.ReadFile("main.go")
-	if err != nil {
-		t.Fatal(err)
-	}
-	src := string(data)
+	src := readServerProductionSource(t)
 	for _, token := range []string{
 		`ListByOrganization(r.Context(), orgID`,
 		`GetByOrganization(r.Context(), orgID, ruleID)`,

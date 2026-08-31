@@ -1,17 +1,12 @@
 package main
 
 import (
-	"os"
 	"strings"
 	"testing"
 )
 
 func TestCriticalHandlersUseTenantScopedStores(t *testing.T) {
-	data, err := os.ReadFile("main.go")
-	if err != nil {
-		t.Fatal(err)
-	}
-	src := string(data)
+	src := readServerProductionSource(t)
 
 	required := []string{
 		"assets.ListByOrganization",
@@ -24,7 +19,7 @@ func TestCriticalHandlersUseTenantScopedStores(t *testing.T) {
 	}
 	for _, token := range required {
 		if !strings.Contains(src, token) {
-			t.Fatalf("main.go missing tenant-scoped handler call %q", token)
+			t.Fatalf("server route package missing tenant-scoped handler call %q", token)
 		}
 	}
 }

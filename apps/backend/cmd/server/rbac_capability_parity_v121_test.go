@@ -7,11 +7,7 @@ import (
 )
 
 func TestHybridAndOperationalRoutesUseCapabilitiesV121(t *testing.T) {
-	data, err := os.ReadFile("main.go")
-	if err != nil {
-		t.Fatal(err)
-	}
-	src := string(data)
+	src := readServerProductionSource(t)
 
 	if strings.Contains(src, "auth.RoleOperator") {
 		t.Fatal("production routes still contain a legacy RoleOperator authorization gate")
@@ -25,7 +21,7 @@ func TestHybridAndOperationalRoutesUseCapabilitiesV121(t *testing.T) {
 		`RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "alerts.manage"`,
 	} {
 		if !strings.Contains(src, token) {
-			t.Fatalf("main.go missing capability middleware %q", token)
+			t.Fatalf("server route package missing capability middleware %q", token)
 		}
 	}
 

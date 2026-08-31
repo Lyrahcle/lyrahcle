@@ -16,13 +16,13 @@ func readRouteSource(t *testing.T, name string) string {
 }
 
 func TestRBACRouteMatrixCoversSensitiveDomains(t *testing.T) {
-	mainSrc := readRouteSource(t, "main.go")
+	serverSrc := readServerProductionSource(t)
 	agentSrc := readRouteSource(t, "agent_identity_v90.go")
 	rbacSrc := readRouteSource(t, "rbac_v110.go")
 	tenantScopeSrc := readRouteSource(t, "tenant_scope_v102.go")
 
 	required := map[string][]string{
-		"main.go": {
+		"server route package": {
 			`"users.read"`, `"users.manage"`,
 			`"assets.read"`, `"assets.manage"`,
 			`"programs.read"`, `"programs.manage"`,
@@ -38,7 +38,7 @@ func TestRBACRouteMatrixCoversSensitiveDomains(t *testing.T) {
 		"tenant_scope_v102.go":  {`"organizations.read"`},
 	}
 	sources := map[string]string{
-		"main.go":               mainSrc,
+		"server route package":  serverSrc,
 		"agent_identity_v90.go": agentSrc,
 		"rbac_v110.go":          rbacSrc,
 		"tenant_scope_v102.go":  tenantScopeSrc,
@@ -51,16 +51,9 @@ func TestRBACRouteMatrixCoversSensitiveDomains(t *testing.T) {
 		}
 	}
 
-	if strings.Contains(mainSrc, `requireRequestPermission(w, r, rbac, "incidents.manage")`) &&
-		strings.Contains(mainSrc, `r.Route("/agent-keys"`) {
-		start := strings.Index(mainSrc, `r.Route("/agent-keys"`)
-		end := strings.Index(mainSrc[start:], `r.With(meAgentAuth).Post("/agents/me/device"`)
-		if end > 0 {
-			block := mainSrc[start : start+end]
-			if strings.Contains(block, `"incidents.manage"`) {
-				t.Fatal("agent-key administration must not require incidents.manage")
-			}
-		}
+	agentKeySrc := readRouteSource(t, "routes_agents.go")
+	if strings.Contains(agentKeySrc, `"incidents.manage"`) {
+		t.Fatal("agent-key administration must not require incidents.manage")
 	}
 }
 

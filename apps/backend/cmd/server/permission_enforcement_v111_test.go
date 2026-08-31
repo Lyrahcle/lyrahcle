@@ -7,15 +7,7 @@ import (
 )
 
 func TestSensitiveRoutesUseCapabilities(t *testing.T) {
-	files := []string{"main.go", "agent_identity_v90.go", "agent_config_v91.go", "organizations_v100.go", "tenant_scope_v102.go", "rbac_v110.go"}
-	joined := ""
-	for _, f := range files {
-		data, err := os.ReadFile(f)
-		if err != nil {
-			t.Fatal(err)
-		}
-		joined += string(data)
-	}
+	joined := readServerProductionSource(t)
 	for _, permission := range []string{
 		"users.read", "users.manage", "agents.read", "agents.manage",
 		"assets.read", "assets.manage", "incidents.read", "incidents.manage",

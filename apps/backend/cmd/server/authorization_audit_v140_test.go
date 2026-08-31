@@ -19,24 +19,24 @@ type sensitiveRouteAuthorization struct {
 // human routes. Adding or moving a sensitive route requires updating this table and the
 // endpoint matrix documentation in the same change.
 var sensitiveRouteAuthorizationMatrix = []sensitiveRouteAuthorization{
-	{"main.go", `Get("/",`, `RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "assets.read"`, "assets.read"},
-	{"main.go", `Post("/",`, `RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "assets.manage"`, "assets.manage"},
-	{"main.go", `Put("/{assetID}",`, `RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "assets.manage"`, "assets.manage"},
-	{"main.go", `Delete("/{assetID}",`, `RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "assets.manage"`, "assets.manage"},
-	{"main.go", `Put("/{programID}",`, `RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "programs.manage"`, "programs.manage"},
-	{"main.go", `Delete("/{programID}",`, `RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "programs.manage"`, "programs.manage"},
-	{"main.go", `Get("/readings",`, `RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "rf.read"`, "rf.read"},
-	{"main.go", `Get("/anomalies",`, `RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "rf.read"`, "rf.read"},
-	{"main.go", `Get("/{satelliteID}/passes",`, `RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "orbital.read"`, "orbital.read"},
-	{"main.go", `Get("/{satelliteID}/orbital-events",`, `RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "orbital.read"`, "orbital.read"},
-	{"main.go", `Post("/{satelliteID}/orbital-events",`, `RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "orbital.manage"`, "orbital.manage"},
-	{"main.go", `Put("/{satelliteID}",`, `RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "orbital.manage"`, "orbital.manage"},
-	{"main.go", `Get("/audit-log",`, `RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "audit.read"`, "audit.read"},
-	{"main.go", `Get("/{incidentID}",`, `RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "incidents.read"`, "incidents.read"},
-	{"main.go", `Patch("/{incidentID}",`, `RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "incidents.manage"`, "incidents.manage"},
-	{"main.go", `Post("/{incidentID}/notes",`, `RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "incidents.manage"`, "incidents.manage"},
-	{"main.go", `Post("/{incidentID}/evidence",`, `RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "incidents.manage"`, "incidents.manage"},
-	{"main.go", `Post("/{alertID}/acknowledge",`, `RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "alerts.manage"`, "alerts.manage"},
+	{"routes_assets_programs.go", `Get("/",`, `RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "assets.read"`, "assets.read"},
+	{"routes_assets_programs.go", `Post("/",`, `RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "assets.manage"`, "assets.manage"},
+	{"routes_assets_programs.go", `Put("/{assetID}",`, `RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "assets.manage"`, "assets.manage"},
+	{"routes_assets_programs.go", `Delete("/{assetID}",`, `RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "assets.manage"`, "assets.manage"},
+	{"routes_assets_programs.go", `Put("/{programID}",`, `RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "programs.manage"`, "programs.manage"},
+	{"routes_assets_programs.go", `Delete("/{programID}",`, `RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "programs.manage"`, "programs.manage"},
+	{"routes_detection_rf.go", `Get("/readings",`, `RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "rf.read"`, "rf.read"},
+	{"routes_detection_rf.go", `Get("/anomalies",`, `RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "rf.read"`, "rf.read"},
+	{"routes_satellites_tmtc.go", `Get("/{satelliteID}/passes",`, `RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "orbital.read"`, "orbital.read"},
+	{"routes_satellites_tmtc.go", `Get("/{satelliteID}/orbital-events",`, `RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "orbital.read"`, "orbital.read"},
+	{"routes_satellites_tmtc.go", `Post("/{satelliteID}/orbital-events",`, `RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "orbital.manage"`, "orbital.manage"},
+	{"routes_satellites_tmtc.go", `Put("/{satelliteID}",`, `RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "orbital.manage"`, "orbital.manage"},
+	{"routes_audit_threat.go", `Get("/audit-log",`, `RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "audit.read"`, "audit.read"},
+	{"routes_incidents_alerts.go", `Get("/{incidentID}",`, `RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "incidents.read"`, "incidents.read"},
+	{"routes_incidents_alerts.go", `Patch("/{incidentID}",`, `RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "incidents.manage"`, "incidents.manage"},
+	{"routes_incidents_alerts.go", `Post("/{incidentID}/notes",`, `RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "incidents.manage"`, "incidents.manage"},
+	{"routes_incidents_alerts.go", `Post("/{incidentID}/evidence",`, `RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "incidents.manage"`, "incidents.manage"},
+	{"routes_incidents_alerts.go", `Post("/{alertID}/acknowledge",`, `RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "alerts.manage"`, "alerts.manage"},
 	{"agent_identity_v90.go", `Get("/agents/",`, `r.With(agentRead).`, "agents.read|agents.manage"},
 	{"agent_identity_v90.go", `Patch("/agents/{agentID}/status",`, `r.With(agentManage).`, "agents.manage"},
 	{"agent_identity_v90.go", `Put("/agents/{agentID}/station",`, `r.With(agentManage).`, "agents.manage"},
@@ -139,16 +139,8 @@ func TestViewerOnlyAuthorizationBoundariesAreExplicitlyReviewed(t *testing.T) {
 	// stateless decoders, search/system metadata, CVE reads, and control-plane wrappers
 	// that perform their own platform-admin check. This count is a tripwire: introducing
 	// another viewer-only boundary requires an explicit authorization review.
-	files := []string{"main.go", "auth_v84.go", "organizations_v100.go", "rate_limit_status_v138.go", "rbac_v110.go", "signing_keys_v136.go", "secret_status_v143.go"}
 	const token = "RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)"
-	got := 0
-	for _, file := range files {
-		data, err := os.ReadFile(file)
-		if err != nil {
-			t.Fatal(err)
-		}
-		got += strings.Count(string(data), token)
-	}
+	got := strings.Count(readServerProductionSource(t), token)
 	const reviewedViewerBoundaries = 18
 	if got != reviewedViewerBoundaries {
 		t.Fatalf("viewer-only authorization boundaries changed: got %d, reviewed %d; audit the new/removed boundary and update the authorization matrix", got, reviewedViewerBoundaries)

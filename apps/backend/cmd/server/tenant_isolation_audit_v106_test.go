@@ -7,11 +7,7 @@ import (
 )
 
 func TestTenantOwnedRoutesAvoidKnownGlobalStoreCalls(t *testing.T) {
-	data, err := os.ReadFile("main.go")
-	if err != nil {
-		t.Fatal(err)
-	}
-	src := string(data)
+	src := readServerProductionSource(t)
 
 	forbidden := []string{
 		"users.List(r.Context())",

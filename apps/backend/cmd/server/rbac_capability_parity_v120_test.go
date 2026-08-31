@@ -20,13 +20,13 @@ func routeBlockV120(t *testing.T, src, start, end string) string {
 }
 
 func TestOperationalRoutesUseCapabilitiesWithoutLegacyRoleGatesV120(t *testing.T) {
-	data, err := os.ReadFile("main.go")
+	assetProgramData, err := os.ReadFile("routes_assets_programs.go")
 	if err != nil {
 		t.Fatal(err)
 	}
-	src := string(data)
+	assetProgramSrc := string(assetProgramData)
 
-	assets := routeBlockV120(t, src, `r.Route("/assets"`, `r.Route("/programs"`)
+	assets := routeBlockV120(t, assetProgramSrc, `r.Route("/assets"`, `r.Route("/programs"`)
 	for _, capability := range []string{`"assets.read"`, `"assets.manage"`} {
 		if !strings.Contains(assets, capability) {
 			t.Fatalf("assets route missing %s", capability)
@@ -36,7 +36,11 @@ func TestOperationalRoutesUseCapabilitiesWithoutLegacyRoleGatesV120(t *testing.T
 		t.Fatal("assets routes must not depend on orbital capabilities")
 	}
 
-	programs := routeBlockV120(t, src, `r.Route("/programs"`, `r.Route("/auth"`)
+	programStart := strings.Index(assetProgramSrc, `r.Route("/programs"`)
+	if programStart < 0 {
+		t.Fatal(`route block start missing "r.Route(\"/programs\""`)
+	}
+	programs := assetProgramSrc[programStart:]
 	for _, capability := range []string{`"programs.read"`, `"programs.manage"`} {
 		if !strings.Contains(programs, capability) {
 			t.Fatalf("program routes missing %s", capability)
@@ -46,7 +50,12 @@ func TestOperationalRoutesUseCapabilitiesWithoutLegacyRoleGatesV120(t *testing.T
 		t.Fatal("program routes still depend on a legacy role gate")
 	}
 
-	satellites := routeBlockV120(t, src, `r.Route("/satellites"`, `r.Route("/tmtc"`)
+	satelliteData, err := os.ReadFile("routes_satellites_tmtc.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	satelliteSrc := string(satelliteData)
+	satellites := routeBlockV120(t, satelliteSrc, `r.Route("/satellites"`, `r.Route("/tmtc"`)
 	for _, capability := range []string{`"orbital.read"`, `"orbital.manage"`} {
 		if !strings.Contains(satellites, capability) {
 			t.Fatalf("satellite routes missing %s", capability)
@@ -56,7 +65,12 @@ func TestOperationalRoutesUseCapabilitiesWithoutLegacyRoleGatesV120(t *testing.T
 		t.Fatal("satellite routes still depend on a legacy role gate")
 	}
 
-	incidents := routeBlockV120(t, src, `r.Route("/incidents"`, `r.Route("/asset-alerts"`)
+	incidentData, err := os.ReadFile("routes_incidents_alerts.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	incidentSrc := string(incidentData)
+	incidents := routeBlockV120(t, incidentSrc, `r.Route("/incidents"`, `r.Route("/asset-alerts"`)
 	for _, capability := range []string{`"incidents.read"`, `"incidents.manage"`} {
 		if !strings.Contains(incidents, capability) {
 			t.Fatalf("incident routes missing %s", capability)
@@ -77,13 +91,17 @@ func TestOperationalRoutesUseCapabilitiesWithoutLegacyRoleGatesV120(t *testing.T
 		t.Fatal("tenant organization scope must use organizations.read without a legacy admin gate")
 	}
 
-	if !strings.Contains(src, `RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "audit.read", isTokenRevoked)).Get("/audit-log"`) {
+	auditData, err := os.ReadFile("routes_audit_threat.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(auditData), `RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "audit.read", isTokenRevoked)).Get("/audit-log"`) {
 		t.Fatal("audit log must be authorized directly by audit.read")
 	}
 }
 
 func TestAgentReadSurfacesAllowReadOrManageCapabilityV120(t *testing.T) {
-	for _, file := range []string{"main.go", "agent_identity_v90.go", "agent_config_v91.go"} {
+	for _, file := range []string{"routes_agents.go", "agent_identity_v90.go", "agent_config_v91.go"} {
 		data, err := os.ReadFile(file)
 		if err != nil {
 			t.Fatal(err)

@@ -27,14 +27,11 @@ func TestPostgresRLSContractV142(t *testing.T) {
 		}
 	}
 
-	mainSource, err := os.ReadFile("main.go")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(mainSource), "r.Use(dbscope.Middleware)") {
+	serverSource := readServerProductionSource(t)
+	if !strings.Contains(serverSource, "r.Use(dbscope.Middleware)") {
 		t.Fatal("HTTP router must mark request-originated database work")
 	}
-	if !strings.Contains(string(mainSource), "dbscope.WithOrganization(r.Context(), organizationID)") {
+	if !strings.Contains(serverSource, "dbscope.WithOrganization(r.Context(), organizationID)") {
 		t.Fatal("agent RF ingestion must attach its resolved organization before tenant-scoped queries")
 	}
 
