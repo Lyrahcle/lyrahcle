@@ -2,6 +2,14 @@
 
 
 
+
+## v14.5.5 — Agent trust-boundary hardening
+
+- Expanded certificate-authority tests around malformed CA material, mismatched keys, weak CSR keys, SPIFFE identity binding, TTL capping and CA-expiry refusal.
+- Expanded remote agent-config signing tests around provider failures, algorithm/KID validation, signing failures and malformed Ed25519 signatures.
+- Added >=80% local coverage gates for `internal/agentidentity` and `internal/agentconfig`.
+- No database schema changes.
+
 ## v14.5.4 — Authentication coverage hardening
 
 - Expanded `internal/auth` regression coverage for token secret rotation, signing-method confusion, malformed claims, token revocation failures, forced-password-change paths, agent certificate precedence and capability-check failures.

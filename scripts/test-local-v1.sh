@@ -182,4 +182,17 @@ section "Critical backend security coverage"
   rm -f coverage-auth.out
 )
 
+section "Agent trust-boundary coverage"
+(
+  cd "$ROOT/apps/backend"
+
+  go test ./internal/agentidentity/... -coverprofile=coverage-agentidentity.out
+  ../../scripts/check-go-coverage.sh coverage-agentidentity.out 80
+  rm -f coverage-agentidentity.out
+
+  go test ./internal/agentconfig/... -coverprofile=coverage-agentconfig.out
+  ../../scripts/check-go-coverage.sh coverage-agentconfig.out 80
+  rm -f coverage-agentconfig.out
+)
+
 section "Local v1 test gate passed"
