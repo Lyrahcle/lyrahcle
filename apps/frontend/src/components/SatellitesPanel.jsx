@@ -1,8 +1,39 @@
-import { Fragment, useState } from 'react'
-import { Pencil, Save, X } from 'lucide-react'
+import { Fragment, useMemo, useState } from 'react'
+import { ChevronDown, ChevronUp, ChevronsUpDown, Pencil, Save, X } from 'lucide-react'
 import TableScroll from './TableScroll.jsx'
 import { updateSatellite } from '../lib/api.js'
 import { useI18n } from '../lib/I18nContext.jsx'
+
+const SORT_ACCESSORS = {
+  name: (s) => s.name ?? '',
+  norad_id: (s) => s.norad_id ?? null,
+  latitude_deg: (s) => s.position?.latitude_deg ?? null,
+  longitude_deg: (s) => s.position?.longitude_deg ?? null,
+  altitude_km: (s) => s.position?.altitude_km ?? null,
+  tle_status: (s) => s.tle_status ?? '',
+}
+
+function compareValues(a, b) {
+  if (typeof a === 'string' && typeof b === 'string') {
+    return a.localeCompare(b, undefined, { sensitivity: 'base' })
+  }
+  return a < b ? -1 : a > b ? 1 : 0
+}
+
+function sortSatellites(satellites, sortKey, sortDir) {
+  if (!sortKey) return satellites
+  const accessor = SORT_ACCESSORS[sortKey]
+  return [...satellites].sort((a, b) => {
+    const va = accessor(a)
+    const vb = accessor(b)
+    // Missing values always sort last, independent of ascending/descending.
+    if (va == null && vb == null) return 0
+    if (va == null) return 1
+    if (vb == null) return -1
+    const cmp = compareValues(va, vb)
+    return sortDir === 'desc' ? -cmp : cmp
+  })
+}
 
 function SatelliteEditRow({ satellite, onCancel, onSaved }) {
   const { t } = useI18n()
@@ -110,9 +141,44 @@ function SatelliteEditRow({ satellite, onCancel, onSaved }) {
   )
 }
 
+function SortableHeader({ label, sortKey, activeKey, direction, onSort, t, align = 'left' }) {
+  const active = sortKey === activeKey
+  const ariaSort = active ? (direction === 'desc' ? 'descending' : 'ascending') : 'none'
+  const Icon = active ? (direction === 'desc' ? ChevronDown : ChevronUp) : ChevronsUpDown
+  return (
+    <th scope="col" aria-sort={ariaSort} className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+      <button
+        type="button"
+        onClick={() => onSort(sortKey)}
+        aria-label={`${t('satelliteManagement.sortBy', { column: label })}${active ? `, ${t(`satelliteManagement.sort${direction === 'desc' ? 'Descending' : 'Ascending'}`)}` : ''}`}
+        className={`flex items-center gap-1 rounded uppercase tracking-wider text-lyra-mutedDim hover:text-lyra-text focus-visible:outline focus-visible:outline-1 focus-visible:outline-lyra-gold ${align === 'right' ? 'ml-auto' : ''}`}
+      >
+        <span>{label}</span>
+        <Icon className={`h-3 w-3 ${active ? 'text-lyra-goldBright' : 'text-lyra-mutedDim/60'}`} aria-hidden="true" />
+      </button>
+    </th>
+  )
+}
+
 export default function SatellitesPanel({ satellites, canManage = false, onChanged = async () => {} }) {
   const { t } = useI18n()
   const [editingId, setEditingId] = useState(null)
+  const [sortKey, setSortKey] = useState(null)
+  const [sortDir, setSortDir] = useState('asc')
+
+  const sortedSatellites = useMemo(
+    () => sortSatellites(satellites, sortKey, sortDir),
+    [satellites, sortKey, sortDir]
+  )
+
+  function handleSort(key) {
+    if (sortKey === key) {
+      setSortDir((dir) => (dir === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortKey(key)
+      setSortDir('asc')
+    }
+  }
 
   if (!satellites.length) {
     return (
@@ -123,21 +189,23 @@ export default function SatellitesPanel({ satellites, canManage = false, onChang
     )
   }
 
+  const headerProps = { activeKey: sortKey, direction: sortDir, onSort: handleSort, t }
+
   return (
     <TableScroll>
       <table className="w-full text-left text-sm">
         <thead>
           <tr className="border-b border-lyra-borderSoft">
-            <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">{t('satelliteManagement.satellite')}</th>
-            <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">{t('satelliteForm.noradId')}</th>
-            <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">{t('satelliteManagement.latitude')}</th>
-            <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">{t('satelliteManagement.longitude')}</th>
-            <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">{t('satelliteManagement.altitude')}</th>
-            <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">{t('satelliteManagement.tleStatus')}</th>
+            <SortableHeader label={t('satelliteManagement.satellite')} sortKey="name" {...headerProps} />
+            <SortableHeader label={t('satelliteForm.noradId')} sortKey="norad_id" {...headerProps} />
+            <SortableHeader label={t('satelliteManagement.latitude')} sortKey="latitude_deg" {...headerProps} />
+            <SortableHeader label={t('satelliteManagement.longitude')} sortKey="longitude_deg" {...headerProps} />
+            <SortableHeader label={t('satelliteManagement.altitude')} sortKey="altitude_km" {...headerProps} />
+            <SortableHeader label={t('satelliteManagement.tleStatus')} sortKey="tle_status" {...headerProps} />
           </tr>
         </thead>
         <tbody>
-          {satellites.map((s) => (
+          {sortedSatellites.map((s) => (
             <Fragment key={s.id}>
               <tr className="border-b border-lyra-borderSoft/60 last:border-0">
                 <td className="py-3 text-lyra-goldBright">

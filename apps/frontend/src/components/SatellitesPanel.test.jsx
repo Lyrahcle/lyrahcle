@@ -18,8 +18,36 @@ const satellite = {
   position: { latitude_deg: 40.2, longitude_deg: -3.7, altitude_km: 418.7 },
 }
 
+const satelliteB = {
+  id: 'sat-2',
+  norad_id: 43700,
+  name: 'AQUA',
+  tle_line1: '1 43700U 98067A   26239.14379413  .00008717  00000+0  16243-3 0  9995',
+  tle_line2: '2 43700  51.6326 308.8886 0007697  87.8986 272.2885 15.49649978582754',
+  tle_status: 'aging',
+  orbital_confidence: 'medium',
+  updated_at: '2026-08-30T18:00:00Z',
+  position: { latitude_deg: 12.4, longitude_deg: 78.9, altitude_km: 705 },
+}
+
+const satelliteNoPosition = {
+  id: 'sat-3',
+  norad_id: 10000,
+  name: 'DERELICT-1',
+  tle_line1: '',
+  tle_line2: '',
+  tle_status: 'unusable',
+  orbital_confidence: null,
+  updated_at: null,
+  position: null,
+}
+
 function renderPanel(props = {}) {
   return render(<I18nProvider><SatellitesPanel satellites={[satellite]} {...props} /></I18nProvider>)
+}
+
+function namesInOrder() {
+  return screen.getAllByRole('row').slice(1).map((row) => row.querySelector('td span')?.textContent)
 }
 
 describe('SatellitesPanel management', () => {
@@ -61,5 +89,50 @@ describe('SatellitesPanel management', () => {
     fireEvent.click(screen.getByRole('button', { name: /save changes/i }))
     expect(await screen.findByRole('alert')).toHaveTextContent('NORAD ID is already registered')
     expect(screen.getByRole('button', { name: /save changes/i })).toBeInTheDocument()
+  })
+})
+
+describe('SatellitesPanel sorting', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    localStorage.clear()
+  })
+
+  it('sorts by satellite name ascending then descending on repeated clicks', () => {
+    render(<I18nProvider><SatellitesPanel satellites={[satellite, satelliteB]} /></I18nProvider>)
+    expect(namesInOrder()).toEqual(['ISS', 'AQUA'])
+
+    fireEvent.click(screen.getByRole('button', { name: /sort by satellite/i }))
+    expect(namesInOrder()).toEqual(['AQUA', 'ISS'])
+    expect(screen.getByRole('columnheader', { name: /satellite/i })).toHaveAttribute('aria-sort', 'ascending')
+
+    fireEvent.click(screen.getByRole('button', { name: /sort by satellite/i }))
+    expect(namesInOrder()).toEqual(['ISS', 'AQUA'])
+    expect(screen.getByRole('columnheader', { name: /satellite/i })).toHaveAttribute('aria-sort', 'descending')
+  })
+
+  it('sorts by altitude numerically, not lexicographically', () => {
+    render(<I18nProvider><SatellitesPanel satellites={[satellite, satelliteB]} /></I18nProvider>)
+    fireEvent.click(screen.getByRole('button', { name: /sort by altitude/i }))
+    // 418.7 km < 705 km
+    expect(namesInOrder()).toEqual(['ISS', 'AQUA'])
+  })
+
+  it('keeps satellites without a position at the end regardless of sort direction', () => {
+    render(<I18nProvider><SatellitesPanel satellites={[satellite, satelliteNoPosition, satelliteB]} /></I18nProvider>)
+    fireEvent.click(screen.getByRole('button', { name: /sort by altitude/i }))
+    expect(namesInOrder()).toEqual(['ISS', 'AQUA', 'DERELICT-1'])
+
+    fireEvent.click(screen.getByRole('button', { name: /sort by altitude/i }))
+    expect(namesInOrder()).toEqual(['AQUA', 'ISS', 'DERELICT-1'])
+  })
+
+  it('switching sort column resets to ascending order', () => {
+    render(<I18nProvider><SatellitesPanel satellites={[satellite, satelliteB]} /></I18nProvider>)
+    fireEvent.click(screen.getByRole('button', { name: /sort by satellite/i }))
+    fireEvent.click(screen.getByRole('button', { name: /sort by satellite/i })) // now descending: ISS, AQUA
+    fireEvent.click(screen.getByRole('button', { name: /sort by norad id/i }))
+    expect(namesInOrder()).toEqual(['ISS', 'AQUA']) // 25544 < 43700, ascending
+    expect(screen.getByRole('columnheader', { name: /norad id/i })).toHaveAttribute('aria-sort', 'ascending')
   })
 })

@@ -78,6 +78,9 @@ export const translations = {
       editEyebrow: 'Satellite management',
       editSatellite: 'Edit {name}',
       saveChanges: 'Save changes',
+      sortBy: 'Sort by {column}',
+      sortAscending: 'ascending',
+      sortDescending: 'descending',
     },
     connectivity: {
       supportedDevices: 'Supported devices',
@@ -429,6 +432,9 @@ export const translations = {
       editEyebrow: 'Gestión de satélite',
       editSatellite: 'Editar {name}',
       saveChanges: 'Guardar cambios',
+      sortBy: 'Ordenar por {column}',
+      sortAscending: 'ascendente',
+      sortDescending: 'descendente',
     },
     connectivity: {
       supportedDevices: 'Dispositivos soportados',
@@ -780,6 +786,9 @@ export const translations = {
       editEyebrow: 'Gestion du satellite',
       editSatellite: 'Modifier {name}',
       saveChanges: 'Enregistrer les modifications',
+      sortBy: 'Trier par {column}',
+      sortAscending: 'croissant',
+      sortDescending: 'décroissant',
     },
     connectivity: {
       supportedDevices: 'Appareils pris en charge',
@@ -1131,6 +1140,9 @@ export const translations = {
       editEyebrow: 'Satellitenverwaltung',
       editSatellite: '{name} bearbeiten',
       saveChanges: 'Änderungen speichern',
+      sortBy: 'Sortieren nach {column}',
+      sortAscending: 'aufsteigend',
+      sortDescending: 'absteigend',
     },
     connectivity: {
       supportedDevices: 'Unterstützte Geräte',
