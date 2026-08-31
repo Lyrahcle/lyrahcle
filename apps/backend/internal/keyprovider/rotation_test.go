@@ -91,3 +91,25 @@ func TestAssessRotationUsesActivationTimeWhenAvailable(t *testing.T) {
 		t.Fatalf("next rotation=%s want %s", health.NextRotationAt, want)
 	}
 }
+
+func TestNormalizeRotationPolicyRestoresSafeDefaults(t *testing.T) {
+	got, changed := NormalizeRotationPolicy(RotationPolicy{})
+	if !changed {
+		t.Fatal("expected empty policy to be normalized")
+	}
+	if got != DefaultRotationPolicy() {
+		t.Fatalf("normalized=%+v want=%+v", got, DefaultRotationPolicy())
+	}
+}
+
+func TestUpdateRotationPolicyRejectsInvalidPolicy(t *testing.T) {
+	provider, err := NewManagedLocalProvider(t.TempDir(), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	policy := DefaultRotationPolicy()
+	policy.GraceAlertBeforeSeconds = 60
+	if _, err := provider.UpdateRotationPolicy(context.Background(), policy); err == nil {
+		t.Fatal("expected unsafe grace alert window to be rejected")
+	}
+}

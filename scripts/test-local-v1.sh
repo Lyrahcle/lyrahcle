@@ -171,3 +171,11 @@ if command -v docker >/dev/null 2>&1; then
 fi
 
 section "Local v1 test gate passed"
+
+# Critical backend key-management coverage gate.
+(
+  cd apps/backend
+  go test ./internal/keyprovider/... -coverprofile=coverage-keyprovider.out
+  ../../scripts/check-go-coverage.sh coverage-keyprovider.out 80
+  rm -f coverage-keyprovider.out
+)

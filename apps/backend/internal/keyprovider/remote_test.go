@@ -77,3 +77,75 @@ func TestRemoteProviderRequiresHTTPS(t *testing.T) {
 		t.Fatal("expected HTTP endpoint rejection")
 	}
 }
+
+func TestRemoteProviderRejectsInvalidConfiguration(t *testing.T) {
+	validKID := "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+	cases := []struct {
+		name, endpoint, kid, algorithm string
+	}{
+		{"missing endpoint", "", validKID, "Ed25519"},
+		{"relative endpoint", "/signer", validKID, "Ed25519"},
+		{"invalid kid", "https://signer.internal", "../bad", "Ed25519"},
+		{"unsupported algorithm", "https://signer.internal", validKID, "RSA"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if _, err := NewRemoteProvider(tc.endpoint, "", tc.kid, tc.algorithm, time.Second); err == nil {
+				t.Fatal("expected invalid remote provider configuration to be rejected")
+			}
+		})
+	}
+}
+
+func TestRemoteProviderRejectsSignerErrorsAndUnexpectedKID(t *testing.T) {
+	kid := "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+	otherKID := "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"
+	tests := []struct {
+		name    string
+		handler http.HandlerFunc
+	}{
+		{"http error", func(w http.ResponseWriter, r *http.Request) { http.Error(w, "no", http.StatusBadGateway) }},
+		{"invalid json", func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte("{")) }},
+		{"unexpected kid", func(w http.ResponseWriter, r *http.Request) {
+			_ = json.NewEncoder(w).Encode(map[string]string{"kid": otherKID, "signature_b64": base64.StdEncoding.EncodeToString([]byte("sig"))})
+		}},
+		{"invalid signature", func(w http.ResponseWriter, r *http.Request) {
+			_ = json.NewEncoder(w).Encode(map[string]string{"kid": kid, "signature_b64": "%%%"})
+		}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ts := httptest.NewTLSServer(tc.handler)
+			defer ts.Close()
+			p, err := NewRemoteProvider(ts.URL, "", kid, "Ed25519", time.Second)
+			if err != nil {
+				t.Fatal(err)
+			}
+			p.client = ts.Client()
+			key, err := p.ActiveSigningKey(context.Background())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := key.Sign(context.Background(), []byte("payload")); err == nil {
+				t.Fatal("expected remote signer response to be rejected")
+			}
+		})
+	}
+}
+
+func TestRemoteProviderHealthReportsNonSuccess(t *testing.T) {
+	kid := "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "degraded", http.StatusServiceUnavailable)
+	}))
+	defer ts.Close()
+	p, err := NewRemoteProvider(ts.URL, "", kid, "Ed25519", time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p.client = ts.Client()
+	health := p.Health(context.Background())
+	if health.Healthy || health.Error == "" {
+		t.Fatalf("health=%+v want unhealthy with error", health)
+	}
+}

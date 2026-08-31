@@ -5,10 +5,12 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/x509"
+	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -203,3 +205,123 @@ func TestManagedProviderRejectsSymlinkDirectory(t *testing.T) {
 	}
 }
 
+func TestLocalProviderRejectsMissingAndMalformedKeyFiles(t *testing.T) {
+	if _, err := NewLocalProvider(filepath.Join(t.TempDir(), "missing.pem")); err == nil {
+		t.Fatal("expected missing key file to be rejected")
+	}
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "bad.pem")
+	if err := os.WriteFile(path, []byte("not a pem"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := NewLocalProvider(path); err == nil {
+		t.Fatal("expected malformed PEM to be rejected")
+	}
+}
+
+func TestLocalProviderRejectsSymlinkKeyFile(t *testing.T) {
+	_, privateKey, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	realPath := writePrivateKey(t, privateKey)
+	link := filepath.Join(t.TempDir(), "signing-key.pem")
+	if err := os.Symlink(realPath, link); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	if _, err := NewLocalProvider(link); err == nil {
+		t.Fatal("expected symlink signing key to be rejected")
+	}
+}
+
+func TestManagedProviderRejectsTamperedManifestFilename(t *testing.T) {
+	dir := t.TempDir()
+	if _, err := NewManagedLocalProvider(dir, ""); err != nil {
+		t.Fatal(err)
+	}
+	manifestPath := filepath.Join(dir, "manifest.json")
+	raw, err := os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var manifest managedManifest
+	if err := json.Unmarshal(raw, &manifest); err != nil {
+		t.Fatal(err)
+	}
+	for kid, rec := range manifest.Keys {
+		rec.FileName = "../escape.pem"
+		manifest.Keys[kid] = rec
+		break
+	}
+	raw, err = json.Marshal(manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(manifestPath, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := NewManagedLocalProvider(dir, ""); err == nil {
+		t.Fatal("expected path traversal filename in manifest to be rejected")
+	}
+}
+
+func TestManagedProviderAutomaticallyRevokesExpiredGraceKey(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	provider, err := NewManagedLocalProvider(dir, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	initial, err := provider.ActiveSigningKey(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	staged, _, err := provider.PrepareRotation(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := provider.Activate(ctx, staged.KID, time.Hour); err != nil {
+		t.Fatal(err)
+	}
+
+	provider.mu.Lock()
+	rec := provider.manifest.Keys[initial.KID()]
+	expired := time.Now().UTC().Add(-time.Minute)
+	rec.Status = KeyStatusGrace
+	rec.GraceExpiresAt = &expired
+	provider.manifest.Keys[initial.KID()] = rec
+	if err := provider.saveManifestLocked(); err != nil {
+		provider.mu.Unlock()
+		t.Fatal(err)
+	}
+	provider.mu.Unlock()
+
+	if _, err := provider.SigningKey(ctx, initial.KID()); !errors.Is(err, ErrKeyRevoked) {
+		t.Fatalf("expired grace key error=%v want ErrKeyRevoked", err)
+	}
+	reloaded, err := NewManagedLocalProvider(dir, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	keys, err := reloaded.Keys(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, key := range keys {
+		if key.KID == initial.KID() && (key.Status != KeyStatusRevoked || key.RevokedAt == nil) {
+			t.Fatalf("expired key metadata=%+v want revoked with timestamp", key)
+		}
+	}
+}
+
+func TestValidateKIDAndEd25519KIDRejectInvalidInput(t *testing.T) {
+	for _, kid := range []string{"", "contains space", "../escape", strings.Repeat("a", 129)} {
+		if err := ValidateKID(kid); err == nil {
+			t.Fatalf("ValidateKID(%q) unexpectedly succeeded", kid)
+		}
+	}
+	if _, err := Ed25519KID(make(ed25519.PublicKey, ed25519.PublicKeySize-1)); err == nil {
+		t.Fatal("expected invalid public key length to be rejected")
+	}
+}
