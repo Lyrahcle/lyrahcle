@@ -14,7 +14,7 @@ func TestCVEAlertWorkerAuditsMatchedAssetTenant(t *testing.T) {
 	src := string(data)
 	for _, token := range []string{
 		`"organization_id": a.OrganizationID.String()`,
-		"InsertInOrganization(ctx, a.OrganizationID",
+		"InsertIdempotentInOrganization(ctx, a.OrganizationID",
 	} {
 		if !strings.Contains(src, token) {
 			t.Fatalf("CVE alert worker tenant audit contract missing %q", token)

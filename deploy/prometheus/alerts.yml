@@ -92,3 +92,24 @@ groups:
           severity: warning
         annotations:
           summary: Lyrahcle signing-key automation encountered an error
+      - alert: LyrahcleBackgroundJobFailures
+        expr: sum(increase(lyrahcle_background_job_events_total{result=~"failed|ack_failed"}[15m])) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Lyrahcle background jobs are failing or cannot acknowledge completed work
+      - alert: LyrahcleBackgroundJobCrashRecovery
+        expr: sum(increase(lyrahcle_background_job_events_total{result="reclaimed"}[30m])) > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Lyrahcle is repeatedly reclaiming background work from expired consumers
+      - alert: LyrahcleScheduledJobLockErrors
+        expr: sum(increase(lyrahcle_scheduled_job_leadership_total{result=~"error|release_error"}[30m])) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Lyrahcle scheduled-job distributed locking is failing

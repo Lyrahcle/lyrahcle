@@ -86,7 +86,9 @@ python3 -m unittest \
   scripts/test_check_keyprovider_kid.py \
   scripts/test_check_signing_key_lifecycle.py \
   scripts/test_check_signing_key_automation.py \
-  scripts/test_check_tenant_rate_limiting.py
+  scripts/test_check_tenant_rate_limiting.py \
+  scripts/test_check_background_job_idempotency.py \
+  scripts/test_check_agent_hardware_ui.py
 python3 scripts/check-command-execution.py .
 python3 scripts/check-frontend-xss.py .
 python3 scripts/check-sql-construction.py .
@@ -100,6 +102,8 @@ python3 scripts/check-keyprovider-kid.py .
 python3 scripts/check-signing-key-lifecycle.py .
 python3 scripts/check-signing-key-automation.py .
 python3 scripts/check-tenant-rate-limiting.py .
+python3 scripts/check-background-job-idempotency.py .
+python3 scripts/check-agent-hardware-ui.py .
 
 section "Backend tests"
 cd "$ROOT/apps/backend"
@@ -111,6 +115,8 @@ if [[ -n "$REDIS_ADDR" ]]; then
   section "Backend Redis integration tests"
   TEST_DATABASE_URL= TEST_REDIS_ADDR="$REDIS_ADDR" go test \
     ./internal/ratelimit/... \
+    ./internal/joblock/... \
+    ./internal/alerts/... \
     ./internal/respcache/... \
     ./internal/sessionstore/... \
     ./internal/tokenblocklist/... -v

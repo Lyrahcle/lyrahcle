@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"time"
 
@@ -336,13 +337,38 @@ func (s *AgentIdentityStore) SetStatus(ctx context.Context, agentID, status stri
 }
 
 func (s *AgentIdentityStore) ReportDevice(ctx context.Context, agentID string, info AgentDeviceInfo) error {
+	capabilities, err := json.Marshal(info.Capabilities)
+	if err != nil {
+		return err
+	}
 	tag, err := s.pool.Exec(ctx, `
 		UPDATE agent_identities SET
 			device_driver = $2, device_hardware = $3, device_manufacturer = $4,
 			device_product = $5, device_serial = $6, device_rx = $7, device_tx = $8,
-			device_reported_at = now(), last_seen_at = now(), updated_at = now()
+			device_reported_at = now(), device_capabilities = $9::jsonb, last_seen_at = now(), updated_at = now()
 		WHERE agent_id = $1 AND status = 'active'
-	`, agentID, info.Driver, info.Hardware, info.Manufacturer, info.Product, info.Serial, info.RX, info.TX)
+	`, agentID, info.Driver, info.Hardware, info.Manufacturer, info.Product, info.Serial, info.RX, info.TX, string(capabilities))
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrAgentIdentityNotFound
+	}
+	return nil
+}
+
+func (s *AgentIdentityStore) ReportDeviceInOrganization(ctx context.Context, organizationID uuid.UUID, agentID string, info AgentDeviceInfo) error {
+	capabilities, err := json.Marshal(info.Capabilities)
+	if err != nil {
+		return err
+	}
+	tag, err := s.pool.Exec(ctx, `
+		UPDATE agent_identities SET
+			device_driver = $3, device_hardware = $4, device_manufacturer = $5,
+			device_product = $6, device_serial = $7, device_rx = $8, device_tx = $9,
+			device_reported_at = now(), device_capabilities = $10::jsonb, last_seen_at = now(), updated_at = now()
+		WHERE agent_id = $1 AND organization_id = $2 AND status = 'active'
+	`, agentID, organizationID, info.Driver, info.Hardware, info.Manufacturer, info.Product, info.Serial, info.RX, info.TX, string(capabilities))
 	if err != nil {
 		return err
 	}
@@ -413,7 +439,9 @@ func (s *AgentIdentityStore) ListByOrganization(ctx context.Context, organizatio
 	rows, err := s.pool.Query(ctx, `
 		SELECT agent_id, organization_id, status, first_seen_at, last_seen_at,
 		       coalesce(agent_version,''), coalesce(firmware_version,''),
-		       station_latitude_deg, station_longitude_deg, station_altitude_m
+		       station_latitude_deg, station_longitude_deg, station_altitude_m,
+		       device_driver, device_hardware, device_manufacturer, device_product,
+		       device_serial, device_rx, device_tx, device_reported_at, device_capabilities
 		FROM agent_identities
 		WHERE organization_id=$1
 		ORDER BY agent_id
@@ -426,12 +454,25 @@ func (s *AgentIdentityStore) ListByOrganization(ctx context.Context, organizatio
 	for rows.Next() {
 		var item AgentIdentity
 		var lat, lon, alt *float64
+		var driver, hardwareName, manufacturer, product, serial *string
+		var rx, tx *bool
+		var reportedAt *time.Time
+		var capabilitiesJSON []byte
 		if err := rows.Scan(&item.AgentID, &item.OrganizationID, &item.Status, &item.FirstSeenAt, &item.LastSeenAt,
-			&item.AgentVersion, &item.FirmwareVersion, &lat, &lon, &alt); err != nil {
+			&item.AgentVersion, &item.FirmwareVersion, &lat, &lon, &alt,
+			&driver, &hardwareName, &manufacturer, &product, &serial, &rx, &tx, &reportedAt, &capabilitiesJSON); err != nil {
 			return nil, err
 		}
 		if lat != nil && lon != nil && alt != nil {
 			item.Station = &AgentStation{LatitudeDeg: *lat, LongitudeDeg: *lon, AltitudeM: *alt}
+		}
+		if reportedAt != nil {
+			item.Device = &AgentDeviceInfo{
+				Driver: deref(driver), Hardware: deref(hardwareName), Manufacturer: deref(manufacturer), Product: deref(product),
+				Serial: deref(serial), RX: rx != nil && *rx, TX: tx != nil && *tx, ReportedAt: *reportedAt,
+			}
+			_ = json.Unmarshal(capabilitiesJSON, &item.Device.Capabilities)
+			finalizeAgentDeviceInfo(item.Device, time.Now().UTC())
 		}
 		items = append(items, item)
 	}

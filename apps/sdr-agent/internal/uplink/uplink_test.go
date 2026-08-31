@@ -140,13 +140,16 @@ func TestReportDeviceUsesBearerToken(t *testing.T) {
 		if report.Driver != "rtlsdr" || report.Serial != "ABC123" || !report.RX || report.TX {
 			t.Fatalf("unexpected report: %+v", report)
 		}
+		if report.Capabilities.Architecture != "arm64" || report.Capabilities.FrequencyMaxHz != 1_766_000_000 || report.Capabilities.Channels != 1 {
+			t.Fatalf("unexpected capabilities: %+v", report.Capabilities)
+		}
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	defer server.Close()
 
 	client := newTestClient(server, false)
 	client.AuthToken = "user-token"
-	info := &soapy.DeviceInfo{Driver: "rtlsdr", Hardware: "RTL2838", Manufacturer: "Vendor", Product: "SDR", Serial: "ABC123", RX: true}
+	info := &soapy.DeviceInfo{Driver: "rtlsdr", Hardware: "RTL2838", Manufacturer: "Vendor", Product: "SDR", Serial: "ABC123", RX: true, Capabilities: soapy.DeviceCapabilities{Architecture: "arm64", FrequencyMinHz: 24_000_000, FrequencyMaxHz: 1_766_000_000, SampleRatesHz: []int64{2_048_000}, Channels: 1}}
 	if err := client.ReportDevice(info); err != nil {
 		t.Fatal(err)
 	}

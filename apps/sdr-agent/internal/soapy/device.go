@@ -2,6 +2,7 @@ package soapy
 
 import (
 	"fmt"
+	"runtime"
 	"sync"
 	"time"
 )
@@ -25,6 +26,23 @@ type Device interface {
 	GetDeviceInfo() *DeviceInfo
 }
 
+type DeviceCapabilities struct {
+	Architecture    string
+	OS              string
+	DriverVersion   string
+	FirmwareVersion string
+	FrequencyMinHz  int64
+	FrequencyMaxHz  int64
+	SampleRatesHz   []int64
+	BandwidthsHz    []int64
+	GainElements    []string
+	Channels        int
+	GPS             bool
+	PPS             bool
+	TemperatureC    *float64
+	SampleDrops     int64
+}
+
 type DeviceInfo struct {
 	Driver       string
 	Hardware     string
@@ -33,6 +51,7 @@ type DeviceInfo struct {
 	Serial       string
 	RX           bool
 	TX           bool
+	Capabilities DeviceCapabilities
 }
 
 type Config struct {
@@ -74,6 +93,12 @@ func NewMockDevice() Device {
 			Serial:       "mock-dev-001",
 			RX:           true,
 			TX:           false,
+			Capabilities: DeviceCapabilities{
+				Architecture: runtime.GOARCH, OS: runtime.GOOS, DriverVersion: "mock", FirmwareVersion: "mock",
+				FrequencyMinHz: 24_000_000, FrequencyMaxHz: 1_766_000_000,
+				SampleRatesHz: []int64{1_024_000, 2_048_000, 2_400_000}, BandwidthsHz: []int64{1_000_000, 2_000_000},
+				GainElements: []string{"TUNER"}, Channels: 1,
+			},
 		},
 		buffer:         make([]complex64, 8192),
 		simulatedNoise: true,

@@ -1992,7 +1992,7 @@ paths:
       tags:
       - Agents
       summary: List mTLS agent identities
-      description: 'Requires role: admin. Returns lifecycle state, certificate metadata, versions, and device reports.'
+      description: 'Requires agents.read or agents.manage. Tenant-scoped lifecycle state, versions, station metadata, and SDR hardware capability reports.'
       responses:
         '200':
           description: Agent identities
@@ -2021,6 +2021,8 @@ paths:
                       type: string
                     firmware_version:
                       type: string
+                    device:
+                      $ref: '#/components/schemas/AgentDeviceInfo'
                     certificate:
                       type: object
                       nullable: true
@@ -3233,6 +3235,29 @@ components:
         password:
           type: string
           format: password
+    AgentDeviceCapabilities:
+      type: object
+      properties:
+        architecture: {type: string}
+        os: {type: string}
+        driver_version: {type: string}
+        firmware_version: {type: string}
+        frequency_min_hz: {type: integer, format: int64, minimum: 0}
+        frequency_max_hz: {type: integer, format: int64, minimum: 0}
+        sample_rates_hz:
+          type: array
+          items: {type: integer, format: int64, minimum: 1}
+        bandwidths_hz:
+          type: array
+          items: {type: integer, format: int64, minimum: 1}
+        gain_elements:
+          type: array
+          items: {type: string}
+        channels: {type: integer, minimum: 0, maximum: 64}
+        gps: {type: boolean}
+        pps: {type: boolean}
+        temperature_c: {type: number, format: double, nullable: true}
+        sample_drops: {type: integer, format: int64, minimum: 0}
     AgentDeviceInfo:
       type: object
       properties:
@@ -3250,6 +3275,15 @@ components:
           type: boolean
         tx:
           type: boolean
+        capabilities:
+          $ref: '#/components/schemas/AgentDeviceCapabilities'
+        compatibility:
+          type: string
+          readOnly: true
+          enum: [compatible, degraded, unsupported, stale]
+        compatibility_reason:
+          type: string
+          readOnly: true
         reported_at:
           type: string
           format: date-time

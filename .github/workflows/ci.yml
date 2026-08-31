@@ -176,11 +176,13 @@ jobs:
           python3 scripts/check-http-error-ui.py .
       - name: KeyProvider and KID contract
         run: |
-          python3 -m unittest scripts/test_check_keyprovider_kid.py scripts/test_check_signing_key_lifecycle.py scripts/test_check_signing_key_automation.py scripts/test_check_tenant_rate_limiting.py
+          python3 -m unittest scripts/test_check_keyprovider_kid.py scripts/test_check_signing_key_lifecycle.py scripts/test_check_signing_key_automation.py scripts/test_check_tenant_rate_limiting.py scripts/test_check_background_job_idempotency.py scripts/test_check_agent_hardware_ui.py
           python3 scripts/check-keyprovider-kid.py .
           python3 scripts/check-signing-key-lifecycle.py .
           python3 scripts/check-signing-key-automation.py .
           python3 scripts/check-tenant-rate-limiting.py .
+          python3 scripts/check-background-job-idempotency.py .
+          python3 scripts/check-agent-hardware-ui.py .
       - name: Lint Dockerfiles (hadolint)
         uses: hadolint/hadolint-action@v3.1.0
         continue-on-error: true

@@ -87,6 +87,16 @@ var (
 		Name: "lyrahcle_rate_limit_backend_fallback_total",
 		Help: "Rate-limit backend fallbacks by backend and scope",
 	}, []string{"backend", "scope"})
+
+	BackgroundJobEventsTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "lyrahcle_background_job_events_total",
+		Help: "Background-job delivery and processing outcomes by job and result",
+	}, []string{"job", "result"})
+
+	ScheduledJobLeadershipTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "lyrahcle_scheduled_job_leadership_total",
+		Help: "Distributed scheduled-job lock decisions by job and result",
+	}, []string{"job", "result"})
 	SigningKeyAutomationTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "lyrahcle_signing_key_automation_total",
 		Help: "Automated signing-key lifecycle checks by result",
@@ -94,7 +104,7 @@ var (
 )
 
 func init() {
-	prometheus.MustRegister(RequestsTotal, RequestDuration, AuthLoginsTotal, SSEConnections, TLEAgeSeconds, TLEStale, TLECorrelationEligible, OrbitalCorrelationSuppressedTotal, CelestrakSyncFailuresTotal, RateLimitDecisions, RateLimitBackendFallback, SigningKeyStatus, SigningKeyRotationDue, SigningKeyStagedPending, SigningKeyWarnings, SigningKeyAutomationTotal)
+	prometheus.MustRegister(RequestsTotal, RequestDuration, AuthLoginsTotal, SSEConnections, TLEAgeSeconds, TLEStale, TLECorrelationEligible, OrbitalCorrelationSuppressedTotal, CelestrakSyncFailuresTotal, RateLimitDecisions, RateLimitBackendFallback, BackgroundJobEventsTotal, ScheduledJobLeadershipTotal, SigningKeyStatus, SigningKeyRotationDue, SigningKeyStagedPending, SigningKeyWarnings, SigningKeyAutomationTotal)
 }
 
 type statusRecorder struct {

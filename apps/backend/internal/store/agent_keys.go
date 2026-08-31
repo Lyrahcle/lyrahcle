@@ -2,7 +2,9 @@ package store
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -37,22 +39,78 @@ type AgentKeySummary struct {
 	Device     *AgentDeviceInfo `json:"device,omitempty"`
 }
 
+type AgentDeviceCapabilities struct {
+	Architecture    string   `json:"architecture,omitempty"`
+	OS              string   `json:"os,omitempty"`
+	DriverVersion   string   `json:"driver_version,omitempty"`
+	FirmwareVersion string   `json:"firmware_version,omitempty"`
+	FrequencyMinHz  int64    `json:"frequency_min_hz,omitempty"`
+	FrequencyMaxHz  int64    `json:"frequency_max_hz,omitempty"`
+	SampleRatesHz   []int64  `json:"sample_rates_hz,omitempty"`
+	BandwidthsHz    []int64  `json:"bandwidths_hz,omitempty"`
+	GainElements    []string `json:"gain_elements,omitempty"`
+	Channels        int      `json:"channels,omitempty"`
+	GPS             bool     `json:"gps"`
+	PPS             bool     `json:"pps"`
+	TemperatureC    *float64 `json:"temperature_c,omitempty"`
+	SampleDrops     int64    `json:"sample_drops"`
+}
+
 type AgentDeviceInfo struct {
-	Driver       string    `json:"driver"`
-	Hardware     string    `json:"hardware"`
-	Manufacturer string    `json:"manufacturer"`
-	Product      string    `json:"product"`
-	Serial       string    `json:"serial"`
-	RX           bool      `json:"rx"`
-	TX           bool      `json:"tx"`
-	ReportedAt   time.Time `json:"reported_at"`
+	Driver              string                  `json:"driver"`
+	Hardware            string                  `json:"hardware"`
+	Manufacturer        string                  `json:"manufacturer"`
+	Product             string                  `json:"product"`
+	Serial              string                  `json:"serial"`
+	RX                  bool                    `json:"rx"`
+	TX                  bool                    `json:"tx"`
+	Capabilities        AgentDeviceCapabilities `json:"capabilities"`
+	ReportedAt          time.Time               `json:"reported_at"`
+	Compatibility       string                  `json:"compatibility"`
+	CompatibilityReason string                  `json:"compatibility_reason"`
+}
+
+func finalizeAgentDeviceInfo(info *AgentDeviceInfo, now time.Time) {
+	if info == nil {
+		return
+	}
+	if !info.ReportedAt.IsZero() && now.Sub(info.ReportedAt) > 15*time.Minute {
+		info.Compatibility = "stale"
+		info.CompatibilityReason = "hardware capability report is older than 15 minutes"
+		return
+	}
+	driver := strings.ToLower(info.Driver + " " + info.Hardware)
+	known := false
+	for _, marker := range []string{"rtlsdr", "rtl-sdr", "rtl283", "hackrf", "bladerf", "uhd", "usrp"} {
+		if strings.Contains(driver, marker) {
+			known = true
+			break
+		}
+	}
+	if !info.RX || !known {
+		info.Compatibility = "unsupported"
+		if !info.RX {
+			info.CompatibilityReason = "device does not report RX capability"
+		} else {
+			info.CompatibilityReason = "driver is not in the v1 software compatibility baseline"
+		}
+		return
+	}
+	c := info.Capabilities
+	if c.FrequencyMinHz <= 0 || c.FrequencyMaxHz <= c.FrequencyMinHz || len(c.SampleRatesHz) == 0 || c.Channels <= 0 {
+		info.Compatibility = "degraded"
+		info.CompatibilityReason = "device is recognized but the capability report is incomplete"
+		return
+	}
+	info.Compatibility = "compatible"
+	info.CompatibilityReason = "software capability report satisfies the v1 baseline; physical lab validation is tracked separately"
 }
 
 func (s *AgentKeyStore) List(ctx context.Context) ([]AgentKeySummary, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT agent_id, created_at, last_used_at, revoked_at IS NOT NULL,
 			device_driver, device_hardware, device_manufacturer, device_product,
-			device_serial, device_rx, device_tx, device_reported_at
+			device_serial, device_rx, device_tx, device_reported_at, device_capabilities
 		FROM agent_keys
 		ORDER BY created_at DESC
 	`)
@@ -67,9 +125,10 @@ func (s *AgentKeyStore) List(ctx context.Context) ([]AgentKeySummary, error) {
 		var driver, hardware, manufacturer, product, serial *string
 		var rx, tx *bool
 		var reportedAt *time.Time
+		var capabilitiesJSON []byte
 		if err := rows.Scan(
 			&summary.AgentID, &summary.CreatedAt, &summary.LastUsedAt, &summary.Revoked,
-			&driver, &hardware, &manufacturer, &product, &serial, &rx, &tx, &reportedAt,
+			&driver, &hardware, &manufacturer, &product, &serial, &rx, &tx, &reportedAt, &capabilitiesJSON,
 		); err != nil {
 			return nil, err
 		}
@@ -84,6 +143,8 @@ func (s *AgentKeyStore) List(ctx context.Context) ([]AgentKeySummary, error) {
 				TX:           tx != nil && *tx,
 				ReportedAt:   *reportedAt,
 			}
+			_ = json.Unmarshal(capabilitiesJSON, &summary.Device.Capabilities)
+			finalizeAgentDeviceInfo(summary.Device, time.Now().UTC())
 		}
 		out = append(out, summary)
 	}
@@ -98,13 +159,38 @@ func deref(s *string) string {
 }
 
 func (s *AgentKeyStore) ReportDevice(ctx context.Context, agentID string, info AgentDeviceInfo) error {
+	capabilities, err := json.Marshal(info.Capabilities)
+	if err != nil {
+		return err
+	}
 	tag, err := s.pool.Exec(ctx, `
 		UPDATE agent_keys SET
 			device_driver = $1, device_hardware = $2, device_manufacturer = $3,
 			device_product = $4, device_serial = $5, device_rx = $6, device_tx = $7,
-			device_reported_at = now()
-		WHERE agent_id = $8 AND revoked_at IS NULL
-	`, info.Driver, info.Hardware, info.Manufacturer, info.Product, info.Serial, info.RX, info.TX, agentID)
+			device_reported_at = now(), device_capabilities = $8::jsonb
+		WHERE agent_id = $9 AND revoked_at IS NULL
+	`, info.Driver, info.Hardware, info.Manufacturer, info.Product, info.Serial, info.RX, info.TX, string(capabilities), agentID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrAgentKeyNotFound
+	}
+	return nil
+}
+
+func (s *AgentKeyStore) ReportDeviceInOrganization(ctx context.Context, organizationID uuid.UUID, agentID string, info AgentDeviceInfo) error {
+	capabilities, err := json.Marshal(info.Capabilities)
+	if err != nil {
+		return err
+	}
+	tag, err := s.pool.Exec(ctx, `
+		UPDATE agent_keys SET
+			device_driver = $1, device_hardware = $2, device_manufacturer = $3,
+			device_product = $4, device_serial = $5, device_rx = $6, device_tx = $7,
+			device_reported_at = now(), device_capabilities = $8::jsonb
+		WHERE agent_id = $9 AND organization_id = $10 AND revoked_at IS NULL
+	`, info.Driver, info.Hardware, info.Manufacturer, info.Product, info.Serial, info.RX, info.TX, string(capabilities), agentID, organizationID)
 	if err != nil {
 		return err
 	}
@@ -158,7 +244,7 @@ func (s *AgentKeyStore) ListByOrganization(ctx context.Context, organizationID u
 	rows, err := s.pool.Query(ctx, `
 		SELECT agent_id, created_at, last_used_at, revoked_at IS NOT NULL,
 		       device_driver, device_hardware, device_manufacturer, device_product,
-		       device_serial, device_rx, device_tx, device_reported_at
+		       device_serial, device_rx, device_tx, device_reported_at, device_capabilities
 		FROM agent_keys
 		WHERE organization_id=$1
 		ORDER BY created_at DESC
@@ -173,13 +259,16 @@ func (s *AgentKeyStore) ListByOrganization(ctx context.Context, organizationID u
 		var driver, hardware, manufacturer, product, serial *string
 		var rx, tx *bool
 		var reportedAt *time.Time
+		var capabilitiesJSON []byte
 		if err := rows.Scan(&summary.AgentID, &summary.CreatedAt, &summary.LastUsedAt, &summary.Revoked,
-			&driver, &hardware, &manufacturer, &product, &serial, &rx, &tx, &reportedAt); err != nil {
+			&driver, &hardware, &manufacturer, &product, &serial, &rx, &tx, &reportedAt, &capabilitiesJSON); err != nil {
 			return nil, err
 		}
 		if reportedAt != nil {
 			summary.Device = &AgentDeviceInfo{Driver: deref(driver), Hardware: deref(hardware), Manufacturer: deref(manufacturer),
 				Product: deref(product), Serial: deref(serial), RX: rx != nil && *rx, TX: tx != nil && *tx, ReportedAt: *reportedAt}
+			_ = json.Unmarshal(capabilitiesJSON, &summary.Device.Capabilities)
+			finalizeAgentDeviceInfo(summary.Device, time.Now().UTC())
 		}
 		out = append(out, summary)
 	}

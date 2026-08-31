@@ -43,14 +43,32 @@ type RemoteConfigAck struct {
 	Checksum string `json:"checksum_sha256"`
 }
 
+type deviceCapabilitiesReport struct {
+	Architecture    string   `json:"architecture,omitempty"`
+	OS              string   `json:"os,omitempty"`
+	DriverVersion   string   `json:"driver_version,omitempty"`
+	FirmwareVersion string   `json:"firmware_version,omitempty"`
+	FrequencyMinHz  int64    `json:"frequency_min_hz,omitempty"`
+	FrequencyMaxHz  int64    `json:"frequency_max_hz,omitempty"`
+	SampleRatesHz   []int64  `json:"sample_rates_hz,omitempty"`
+	BandwidthsHz    []int64  `json:"bandwidths_hz,omitempty"`
+	GainElements    []string `json:"gain_elements,omitempty"`
+	Channels        int      `json:"channels,omitempty"`
+	GPS             bool     `json:"gps"`
+	PPS             bool     `json:"pps"`
+	TemperatureC    *float64 `json:"temperature_c,omitempty"`
+	SampleDrops     int64    `json:"sample_drops"`
+}
+
 type deviceReport struct {
-	Driver       string `json:"driver"`
-	Hardware     string `json:"hardware"`
-	Manufacturer string `json:"manufacturer"`
-	Product      string `json:"product"`
-	Serial       string `json:"serial"`
-	RX           bool   `json:"rx"`
-	TX           bool   `json:"tx"`
+	Driver       string                   `json:"driver"`
+	Hardware     string                   `json:"hardware"`
+	Manufacturer string                   `json:"manufacturer"`
+	Product      string                   `json:"product"`
+	Serial       string                   `json:"serial"`
+	RX           bool                     `json:"rx"`
+	TX           bool                     `json:"tx"`
+	Capabilities deviceCapabilitiesReport `json:"capabilities"`
 }
 
 func New(backendURL, agentID, apiKey, authToken, caCertPath string) (*Client, error) {
@@ -134,6 +152,13 @@ func (c *Client) ReportDevice(info *soapy.DeviceInfo) error {
 		Serial:       info.Serial,
 		RX:           info.RX,
 		TX:           info.TX,
+		Capabilities: deviceCapabilitiesReport{
+			Architecture: info.Capabilities.Architecture, OS: info.Capabilities.OS, DriverVersion: info.Capabilities.DriverVersion,
+			FirmwareVersion: info.Capabilities.FirmwareVersion, FrequencyMinHz: info.Capabilities.FrequencyMinHz,
+			FrequencyMaxHz: info.Capabilities.FrequencyMaxHz, SampleRatesHz: info.Capabilities.SampleRatesHz,
+			BandwidthsHz: info.Capabilities.BandwidthsHz, GainElements: info.Capabilities.GainElements, Channels: info.Capabilities.Channels,
+			GPS: info.Capabilities.GPS, PPS: info.Capabilities.PPS, TemperatureC: info.Capabilities.TemperatureC, SampleDrops: info.Capabilities.SampleDrops,
+		},
 	}
 	return c.postJSON("/api/v1/agents/me/device", payload)
 }

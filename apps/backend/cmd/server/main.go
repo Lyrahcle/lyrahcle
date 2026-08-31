@@ -34,6 +34,7 @@ import (
 	"github.com/mlko01/lyrahcle/apps/backend/internal/config"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/db"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/detection"
+	"github.com/mlko01/lyrahcle/apps/backend/internal/joblock"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/keyprovider"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/mailer"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/metrics"
@@ -109,22 +110,29 @@ func main() {
 	defer stopAlertsWorker()
 	go alerts.NewWorker(redisClient, spaceCVEs, assets, assetAlerts, auditLog).Run(alertsCtx)
 
+	jobLocker := joblock.New(redisClient)
 	sched := scheduler.New()
 	if err := sched.Every("0 */6 * * *", "recon-sweep", func() {
-		log.Println("recon sweep tick (not yet implemented)")
+		runSingletonScheduledJob(context.Background(), jobLocker, "recon-sweep", 30*time.Minute, func() {
+			log.Println("recon sweep tick (not yet implemented)")
+		})
 	}); err != nil {
 		log.Fatalf("scheduler: register recon-sweep: %v", err)
 	}
 	if err := sched.Every("0 */6 * * *", "tle-sync", func() {
-		syncTLEs(ctx, cfg.CelestrakGroups, satellites, tlePolicy(cfg))
+		runSingletonScheduledJob(context.Background(), jobLocker, "tle-sync", 30*time.Minute, func() {
+			syncTLEs(ctx, cfg.CelestrakGroups, satellites, tlePolicy(cfg))
+		})
 	}); err != nil {
 		log.Fatalf("scheduler: register tle-sync: %v", err)
 	}
 	if _, ok := agentConfigKeyProvider.(keyprovider.LifecycleProvider); ok {
 		if err := sched.Every("17 * * * *", "signing-key-rotation-check", func() {
-			if err := runSigningKeyRotationCheck(context.Background(), agentConfigKeyProvider, auditLog, time.Now().UTC()); err != nil {
-				log.Printf("signing-key rotation check failed: %v", err)
-			}
+			runSingletonScheduledJob(context.Background(), jobLocker, "signing-key-rotation-check", 10*time.Minute, func() {
+				if err := runSigningKeyRotationCheck(context.Background(), agentConfigKeyProvider, auditLog, time.Now().UTC()); err != nil {
+					log.Printf("signing-key rotation check failed: %v", err)
+				}
+			})
 		}); err != nil {
 			log.Fatalf("scheduler: register signing-key-rotation-check: %v", err)
 		}
@@ -132,11 +140,15 @@ func main() {
 	sched.Start()
 	defer sched.Stop()
 
-	go syncTLEs(ctx, cfg.CelestrakGroups, satellites, tlePolicy(cfg))
+	go runSingletonScheduledJob(context.Background(), jobLocker, "tle-sync", 30*time.Minute, func() {
+		syncTLEs(ctx, cfg.CelestrakGroups, satellites, tlePolicy(cfg))
+	})
 
-	if err := runSigningKeyRotationCheck(ctx, agentConfigKeyProvider, auditLog, time.Now().UTC()); err != nil {
-		log.Printf("initial signing-key rotation check failed: %v", err)
-	}
+	runSingletonScheduledJob(ctx, jobLocker, "signing-key-rotation-check", 10*time.Minute, func() {
+		if err := runSigningKeyRotationCheck(ctx, agentConfigKeyProvider, auditLog, time.Now().UTC()); err != nil {
+			log.Printf("initial signing-key rotation check failed: %v", err)
+		}
+	})
 
 	r := newRouterWithAgentConfigSigning(cfg, pool, assets, programs, rf, rfAnomalies, satellites, users, agentKeys, auditLog, spaceCVEs, assetAlerts, incidents, rbac, redisClient, agentConfigSigner, agentConfigKeyProvider)
 
@@ -1436,10 +1448,14 @@ func newRouterWithAgentConfigSigning(
 				http.Error(w, "invalid JSON body", http.StatusBadRequest)
 				return
 			}
+			if err := validateAgentDeviceReport(body); err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
 
-			if err := agentIdentities.ReportDevice(r.Context(), agentID, body); err != nil {
+			if err := agentIdentities.ReportDeviceInOrganization(r.Context(), orgID, agentID, body); err != nil {
 				if errors.Is(err, store.ErrAgentIdentityNotFound) {
-					if err := agentKeys.ReportDevice(r.Context(), agentID, body); err != nil {
+					if err := agentKeys.ReportDeviceInOrganization(r.Context(), orgID, agentID, body); err != nil {
 						http.Error(w, "unknown or inactive agent", http.StatusUnauthorized)
 						return
 					}
@@ -1449,6 +1465,9 @@ func newRouterWithAgentConfigSigning(
 				}
 			}
 
+			logAuditInOrganization(r.Context(), auditLog, orgID, audit.ActorAgent, agentID, audit.ActionAgentHardwareReported, clientIP(r), map[string]interface{}{
+				"driver": body.Driver, "hardware": body.Hardware, "serial": body.Serial,
+			})
 			w.WriteHeader(http.StatusNoContent)
 		})
 
@@ -2705,12 +2724,13 @@ func correlateRFDetectionRules(ctx context.Context, rules *store.DetectionRuleSt
 		if !detection.Matches(rule, detection.Signal{Metric: anomalyRecord.Metric, ZScore: anomalyRecord.ZScore}) {
 			continue
 		}
-		match, created, err := rules.RecordMatchIfAllowed(ctx, anomalyRecord.OrganizationID, rule, anomalyRecord.ID, anomalyRecord.AgentID, anomalyRecord.Metric, anomalyRecord.ZScore)
+		match, _, err := rules.RecordMatchIfAllowed(ctx, anomalyRecord.OrganizationID, rule, anomalyRecord.ID, anomalyRecord.AgentID, anomalyRecord.Metric, anomalyRecord.ZScore)
 		if err != nil {
 			log.Printf("detection: failed to record rule %s match: %v", rule.ID, err)
 			continue
 		}
-		if !created {
+		if match.ID == uuid.Nil {
+			// A different recent anomaly consumed this rule's cooldown budget.
 			continue
 		}
 		matched = append(matched, matchedRule{rule: rule, match: match})
@@ -2735,7 +2755,7 @@ func correlateRFDetectionRules(ctx context.Context, rules *store.DetectionRuleSt
 	if autoRuleCount > len(autoNames) {
 		ruleSummary = fmt.Sprintf("%s (+%d more)", ruleSummary, autoRuleCount-len(autoNames))
 	}
-	incident, err := incidents.Create(ctx, store.CreateIncidentInput{
+	incident, _, err := incidents.CreateWithResult(ctx, store.CreateIncidentInput{
 		OrganizationID:  anomalyRecord.OrganizationID,
 		Title:           fmt.Sprintf("RF detection on %s", anomalyRecord.AgentID),
 		Description:     fmt.Sprintf("Matched rules: %s. Metric %s produced a z-score of %.2f.", ruleSummary, anomalyRecord.Metric, anomalyRecord.ZScore),
@@ -2778,13 +2798,19 @@ func correlateRFDetectionRules(ctx context.Context, rules *store.DetectionRuleSt
 	}
 	attachOrbitalSecurityEvidence(ctx, incidents, incident.ID.String(), orbitalSecurity)
 	attachCrossDomainCorrelationEvidence(ctx, incidents, auditLog, assetAlerts, orbitalEvents, incident.ID, anomalyRecord.AgentID, anomalyRecord.SatelliteID, len(matched), orbitalSecurity)
-	logAudit(ctx, auditLog, audit.ActorSystem, "correlation-engine", audit.ActionIncidentCreated, "", map[string]interface{}{
-		"organization_id": anomalyRecord.OrganizationID.String(),
-		"incident_id":     incident.ID.String(),
-		"reference":       incident.Reference,
-		"anomaly_id":      anomalyRecord.ID.String(),
-		"rule_count":      len(matched),
-	})
+	if auditLog != nil {
+		details := map[string]interface{}{
+			"organization_id": anomalyRecord.OrganizationID.String(),
+			"incident_id":     incident.ID.String(),
+			"reference":       incident.Reference,
+			"anomaly_id":      anomalyRecord.ID.String(),
+			"rule_count":      len(matched),
+		}
+		dedupeKey := "correlation-incident:" + incident.ID.String()
+		if _, err := auditLog.InsertIdempotentInOrganization(ctx, anomalyRecord.OrganizationID, dedupeKey, audit.ActorSystem, "correlation-engine", audit.ActionIncidentCreated, "", details); err != nil {
+			log.Printf("detection: failed to record idempotent incident audit for %s: %v", incident.ID, err)
+		}
+	}
 }
 
 func validateDetectionRule(name, description, metric, operator string, threshold float64, severity string, cooldownSeconds int) error {
@@ -2807,6 +2833,44 @@ func validateDetectionRule(name, description, metric, operator string, threshold
 		return err
 	}
 	return validate.DetectionRuleCooldown(cooldownSeconds)
+}
+
+func validateAgentDeviceReport(info store.AgentDeviceInfo) error {
+	if !info.ReportedAt.IsZero() || info.Compatibility != "" || info.CompatibilityReason != "" {
+		return errors.New("reported_at and compatibility fields are read-only")
+	}
+	for name, value := range map[string]string{
+		"driver": info.Driver, "hardware": info.Hardware, "manufacturer": info.Manufacturer,
+		"product": info.Product, "serial": info.Serial,
+	} {
+		if len(strings.TrimSpace(value)) > 256 {
+			return fmt.Errorf("%s is too long", name)
+		}
+	}
+	c := info.Capabilities
+	if len(c.Architecture) > 64 || len(c.OS) > 64 || len(c.DriverVersion) > 128 || len(c.FirmwareVersion) > 128 {
+		return errors.New("hardware capability metadata is too long")
+	}
+	if c.FrequencyMinHz < 0 || c.FrequencyMaxHz < 0 || (c.FrequencyMaxHz > 0 && c.FrequencyMinHz > c.FrequencyMaxHz) {
+		return errors.New("invalid frequency capability range")
+	}
+	if c.Channels < 0 || c.Channels > 64 || c.SampleDrops < 0 || len(c.SampleRatesHz) > 64 || len(c.BandwidthsHz) > 64 || len(c.GainElements) > 64 {
+		return errors.New("invalid hardware capabilities")
+	}
+	for _, value := range append(append([]int64{}, c.SampleRatesHz...), c.BandwidthsHz...) {
+		if value <= 0 {
+			return errors.New("sample rates and bandwidths must be positive")
+		}
+	}
+	for _, name := range c.GainElements {
+		if len(strings.TrimSpace(name)) > 64 {
+			return errors.New("gain element name is too long")
+		}
+	}
+	if c.TemperatureC != nil && (*c.TemperatureC < -100 || *c.TemperatureC > 250) {
+		return errors.New("invalid hardware temperature")
+	}
+	return nil
 }
 
 func logAuditInOrganization(ctx context.Context, auditLog *store.AuditStore, organizationID uuid.UUID, actorType, actorID, action, ip string, details map[string]interface{}) {

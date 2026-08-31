@@ -269,3 +269,36 @@ func TestAcknowledgeUnknownAlertReturnsFalse(t *testing.T) {
 		t.Error("Acknowledge should return false for a non-existent alert ID")
 	}
 }
+
+func TestProcessCVERetryDoesNotDuplicateAudit(t *testing.T) {
+	w, pool := setupWorker(t)
+	ctx := context.Background()
+
+	programID := insertProgram(t, ctx, pool)
+	assets := store.NewAssetStore(pool)
+	if err := assets.Upsert(ctx, programID, "satellite", "NORAD-77777"); err != nil {
+		t.Fatalf("upsert asset: %v", err)
+	}
+	spaceCVEs := store.NewSpaceCVEStore(pool)
+	if err := spaceCVEs.Upsert(ctx, "CVE-2026-10006", "test", time.Now(), "HIGH", 8.0, "satellite"); err != nil {
+		t.Fatalf("upsert cve: %v", err)
+	}
+
+	if err := w.ProcessCVE(ctx, "CVE-2026-10006"); err != nil {
+		t.Fatalf("first ProcessCVE: %v", err)
+	}
+	if err := w.ProcessCVE(ctx, "CVE-2026-10006"); err != nil {
+		t.Fatalf("retry ProcessCVE: %v", err)
+	}
+
+	var alertsCount, auditCount int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM asset_cve_alerts WHERE cve_id='CVE-2026-10006'`).Scan(&alertsCount); err != nil {
+		t.Fatalf("count alerts: %v", err)
+	}
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM audit_log WHERE action='asset_alert.created' AND details->>'cve_id'='CVE-2026-10006'`).Scan(&auditCount); err != nil {
+		t.Fatalf("count audit: %v", err)
+	}
+	if alertsCount != 1 || auditCount != 1 {
+		t.Fatalf("retry counts: alerts=%d audit=%d, want 1/1", alertsCount, auditCount)
+	}
+}

@@ -102,6 +102,25 @@ func (s *AuditStore) InsertInOrganization(ctx context.Context, organizationID uu
 	return err
 }
 
+// InsertIdempotentInOrganization records a system side effect exactly once per
+// tenant/dedupe key. It is intended for at-least-once background processing,
+// where a retry must be able to repair a missing audit entry without creating
+// duplicates if the previous attempt already committed it.
+func (s *AuditStore) InsertIdempotentInOrganization(ctx context.Context, organizationID uuid.UUID, dedupeKey, actorType, actorID, action, ip string, details map[string]interface{}) (bool, error) {
+	if details == nil {
+		details = map[string]interface{}{}
+	}
+	tag, err := s.pool.Exec(ctx, `
+		INSERT INTO audit_log (organization_id, dedupe_key, actor_type, actor_id, action, ip, details)
+		VALUES ($1,$2,$3,$4,$5,$6,$7)
+		ON CONFLICT (organization_id, dedupe_key) WHERE dedupe_key IS NOT NULL DO NOTHING
+	`, organizationID, dedupeKey, actorType, actorID, action, ip, details)
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() > 0, nil
+}
+
 func (s *AuditStore) ListByOrganization(ctx context.Context, organizationID uuid.UUID, limit, offset int) (Page[AuditEntry], error) {
 	limit, offset = ClampPageParams(limit, offset)
 	var total int

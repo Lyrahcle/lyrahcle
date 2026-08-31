@@ -7,7 +7,7 @@ import Skeleton from './Skeleton.jsx'
 import AgentKeysPanel from './AgentKeysPanel.jsx'
 import AgentIdentityPanel from './AgentIdentityPanel.jsx'
 import AgentRemoteConfigPanel from './AgentRemoteConfigPanel.jsx'
-import TableScroll from './TableScroll.jsx'
+import AgentHardwarePanel from './AgentHardwarePanel.jsx'
 
 const SDR_DEVICES = [
   {
@@ -163,6 +163,13 @@ export default function ConnectivityPanel({ agentKeys, agentIdentities, satellit
       )}
 
       {canAccessAgents && (
+        <Panel eyebrow={t('panels.connectivity')} title={t('connectivity.hardwareInventory')} uppercase>
+          <p className="mb-4 text-sm text-lyra-muted">{t('connectivity.hardwareInventoryHint')}</p>
+          {agentIdentities === null || agentKeys === null ? <Skeleton /> : <AgentHardwarePanel agents={agentIdentities} legacyKeys={agentKeys} />}
+        </Panel>
+      )}
+
+      {canAccessAgents && (
         <Panel eyebrow={t('panels.connectivity')} title={t('connectivity.connectedAgents')} uppercase>
           <p className="mb-4 text-sm text-lyra-muted">{t('connectivity.connectedAgentsHint')}</p>
           {agentKeys === null ? <Skeleton /> : <AgentKeysWithDevices keys={agentKeys} onChanged={onAgentKeysChanged} t={t} canManage={canManageAgents} />}
@@ -172,48 +179,6 @@ export default function ConnectivityPanel({ agentKeys, agentIdentities, satellit
   )
 }
 
-function AgentKeysWithDevices({ keys, onChanged, t, canManage }) {
-  return (
-    <div>
-      <AgentKeysPanel keys={keys} onChanged={onChanged} canManage={canManage} />
-
-      {keys.length > 0 && (
-        <div className="mt-6">
-          <p className="mb-2 font-mono text-[11px] uppercase tracking-wider text-lyra-gold">
-            {t('connectivity.deviceReports')}
-          </p>
-          <TableScroll>
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-lyra-borderSoft">
-                  <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
-                    {t('connectivity.agent')}
-                  </th>
-                  <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
-                    {t('connectivity.device')}
-                  </th>
-                  <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
-                    {t('connectivity.reportedAt')}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {keys.map((k) => (
-                  <tr key={k.agent_id} className="border-b border-lyra-borderSoft/60 last:border-0">
-                    <td className="py-2.5 font-mono text-xs text-lyra-goldBright">{k.agent_id}</td>
-                    <td className="py-2.5 font-mono text-xs text-lyra-text">
-                      {k.device ? `${k.device.hardware || k.device.driver}` : t('connectivity.noDeviceReported')}
-                    </td>
-                    <td className="py-2.5 font-mono text-xs text-lyra-mutedDim">
-                      {k.device ? new Date(k.device.reported_at).toLocaleString() : '—'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </TableScroll>
-        </div>
-      )}
-    </div>
-  )
+function AgentKeysWithDevices({ keys, onChanged, canManage }) {
+  return <AgentKeysPanel keys={keys} onChanged={onChanged} canManage={canManage} />
 }

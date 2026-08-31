@@ -172,9 +172,14 @@ func (s *IncidentStore) List(ctx context.Context, limit, offset int, filter Inci
 }
 
 func (s *IncidentStore) Create(ctx context.Context, input CreateIncidentInput) (Incident, error) {
+	incident, _, err := s.CreateWithResult(ctx, input)
+	return incident, err
+}
+
+func (s *IncidentStore) CreateWithResult(ctx context.Context, input CreateIncidentInput) (Incident, bool, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
-		return Incident{}, err
+		return Incident{}, false, err
 	}
 	defer tx.Rollback(ctx)
 
@@ -198,9 +203,9 @@ func (s *IncidentStore) Create(ctx context.Context, input CreateIncidentInput) (
 	if err != nil {
 		_ = tx.Rollback(ctx)
 		if existing, ok := s.existingForDuplicate(ctx, input, err); ok {
-			return existing, nil
+			return existing, false, nil
 		}
-		return Incident{}, err
+		return Incident{}, false, err
 	}
 
 	eventType := "created"
@@ -214,13 +219,13 @@ func (s *IncidentStore) Create(ctx context.Context, input CreateIncidentInput) (
 		"severity":    incident.Severity,
 		"source_type": incident.SourceType,
 	}); err != nil {
-		return Incident{}, err
+		return Incident{}, false, err
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return Incident{}, err
+		return Incident{}, false, err
 	}
-	return incident, nil
+	return incident, true, nil
 }
 
 func (s *IncidentStore) Get(ctx context.Context, id uuid.UUID) (IncidentDetail, error) {
@@ -437,11 +442,11 @@ func (s *IncidentStore) existingForDuplicate(ctx context.Context, input CreateIn
 		return Incident{}, false
 	}
 	switch pgErr.ConstraintName {
-	case "idx_incidents_idempotency_key":
+	case "idx_incidents_org_idempotency_key":
 		if input.IdempotencyKey == "" {
 			return Incident{}, false
 		}
-		incident, err := s.getByIdempotencyKey(ctx, input.IdempotencyKey)
+		incident, err := s.getByIdempotencyKey(ctx, incidentOrganizationID(input.OrganizationID), input.IdempotencyKey)
 		return incident, err == nil
 	case "incidents_source_anomaly_id_key":
 		if input.SourceAnomalyID == nil {
@@ -454,7 +459,7 @@ func (s *IncidentStore) existingForDuplicate(ctx context.Context, input CreateIn
 	}
 }
 
-func (s *IncidentStore) getByIdempotencyKey(ctx context.Context, key string) (Incident, error) {
+func (s *IncidentStore) getByIdempotencyKey(ctx context.Context, organizationID uuid.UUID, key string) (Incident, error) {
 	row := s.pool.QueryRow(ctx, `
 		SELECT i.id, i.reference, i.title, i.description, i.severity, i.status, i.source_type,
 		       i.satellite_id, coalesce(s.name, ''), coalesce(i.agent_id, ''), i.source_anomaly_id,
@@ -462,8 +467,8 @@ func (s *IncidentStore) getByIdempotencyKey(ctx context.Context, key string) (In
 		FROM incidents i
 		LEFT JOIN satellites s ON s.id = i.satellite_id
 		LEFT JOIN users u ON u.id = i.assigned_to
-		WHERE i.idempotency_key = $1
-	`, key)
+		WHERE i.organization_id = $1 AND i.idempotency_key = $2
+	`, organizationID, key)
 	return scanIncident(row)
 }
 

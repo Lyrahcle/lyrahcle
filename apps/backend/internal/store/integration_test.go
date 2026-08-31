@@ -898,3 +898,137 @@ func TestAgentConfigSigningKIDRoundTripsWithImmutableVersion(t *testing.T) {
 		t.Fatalf("history signing_kid = %#v, want %q", history, signingKID)
 	}
 }
+
+func TestDetectionRuleRetryRecoversExistingMatchInsideCooldown(t *testing.T) {
+	pool := testPool(t)
+	ctx := context.Background()
+	users := NewUserStore(pool)
+	actor, err := users.Create(ctx, "rule-retry@example.com", "test-hash", "admin")
+	if err != nil {
+		t.Fatalf("create actor: %v", err)
+	}
+	rules := NewDetectionRuleStore(pool)
+	rule, err := rules.CreateInOrganization(ctx, actor.OrganizationID, detection.Rule{
+		Name: "Retry-safe detection rule", Enabled: true, Metric: "power_dbm", Operator: "abs_z_gte",
+		Threshold: 6, Severity: "high", CooldownSeconds: 300, AutoIncident: true,
+	}, actor.ID)
+	if err != nil {
+		t.Fatalf("create rule: %v", err)
+	}
+
+	rf := NewRFStore(pool)
+	reading := RFReading{OrganizationID: actor.OrganizationID, AgentID: "retry-agent", FrequencyHz: 437500000, PowerDbm: -10, CapturedAt: time.Now().UTC()}
+	if err := rf.Insert(ctx, &reading); err != nil {
+		t.Fatalf("insert reading: %v", err)
+	}
+	anomalyRecord, err := NewAnomalyStore(pool).InsertReturning(ctx, RFAnomaly{
+		OrganizationID: actor.OrganizationID, ReadingID: reading.ID, AgentID: reading.AgentID,
+		Metric: "power_dbm", Value: -10, BaselineMean: -60, BaselineStddev: 2, ZScore: 9,
+	})
+	if err != nil {
+		t.Fatalf("insert anomaly: %v", err)
+	}
+
+	first, created, err := rules.RecordMatchIfAllowed(ctx, actor.OrganizationID, rule, anomalyRecord.ID, anomalyRecord.AgentID, anomalyRecord.Metric, anomalyRecord.ZScore)
+	if err != nil || !created || first.ID == uuid.Nil {
+		t.Fatalf("first RecordMatchIfAllowed: match=%v created=%v err=%v", first.ID, created, err)
+	}
+	second, created, err := rules.RecordMatchIfAllowed(ctx, actor.OrganizationID, rule, anomalyRecord.ID, anomalyRecord.AgentID, anomalyRecord.Metric, anomalyRecord.ZScore)
+	if err != nil {
+		t.Fatalf("retry RecordMatchIfAllowed: %v", err)
+	}
+	if created {
+		t.Fatal("retry unexpectedly created a duplicate match")
+	}
+	if second.ID != first.ID {
+		t.Fatalf("retry returned match %s, want durable match %s", second.ID, first.ID)
+	}
+}
+
+func TestIncidentIdempotencyKeyIsTenantScoped(t *testing.T) {
+	pool := testPool(t)
+	ctx := context.Background()
+	organizations := NewOrganizationStore(pool)
+	orgA, err := organizations.Create(ctx, "idem-a", "Idempotency A")
+	if err != nil {
+		t.Fatalf("create org A: %v", err)
+	}
+	orgB, err := organizations.Create(ctx, "idem-b", "Idempotency B")
+	if err != nil {
+		t.Fatalf("create org B: %v", err)
+	}
+
+	incidents := NewIncidentStore(pool)
+	input := func(org uuid.UUID) CreateIncidentInput {
+		return CreateIncidentInput{
+			OrganizationID: org,
+			Title:          "Idempotent request",
+			Description:    "same HTTP key is valid independently per tenant",
+			Severity:       "medium",
+			SourceType:     "manual",
+			IdempotencyKey: "same-key-across-tenants",
+		}
+	}
+
+	firstA, created, err := incidents.CreateWithResult(ctx, input(orgA.ID))
+	if err != nil || !created {
+		t.Fatalf("first org A create: created=%v err=%v", created, err)
+	}
+	retryA, created, err := incidents.CreateWithResult(ctx, input(orgA.ID))
+	if err != nil || created {
+		t.Fatalf("org A retry: created=%v err=%v", created, err)
+	}
+	if retryA.ID != firstA.ID {
+		t.Fatalf("org A retry ID=%s want %s", retryA.ID, firstA.ID)
+	}
+
+	firstB, created, err := incidents.CreateWithResult(ctx, input(orgB.ID))
+	if err != nil || !created {
+		t.Fatalf("first org B create with same idempotency key: created=%v err=%v", created, err)
+	}
+	if firstB.ID == firstA.ID {
+		t.Fatal("different tenants received the same incident for a shared idempotency key")
+	}
+	if firstB.OrganizationID != orgB.ID || firstA.OrganizationID != orgA.ID {
+		t.Fatalf("tenant ownership mismatch: A=%s B=%s", firstA.OrganizationID, firstB.OrganizationID)
+	}
+}
+
+func TestAuditIdempotencyKeyIsTenantScoped(t *testing.T) {
+	pool := testPool(t)
+	ctx := context.Background()
+	organizations := NewOrganizationStore(pool)
+	orgA, err := organizations.Create(ctx, "audit-idem-a", "Audit Idempotency A")
+	if err != nil {
+		t.Fatalf("create org A: %v", err)
+	}
+	orgB, err := organizations.Create(ctx, "audit-idem-b", "Audit Idempotency B")
+	if err != nil {
+		t.Fatalf("create org B: %v", err)
+	}
+
+	audits := NewAuditStore(pool)
+	created, err := audits.InsertIdempotentInOrganization(ctx, orgA.ID, "worker:event:42", "system", "test-worker", "test.action", "", map[string]interface{}{"attempt": 1})
+	if err != nil || !created {
+		t.Fatalf("first org A audit: created=%v err=%v", created, err)
+	}
+	created, err = audits.InsertIdempotentInOrganization(ctx, orgA.ID, "worker:event:42", "system", "test-worker", "test.action", "", map[string]interface{}{"attempt": 2})
+	if err != nil || created {
+		t.Fatalf("retry org A audit: created=%v err=%v", created, err)
+	}
+	created, err = audits.InsertIdempotentInOrganization(ctx, orgB.ID, "worker:event:42", "system", "test-worker", "test.action", "", map[string]interface{}{"attempt": 1})
+	if err != nil || !created {
+		t.Fatalf("first org B audit with same dedupe key: created=%v err=%v", created, err)
+	}
+
+	var countA, countB int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM audit_log WHERE organization_id=$1 AND dedupe_key='worker:event:42'`, orgA.ID).Scan(&countA); err != nil {
+		t.Fatalf("count org A audit: %v", err)
+	}
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM audit_log WHERE organization_id=$1 AND dedupe_key='worker:event:42'`, orgB.ID).Scan(&countB); err != nil {
+		t.Fatalf("count org B audit: %v", err)
+	}
+	if countA != 1 || countB != 1 {
+		t.Fatalf("audit counts A/B=%d/%d, want 1/1", countA, countB)
+	}
+}
