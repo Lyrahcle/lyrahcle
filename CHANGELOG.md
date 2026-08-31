@@ -4,6 +4,7 @@ Notable changes are tracked here until versioned release notes take over.
 
 ## Unreleased
 
+- Added a machine-verifiable administrative audit matrix covering organization updates, platform-admin grants/revocations, signing-key lifecycle mutations, agent enrollment/station/status administration, and agent remote-config issue/rollback; synchronized the sensitive-endpoint audit inventory with those required events.
 - Completed fleet-rollout administrative audit coverage: create/start/advance/pause/resume/rollback now use centralized audit action constants, pause/resume emit tenant audit events, and a backend contract prevents transition coverage from silently regressing.
 - Enforced the route-authorization regression contract directly in GitHub Actions, not only through local v1 validation.
 - Enforced the bearer-cookie/CSRF regression contract directly in GitHub Actions so introducing browser cookies without CSRF protection fails CI.

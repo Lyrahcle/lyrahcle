@@ -19,6 +19,13 @@ This inventory defines the minimum audit expectation for security-sensitive oper
 | Agents | key create/revoke | `agent_key.created` / `agent_key.revoked` |
 | Agents | failed key authentication | `agent_key.auth_failed` |
 | Agents | fleet rollout create/start/advance/pause/resume/rollback | `agent.rollout_created` / `agent.rollout_started` / `agent.rollout_advanced` / `agent.rollout_paused` / `agent.rollout_resumed` / `agent.rollout_rolled_back` |
+| Agents | enrollment token issue | `agent.enrollment_issued` |
+| Agents | station update | `agent.station_updated` |
+| Agents | status change | `agent.status_changed` |
+| Agents | config issue/rollback | `agent.config_issued` / `agent.config_rollback` |
+| Organizations | create/update | `organization.created` / `organization.updated` |
+| Platform admins | grant/revoke | `platform_admin.granted` / `platform_admin.revoked` |
+| Signing keys | policy update/prepare/activate/revoke | `signing_key.policy_updated` / `signing_key.prepared` / `signing_key.activated` / `signing_key.revoked` |
 | Satellites | create/update TLE | `satellite.upserted` |
 | Detection | create/update rule | `detection_rule.created` / `detection_rule.updated` |
 | Incidents | create/update | `incident.created` / `incident.updated` |
