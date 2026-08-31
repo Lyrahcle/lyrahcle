@@ -4,6 +4,9 @@ Notable changes are tracked here until versioned release notes take over.
 
 ## Unreleased
 
+- Enforced the route-authorization regression contract directly in GitHub Actions, not only through local v1 validation.
+- Enforced the bearer-cookie/CSRF regression contract directly in GitHub Actions so introducing browser cookies without CSRF protection fails CI.
+- Aligned the improvement roadmap with the actual local and CI enforcement paths for both security contracts.
 - Added a Platform health overview with backend dependency readiness, secret-provider health, signing-custody posture, organization count, and platform-admin count. The overview reuses `/readyz` plus existing protected platform security endpoints and does not expose secret material.
 - Added a unified Connectivity fleet posture view with healthy/attention/offline counts, agent search and posture filters. Surfaces last contact, hardware compatibility and edge-integrity state before the detailed identity/config/hardware panels.
 - Added an operational incident posture summary with active, urgent and unassigned counts for the visible page, quick filters for new/investigating/critical incidents plus a one-click filter reset, compact incident context metadata, a visual event timeline in the selected-incident detail, and frontend coverage for posture counters and quick-filter behavior.

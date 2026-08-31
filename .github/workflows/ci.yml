@@ -153,6 +153,14 @@ jobs:
         run: |
           python3 -m unittest scripts/test_check_sql_construction.py
           python3 scripts/check-sql-construction.py .
+      - name: Route authorization contract
+        run: |
+          python3 -m unittest scripts/test_check_route_authorization.py
+          python3 scripts/check-route-authorization.py .
+      - name: Browser cookie and CSRF contract
+        run: |
+          python3 -m unittest scripts/test_check_csrf_cookie_auth.py
+          python3 scripts/check-csrf-cookie-auth.py .
       - name: Frontend XSS contract
         run: |
           python3 -m unittest scripts/test_check_frontend_xss.py

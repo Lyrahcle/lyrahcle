@@ -18,14 +18,14 @@ Status values: **Shipped**, **Partial**, **Next**, and **Later**.
 | Force password change on first default-admin login | Shipped | Current |
 | Stronger password policy | Shipped | Current |
 | Enforce TLS for all production authentication traffic | Shipped | Current |
-| CSRF protection if cookie-based authentication is introduced | Shipped | Current (N/A today: bearer-token-only auth, no cookies; `check-csrf-cookie-auth.py` fails the build the moment a handler sets one without CSRF protection) |
+| CSRF protection if cookie-based authentication is introduced | Shipped | Current (N/A today: bearer-token-only auth, no cookies; `check-csrf-cookie-auth.py` runs in local v1 validation and GitHub Actions, failing the build the moment a handler sets one without CSRF protection) |
 | Automatic agent certificate rotation | Shipped | v9.0 |
 | Agent enrollment and mTLS | Shipped | v9.0 |
 | Additional roles such as analyst and auditor | Shipped | Current |
 | Administrator subroles | Shipped | v9 |
 | Explicit permission matrix | Shipped | Current |
 | Disable and soft-delete users | Shipped | Current |
-| Complete sensitive-endpoint authorization review | Shipped | Current (`check-route-authorization.py` audits every route in `cmd/server/*.go` and fails CI if a new route lacks a recognizable role/permission/mTLS/token gate) |
+| Complete sensitive-endpoint authorization review | Shipped | Current (`check-route-authorization.py` audits every route in `cmd/server/*.go` in local v1 validation and GitHub Actions, failing the build if a new route lacks a recognizable role/permission/mTLS/token gate) |
 | Complete administrative audit-coverage review | Partial | Before v1.0 |
 | Multi-tenant organizations with tenant-scoped RBAC | Shipped | v10.0-v10.6 |
 | Database-enforced tenant isolation (PostgreSQL row-level security) | Shipped | v14.2 |
