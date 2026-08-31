@@ -2,19 +2,22 @@
 from pathlib import Path
 import sys
 
+from check_source_utils import read_source_tree
+
 ROOT = Path(sys.argv[1] if len(sys.argv) > 1 else '.').resolve()
 
+SERVER_REQUIRED = [
+    '"assets.manage", isTokenRevoked)).Put("/{assetID}"',
+    '"assets.manage", isTokenRevoked)).Delete("/{assetID}"',
+    '"programs.manage", isTokenRevoked)).Put("/{programID}"',
+    '"programs.manage", isTokenRevoked)).Delete("/{programID}"',
+    'audit.ActionAssetUpdated',
+    'audit.ActionAssetDeleted',
+    'audit.ActionProgramUpdated',
+    'audit.ActionProgramDeleted',
+]
+
 CHECKS = {
-    ROOT / 'apps/backend/cmd/server/main.go': [
-        '"assets.manage", isTokenRevoked)).Put("/{assetID}"',
-        '"assets.manage", isTokenRevoked)).Delete("/{assetID}"',
-        '"programs.manage", isTokenRevoked)).Put("/{programID}"',
-        '"programs.manage", isTokenRevoked)).Delete("/{programID}"',
-        'audit.ActionAssetUpdated',
-        'audit.ActionAssetDeleted',
-        'audit.ActionProgramUpdated',
-        'audit.ActionProgramDeleted',
-    ],
     ROOT / 'apps/backend/internal/store/assets.go': [
         'p.organization_id=$1',
         'UpdateInOrganization',
@@ -44,6 +47,14 @@ CHECKS = {
 }
 
 errors = []
+server_dir = ROOT / 'apps/backend/cmd/server'
+server_text = read_source_tree(server_dir)
+if not server_text:
+    errors.append('missing server source directory: apps/backend/cmd/server')
+else:
+    for token in SERVER_REQUIRED:
+        if token not in server_text:
+            errors.append(f'backend server sources missing contract token: {token}')
 for path, required in CHECKS.items():
     if not path.exists():
         errors.append(f'missing file: {path.relative_to(ROOT)}')

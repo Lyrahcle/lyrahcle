@@ -148,6 +148,9 @@ func TestHealthzIsPublic(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Errorf("GET /healthz: status = %d, want %d", rec.Code, http.StatusOK)
 	}
+	if got := rec.Header().Get("Content-Type"); got != "application/json" {
+		t.Errorf("GET /healthz: Content-Type = %q, want application/json", got)
+	}
 }
 
 func TestReadyzChecksDatabase(t *testing.T) {

@@ -2,7 +2,7 @@
 
 ## Setup
 
-Requirements: Docker, Docker Compose, Go 1.25 for backend/CVE worker development, and Node.js for frontend work.
+Requirements: Docker, Docker Compose, Go 1.26.7 for Go-module development, and Node.js 22 for frontend work.
 
 ```bash
 git clone https://github.com/Lyrahcle/lyrahcle.git
@@ -13,10 +13,10 @@ docker compose up --build
 For focused development:
 
 ```bash
-cd apps/backend && go test ./... && go vet ./...
-cd apps/frontend && npm install && npm test && npm run build
-cd apps/sdr-agent && go test ./...
-cd apps/cve-sync && go test ./...
+(cd apps/backend && go test ./... && go vet ./...)
+(cd apps/frontend && npm ci && npm test && npm run build)
+(cd apps/sdr-agent && go test ./...)
+(cd apps/cve-sync && go test ./...)
 ```
 
 ## Code conventions
@@ -39,8 +39,9 @@ Report vulnerabilities privately as described in [SECURITY.md](./SECURITY.md).
 Keep each PR focused. Before opening it:
 
 ```bash
-cd apps/backend && go test ./... && go vet ./...
-cd apps/frontend && npm test && npm run build
+(cd apps/backend && go test ./... && go vet ./...)
+(cd apps/frontend && npm test && npm run build)
+./scripts/check-contracts.sh
 ```
 
 Update documentation when behavior, configuration, APIs, migrations, deployment requirements, or security guarantees change.

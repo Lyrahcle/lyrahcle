@@ -10,7 +10,7 @@ function makeToken(payload) {
 describe('auth client', () => {
   beforeEach(() => {
     localStorage.clear()
-  sessionStorage.clear()
+    sessionStorage.clear()
     global.fetch = vi.fn()
   })
 

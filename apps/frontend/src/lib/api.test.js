@@ -48,6 +48,9 @@ import {
   fetchAgentConfigSigningPublicKey,
   activateAgentConfigSigningKey,
   revokeAgentConfigSigningKey,
+  acknowledgeAssetAlert,
+  subscribeSatellites,
+  subscribeIncidents,
 } from './api.js'
 
 function mockFetchOnce(ok, body, status = ok ? 200 : 500, headers = {}) {
@@ -90,7 +93,9 @@ describe('api client', () => {
   it('fetchAssets throws UnauthorizedError and clears the session on a 401', async () => {
     sessionStorage.setItem('lyra_token', 'stale-token')
     mockFetchOnce(false, null, 401)
-    await expect(fetchAssets()).rejects.toBeInstanceOf(UnauthorizedError)
+    const error = await fetchAssets().catch((caught) => caught)
+    expect(error).toBeInstanceOf(UnauthorizedError)
+    expect(error.endpoint).toBe('/api/v1/assets/?limit=50&offset=0')
     expect(localStorage.getItem('lyra_token')).toBeNull()
   })
 
@@ -120,7 +125,7 @@ describe('api client', () => {
 
   it('turns network failures into retryable ApiError instances', async () => {
     global.fetch = vi.fn().mockRejectedValue(new TypeError('network down'))
-    await expect(fetchPing()).rejects.toMatchObject({ status: 0, kind: 'network', retryable: true })
+    await expect(fetchPing()).rejects.toMatchObject({ status: 0, kind: 'network', retryable: true, endpoint: '/api/v1/ping' })
   })
 
   it('loads effective permissions through the authenticated API boundary', async () => {
@@ -437,4 +442,50 @@ describe('api client', () => {
     await revokeAgentConfigSigningKey('kid-old')
     expect(fetch).toHaveBeenLastCalledWith('/api/v1/signing-keys/agent-config/kid-old/revoke', { method: 'POST', headers: { Authorization: 'Bearer test-token' } })
   })
+
+  it('encodes asset-alert identifiers before mutating alerts', async () => {
+    mockFetchOnce(true, null, 204)
+    await acknowledgeAssetAlert('alert/1')
+    expect(fetch).toHaveBeenCalledWith('/api/v1/asset-alerts/alert%2F1/acknowledge', expect.objectContaining({ method: 'POST' }))
+  })
+
+  it('shares resilient SSE parsing across satellite and incident streams', async () => {
+    const encoder = new TextEncoder()
+    const streamResponse = (payload) => {
+      const chunks = [
+        encoder.encode('event: update\r\ndata:'),
+        encoder.encode(` ${JSON.stringify(payload)}\r`),
+        encoder.encode('\n\r\n'),
+      ]
+      let index = 0
+      return {
+        ok: true,
+        status: 200,
+        headers: { get: () => null },
+        body: {
+          getReader: () => ({
+            read: async () => index < chunks.length ? { value: chunks[index++], done: false } : { value: undefined, done: true },
+            releaseLock: vi.fn(),
+          }),
+        },
+      }
+    }
+
+    global.fetch = vi.fn()
+      .mockResolvedValueOnce(streamResponse({ id: 'sat-1', name: 'ISS' }))
+      .mockResolvedValueOnce(streamResponse({ id: 'incident-1', severity: 'high' }))
+
+    const satellite = await new Promise((resolve, reject) => {
+      subscribeSatellites({ onData: resolve, onError: reject })
+    })
+    const incident = await new Promise((resolve, reject) => {
+      subscribeIncidents({ onData: resolve, onError: reject })
+    })
+
+    expect(satellite).toEqual({ id: 'sat-1', name: 'ISS' })
+    expect(incident).toEqual({ id: 'incident-1', severity: 'high' })
+    expect(fetch.mock.calls[0][0]).toBe('/api/v1/satellites/stream')
+    expect(fetch.mock.calls[1][0]).toBe('/api/v1/incidents/stream')
+  })
+
 })

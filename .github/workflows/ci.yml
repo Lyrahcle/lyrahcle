@@ -137,64 +137,8 @@ jobs:
           docker compose --profile observability config -q
           bash -n scripts/*.sh
           python3 -m json.tool deploy/grafana/dashboards/lyrahcle-overview.json >/dev/null
-      - name: Command-injection contract
-        run: |
-          python3 -m unittest scripts/test_check_command_execution.py
-          python3 scripts/check-command-execution.py .
-      - name: Script executable permission contract
-        run: |
-          python3 -m unittest scripts/test_check_script_permissions.py
-          python3 scripts/check-script-permissions.py .
-      - name: Go toolchain contract
-        run: |
-          python3 -m unittest scripts/test_check_go_toolchain.py
-          python3 scripts/check-go-toolchain.py .
-      - name: SQL construction contract
-        run: |
-          python3 -m unittest scripts/test_check_sql_construction.py
-          python3 scripts/check-sql-construction.py .
-      - name: Route authorization contract
-        run: |
-          python3 -m unittest scripts/test_check_route_authorization.py
-          python3 scripts/check-route-authorization.py .
-      - name: Browser cookie and CSRF contract
-        run: |
-          python3 -m unittest scripts/test_check_csrf_cookie_auth.py
-          python3 scripts/check-csrf-cookie-auth.py .
-      - name: Frontend XSS contract
-        run: |
-          python3 -m unittest scripts/test_check_frontend_xss.py
-          python3 scripts/check-frontend-xss.py .
-      - name: Asset and program UI parity contract
-        run: |
-          python3 -m unittest scripts/test_check_asset_program_parity.py
-          python3 scripts/check-asset-program-parity.py .
-      - name: Platform organization UI parity contract
-        run: |
-          python3 -m unittest scripts/test_check_platform_organization_parity.py
-          python3 scripts/check-platform-organization-parity.py .
-      - name: Satellite UI parity contract
-        run: |
-          python3 -m unittest scripts/test_check_satellite_ui_parity.py
-          python3 scripts/check-satellite-ui-parity.py .
-
-      - name: Correlation UI parity contract
-        run: |
-          python3 -m unittest scripts/test_check_correlation_ui_parity.py
-          python3 scripts/check-correlation-ui-parity.py .
-      - name: HTTP error UI contract
-        run: |
-          python3 -m unittest scripts/test_check_http_error_ui.py
-          python3 scripts/check-http-error-ui.py .
-      - name: KeyProvider and KID contract
-        run: |
-          python3 -m unittest scripts/test_check_keyprovider_kid.py scripts/test_check_signing_key_lifecycle.py scripts/test_check_signing_key_automation.py scripts/test_check_tenant_rate_limiting.py scripts/test_check_background_job_idempotency.py scripts/test_check_agent_hardware_ui.py
-          python3 scripts/check-keyprovider-kid.py .
-          python3 scripts/check-signing-key-lifecycle.py .
-          python3 scripts/check-signing-key-automation.py .
-          python3 scripts/check-tenant-rate-limiting.py .
-          python3 scripts/check-background-job-idempotency.py .
-          python3 scripts/check-agent-hardware-ui.py .
+      - name: Security and parity contracts
+        run: ./scripts/check-contracts.sh
       - name: Lint Dockerfiles (hadolint)
         uses: hadolint/hadolint-action@v3.1.0
         continue-on-error: true

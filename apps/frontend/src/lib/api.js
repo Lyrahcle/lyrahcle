@@ -76,7 +76,7 @@ async function trackedFetch(url, options = {}) {
     return await fetch(url, options)
   } catch (cause) {
     if (cause?.name === 'AbortError') throw cause
-    const error = new ApiError('backend unavailable', { kind: 'network', cause })
+    const error = new ApiError('backend unavailable', { kind: 'network', endpoint: String(url), cause })
     publishApiError(error)
     throw error
   }
@@ -87,9 +87,81 @@ async function authedFetch(url, options = {}) {
   if (res.status === 401) {
     const message = await readErrorText(res, 'session expired')
     logout()
-    throw new UnauthorizedError(message, { requestId: requestIdFrom(res) })
+    throw new UnauthorizedError(message, { requestId: requestIdFrom(res), endpoint: String(url) })
   }
   return res
+}
+
+function parseServerSentEvent(chunk) {
+  const data = chunk
+    .split('\n')
+    .filter((line) => line.startsWith('data:'))
+    .map((line) => line.slice(5).replace(/^ /, ''))
+    .join('\n')
+
+  if (!data) return undefined
+  try {
+    return JSON.parse(data)
+  } catch {
+    return undefined
+  }
+}
+
+function subscribeJSONStream(url, { onData, onError }, errorPrefix = 'stream failed') {
+  const controller = new AbortController()
+
+  async function run() {
+    let res
+    try {
+      res = await authedFetch(url, { signal: controller.signal })
+    } catch (err) {
+      if (err?.name !== 'AbortError') onError?.(err)
+      return
+    }
+
+    if (!res.ok || !res.body) {
+      onError?.(await apiErrorFromResponse(res, `${errorPrefix} with status ${res.status}`, url))
+      return
+    }
+
+    const reader = res.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+
+    const consumeEvents = (flush = false) => {
+      buffer = buffer.replace(/\r\n/g, '\n')
+      let boundary
+      while ((boundary = buffer.indexOf('\n\n')) !== -1) {
+        const chunk = buffer.slice(0, boundary)
+        buffer = buffer.slice(boundary + 2)
+        const payload = parseServerSentEvent(chunk)
+        if (payload !== undefined) onData?.(payload)
+      }
+      if (flush && buffer.trim()) {
+        const payload = parseServerSentEvent(buffer)
+        buffer = ''
+        if (payload !== undefined) onData?.(payload)
+      }
+    }
+
+    try {
+      while (true) {
+        const { value, done } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        consumeEvents()
+      }
+      buffer += decoder.decode()
+      consumeEvents(true)
+    } catch (err) {
+      if (err?.name !== 'AbortError') onError?.(err)
+    } finally {
+      reader.releaseLock?.()
+    }
+  }
+
+  run()
+  return () => controller.abort()
 }
 
 export async function fetchAssets(limit = 50, offset = 0) {
@@ -255,53 +327,8 @@ export async function fetchSatellites() {
 
 
 
-export function subscribeSatellites({ onData, onError }) {
-  const controller = new AbortController()
-
-  async function run() {
-    let res
-    try {
-      res = await authedFetch('/api/v1/satellites/stream', { signal: controller.signal })
-    } catch (err) {
-      if (err.name !== 'AbortError') onError?.(err)
-      return
-    }
-    if (!res.ok || !res.body) {
-      onError?.(await apiErrorFromResponse(res, `stream failed with status ${res.status}`))
-      return
-    }
-
-    const reader = res.body.getReader()
-    const decoder = new TextDecoder()
-    let buffer = ''
-
-    try {
-      while (true) {
-        const { value, done } = await reader.read()
-        if (done) break
-        buffer += decoder.decode(value, { stream: true })
-
-        let boundary
-        while ((boundary = buffer.indexOf('\n\n')) !== -1) {
-          const chunk = buffer.slice(0, boundary)
-          buffer = buffer.slice(boundary + 2)
-
-          const dataLine = chunk.split('\n').find((line) => line.startsWith('data: '))
-          if (!dataLine) continue
-          try {
-            onData?.(JSON.parse(dataLine.slice('data: '.length)))
-          } catch {
-            
-          }
-        }
-      }
-    } catch (err) {
-      if (err.name !== 'AbortError') onError?.(err)
-    }
-  }
-
-  run()
-  return () => controller.abort()
+export function subscribeSatellites(callbacks) {
+  return subscribeJSONStream('/api/v1/satellites/stream', callbacks)
 }
 
 export async function fetchSatellitePasses(satelliteId, { latitudeDeg, longitudeDeg, altitudeM = 0, hours = 24, minElevationDeg = 0, limit = 10 }) {
@@ -388,7 +415,7 @@ export async function fetchAssetAlerts(limit = 50, offset = 0) {
 }
 
 export async function acknowledgeAssetAlert(alertId) {
-  const res = await authedFetch(`/api/v1/asset-alerts/${alertId}/acknowledge`, { method: 'POST' })
+  const res = await authedFetch(`/api/v1/asset-alerts/${encodeURIComponent(alertId)}/acknowledge`, { method: 'POST' })
   if (!res.ok) throw await apiErrorFromResponse(res, 'failed to acknowledge alert')
 }
 
@@ -551,45 +578,8 @@ export async function addIncidentEvidence(incidentId, evidence) {
   return res.json()
 }
 
-export function subscribeIncidents({ onData, onError }) {
-  const controller = new AbortController()
-  async function run() {
-    let res
-    try {
-      res = await authedFetch('/api/v1/incidents/stream', { signal: controller.signal })
-    } catch (err) {
-      if (err.name !== 'AbortError') onError?.(err)
-      return
-    }
-    if (!res.ok || !res.body) {
-      onError?.(await apiErrorFromResponse(res, `incident stream failed with status ${res.status}`))
-      return
-    }
-    const reader = res.body.getReader()
-    const decoder = new TextDecoder()
-    let buffer = ''
-    try {
-      while (true) {
-        const { value, done } = await reader.read()
-        if (done) break
-        buffer += decoder.decode(value, { stream: true })
-        let boundary
-        while ((boundary = buffer.indexOf('\n\n')) !== -1) {
-          const chunk = buffer.slice(0, boundary)
-          buffer = buffer.slice(boundary + 2)
-          const dataLine = chunk.split('\n').find((line) => line.startsWith('data: '))
-          if (!dataLine) continue
-          try {
-            onData?.(JSON.parse(dataLine.slice('data: '.length)))
-          } catch {}
-        }
-      }
-    } catch (err) {
-      if (err.name !== 'AbortError') onError?.(err)
-    }
-  }
-  run()
-  return () => controller.abort()
+export function subscribeIncidents(callbacks) {
+  return subscribeJSONStream('/api/v1/incidents/stream', callbacks, 'incident stream failed')
 }
 
 export async function fetchDetectionRules(limit = 50, offset = 0) {
@@ -919,7 +909,7 @@ export async function agentRolloutAction(id, action) {
 }
 
 export async function fetchPlatformReadiness() {
-  const res = await fetch('/readyz')
+  const res = await trackedFetch('/readyz')
   let body = {}
   try { body = await res.json() } catch { body = { status: res.ok ? 'ready' : 'not_ready' } }
   return { ...body, ok: res.ok }

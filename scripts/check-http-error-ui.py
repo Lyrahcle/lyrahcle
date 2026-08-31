@@ -28,7 +28,7 @@ checks = {
     'startup retry': 'permissionsRetry' in app and '<ApiStatusBanner' in app,
     'session notice': "notice === 'session_expired'" in login and 'sessionExpired' in translations,
     'localized states': all(f'{key}:' in translations for key in ['forbidden', 'not_found', 'conflict', 'rate_limited', 'server', 'network']),
-    'local gate': 'test_check_http_error_ui.py' in runner and 'check-http-error-ui.py' in runner,
+    'local gate': 'check-contracts.sh' in runner,
 }
 
 missing = [name for name, ok in checks.items() if not ok]

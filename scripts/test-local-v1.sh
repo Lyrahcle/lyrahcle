@@ -72,44 +72,7 @@ preflight_services
 printf 'Configured integration services are reachable.\n'
 
 section "Security and parity contracts"
-cd "$ROOT"
-python3 -m unittest \
-  scripts/test_check_command_execution.py \
-  scripts/test_check_frontend_xss.py \
-  scripts/test_check_sql_construction.py \
-  scripts/test_check_go_toolchain.py \
-  scripts/test_check_asset_program_parity.py \
-  scripts/test_check_platform_organization_parity.py \
-  scripts/test_check_satellite_ui_parity.py \
-  scripts/test_check_correlation_ui_parity.py \
-  scripts/test_check_http_error_ui.py \
-  scripts/test_check_keyprovider_kid.py \
-  scripts/test_check_signing_key_lifecycle.py \
-  scripts/test_check_signing_key_automation.py \
-  scripts/test_check_tenant_rate_limiting.py \
-  scripts/test_check_background_job_idempotency.py \
-  scripts/test_check_agent_hardware_ui.py \
-  scripts/test_check_route_authorization.py \
-  scripts/test_check_csrf_cookie_auth.py
-  python3 -m unittest scripts/test_check_script_permissions.py
-python3 scripts/check-command-execution.py .
-python3 scripts/check-frontend-xss.py .
-python3 scripts/check-sql-construction.py .
-python3 scripts/check-go-toolchain.py .
-python3 scripts/check-asset-program-parity.py .
-python3 scripts/check-platform-organization-parity.py .
-python3 scripts/check-satellite-ui-parity.py .
-python3 scripts/check-correlation-ui-parity.py .
-python3 scripts/check-http-error-ui.py .
-python3 scripts/check-keyprovider-kid.py .
-python3 scripts/check-signing-key-lifecycle.py .
-python3 scripts/check-signing-key-automation.py .
-python3 scripts/check-tenant-rate-limiting.py .
-python3 scripts/check-background-job-idempotency.py .
-python3 scripts/check-agent-hardware-ui.py .
-python3 scripts/check-route-authorization.py .
-python3 scripts/check-csrf-cookie-auth.py .
-python3 scripts/check-script-permissions.py .
+"$ROOT/scripts/check-contracts.sh"
 
 section "Backend tests"
 cd "$ROOT/apps/backend"

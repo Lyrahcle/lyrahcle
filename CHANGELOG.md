@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Refactored backend API route composition out of the monolithic server bootstrap into domain-focused modules while preserving route registration order and authorization contracts.
+- Centralized security and UI/API parity validation in `scripts/check-contracts.sh`, and made source-level contract checks scan the modular server tree instead of depending on `main.go`.
+- Hardened frontend API streaming with shared SSE parsing, consistent endpoint metadata on network/auth errors, safe alert-ID URL encoding and removal of duplicate satellite update handling.
+- Aligned contributor documentation with the Go 1.26.7 toolchain, fixed shell examples whose working-directory state leaked between commands, and excluded Python cache artifacts from source archives.
+- Added explicit JSON content type coverage for `/healthz`. No database schema changes.
 - Made the dashboard's active section deep-linkable via a lightweight hash-based route (`#/orbital`, `#/admin`, ...), enabling bookmarking and browser back/forward without adding a router dependency or requiring SPA-fallback server configuration.
 
 

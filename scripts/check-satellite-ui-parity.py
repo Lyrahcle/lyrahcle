@@ -2,13 +2,16 @@
 from pathlib import Path
 import sys
 
+from check_source_utils import read_source_tree
+
 ROOT = Path(sys.argv[1] if len(sys.argv) > 1 else '.').resolve()
 
+SERVER_REQUIRED = [
+    'Put("/{satelliteID}", handleUpdateSatellite',
+    'cache.Delete(r.Context(), satellitesCacheKey)',
+]
+
 CHECKS = {
-    ROOT / 'apps/backend/cmd/server/main.go': [
-        'Put("/{satelliteID}", handleUpdateSatellite',
-        'cache.Delete(r.Context(), satellitesCacheKey)',
-    ],
     ROOT / 'apps/backend/cmd/server/satellite_management_v132.go': [
         'func handleUpdateSatellite',
         'satellites.Update(',
@@ -48,6 +51,14 @@ CHECKS = {
 }
 
 errors = []
+server_dir = ROOT / 'apps/backend/cmd/server'
+server_text = read_source_tree(server_dir)
+if not server_text:
+    errors.append('missing server source directory: apps/backend/cmd/server')
+else:
+    for token in SERVER_REQUIRED:
+        if token not in server_text:
+            errors.append(f'backend server sources missing contract token: {token}')
 for path, required in CHECKS.items():
     if not path.exists():
         errors.append(f'missing file: {path.relative_to(ROOT)}')
