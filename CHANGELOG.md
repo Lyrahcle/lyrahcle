@@ -4,6 +4,15 @@
 
 
 
+
+## v14.5.7 — Tenant rate-limit and scope hardening
+
+- Expanded tenant-aware rate-limit regression coverage for invalid policy budgets, identity/class validation, privacy-preserving bucket keys, Redis-outage fallback behavior and cross-instance tenant isolation.
+- Expanded `dbscope` coverage to assert fail-closed defaults and ensure request, tenant and platform-control-plane markers remain explicit and independent.
+- Added local >=80% coverage gates for `internal/dbscope` and, when Redis is available, `internal/ratelimit`.
+- Documented through tests that Redis loss deliberately degrades the distributed limiter to a bounded per-process fallback; HA work should account for this reduced global enforcement.
+- No database schema changes.
+
 ## v14.5.6 — Session and distributed revocation hardening
 
 - Hardened `sessionstore.Delete` so a session ID cannot be deleted through a mismatched user scope; cross-user attempts are reported as not found and leave the target session intact.

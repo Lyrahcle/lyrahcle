@@ -211,4 +211,20 @@ else
   printf 'TEST_REDIS_ADDR is not set; session/token coverage gates requiring Redis are skipped.\n'
 fi
 
+section "Tenant scope and rate-limit coverage"
+(
+  cd "$ROOT/apps/backend"
+  go test ./internal/dbscope/... -coverprofile=coverage-dbscope.out
+  ../../scripts/check-go-coverage.sh coverage-dbscope.out 80
+  rm -f coverage-dbscope.out
+
+  if [[ -n "$REDIS_ADDR" ]]; then
+    TEST_REDIS_ADDR="$REDIS_ADDR" go test ./internal/ratelimit/... -coverprofile=coverage-ratelimit.out
+    ../../scripts/check-go-coverage.sh coverage-ratelimit.out 80
+    rm -f coverage-ratelimit.out
+  else
+    printf 'TEST_REDIS_ADDR is not set; distributed rate-limit coverage is skipped.\n'
+  fi
+)
+
 section "Local v1 test gate passed"
