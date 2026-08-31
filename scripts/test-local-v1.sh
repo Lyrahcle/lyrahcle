@@ -170,12 +170,16 @@ if command -v docker >/dev/null 2>&1; then
   docker compose --profile observability config -q
 fi
 
-section "Local v1 test gate passed"
-
-# Critical backend key-management coverage gate.
+section "Critical backend security coverage"
 (
-  cd apps/backend
+  cd "$ROOT/apps/backend"
   go test ./internal/keyprovider/... -coverprofile=coverage-keyprovider.out
   ../../scripts/check-go-coverage.sh coverage-keyprovider.out 80
   rm -f coverage-keyprovider.out
+
+  go test ./internal/auth/... -coverprofile=coverage-auth.out
+  ../../scripts/check-go-coverage.sh coverage-auth.out 80
+  rm -f coverage-auth.out
 )
+
+section "Local v1 test gate passed"

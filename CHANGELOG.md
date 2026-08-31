@@ -1,6 +1,13 @@
 # Changelog
 
 
+
+## v14.5.4 — Authentication coverage hardening
+
+- Expanded `internal/auth` regression coverage for token secret rotation, signing-method confusion, malformed claims, token revocation failures, forced-password-change paths, agent certificate precedence and capability-check failures.
+- Added an explicit >=80% authentication/authorization coverage gate to `scripts/test-local-v1.sh`.
+- No runtime behavior or database schema changes.
+
 ## v14.5.3 — Key-management coverage hardening
 
 - Expanded `internal/keyprovider` regression coverage around malformed/symlink key material, managed-manifest path traversal, grace expiry, KID validation, remote signer failures and rotation-policy validation.
