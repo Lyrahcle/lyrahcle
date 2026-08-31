@@ -1,0 +1,29 @@
+{{- if .Values.backend.pdb.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "lyrahcle.fullname" . }}-backend
+  labels:
+    {{- include "lyrahcle.labels" . | nindent 4 }}
+spec:
+  minAvailable: {{ .Values.backend.pdb.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "lyrahcle.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: backend
+---
+{{- end }}
+{{- if .Values.frontend.pdb.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "lyrahcle.fullname" . }}-frontend
+  labels:
+    {{- include "lyrahcle.labels" . | nindent 4 }}
+spec:
+  minAvailable: {{ .Values.frontend.pdb.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "lyrahcle.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: frontend
+{{- end }}

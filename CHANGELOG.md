@@ -16,6 +16,19 @@
 
 
 
+## v14.6.6 — Kubernetes deployment and future EKS foundation
+
+- Added a cloud-neutral Helm chart for backend, frontend and CVE sync with rolling updates, probes, resource controls, optional HPA/PDB/topology spreading, Ingress, direct agent LoadBalancer service and opt-in NetworkPolicy.
+- Added separate backend/frontend/CVE-sync ServiceAccounts with Kubernetes API token automount disabled, preserving a least-privilege path for future workload identity such as EKS Pod Identity.
+- Added file-secret projection hardening: Kubernetes Secret files are copied into an in-memory runtime volume with strict `0400` permissions so Lyrahcle's hardened file secret provider does not accept Kubernetes symlink projections directly.
+- Added production Helm validation that rejects plaintext backend service, mutable `latest` image tags, backend TLS without frontend verification, and direct agent exposure without mTLS.
+- Added generic production and AWS/EKS example values. The AWS mapping uses ALB IP targets for the UI and an optional NLB `LoadBalancerClass` with IP targets/TLS passthrough for SDR-agent mTLS.
+- Serialized PostgreSQL schema migrations with a session advisory lock and added a concurrent multi-replica migration regression test so multiple backend Pods may start safely against the same database.
+- Added Kubernetes deployment and future EKS migration documentation, including the explicit Redis TLS gap that must be closed before a managed encrypted Redis production cutover.
+- Added a Kubernetes deployment contract to local validation and Helm lint/render checks to GitHub Actions.
+- Updated the frontend nginx image/config to support runtime backend upstream/TLS settings and a dedicated `/healthz` probe endpoint.
+- No database schema migration and no new application runtime dependency.
+
 ## v14.6.5 — Fleet staged-rollout policy and ACK deadline hardening
 
 - Enforced staged-rollout target eligibility against the latest tenant-scoped SDR hardware report: active status, fresh `compatible` RX posture, unchanged integrity baseline, and requested-frequency coverage are now required at creation and revalidated before every batch.

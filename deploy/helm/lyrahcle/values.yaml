@@ -1,0 +1,181 @@
+# Default values intentionally target a development Kubernetes cluster.
+# For an Internet-facing deployment start from values-production.yaml and
+# provide external PostgreSQL/Redis, TLS and application secrets.
+nameOverride: ""
+fullnameOverride: ""
+
+imagePullSecrets: []
+
+application:
+  host: lyrahcle.local
+  environment: development
+  webauthnRpId: lyrahcle.local
+  webauthnOrigins: http://lyrahcle.local
+  corsAllowedOrigins: ""
+  passwordResetBaseUrl: http://lyrahcle.local/
+  seedAdminEmail: admin
+  orbitalAutoEscalationEnabled: false
+  celestrakGroups: stations
+  tleCorrelationMaxAge: 24h
+  tleStaleMaxAge: 72h
+  jwtAccessTtl: 30m
+
+secrets:
+  # Existing Secret keys consumed by the backend file provider and CVE worker:
+  # DATABASE_URL, REDIS_URL, JWT_SECRET, SEED_ADMIN_PASSWORD and optionally
+  # JWT_SECRET_PREVIOUS, SMTP_PASSWORD, AGENT_CONFIG_SIGNER_TOKEN.
+  existingSecret: lyrahcle-app-secrets
+
+backend:
+  replicaCount: 1
+  image:
+    repository: ghcr.io/lyrahcle/lyrahcle-backend
+    tag: latest
+    digest: ""
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 8080
+  podAnnotations: {}
+  podLabels: {}
+  extraEnv: []
+  resources:
+    requests:
+      cpu: 150m
+      memory: 192Mi
+    limits:
+      cpu: "1"
+      memory: 768Mi
+  secretProvider:
+    mode: file
+  tls:
+    enabled: false
+    existingSecret: lyrahcle-backend-tls
+  agentMtls:
+    enabled: false
+    existingSecret: lyrahcle-agent-ca
+  signing:
+    externalEndpoint: ""
+    externalKid: ""
+    externalAlgorithm: Ed25519
+    gracePeriod: 168h
+  probes:
+    startup:
+      failureThreshold: 30
+      periodSeconds: 2
+    readiness:
+      periodSeconds: 5
+      timeoutSeconds: 2
+    liveness:
+      periodSeconds: 10
+      timeoutSeconds: 2
+  autoscaling:
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 8
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  pdb:
+    enabled: false
+    minAvailable: 1
+  topologySpread:
+    enabled: false
+
+frontend:
+  replicaCount: 1
+  image:
+    repository: ghcr.io/lyrahcle/lyrahcle-frontend
+    tag: latest
+    digest: ""
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 80
+  backendTls:
+    verify: false
+    serverName: ""
+    caSecretName: ""
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 300m
+      memory: 256Mi
+  autoscaling:
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 6
+    targetCPUUtilizationPercentage: 70
+  pdb:
+    enabled: false
+    minAvailable: 1
+  topologySpread:
+    enabled: false
+
+cveSync:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: ghcr.io/lyrahcle/lyrahcle-cve-sync
+    tag: latest
+    digest: ""
+    pullPolicy: IfNotPresent
+  syncIntervalSeconds: 3600
+  nvdResultsPerPage: 100
+  extraEnv: []
+  resources:
+    requests:
+      cpu: 50m
+      memory: 96Mi
+    limits:
+      cpu: 500m
+      memory: 384Mi
+
+serviceAccounts:
+  backend:
+    create: true
+    name: ""
+    annotations: {}
+  frontend:
+    create: true
+    name: ""
+    annotations: {}
+  cveSync:
+    create: true
+    name: ""
+    annotations: {}
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  tls:
+    enabled: false
+    secretName: lyrahcle-public-tls
+
+# Optional direct backend service for SDR agents. In a production AWS overlay
+# this maps naturally to an NLB with TCP/TLS passthrough so Go keeps validating
+# client certificates itself.
+agentService:
+  enabled: false
+  type: LoadBalancer
+  port: 8443
+  loadBalancerClass: ""
+  annotations: {}
+  externalTrafficPolicy: Cluster
+
+networkPolicy:
+  # Deliberately opt-in: policy semantics depend on the cluster CNI and on how
+  # the ingress/load-balancer controller reaches Pods.
+  enabled: false
+
+podSecurity:
+  backend:
+    runAsUser: 65532
+    runAsGroup: 65532
+    fsGroup: 65532
+  cveSync:
+    runAsUser: 65532
+    runAsGroup: 65532
+    fsGroup: 65532

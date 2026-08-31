@@ -44,8 +44,24 @@ func Connect(ctx context.Context, dsn string) (*pgxpool.Pool, error) {
 	return pool, nil
 }
 
+const migrationAdvisoryLockID int64 = 0x4c59524148434c45 // "LYRAHCLE"
+
 func Migrate(ctx context.Context, pool *pgxpool.Pool, dir string) error {
-	if _, err := pool.Exec(ctx, `
+	conn, err := pool.Acquire(ctx)
+	if err != nil {
+		return fmt.Errorf("db: acquire migration connection: %w", err)
+	}
+	defer conn.Release()
+
+	if _, err := conn.Exec(ctx, `SELECT pg_advisory_lock($1)`, migrationAdvisoryLockID); err != nil {
+		return fmt.Errorf("db: acquire migration advisory lock: %w", err)
+	}
+	defer func() {
+		unlockCtx := context.Background()
+		_, _ = conn.Exec(unlockCtx, `SELECT pg_advisory_unlock($1)`, migrationAdvisoryLockID)
+	}()
+
+	if _, err := conn.Exec(ctx, `
 		CREATE TABLE IF NOT EXISTS schema_migrations (
 			filename   TEXT PRIMARY KEY,
 			applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -55,7 +71,7 @@ func Migrate(ctx context.Context, pool *pgxpool.Pool, dir string) error {
 	}
 
 	applied := map[string]bool{}
-	rows, err := pool.Query(ctx, `SELECT filename FROM schema_migrations`)
+	rows, err := conn.Query(ctx, `SELECT filename FROM schema_migrations`)
 	if err != nil {
 		return fmt.Errorf("db: read schema_migrations: %w", err)
 	}
@@ -97,7 +113,7 @@ func Migrate(ctx context.Context, pool *pgxpool.Pool, dir string) error {
 			return fmt.Errorf("db: read %s: %w", path, err)
 		}
 
-		tx, err := pool.Begin(ctx)
+		tx, err := conn.Begin(ctx)
 		if err != nil {
 			return fmt.Errorf("db: begin tx for %s: %w", filename, err)
 		}

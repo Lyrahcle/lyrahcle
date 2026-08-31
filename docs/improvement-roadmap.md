@@ -95,6 +95,8 @@ Status values: **Shipped**, **Partial**, **Next**, and **Later**.
 | Request correlation IDs | Shipped | Current |
 | OpenTelemetry distributed tracing | Shipped | v8.4 |
 | Automated staging/production CD | Later | v9 |
+| Cloud-neutral Kubernetes/Helm deployment foundation | Shipped | v14.6.6 |
+| AWS EKS infrastructure-as-code and managed-service cutover | Later | Post-foundation (`infra/aws`); base mapping documented in v14.6.6 |
 | Container image scanning | Shipped | Current |
 | Signed remote SDR configuration | Shipped | v9.1 |
 | IQ forensic capture and playback | Partial | v9 |
@@ -139,8 +141,8 @@ Note: multi-tenancy moved from "Enterprise architecture / Later" to the core Ide
 
 1. Validate orbital-aware Doppler/visibility correlation with representative physical SDR captures before enabling automatic orbital escalation (currently disabled).
 2. Reach and hold >80% coverage on security-critical code paths, including security-focused end-to-end coverage.
-3. Publish HA/DR and production-load guidance, continue load-driven database tuning, and harden remote-config signing-key custody.
+3. Validate the v14.6.6 Kubernetes HA baseline under production-like failure/load, then add AWS infrastructure-as-code, DR/RPO/RTO evidence, and continue signing-key custody hardening.
 4. Complete the agent hardware-capability physical lab-validation gate (RTL-SDR/HackRF) — `compatible` currently reflects self-reported software capability only.
-5. Ship the RF heat map and finish remaining operator-facing user guides.
+5. Finish remaining operator-facing user guides and accessibility cleanup.
 
 Per-release delivery detail (what shipped in v9.1, v10.x, v11.x, and later) lives in `CHANGELOG.md`, not here, to avoid a second history that can drift out of sync with this backlog.

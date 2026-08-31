@@ -94,11 +94,22 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: '22'
+      - uses: azure/setup-helm@v5.0.1
+        with:
+          version: v3.18.4
       - name: Extract version
         id: version
         run: echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
       - name: Generate release SBOMs
         run: ./scripts/generate-sbom.sh
+      - name: Package Helm chart
+        run: |
+          mkdir -p artifacts/helm
+          helm lint deploy/helm/lyrahcle
+          helm package deploy/helm/lyrahcle \
+            --version "${{ steps.version.outputs.value }}" \
+            --app-version "${{ steps.version.outputs.value }}" \
+            --destination artifacts/helm
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
@@ -106,6 +117,7 @@ jobs:
           files: |
             artifacts/sbom/*.cdx.json
             artifacts/sbom/SHA256SUMS
+            artifacts/helm/*.tgz
           body: |
             Images published to GHCR for this release:
 
@@ -113,5 +125,7 @@ jobs:
             - `ghcr.io/${{ github.repository_owner }}/lyrahcle-frontend:${{ steps.version.outputs.value }}`
             - `ghcr.io/${{ github.repository_owner }}/lyrahcle-cve-sync:${{ steps.version.outputs.value }}`
             - `ghcr.io/${{ github.repository_owner }}/lyrahcle-sdr-agent:${{ steps.version.outputs.value }}`
+
+            The source-compatible Helm chart is attached to this release as `lyrahcle-${{ steps.version.outputs.value }}.tgz`.
 
             See [CHANGELOG.md](./CHANGELOG.md) for what changed.

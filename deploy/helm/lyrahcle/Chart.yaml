@@ -1,0 +1,12 @@
+apiVersion: v2
+name: lyrahcle
+description: Cloud-neutral Kubernetes deployment for the Lyrahcle control plane
+type: application
+version: 0.1.0
+appVersion: "14.6.6"
+kubeVersion: ">=1.30.0-0"
+annotations:
+  artifacthub.io/license: MIT
+  artifacthub.io/changes: |
+    - kind: added
+      description: Initial cloud-neutral Kubernetes/Helm deployment foundation.

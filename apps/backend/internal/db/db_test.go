@@ -93,3 +93,47 @@ func TestMigrateSkipsAlreadyAppliedFiles(t *testing.T) {
 		t.Errorf("applied_at changed after re-running Migrate (%v -> %v); the migration was re-executed instead of skipped", firstAppliedAt, secondAppliedAt)
 	}
 }
+
+func TestMigrateConcurrentCallsSerializeV1466(t *testing.T) {
+	pool := testPool(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	if _, err := pool.Exec(ctx, `DROP TABLE IF EXISTS migration_concurrency_probe`); err != nil {
+		t.Fatalf("failed to reset migration probe table: %v", err)
+	}
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DROP TABLE IF EXISTS migration_concurrency_probe`)
+	})
+
+	dir := t.TempDir()
+	migration := `SELECT pg_sleep(0.15); CREATE TABLE IF NOT EXISTS migration_concurrency_probe (id INTEGER PRIMARY KEY);`
+	if err := os.WriteFile(dir+"/0001_probe.sql", []byte(migration), 0o600); err != nil {
+		t.Fatalf("write probe migration: %v", err)
+	}
+
+	const callers = 4
+	start := make(chan struct{})
+	errs := make(chan error, callers)
+	for i := 0; i < callers; i++ {
+		go func() {
+			<-start
+			errs <- Migrate(ctx, pool, dir)
+		}()
+	}
+	close(start)
+
+	for i := 0; i < callers; i++ {
+		if err := <-errs; err != nil {
+			t.Fatalf("concurrent Migrate call failed: %v", err)
+		}
+	}
+
+	var applied int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM schema_migrations WHERE filename = '0001_probe.sql'`).Scan(&applied); err != nil {
+		t.Fatalf("count probe migration: %v", err)
+	}
+	if applied != 1 {
+		t.Fatalf("probe migration recorded %d times, want 1", applied)
+	}
+}

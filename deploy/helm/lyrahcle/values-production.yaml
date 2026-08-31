@@ -1,0 +1,62 @@
+fullnameOverride: lyrahcle
+
+application:
+  host: lyrahcle.example.com
+  environment: production
+  webauthnRpId: lyrahcle.example.com
+  webauthnOrigins: https://lyrahcle.example.com
+  passwordResetBaseUrl: https://lyrahcle.example.com/
+  seedAdminEmail: admin@lyrahcle.example.com
+  jwtAccessTtl: 30m
+  orbitalAutoEscalationEnabled: false
+
+secrets:
+  existingSecret: lyrahcle-app-secrets
+
+backend:
+  replicaCount: 2
+  image:
+    tag: 14.6.6
+  tls:
+    enabled: true
+    existingSecret: lyrahcle-backend-tls
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 8
+  pdb:
+    enabled: true
+    minAvailable: 1
+  topologySpread:
+    enabled: true
+
+frontend:
+  replicaCount: 2
+  image:
+    tag: 14.6.6
+  backendTls:
+    verify: true
+    # Must match the DNS SAN of the backend serving certificate.
+    serverName: lyrahcle-backend
+    # Secret must contain ca.crt. Use the CA that issued backend tls.crt.
+    caSecretName: lyrahcle-backend-ca
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 6
+  pdb:
+    enabled: true
+    minAvailable: 1
+  topologySpread:
+    enabled: true
+
+cveSync:
+  image:
+    tag: 14.6.6
+
+ingress:
+  enabled: true
+  className: nginx
+  tls:
+    enabled: true
+    secretName: lyrahcle-public-tls

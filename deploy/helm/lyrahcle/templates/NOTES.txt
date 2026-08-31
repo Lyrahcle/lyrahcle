@@ -1,0 +1,14 @@
+Lyrahcle has been rendered for {{ .Values.application.environment }}.
+
+The chart deliberately does not create PostgreSQL, Redis or application secret
+material. Supply {{ .Values.secrets.existingSecret }} before starting workloads.
+
+{{- if .Values.ingress.enabled }}
+UI: {{ ternary "https" "http" .Values.ingress.tls.enabled }}://{{ .Values.application.host }}
+{{- else }}
+Ingress is disabled. For a development cluster:
+  kubectl port-forward service/{{ include "lyrahcle.fullname" . }}-frontend 5173:{{ .Values.frontend.service.port }}
+{{- end }}
+
+Production guidance: deploy from values-production.yaml and docs/kubernetes-deployment.md.
+AWS migration guidance: deploy/helm/lyrahcle/values-aws.example.yaml and docs/aws-eks-migration.md.

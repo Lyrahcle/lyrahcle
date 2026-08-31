@@ -1,0 +1,16 @@
+{{- $production := or (eq (lower .Values.application.environment) "production") (eq (lower .Values.application.environment) "prod") -}}
+{{- if and $production (not .Values.backend.tls.enabled) -}}
+{{ fail "production requires backend.tls.enabled=true because Lyrahcle refuses plaintext HTTP in production" }}
+{{- end -}}
+{{- if and $production (or (and (not .Values.backend.image.digest) (eq .Values.backend.image.tag "latest")) (and (not .Values.frontend.image.digest) (eq .Values.frontend.image.tag "latest")) (and .Values.cveSync.enabled (not .Values.cveSync.image.digest) (eq .Values.cveSync.image.tag "latest"))) -}}
+{{ fail "production must pin backend/frontend/cve-sync images to a non-latest tag or digest" }}
+{{- end -}}
+{{- if and $production .Values.backend.tls.enabled (not .Values.frontend.backendTls.verify) -}}
+{{ fail "production requires frontend.backendTls.verify=true" }}
+{{- end -}}
+{{- if and .Values.agentService.enabled (not .Values.backend.agentMtls.enabled) -}}
+{{ fail "agentService.enabled requires backend.agentMtls.enabled=true" }}
+{{- end -}}
+{{- if and .Values.frontend.backendTls.verify (not .Values.frontend.backendTls.caSecretName) -}}
+{{ fail "frontend.backendTls.caSecretName is required when backend TLS verification is enabled" }}
+{{- end -}}

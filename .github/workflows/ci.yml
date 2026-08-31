@@ -132,6 +132,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - uses: azure/setup-helm@v5.0.1
+        with:
+          version: v3.18.4
       - name: Validate compose, scripts and observability configuration
         run: |
           docker compose --profile observability config -q
@@ -139,6 +142,12 @@ jobs:
           python3 -m json.tool deploy/grafana/dashboards/lyrahcle-overview.json >/dev/null
       - name: Security and parity contracts
         run: ./scripts/check-contracts.sh
+      - name: Helm lint and render
+        run: |
+          helm lint deploy/helm/lyrahcle
+          helm lint deploy/helm/lyrahcle -f deploy/helm/lyrahcle/values-production.yaml
+          helm template lyrahcle deploy/helm/lyrahcle -f deploy/helm/lyrahcle/values-production.yaml >/dev/null
+          helm template lyrahcle deploy/helm/lyrahcle -f deploy/helm/lyrahcle/values-aws.example.yaml >/dev/null
       - name: Lint Dockerfiles (hadolint)
         uses: hadolint/hadolint-action@v3.1.0
         continue-on-error: true

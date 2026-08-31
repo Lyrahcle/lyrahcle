@@ -10,6 +10,8 @@ This directory contains the technical documentation for Lyrahcle. The root `READ
 | [API reference](./api-reference.md) | Human/agent authentication, roles, endpoint behavior, SSE, request IDs |
 | [Configuration](./configuration.md) | Environment variables and runtime configuration for every service |
 | [Deployment](./deployment.md) | Production checklist, TLS, backups, monitoring, updates, WebAuthn, agent mTLS |
+| [Kubernetes deployment](./kubernetes-deployment.md) | Cloud-neutral Helm deployment, HA controls, probes, secrets, HPA/PDB, multi-replica safety |
+| [AWS EKS migration](./aws-eks-migration.md) | Future EKS mapping for ECR/RDS/Redis, ALB/NLB, Secrets Manager and Pod Identity |
 | [Improvement roadmap](./improvement-roadmap.md) | Canonical shipped/partial/next/later product backlog |
 | [Documentation maintenance](./documentation-maintenance.md) | Source-of-truth hierarchy and consistency rules |
 

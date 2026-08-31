@@ -27,6 +27,19 @@ docker compose up -d --build
 
 For development the frontend is exposed on `5173` and backend on `8080`. Production should normally put a reverse proxy or ingress in front of the application and avoid exposing database/cache ports.
 
+
+## Kubernetes / Helm
+
+For multi-node and future managed-Kubernetes deployments, use the cloud-neutral
+Helm chart documented in [Kubernetes deployment](./kubernetes-deployment.md).
+The chart includes probes, rolling updates, optional HPA/PDB/topology spread,
+separate least-privilege ServiceAccounts and serialized PostgreSQL migrations
+for multi-replica backend startup.
+
+The future AWS mapping is documented separately in
+[AWS EKS migration](./aws-eks-migration.md); the base chart deliberately does
+not require AWS-specific APIs or controllers.
+
 ## TLS
 
 The backend can terminate TLS directly through `TLS_CERT_FILE` and `TLS_KEY_FILE`. A reverse proxy such as Caddy, Traefik, nginx, or a managed ingress can also terminate TLS in front of the application.

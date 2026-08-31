@@ -116,6 +116,10 @@ if [[ -n "$DB_URL" ]]; then
     -run '^TestFleetTargetEligibilityAndAckDeadlineV1465$' -count=1 -v
   TEST_DATABASE_URL="$DB_URL" TEST_REDIS_ADDR="$REDIS_ADDR" go test ./cmd/server/... \
     -run '^TestFleetRolloutHardeningContractV1465$' -count=1 -v
+
+  section "Kubernetes multi-replica migration gate"
+  TEST_DATABASE_URL="$DB_URL" TEST_REDIS_ADDR="$REDIS_ADDR" go test ./internal/db/... \
+    -run '^TestMigrateConcurrentCallsSerializeV1466$' -count=1 -v
 else
   printf 'TEST_DATABASE_URL is not set; DB-backed integration tests will be skipped by the test harness.\n'
 fi
@@ -150,6 +154,16 @@ if command -v docker >/dev/null 2>&1; then
   section "Docker Compose configuration"
   cd "$ROOT"
   docker compose --profile observability config -q
+fi
+
+section "Kubernetes deployment contract"
+python3 "$ROOT/scripts/check-kubernetes-deployment.py" "$ROOT"
+if command -v helm >/dev/null 2>&1; then
+  helm lint "$ROOT/deploy/helm/lyrahcle"
+  helm lint "$ROOT/deploy/helm/lyrahcle" -f "$ROOT/deploy/helm/lyrahcle/values-production.yaml"
+  helm template lyrahcle "$ROOT/deploy/helm/lyrahcle" -f "$ROOT/deploy/helm/lyrahcle/values-aws.example.yaml" >/dev/null
+else
+  printf 'helm is not installed; static Kubernetes contracts passed, Helm parser checks are skipped locally.\n'
 fi
 
 section "Critical backend security coverage"

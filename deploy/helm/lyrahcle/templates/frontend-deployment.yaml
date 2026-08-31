@@ -1,0 +1,124 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "lyrahcle.fullname" . }}-frontend
+  labels:
+    {{- include "lyrahcle.labels" . | nindent 4 }}
+    app.kubernetes.io/component: frontend
+spec:
+  {{- if not .Values.frontend.autoscaling.enabled }}
+  replicas: {{ .Values.frontend.replicaCount }}
+  {{- end }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      {{- include "lyrahcle.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: frontend
+  template:
+    metadata:
+      labels:
+        {{- include "lyrahcle.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: frontend
+    spec:
+      serviceAccountName: {{ include "lyrahcle.frontendServiceAccountName" . }}
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 10
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        fsGroup: 101
+        seccompProfile:
+          type: RuntimeDefault
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: frontend
+          image: {{ include "lyrahcle.image" (dict "image" .Values.frontend.image) | quote }}
+          imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          env:
+            - name: BACKEND_SCHEME
+              value: {{ ternary "https" "http" .Values.backend.tls.enabled | quote }}
+            - name: BACKEND_UPSTREAM
+              value: {{ printf "%s-backend:%v" (include "lyrahcle.fullname" .) .Values.backend.service.port | quote }}
+            - name: BACKEND_TLS_VERIFY
+              value: {{ ternary "on" "off" .Values.frontend.backendTls.verify | quote }}
+            - name: BACKEND_TLS_SERVER_NAME
+              value: {{ default (printf "%s-backend" (include "lyrahcle.fullname" .)) .Values.frontend.backendTls.serverName | quote }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 2
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.frontend.resources | nindent 12 }}
+          volumeMounts:
+            - name: nginx-conf
+              mountPath: /etc/nginx/conf.d
+            - name: nginx-cache
+              mountPath: /var/cache/nginx
+            - name: nginx-run
+              mountPath: /var/run
+            {{- if .Values.frontend.backendTls.caSecretName }}
+            - name: backend-ca
+              mountPath: /etc/nginx/backend-ca
+              readOnly: true
+            {{- end }}
+      volumes:
+        - name: nginx-conf
+          emptyDir: {}
+        - name: nginx-cache
+          emptyDir: {}
+        - name: nginx-run
+          emptyDir: {}
+        {{- if .Values.frontend.backendTls.caSecretName }}
+        - name: backend-ca
+          secret:
+            secretName: {{ .Values.frontend.backendTls.caSecretName }}
+            items:
+              - key: ca.crt
+                path: ca.crt
+        {{- end }}
+      {{- if .Values.frontend.topologySpread.enabled }}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              {{- include "lyrahcle.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: frontend
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              {{- include "lyrahcle.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: frontend
+      {{- end }}

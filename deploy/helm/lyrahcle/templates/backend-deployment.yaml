@@ -1,0 +1,233 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "lyrahcle.fullname" . }}-backend
+  labels:
+    {{- include "lyrahcle.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+spec:
+  {{- if not .Values.backend.autoscaling.enabled }}
+  replicas: {{ .Values.backend.replicaCount }}
+  {{- end }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      {{- include "lyrahcle.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: backend
+  template:
+    metadata:
+      labels:
+        {{- include "lyrahcle.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: backend
+        {{- with .Values.backend.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.backend.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      serviceAccountName: {{ include "lyrahcle.backendServiceAccountName" . }}
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: {{ .Values.podSecurity.backend.runAsUser }}
+        runAsGroup: {{ .Values.podSecurity.backend.runAsGroup }}
+        fsGroup: {{ .Values.podSecurity.backend.fsGroup }}
+        seccompProfile:
+          type: RuntimeDefault
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      initContainers:
+        - name: prepare-secrets
+          image: busybox:1.37
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh", "-ec"]
+          args:
+            - |
+              mkdir -p /runtime/secrets
+              chown {{ .Values.podSecurity.backend.runAsUser }}:{{ .Values.podSecurity.backend.runAsGroup }} /runtime/secrets
+              chmod 0700 /runtime/secrets
+              for source in /source-secrets/*; do
+                [ -f "$source" ] || continue
+                name="$(basename "$source")"
+                cp "$source" "/runtime/secrets/$name"
+                chown {{ .Values.podSecurity.backend.runAsUser }}:{{ .Values.podSecurity.backend.runAsGroup }} "/runtime/secrets/$name"
+                chmod 0400 "/runtime/secrets/$name"
+              done
+              {{- if .Values.backend.tls.enabled }}
+              mkdir -p /runtime/tls
+              cp /source-tls/tls.crt /runtime/tls/tls.crt
+              cp /source-tls/tls.key /runtime/tls/tls.key
+              chown -R {{ .Values.podSecurity.backend.runAsUser }}:{{ .Values.podSecurity.backend.runAsGroup }} /runtime/tls
+              chmod 0700 /runtime/tls
+              chmod 0400 /runtime/tls/tls.crt /runtime/tls/tls.key
+              {{- end }}
+              {{- if .Values.backend.agentMtls.enabled }}
+              mkdir -p /runtime/agent-ca
+              cp /source-agent-ca/ca.crt /runtime/agent-ca/ca.crt
+              cp /source-agent-ca/ca.key /runtime/agent-ca/ca.key
+              chown -R {{ .Values.podSecurity.backend.runAsUser }}:{{ .Values.podSecurity.backend.runAsGroup }} /runtime/agent-ca
+              chmod 0700 /runtime/agent-ca
+              chmod 0400 /runtime/agent-ca/ca.crt /runtime/agent-ca/ca.key
+              {{- end }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - name: source-secrets
+              mountPath: /source-secrets
+              readOnly: true
+            - name: runtime
+              mountPath: /runtime
+            {{- if .Values.backend.tls.enabled }}
+            - name: source-tls
+              mountPath: /source-tls
+              readOnly: true
+            {{- end }}
+            {{- if .Values.backend.agentMtls.enabled }}
+            - name: source-agent-ca
+              mountPath: /source-agent-ca
+              readOnly: true
+            {{- end }}
+      containers:
+        - name: backend
+          image: {{ include "lyrahcle.image" (dict "image" .Values.backend.image) | quote }}
+          imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          ports:
+            - name: api
+              containerPort: {{ .Values.backend.service.port }}
+              protocol: TCP
+          env:
+            - name: ENV
+              value: {{ .Values.application.environment | quote }}
+            - name: PORT
+              value: {{ .Values.backend.service.port | quote }}
+            - name: SECRET_PROVIDER
+              value: {{ .Values.backend.secretProvider.mode | quote }}
+            - name: SECRET_FILE_DIR
+              value: /run/lyrahcle/secrets
+            - name: JWT_ACCESS_TTL
+              value: {{ .Values.application.jwtAccessTtl | quote }}
+            - name: SEED_ADMIN_EMAIL
+              value: {{ .Values.application.seedAdminEmail | quote }}
+            - name: WEBAUTHN_RP_ID
+              value: {{ .Values.application.webauthnRpId | quote }}
+            - name: WEBAUTHN_ORIGINS
+              value: {{ .Values.application.webauthnOrigins | quote }}
+            - name: CORS_ALLOWED_ORIGINS
+              value: {{ .Values.application.corsAllowedOrigins | quote }}
+            - name: PASSWORD_RESET_BASE_URL
+              value: {{ .Values.application.passwordResetBaseUrl | quote }}
+            - name: CELESTRAK_GROUPS
+              value: {{ .Values.application.celestrakGroups | quote }}
+            - name: TLE_CORRELATION_MAX_AGE
+              value: {{ .Values.application.tleCorrelationMaxAge | quote }}
+            - name: TLE_STALE_MAX_AGE
+              value: {{ .Values.application.tleStaleMaxAge | quote }}
+            - name: ORBITAL_AUTO_ESCALATION_ENABLED
+              value: {{ .Values.application.orbitalAutoEscalationEnabled | quote }}
+            {{- if .Values.backend.tls.enabled }}
+            - name: TLS_CERT_FILE
+              value: /run/lyrahcle/tls/tls.crt
+            - name: TLS_KEY_FILE
+              value: /run/lyrahcle/tls/tls.key
+            {{- end }}
+            {{- if .Values.backend.agentMtls.enabled }}
+            - name: AGENT_CA_CERT_FILE
+              value: /run/lyrahcle/agent-ca/ca.crt
+            - name: AGENT_CA_KEY_FILE
+              value: /run/lyrahcle/agent-ca/ca.key
+            {{- end }}
+            {{- with .Values.backend.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+            {{- if .Values.backend.signing.externalEndpoint }}
+            - name: AGENT_CONFIG_SIGNER_ENDPOINT
+              value: {{ .Values.backend.signing.externalEndpoint | quote }}
+            - name: AGENT_CONFIG_SIGNER_KID
+              value: {{ required "backend.signing.externalKid is required with externalEndpoint" .Values.backend.signing.externalKid | quote }}
+            - name: AGENT_CONFIG_SIGNER_ALGORITHM
+              value: {{ .Values.backend.signing.externalAlgorithm | quote }}
+            - name: AGENT_CONFIG_SIGNING_GRACE_PERIOD
+              value: {{ .Values.backend.signing.gracePeriod | quote }}
+            {{- end }}
+          volumeMounts:
+            - name: runtime
+              mountPath: /run/lyrahcle
+              readOnly: true
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: api
+              scheme: {{ ternary "HTTPS" "HTTP" .Values.backend.tls.enabled }}
+            periodSeconds: {{ .Values.backend.probes.startup.periodSeconds }}
+            failureThreshold: {{ .Values.backend.probes.startup.failureThreshold }}
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: api
+              scheme: {{ ternary "HTTPS" "HTTP" .Values.backend.tls.enabled }}
+            periodSeconds: {{ .Values.backend.probes.readiness.periodSeconds }}
+            timeoutSeconds: {{ .Values.backend.probes.readiness.timeoutSeconds }}
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: api
+              scheme: {{ ternary "HTTPS" "HTTP" .Values.backend.tls.enabled }}
+            periodSeconds: {{ .Values.backend.probes.liveness.periodSeconds }}
+            timeoutSeconds: {{ .Values.backend.probes.liveness.timeoutSeconds }}
+          resources:
+            {{- toYaml .Values.backend.resources | nindent 12 }}
+      volumes:
+        - name: source-secrets
+          secret:
+            secretName: {{ required "secrets.existingSecret is required" .Values.secrets.existingSecret }}
+            defaultMode: 0400
+        - name: runtime
+          emptyDir:
+            medium: Memory
+            sizeLimit: 4Mi
+        {{- if .Values.backend.tls.enabled }}
+        - name: source-tls
+          secret:
+            secretName: {{ required "backend.tls.existingSecret is required when TLS is enabled" .Values.backend.tls.existingSecret }}
+            defaultMode: 0400
+        {{- end }}
+        {{- if .Values.backend.agentMtls.enabled }}
+        - name: source-agent-ca
+          secret:
+            secretName: {{ required "backend.agentMtls.existingSecret is required when agent mTLS is enabled" .Values.backend.agentMtls.existingSecret }}
+            defaultMode: 0400
+        {{- end }}
+      {{- if .Values.backend.topologySpread.enabled }}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              {{- include "lyrahcle.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: backend
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              {{- include "lyrahcle.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: backend
+      {{- end }}

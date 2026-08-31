@@ -1,0 +1,82 @@
+fullnameOverride: lyrahcle
+
+# AWS migration overlay. This file documents the intended EKS mapping without
+# making the base chart depend on AWS-specific controllers.
+application:
+  host: lyrahcle.example.com
+  environment: production
+  webauthnRpId: lyrahcle.example.com
+  webauthnOrigins: https://lyrahcle.example.com
+  passwordResetBaseUrl: https://lyrahcle.example.com/
+  seedAdminEmail: admin@lyrahcle.example.com
+
+# Populate this Secret through your chosen AWS secret integration. The base
+# chart does not create secret material. Recommended keys remain DATABASE_URL,
+# REDIS_URL, JWT_SECRET and SEED_ADMIN_PASSWORD.
+secrets:
+  existingSecret: lyrahcle-app-secrets
+
+backend:
+  replicaCount: 2
+  image:
+    repository: 123456789012.dkr.ecr.eu-west-1.amazonaws.com/lyrahcle-backend
+    tag: 14.6.6
+  tls:
+    enabled: true
+    existingSecret: lyrahcle-backend-tls
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+  pdb:
+    enabled: true
+  topologySpread:
+    enabled: true
+
+frontend:
+  replicaCount: 2
+  image:
+    repository: 123456789012.dkr.ecr.eu-west-1.amazonaws.com/lyrahcle-frontend
+    tag: 14.6.6
+  backendTls:
+    verify: true
+    serverName: lyrahcle-backend
+    caSecretName: lyrahcle-backend-ca
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 8
+  pdb:
+    enabled: true
+  topologySpread:
+    enabled: true
+
+cveSync:
+  image:
+    repository: 123456789012.dkr.ecr.eu-west-1.amazonaws.com/lyrahcle-cve-sync
+    tag: 14.6.6
+
+ingress:
+  enabled: true
+  className: alb
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/backend-protocol: HTTP
+    alb.ingress.kubernetes.io/healthcheck-path: /healthz
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+    # Add your ACM certificate ARN when provisioning the AWS environment.
+    # alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:...
+  tls:
+    # ALB uses ACM rather than a Kubernetes TLS secret.
+    enabled: false
+
+# Enable only when SDR agents need a public/private direct mTLS endpoint.
+# AWS Load Balancer Controller can reconcile this as an NLB. Keep TCP/TLS
+# passthrough so the Go backend receives and validates the client certificate.
+agentService:
+  enabled: false
+  loadBalancerClass: service.k8s.aws/nlb
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: ip
+    service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing

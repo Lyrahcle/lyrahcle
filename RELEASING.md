@@ -45,3 +45,10 @@ If the package is private, authenticate to GHCR with credentials that have `read
 ## Failed releases
 
 Do not move an existing tag. Fix the problem on `main`, choose the next patch version, and publish a new tag so the release history remains auditable.
+
+## Kubernetes release artifact
+
+Tagged releases also lint and package `deploy/helm/lyrahcle`. The GitHub release
+contains `lyrahcle-<version>.tgz` with chart/app versions overridden to the tag
+version, so clusters can install the exact application release without tracking
+the repository checkout.
