@@ -1,5 +1,6 @@
 import { Fragment, useMemo, useState } from 'react'
 import { ChevronDown, ChevronUp, ChevronsUpDown, Pencil, Save, X } from 'lucide-react'
+import CopyButton from './CopyButton.jsx'
 import TableScroll from './TableScroll.jsx'
 import { updateSatellite } from '../lib/api.js'
 import { useI18n } from '../lib/I18nContext.jsx'
@@ -226,7 +227,12 @@ export default function SatellitesPanel({ satellites, canManage = false, onChang
                     {t('satelliteManagement.updated')} {s.updated_at ? new Date(s.updated_at).toLocaleString() : '—'}
                   </p>
                 </td>
-                <td className="py-3 font-mono text-xs text-lyra-mutedDim">{s.norad_id}</td>
+                <td className="py-3 font-mono text-xs text-lyra-mutedDim">
+                  <div className="flex items-center gap-1">
+                    <span>{s.norad_id}</span>
+                    <CopyButton value={s.norad_id} label={t('satelliteForm.noradId')} />
+                  </div>
+                </td>
                 <td className="py-3 font-mono text-lyra-text">{s.position ? `${s.position.latitude_deg.toFixed(2)}°` : '—'}</td>
                 <td className="py-3 font-mono text-lyra-text">{s.position ? `${s.position.longitude_deg.toFixed(2)}°` : '—'}</td>
                 <td className="py-3 font-mono text-lyra-text">{s.position ? `${s.position.altitude_km.toFixed(0)} km` : '—'}</td>

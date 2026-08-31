@@ -14,6 +14,9 @@ export const translations = {
       emailOrUsername: 'Email or username',
       password: 'Password',
       loading: 'Loading…',
+      copy: 'Copy',
+      copied: 'Copied',
+      copyValue: 'Copy {label}',
     },
     header: {
       tagline: 'Constellation Analytics',
@@ -368,6 +371,9 @@ export const translations = {
       emailOrUsername: 'Correo o usuario',
       password: 'Contraseña',
       loading: 'Cargando…',
+      copy: 'Copiar',
+      copied: 'Copiado',
+      copyValue: 'Copiar {label}',
     },
     header: {
       tagline: 'Constellation Analytics',
@@ -722,6 +728,9 @@ export const translations = {
       emailOrUsername: 'E-mail ou nom d\u2019utilisateur',
       password: 'Mot de passe',
       loading: 'Chargement…',
+      copy: 'Copier',
+      copied: 'Copié',
+      copyValue: 'Copier {label}',
     },
     header: {
       tagline: 'Constellation Analytics',
@@ -1076,6 +1085,9 @@ export const translations = {
       emailOrUsername: 'E-Mail oder Benutzername',
       password: 'Passwort',
       loading: 'Wird geladen…',
+      copy: 'Kopieren',
+      copied: 'Kopiert',
+      copyValue: '{label} kopieren',
     },
     header: {
       tagline: 'Constellation Analytics',

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import KindBadge from './KindBadge.jsx'
+import CopyButton from './CopyButton.jsx'
 import TableScroll from './TableScroll.jsx'
 import Pagination from './Pagination.jsx'
 import { deleteAsset, updateAsset } from '../lib/api.js'
@@ -105,7 +106,12 @@ export default function AssetsTable({ page, programs = [], onPrev, onNext, onCha
                         onChange={(e) => setDraft((current) => ({ ...current, value: e.target.value }))}
                         className="w-full min-w-48 rounded border border-lyra-border bg-lyra-bgSoft px-2 py-1 text-sm text-lyra-text"
                       />
-                    ) : asset.value}
+                    ) : (
+                      <div className="flex items-center gap-1">
+                        <span className="break-all">{asset.value}</span>
+                        <CopyButton value={asset.value} label={t('assetInventory.value')} />
+                      </div>
+                    )}
                   </td>
                   <td className="py-3 pr-3 text-xs text-lyra-mutedDim">
                     {editing && programs.length > 0 ? (
