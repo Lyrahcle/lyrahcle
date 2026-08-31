@@ -141,6 +141,16 @@ func (s *Store) Delete(ctx context.Context, userID, id string) error {
 	if s == nil || s.client == nil {
 		return ErrUnavailable
 	}
+	session, err := s.Get(ctx, id)
+	if errors.Is(err, ErrNotFound) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if session.UserID != userID {
+		return ErrNotFound
+	}
 	pipe := s.client.TxPipeline()
 	pipe.Del(ctx, sessionKey(id))
 	pipe.ZRem(ctx, userSessionsKey(userID), id)

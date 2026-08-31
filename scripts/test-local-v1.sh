@@ -195,4 +195,20 @@ section "Agent trust-boundary coverage"
   rm -f coverage-agentconfig.out
 )
 
+if [[ -n "$REDIS_ADDR" ]]; then
+  section "Session and token revocation coverage"
+  (
+    cd "$ROOT/apps/backend"
+    TEST_REDIS_ADDR="$REDIS_ADDR" go test ./internal/sessionstore/... -coverprofile=coverage-sessionstore.out
+    ../../scripts/check-go-coverage.sh coverage-sessionstore.out 80
+    rm -f coverage-sessionstore.out
+
+    TEST_REDIS_ADDR="$REDIS_ADDR" go test ./internal/tokenblocklist/... -coverprofile=coverage-tokenblocklist.out
+    ../../scripts/check-go-coverage.sh coverage-tokenblocklist.out 80
+    rm -f coverage-tokenblocklist.out
+  )
+else
+  printf 'TEST_REDIS_ADDR is not set; session/token coverage gates requiring Redis are skipped.\n'
+fi
+
 section "Local v1 test gate passed"

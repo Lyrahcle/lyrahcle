@@ -3,6 +3,14 @@
 
 
 
+
+## v14.5.6 — Session and distributed revocation hardening
+
+- Hardened `sessionstore.Delete` so a session ID cannot be deleted through a mismatched user scope; cross-user attempts are reported as not found and leave the target session intact.
+- Added regression coverage for invalid session registration, Redis outages, corrupt session payloads, stale/foreign list members, revocation key isolation, corrupt user cutoffs and inclusive user-revocation boundaries.
+- Added conditional >=80% local coverage gates for `internal/sessionstore` and `internal/tokenblocklist` when `TEST_REDIS_ADDR` is configured.
+- No database schema changes.
+
 ## v14.5.5 — Agent trust-boundary hardening
 
 - Expanded certificate-authority tests around malformed CA material, mismatched keys, weak CSR keys, SPIFFE identity binding, TTL capping and CA-expiry refusal.
