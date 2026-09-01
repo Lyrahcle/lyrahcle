@@ -20,4 +20,46 @@ spec:
       ports:
         - protocol: TCP
           port: {{ .Values.backend.service.port }}
+    {{- if .Values.networkPolicy.monitoring.enabled }}
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              {{- toYaml .Values.networkPolicy.monitoring.namespaceLabels | nindent 14 }}
+          {{- with .Values.networkPolicy.monitoring.podLabels }}
+          podSelector:
+            matchLabels:
+              {{- toYaml . | nindent 14 }}
+          {{- end }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.backend.service.port }}
+    {{- end }}
+{{- if and .Values.cveSync.enabled .Values.cveSync.service.enabled .Values.networkPolicy.monitoring.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "lyrahcle.fullname" . }}-cve-sync-metrics
+  labels:
+    {{- include "lyrahcle.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "lyrahcle.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: cve-sync
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              {{- toYaml .Values.networkPolicy.monitoring.namespaceLabels | nindent 14 }}
+          {{- with .Values.networkPolicy.monitoring.podLabels }}
+          podSelector:
+            matchLabels:
+              {{- toYaml . | nindent 14 }}
+          {{- end }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.cveSync.service.port }}
+{{- end }}
 {{- end }}

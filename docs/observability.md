@@ -1,6 +1,7 @@
 # Observability
 
 Lyrahcle exposes Prometheus metrics from the backend and CVE worker. Docker Compose can additionally provision Grafana with a read-only Lyrahcle overview dashboard.
+Kubernetes deployments can expose the same metrics through optional scrape annotations or Prometheus Operator `ServiceMonitor`/`PrometheusRule` resources; see `docs/kubernetes-observability.md`.
 
 ## Start the stack
 

@@ -1,0 +1,80 @@
+{{- if .Values.monitoring.prometheusRule.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "lyrahcle.fullname" . }}
+  labels:
+    {{- include "lyrahcle.labels" . | nindent 4 }}
+    {{- with .Values.monitoring.prometheusRule.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  groups:
+    - name: lyrahcle.application
+      rules:
+        - alert: LyrahcleHighServerErrorRate
+          expr: sum(rate(lyrahcle_http_requests_total{status=~"5.."}[5m])) > {{ .Values.monitoring.prometheusRule.high5xxRatePerSecond }}
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: Lyrahcle backend is returning elevated 5xx responses
+        - alert: LyrahcleHighP95Latency
+          expr: histogram_quantile(0.95, sum by (le) (rate(lyrahcle_http_request_duration_seconds_bucket[5m]))) > {{ .Values.monitoring.prometheusRule.highP95LatencySeconds }}
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: Lyrahcle backend p95 latency is above the configured threshold
+        - alert: LyrahcleRateLimitBackendFallback
+          expr: sum(increase(lyrahcle_rate_limit_backend_fallback_total[10m])) > 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: Lyrahcle rate limiting has fallen back from its distributed backend
+        - alert: LyrahcleSigningKeyNoActiveKey
+          expr: lyrahcle_signing_key_warnings{domain="agent_config",code="no_active_key"} > 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: Lyrahcle has no active remote-config signing key
+        - alert: LyrahcleSigningKeyRotationDue
+          expr: lyrahcle_signing_key_rotation_due{domain="agent_config"} > 0
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            summary: Lyrahcle remote-config signing key rotation is due
+        - alert: LyrahcleBackgroundJobFailures
+          expr: sum(increase(lyrahcle_background_job_events_total{result=~"failed|ack_failed"}[15m])) > 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: Lyrahcle background jobs are failing or cannot acknowledge completed work
+        - alert: LyrahcleScheduledJobLockErrors
+          expr: sum(increase(lyrahcle_scheduled_job_leadership_total{result=~"error|release_error"}[30m])) > 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: Lyrahcle scheduled-job distributed locking is failing
+        {{- if .Values.cveSync.enabled }}
+        - alert: LyrahcleCVESyncErrors
+          expr: sum(increase(lyrahcle_cve_sync_errors_total[15m])) > 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: Lyrahcle CVE synchronization is reporting errors
+        - alert: LyrahcleCVESyncStale
+          expr: time() - max(lyrahcle_cve_sync_last_timestamp) > {{ .Values.monitoring.prometheusRule.cveSyncStaleSeconds }}
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: Lyrahcle CVE synchronization has not completed recently
+        {{- end }}
+{{- end }}

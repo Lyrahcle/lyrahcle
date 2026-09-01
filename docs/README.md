@@ -1,204 +1,103 @@
-# Lyrahcle Documentation
+# Documentation
+
+This directory contains the technical documentation for Lyrahcle. The root `README.md` stays intentionally short. The backend embeds the OpenAPI specification at `/openapi.yaml` and serves Swagger UI at `/docs`.
+
+## Start here
+
+| Document | Canonical purpose |
+|---|---|
+| [Architecture](./architecture.md) | Components, trust boundaries, data flows, and storage ownership |
+| [API reference](./api-reference.md) | Human/agent authentication, roles, endpoint behavior, SSE, request IDs |
+| [Configuration](./configuration.md) | Environment variables and runtime configuration for every service |
+| [Deployment](./deployment.md) | Production checklist, TLS, backups, monitoring, updates, WebAuthn, agent mTLS |
+| [Kubernetes deployment](./kubernetes-deployment.md) | Cloud-neutral Helm deployment, HA controls, probes, secrets, HPA/PDB, multi-replica safety |
+| [Kubernetes staging and observability](./kubernetes-observability.md) | kind smoke environment, ServiceMonitor/PrometheusRule integration, metrics NetworkPolicy path |
+| [AWS EKS migration](./aws-eks-migration.md) | Future EKS mapping for ECR/RDS/Redis, ALB/NLB, Secrets Manager and Pod Identity |
+| [Improvement roadmap](./improvement-roadmap.md) | Canonical shipped/partial/next/later product backlog |
+| [Documentation maintenance](./documentation-maintenance.md) | Source-of-truth hierarchy and consistency rules |
+
+## Identity, access, and RBAC
+
+| Document | Canonical purpose |
+|---|---|
+| [User administration](./user-administration.md) | Roles, bootstrap admin, account lifecycle, TOTP, WebAuthn, recovery |
+| [Security keys and recovery](./security-keys-and-recovery.md) | WebAuthn and password-recovery trust model |
+| [Browser authentication security](./browser-auth-security.md) | Bearer-token model and CSRF assessment for browser API requests |
+| [Granular RBAC](./rbac.md) | v11.x organization-scoped permissions, custom roles, and capability enforcement |
+| [RBAC endpoint matrix](./rbac-endpoint-matrix.md) | Per-domain read/manage capability mapping to representative routes |
+| [v11.7 detection and operational RBAC completion](./detection-rbac-v117.md) | Tenant-local detection-rule policy and remaining capability migrations |
+| [Platform administrator boundary](./platform-admin-boundary.md) | Control-plane organization management vs. tenant-local admin authority |
+| [Administrative audit coverage](./admin-audit-coverage.md) | Which security-sensitive admin mutations are audited, and where |
+| [Sensitive endpoint audit](./sensitive-endpoint-audit.md) | Security-sensitive endpoint inventory and audit expectations |
+| [Signing key management](./key-management.md) | `KeyProvider` boundary, local Ed25519 provider, and key rotation |
+| [Secret management](./secret-management.md) | Secret provider boundary (`env`/`file`/production requirements) |
+
+## Multi-tenancy and platform isolation
+
+| Document | Canonical purpose |
+|---|---|
+| [Organizations and multi-tenancy](./multi-tenancy.md) | v10.x tenant-scoping rollout across operational domains |
+| [PostgreSQL row-level security](./postgres-row-level-security.md) | v14.2 database-enforced tenant isolation via `dbscope` and RLS |
+| [Tenant isolation audit](./tenant-isolation-audit.md) | v10.6 release gate: tenant-owned domains and cross-tenant guarantees |
+| [Tenant runtime integrity](./tenant-runtime-integrity.md) | Preserving `organization_id` end-to-end into incidents and audit records |
+
+## SDR fleet, edge, and orbital operations
+
+| Document | Canonical purpose |
+|---|---|
+| [SDR agent enrollment and mTLS](./agent-enrollment.md) | Enrollment, certificate rotation, quarantine, revocation, legacy-key migration |
+| [Signed remote agent configuration](./agent-remote-configuration.md) | v9.1 immutable signed configuration and rollback |
+| [Agent hardware capabilities](./agent-hardware-capabilities.md) | v13.10 SDR hardware/firmware inventory reporting and compatibility labels |
+| [Edge node integrity / tamper detection](./edge-integrity.md) | Deterministic file-manifest baselining and healthy/changed classification |
+| [Orbital-aware security correlation](./orbital-security-correlation.md) | v9.2/v9.2.2 orbital/RF evidence, severity gating, operator workflow |
+| [Orbital operations context](./orbital-operations-context.md) | v9.5 maneuver/conjunction persistence, trust model, and candidate-only correlation |
+| [Cross-domain correlation](./cross-domain-correlation.md) | v9.4 explainable incident correlation across RF, orbital, agent posture, audit, and context-only asset alerts |
+| [Satellite pass prediction](./pass-prediction.md) | v9.3 AOS/LOS, peak elevation, prediction windows, and TLE safety |
+| [TLE data quality](./tle-data-quality.md) | Fresh/aging/stale/unusable policy and safe orbital-escalation defaults |
+| [IQ forensics](./forensics.md) | Recording, replaying, and handling SDR IQ captures |
+| [Core telemetry visualizations](./telemetry-visualizations.md) | RF power/spectrum/coverage and anomaly-intensity UI panels |
+
+## Application security contracts
+
+| Document | Canonical purpose |
+|---|---|
+| [Input/output security contracts](./input-output-security.md) | SQL parameterization and browser-XSS regression contracts kept in CI |
+| [Runtime command-execution security contract](./command-execution-security.md) | Prohibition on runtime OS command execution outside dedicated review |
+| [Browser, CSP, and CORS security](./browser-and-cors-security.md) | Same-origin default, CSP, and exact-allowlist CORS for split origins |
+| [UI HTTP error handling contract](./ui-http-errors.md) | Typed frontend handling of 401/403/404/409 instead of generic errors |
+| [Background job reliability](./background-job-reliability.md) | At-least-once delivery with idempotent durable effects for async work |
+| [STRIDE threat model](./ieee3536-threat-model.md) | Assets, trust boundaries, STRIDE threats, mitigations, residual risk |
+| [SDR hardware supply-chain threat model](./sdr-hardware-supply-chain-threat-model.md) | STRIDE analysis and acceptance gates for SDR hardware, firmware, FPGA, USB, and edge dependencies |
+| [Software supply chain](./supply-chain.md) | SBOMs, dependency gates, signed releases, provenance |
+
+## Operations
+
+| Document | Canonical purpose |
+|---|---|
+| [Observability](./observability.md) | Prometheus, Grafana, request IDs, alerts, and optional OpenTelemetry tracing |
+| [Performance testing](./performance-testing.md) | Current performance controls and production-like validation work |
+| [Backup and restore](./backup-and-restore.md) | Backup verification, guarded restore, and recovery recommendations |
+| [Incident response runbook](./incident-response-runbook.md) | Containment, key/agent compromise, tenant breach, evidence, and recovery procedures |
+| [Compliance checklist](./compliance-checklist.md) | Pre-v1 security evidence and readiness tracker |
+
+## Process and governance
+
+| Document | Canonical purpose |
+|---|---|
+| [Security policy](../SECURITY.md) | Private vulnerability reporting and supported scope |
+| [Security roadmap](../SECURITY_ROADMAP.md) | Security controls, evidence, and remaining v1.0 security gates |
+| [Development plan](../PLAN.md) | Execution order and milestone intent |
+| [Contributing](../CONTRIBUTING.md) | Local development, testing, conventions, PR expectations |
+| [Releasing](../RELEASING.md) | Versioning and GHCR release process |
+| [Changelog](../CHANGELOG.md) | Historical milestone/release record |
+
+## Documentation status model
+
+- `docs/improvement-roadmap.md` is the canonical product backlog.
+- `SECURITY_ROADMAP.md` is the canonical security-control/gate tracker.
+- `PLAN.md` explains execution order; it must not duplicate a second backlog.
+- `CHANGELOG.md` is historical and must not be interpreted as current status.
+- `apps/backend/cmd/server/openapi.yaml` is the canonical machine-readable HTTP API description; endpoint descriptions must track the route/authentication implementation.
+- `docs/configuration.md` is the canonical human-readable configuration reference; code defaults and production validation remain authoritative if a discrepancy is discovered.
 
-**This is a consolidated, streamlined version of the Lyrahcle documentation.**
-
-- **48 files → 30 files** (37% reduction)
-- **3,051 lines → ~2,200 lines** (28% reduction)
-- **Fewer duplicates**, clearer organization, easier maintenance
-
----
-
-## Quick Start for New Users
-
-1. **System Architecture:** [`architecture.md`](architecture.md)
-2. **First Deployment:** [`deployment.md`](deployment.md)
-3. **Kubernetes/HA:** [`kubernetes-deployment.md`](kubernetes-deployment.md)
-
----
-
-## Core Guides (CONSOLIDATED)
-
-### User & Access Control
-
-- **[Browser Security Guide](01-browser-security-guide.md)** ⭐ NEW
-  - JWT authentication and token storage
-  - CORS and CSP configuration
-  - CSRF assessment and attack surface
-  - Deployment checklist
-
-- **[RBAC Guide](02-rbac-guide.md)** ⭐ NEW
-  - Capabilities model (read/manage permissions)
-  - Endpoint authorization matrix
-  - Platform administrator boundary
-  - Custom role assignment
-  - Migration from legacy roles
-
-- **[Multi-Tenancy Guide](03-multi-tenancy-guide.md)** ⭐ NEW
-  - Organization isolation (HTTP + database)
-  - PostgreSQL Row-Level Security (RLS)
-  - Tenant-owned domains and shared catalogs
-  - Audit context and correlation
-  - Integration test procedures
-
-### SDR Agents
-
-- **[SDR Agent Guide](04-sdr-agent-guide.md)** ⭐ NEW
-  - Certificate-based identity and enrollment (v9.0+)
-  - Signed remote configuration (v9.1+)
-  - Hardware capability reporting (v13.10+)
-  - Fleet staged rollouts (v14.6.1+)
-  - Edge integrity monitoring
-
----
-
-## Architecture & Operations
-
-### Deployment
-
-- **[Architecture](architecture.md)** — System design, trust boundaries, data flows
-- **[Configuration](configuration.md)** — Environment variables and secrets
-- **[Deployment Guide](deployment.md)** — Docker Compose and initial setup
-- **[Kubernetes Deployment](kubernetes-deployment.md)** — HA, Helm charts, production patterns
-- **[AWS EKS Migration](aws-eks-migration.md)** — Future AWS infrastructure roadmap
-
-### Operations & Monitoring
-
-- **[Incident Response Runbook](incident-response-runbook.md)** — Detection → Investigation → Closure
-- **[Observability](observability.md)** — Prometheus, Grafana, metrics
-- **[Backup and Restore](backup-and-restore.md)** — Database backup procedures and testing
-
----
-
-## Security & Compliance
-
-### Threat Models & Audits
-
-- **[STRIDE Threat Model](ieee3536-threat-model.md)** — Comprehensive security design review
-- **[SDR Hardware Supply-Chain Threat Model](sdr-hardware-supply-chain-threat-model.md)** — Hardware and firmware risks
-- **[Compliance Checklist](compliance-checklist.md)** — Pre-v1.0 security gates
-- **[Sensitive Endpoint Audit](sensitive-endpoint-audit.md)** — Authorization verification
-- **[Admin Audit Coverage](admin-audit-coverage.md)** — Administrative action logging
-
-### Identity & Secrets
-
-- **[Security Keys and Recovery](security-keys-and-recovery.md)** — WebAuthn, TOTP, password recovery
-- **[Signing Key Management](key-management.md)** — JWT rotation, agent config signing, custody
-- **[Platform Admin Boundary](platform-admin-boundary.md)** — Control-plane isolation from tenant RBAC
-
-### Application Security
-
-- **[Input/Output Security](input-output-security.md)** — Request validation contracts
-- **[Edge Integrity](edge-integrity.md)** — SDR agent tamper detection
-- **[Command Execution Security](command-execution-security.md)** — No shell execution policy
-- **[UI HTTP Errors](ui-http-errors.md)** — User-visible error message handling
-
----
-
-## Features & Capabilities
-
-### Orbital & RF Security
-
-- **[Orbital-Aware Security Correlation](orbital-security-correlation.md)** — TLE freshness, Doppler visibility
-- **[Pass Prediction](pass-prediction.md)** — AOS/LOS scheduling and prediction
-- **[Cross-Domain Correlation](cross-domain-correlation.md)** — Multi-signal incident correlation
-- **[Orbital Operations Context](orbital-operations-context.md)** — Station coordinates, maneuver context
-- **[TLE Data Quality](tle-data-quality.md)** — Ephemeris freshness and staleness handling
-
-### Detection & Forensics
-
-- **[IQ Forensics](forensics.md)** — RF capture and playback for investigation
-- **[Background Job Reliability](background-job-reliability.md)** — Async job safety and idempotency
-
-### API & Integration
-
-- **[API Reference](api-reference.md)** — REST endpoints (generated from OpenAPI)
-- **[Performance Testing](performance-testing.md)** — Load testing and benchmarks
-
----
-
-## Project Management
-
-- **[Improvement Roadmap](improvement-roadmap.md)** — Shipped/Next/Later backlog (canonical)
-- **[Consolidation Plan](00-CONSOLIDATION_PLAN.md)** — How this documentation was reorganized
-
----
-
-## For Specific Roles
-
-### Operators
-1. Start with: [`deployment.md`](deployment.md)
-2. Learn: [`kubernetes-deployment.md`](kubernetes-deployment.md)
-3. Reference: [`incident-response-runbook.md`](incident-response-runbook.md)
-
-### Security Engineers
-1. Read: [`ieee3536-threat-model.md`](ieee3536-threat-model.md)
-2. Review: [`compliance-checklist.md`](compliance-checklist.md)
-3. Audit: [`sensitive-endpoint-audit.md`](sensitive-endpoint-audit.md)
-
-### DevOps / Infrastructure
-1. Start: [`configuration.md`](configuration.md)
-2. Deploy: [`kubernetes-deployment.md`](kubernetes-deployment.md)
-3. Monitor: [`observability.md`](observability.md)
-
-### Platform Administrators
-1. Learn: [`02-rbac-guide.md`](02-rbac-guide.md)
-2. Manage: [`platform-admin-boundary.md`](platform-admin-boundary.md)
-3. Audit: [`admin-audit-coverage.md`](admin-audit-coverage.md)
-
-### SDR / RF Engineers
-1. Setup: [`04-sdr-agent-guide.md`](04-sdr-agent-guide.md)
-2. Learn: [`orbital-security-correlation.md`](orbital-security-correlation.md)
-3. Investigate: [`forensics.md`](forensics.md)
-
----
-
-## Changes from Previous Version
-
-### Consolidated (Reduced Duplication)
-
-✅ **Browser Security** (2 files → 1)
-- Merged: `browser-auth-security.md` + `browser-and-cors-security.md`
-- New: `01-browser-security-guide.md`
-
-✅ **RBAC** (3 files → 1)
-- Merged: `rbac.md` + `rbac-endpoint-matrix.md` + `detection-rbac-v117.md`
-- New: `02-rbac-guide.md`
-
-✅ **Multi-Tenancy** (4 files → 1)
-- Merged: `multi-tenancy.md` + `postgres-row-level-security.md` + `tenant-isolation-audit.md` + `tenant-runtime-integrity.md`
-- New: `03-multi-tenancy-guide.md`
-
-✅ **SDR Agent** (3 files → 1)
-- Merged: `agent-enrollment.md` + `agent-remote-configuration.md` + `agent-hardware-capabilities.md`
-- New: `04-sdr-agent-guide.md`
-
-### Deleted (Obsolete / Meta)
-
-❌ Removed: `documentation-maintenance.md` (meta-documentation, no longer needed)
-
-### Better Organization
-
-- Guides are now numbered (`01-`, `02-`, etc.) for easy reference
-- Related topics grouped logically
-- Reduced files from **48 → 30** (37% reduction)
-- Reduced lines from **3,051 → ~2,200** (28% reduction)
-
----
-
-## Maintenance
-
-- Update consolidated guides, not separate files
-- Keep roadmap in [`improvement-roadmap.md`](improvement-roadmap.md)
-- Version-specific details go in related feature docs, not separate version stubs
-- Add new docs only when they cover a distinct concern
-
----
-
-## License
-
-See [`../LICENSE`](../LICENSE) — AGPLv3
-
----
-
-**Documentation last updated:** 2026-09-01  
-**Lyrahcle version:** v14.6.6+
+Every file added under `docs/` must be linked from one section above in the same change — this index is the discovery path for the rest of the documentation set, and an unlinked doc is effectively lost.

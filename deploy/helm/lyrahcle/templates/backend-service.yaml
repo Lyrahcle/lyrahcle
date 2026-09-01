@@ -5,6 +5,13 @@ metadata:
   labels:
     {{- include "lyrahcle.labels" . | nindent 4 }}
     app.kubernetes.io/component: backend
+  {{- if .Values.monitoring.prometheusAnnotations.enabled }}
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/path: "/metrics"
+    prometheus.io/port: {{ .Values.backend.service.port | quote }}
+    prometheus.io/scheme: {{ ternary "https" "http" .Values.backend.tls.enabled | quote }}
+  {{- end }}
 spec:
   type: {{ .Values.backend.service.type }}
   selector:

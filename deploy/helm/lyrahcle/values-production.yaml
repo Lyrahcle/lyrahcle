@@ -16,7 +16,7 @@ secrets:
 backend:
   replicaCount: 2
   image:
-    tag: 14.6.6
+    tag: 14.6.7
   tls:
     enabled: true
     existingSecret: lyrahcle-backend-tls
@@ -33,7 +33,7 @@ backend:
 frontend:
   replicaCount: 2
   image:
-    tag: 14.6.6
+    tag: 14.6.7
   backendTls:
     verify: true
     # Must match the DNS SAN of the backend serving certificate.
@@ -52,7 +52,7 @@ frontend:
 
 cveSync:
   image:
-    tag: 14.6.6
+    tag: 14.6.7
 
 ingress:
   enabled: true
@@ -60,3 +60,20 @@ ingress:
   tls:
     enabled: true
     secretName: lyrahcle-public-tls
+
+# Prometheus Operator integration is opt-in because the CRDs are cluster-level
+# dependencies. When enabled, backend TLS is verified with the same CA used by
+# the frontend-to-backend connection.
+monitoring:
+  prometheusAnnotations:
+    enabled: false
+  serviceMonitor:
+    enabled: false
+    backend:
+      tls:
+        caSecretName: lyrahcle-backend-ca
+        caSecretKey: ca.crt
+        serverName: lyrahcle-backend
+        insecureSkipVerify: false
+  prometheusRule:
+    enabled: false

@@ -94,11 +94,11 @@ helm upgrade --install lyrahcle deploy/helm/lyrahcle \
   --namespace lyrahcle \
   --create-namespace \
   --set backend.image.repository=registry.example/lyrahcle-backend \
-  --set backend.image.tag=14.6.6 \
+  --set backend.image.tag=14.6.7 \
   --set frontend.image.repository=registry.example/lyrahcle-frontend \
-  --set frontend.image.tag=14.6.6 \
+  --set frontend.image.tag=14.6.7 \
   --set cveSync.image.repository=registry.example/lyrahcle-cve-sync \
-  --set cveSync.image.tag=14.6.6
+  --set cveSync.image.tag=14.6.7
 ```
 
 Without Ingress, access the UI with:
@@ -106,6 +106,24 @@ Without Ingress, access the UI with:
 ```bash
 kubectl -n lyrahcle port-forward service/lyrahcle-frontend 5173:80
 ```
+
+
+## Staging and local Kubernetes smoke
+
+Use `values-staging.yaml` to exercise the multi-replica application lifecycle
+without production-only TLS/Ingress dependencies. A three-node kind topology,
+disposable PostgreSQL/Redis manifests and build/deploy/smoke scripts are included
+for this purpose:
+
+```bash
+./scripts/k8s-local-up.sh
+./scripts/k8s-smoke-test.sh
+./scripts/k8s-local-down.sh
+```
+
+The local data layer is intentionally ephemeral and must never be treated as a
+production PostgreSQL/Redis design. See `docs/kubernetes-observability.md` for
+the complete staging workflow and Prometheus integration.
 
 ## Production baseline
 
@@ -158,6 +176,19 @@ For a production cluster:
 - Set resource requests based on measured load, not the chart defaults.
 - Keep PostgreSQL and Redis outside the application Deployment lifecycle.
 - Verify database/Redis connection pool sizing as replicas scale.
+
+
+## Kubernetes metrics and alerting
+
+The chart exposes the backend metrics Service and a CVE-sync metrics Service.
+Small clusters can use optional Prometheus scrape annotations. Clusters running
+Prometheus Operator can instead enable the chart's `ServiceMonitor` and
+`PrometheusRule` resources. Backend HTTPS scraping supports CA-secret
+verification and fails Helm validation when TLS is enabled without either a CA
+or an explicit insecure override.
+
+See `docs/kubernetes-observability.md` for values, NetworkPolicy interaction and
+the local smoke workflow.
 
 ## NetworkPolicy
 

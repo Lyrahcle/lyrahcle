@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## v14.6.7 — Kubernetes staging and observability
+
+- Added a portable two-replica staging Helm overlay plus a three-node kind topology and disposable PostgreSQL/Redis manifests for local Kubernetes lifecycle testing.
+- Added `k8s-local-up.sh`, `k8s-smoke-test.sh` and `k8s-local-down.sh` to build/load local images, install the chart, assert two ready backend/frontend replicas, and verify `/readyz` plus backend/CVE Prometheus metrics.
+- Added a dedicated CVE-sync metrics Service, optional Prometheus scrape annotations, Prometheus Operator `ServiceMonitor` resources and an optional `PrometheusRule` with application/security/worker alerts.
+- Backend HTTPS monitoring fails Helm validation unless ServiceMonitor scraping has a CA Secret or an explicit insecure verification override; production/AWS examples keep certificate verification enabled.
+- Extended NetworkPolicy with an opt-in monitoring namespace/pod path so metrics scraping remains compatible with backend ingress isolation.
+- Extended local/CI Helm gates to lint/render the staging overlay and render ServiceMonitor/PrometheusRule resources.
+- Added Kubernetes staging/observability documentation and kept AWS-specific collectors, IAM and remote-write configuration outside the cloud-neutral application chart.
+- No database schema changes and no new application runtime dependencies.
+
 - Refactored backend API route composition out of the monolithic server bootstrap into domain-focused modules while preserving route registration order and authorization contracts.
 - Centralized security and UI/API parity validation in `scripts/check-contracts.sh`, and made source-level contract checks scan the modular server tree instead of depending on `main.go`.
 - Hardened frontend API streaming with shared SSE parsing, consistent endpoint metadata on network/auth errors, safe alert-ID URL encoding and removal of duplicate satellite update handling.

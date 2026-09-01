@@ -14,3 +14,9 @@
 {{- if and .Values.frontend.backendTls.verify (not .Values.frontend.backendTls.caSecretName) -}}
 {{ fail "frontend.backendTls.caSecretName is required when backend TLS verification is enabled" }}
 {{- end -}}
+{{- if and .Values.monitoring.serviceMonitor.enabled .Values.cveSync.enabled (not .Values.cveSync.service.enabled) -}}
+{{ fail "monitoring.serviceMonitor.enabled requires cveSync.service.enabled=true when cveSync is enabled" }}
+{{- end -}}
+{{- if and .Values.monitoring.serviceMonitor.enabled .Values.backend.tls.enabled (not .Values.monitoring.serviceMonitor.backend.tls.caSecretName) (not .Values.monitoring.serviceMonitor.backend.tls.insecureSkipVerify) -}}
+{{ fail "backend TLS ServiceMonitor requires a CA secret or an explicit insecureSkipVerify override" }}
+{{- end -}}

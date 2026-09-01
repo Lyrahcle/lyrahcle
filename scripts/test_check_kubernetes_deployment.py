@@ -38,7 +38,7 @@ class KubernetesDeploymentContractTests(unittest.TestCase):
         temp, root = self.copy_repo()
         self.addCleanup(temp.cleanup)
         path = root / "deploy/helm/lyrahcle/values-production.yaml"
-        path.write_text(path.read_text().replace("tag: 14.6.6", "tag: latest", 1))
+        path.write_text(path.read_text().replace("tag: 14.6.7", "tag: latest", 1))
         self.assertTrue(any("mutable production image tag" in err for err in module.check(root)))
 
 

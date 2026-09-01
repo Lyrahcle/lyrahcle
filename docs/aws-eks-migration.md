@@ -85,6 +85,17 @@ secret APIs from becoming application requirements.
 Where AWS API access is needed by the secret integration or another controller,
 prefer workload identity/Pod Identity over static AWS access keys.
 
+## Metrics and alerting
+
+The v14.6.7 chart exposes portable metrics Services plus optional
+`ServiceMonitor` and `PrometheusRule` resources. On EKS, keep AWS-specific
+collector IAM, remote-write credentials and any Amazon Managed Service for
+Prometheus workspace in the future infrastructure-as-code layer. The
+application chart should not embed AWS credentials or workspace identifiers.
+
+When backend TLS is enabled, configure the ServiceMonitor with the backend CA
+Secret rather than weakening certificate verification.
+
 ## Availability
 
 The AWS example enables:

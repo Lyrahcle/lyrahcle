@@ -145,8 +145,12 @@ jobs:
       - name: Helm lint and render
         run: |
           helm lint deploy/helm/lyrahcle
+          helm lint deploy/helm/lyrahcle -f deploy/helm/lyrahcle/values-staging.yaml
           helm lint deploy/helm/lyrahcle -f deploy/helm/lyrahcle/values-production.yaml
-          helm template lyrahcle deploy/helm/lyrahcle -f deploy/helm/lyrahcle/values-production.yaml >/dev/null
+          helm template lyrahcle deploy/helm/lyrahcle -f deploy/helm/lyrahcle/values-staging.yaml >/dev/null
+          helm template lyrahcle deploy/helm/lyrahcle -f deploy/helm/lyrahcle/values-production.yaml \
+            --set monitoring.serviceMonitor.enabled=true \
+            --set monitoring.prometheusRule.enabled=true >/dev/null
           helm template lyrahcle deploy/helm/lyrahcle -f deploy/helm/lyrahcle/values-aws.example.yaml >/dev/null
       - name: Lint Dockerfiles (hadolint)
         uses: hadolint/hadolint-action@v3.1.0

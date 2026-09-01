@@ -116,6 +116,10 @@ frontend:
 cveSync:
   enabled: true
   replicaCount: 1
+  service:
+    enabled: true
+    type: ClusterIP
+    port: 9091
   image:
     repository: ghcr.io/lyrahcle/lyrahcle-cve-sync
     tag: latest
@@ -169,6 +173,39 @@ networkPolicy:
   # Deliberately opt-in: policy semantics depend on the cluster CNI and on how
   # the ingress/load-balancer controller reaches Pods.
   enabled: false
+  monitoring:
+    # When NetworkPolicy is enabled, opt this in so Prometheus can scrape the
+    # backend and CVE worker from a dedicated monitoring namespace.
+    enabled: false
+    namespaceLabels:
+      kubernetes.io/metadata.name: monitoring
+    podLabels: {}
+
+monitoring:
+  # Legacy annotation discovery is handy for small/dev clusters. For production
+  # prefer ServiceMonitor when Prometheus Operator is present.
+  prometheusAnnotations:
+    enabled: false
+  serviceMonitor:
+    enabled: false
+    labels: {}
+    interval: 15s
+    scrapeTimeout: 5s
+    backend:
+      tls:
+        caSecretName: ""
+        caSecretKey: ca.crt
+        serverName: ""
+        insecureSkipVerify: false
+    cveSync:
+      interval: 30s
+      scrapeTimeout: 5s
+  prometheusRule:
+    enabled: false
+    labels: {}
+    high5xxRatePerSecond: 0.1
+    highP95LatencySeconds: 1
+    cveSyncStaleSeconds: 7200
 
 podSecurity:
   backend:

@@ -160,7 +160,12 @@ section "Kubernetes deployment contract"
 python3 "$ROOT/scripts/check-kubernetes-deployment.py" "$ROOT"
 if command -v helm >/dev/null 2>&1; then
   helm lint "$ROOT/deploy/helm/lyrahcle"
+  helm lint "$ROOT/deploy/helm/lyrahcle" -f "$ROOT/deploy/helm/lyrahcle/values-staging.yaml"
   helm lint "$ROOT/deploy/helm/lyrahcle" -f "$ROOT/deploy/helm/lyrahcle/values-production.yaml"
+  helm template lyrahcle "$ROOT/deploy/helm/lyrahcle" -f "$ROOT/deploy/helm/lyrahcle/values-staging.yaml" >/dev/null
+  helm template lyrahcle "$ROOT/deploy/helm/lyrahcle" -f "$ROOT/deploy/helm/lyrahcle/values-production.yaml" \
+    --set monitoring.serviceMonitor.enabled=true \
+    --set monitoring.prometheusRule.enabled=true >/dev/null
   helm template lyrahcle "$ROOT/deploy/helm/lyrahcle" -f "$ROOT/deploy/helm/lyrahcle/values-aws.example.yaml" >/dev/null
 else
   printf 'helm is not installed; static Kubernetes contracts passed, Helm parser checks are skipped locally.\n'

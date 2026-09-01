@@ -17,7 +17,7 @@ def check(root: Path) -> list[str]:
         "templates/cve-sync-deployment.yaml", "templates/backend-service.yaml",
         "templates/frontend-service.yaml", "templates/ingress.yaml", "templates/hpa.yaml",
         "templates/pdb.yaml", "templates/networkpolicy.yaml", "templates/serviceaccount.yaml",
-        "templates/validate.yaml",
+        "templates/validate.yaml", "templates/cve-sync-service.yaml",
     ]
     for rel in required_files:
         if not (chart / rel).is_file():
@@ -52,7 +52,7 @@ def check(root: Path) -> list[str]:
             errors.append(f"forbidden {label}: {needle!r}")
 
     require(chart_yaml, "apiVersion: v2", "Helm v3 chart API")
-    require(chart_yaml, 'appVersion: "14.6.6"', "chart app version")
+    require(chart_yaml, 'appVersion: "14.6.7"', "chart app version")
     require(values, "existingSecret: lyrahcle-app-secrets", "external application Secret")
 
     for name, text in (("backend", backend), ("frontend", frontend), ("cve-sync", cve)):
@@ -108,8 +108,11 @@ def main() -> int:
         chart = root / "deploy/helm/lyrahcle"
         commands = [
             [helm, "lint", str(chart)],
+            [helm, "lint", str(chart), "-f", str(chart / "values-staging.yaml")],
             [helm, "lint", str(chart), "-f", str(chart / "values-production.yaml")],
+            [helm, "template", "lyrahcle", str(chart), "-f", str(chart / "values-staging.yaml")],
             [helm, "template", "lyrahcle", str(chart), "-f", str(chart / "values-production.yaml")],
+            [helm, "template", "lyrahcle", str(chart), "-f", str(chart / "values-production.yaml"), "--set", "monitoring.serviceMonitor.enabled=true", "--set", "monitoring.prometheusRule.enabled=true"],
             [helm, "template", "lyrahcle", str(chart), "-f", str(chart / "values-aws.example.yaml")],
         ]
         for command in commands:
