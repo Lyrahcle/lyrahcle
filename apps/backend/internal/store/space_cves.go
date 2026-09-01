@@ -53,8 +53,6 @@ var validSpaceCVESortFields = map[string]string{
 	"cve_id":    "cve_id",
 }
 
-// spaceCVESortClause returns SQL fragments selected exclusively from an internal
-// whitelist. Never pass user-controlled identifiers through to SQL directly.
 func spaceCVESortClause(sortBy string, sortDesc bool) (string, string) {
 	sortCol, ok := validSpaceCVESortFields[sortBy]
 	if !ok {

@@ -33,8 +33,6 @@ func RequirePermission(checker PermissionChecker, permission string) func(http.H
 	}
 }
 
-// RequireAnyPermission authorizes a request when at least one supplied capability is granted.
-// It is useful for read surfaces where the corresponding manage capability must also imply access.
 func RequireAnyPermission(checker PermissionChecker, permissions ...string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

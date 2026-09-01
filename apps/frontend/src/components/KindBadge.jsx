@@ -9,7 +9,7 @@ const colors = {
 export default function KindBadge({ kind }) {
   const cls = colors[kind] ?? colors.firmware
   return (
-    <span className={`rounded border px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide ${cls}`}>
+    <span className={`rounded border px-2 py-0.5 font-mono text-[10px] tracking-wide ${cls}`}>
       {kind}
     </span>
   )

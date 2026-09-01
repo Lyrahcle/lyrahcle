@@ -12,8 +12,6 @@ import (
 	"github.com/mlko01/lyrahcle/apps/backend/internal/store"
 )
 
-// attachCrossDomainCorrelationEvidence summarizes corroborating domains without
-// overriding domain-specific severity gates. Unlinked asset alerts are context-only.
 func attachCrossDomainCorrelationEvidence(
 	ctx context.Context,
 	incidents *store.IncidentStore,

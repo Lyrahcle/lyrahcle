@@ -81,7 +81,7 @@ export default function PlatformOrganizationsPanel({ organizations = [], platfor
   return (
     <div className="grid gap-6">
       <form onSubmit={submit} className="grid gap-3 rounded border border-lyra-borderSoft bg-lyra-bgSoft/30 p-4 md:grid-cols-[1fr_1.5fr_auto] md:items-end">
-        <label className="grid gap-1 text-[11px] uppercase tracking-wider text-lyra-mutedDim">
+        <label className="grid gap-1 text-[11px] tracking-wider text-lyra-mutedDim">
           {t('platform.slug')}
           <input
             required
@@ -92,7 +92,7 @@ export default function PlatformOrganizationsPanel({ organizations = [], platfor
             className="rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 font-mono text-sm normal-case text-lyra-text"
           />
         </label>
-        <label className="grid gap-1 text-[11px] uppercase tracking-wider text-lyra-mutedDim">
+        <label className="grid gap-1 text-[11px] tracking-wider text-lyra-mutedDim">
           {t('platform.name')}
           <input
             required
@@ -117,10 +117,10 @@ export default function PlatformOrganizationsPanel({ organizations = [], platfor
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-lyra-borderSoft">
-                <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">{t('platform.name')}</th>
-                <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">{t('platform.slug')}</th>
-                <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">{t('platform.status')}</th>
-                <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">ID</th>
+                <th className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">{t('platform.name')}</th>
+                <th className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">{t('platform.slug')}</th>
+                <th className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">{t('platform.status')}</th>
+                <th className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">ID</th>
                 <th className="pb-2" />
               </tr>
             </thead>
@@ -130,7 +130,7 @@ export default function PlatformOrganizationsPanel({ organizations = [], platfor
                   <td className="py-3 pr-4 text-lyra-text">{organization.name}</td>
                   <td className="py-3 pr-4 font-mono text-xs text-lyra-goldBright">{organization.slug}</td>
                   <td className="py-3 pr-4">
-                    <span className={`rounded border px-2 py-1 font-mono text-[10px] uppercase ${organization.enabled === false ? 'border-lyra-bad/50 text-lyra-bad' : 'border-lyra-ok/50 text-lyra-ok'}`}>
+                    <span className={`rounded border px-2 py-1 font-mono text-[10px] ${organization.enabled === false ? 'border-lyra-bad/50 text-lyra-bad' : 'border-lyra-ok/50 text-lyra-ok'}`}>
                       {organization.enabled === false ? t('platform.disabled') : t('platform.enabled')}
                     </span>
                   </td>
@@ -153,7 +153,7 @@ export default function PlatformOrganizationsPanel({ organizations = [], platfor
 
       {editingId && (
         <form onSubmit={saveEdit} aria-label={t('platform.editTitle')} className="grid gap-3 rounded border border-lyra-borderSoft bg-lyra-bgSoft/30 p-4 md:grid-cols-[1fr_1.5fr_auto_auto] md:items-end">
-          <label className="grid gap-1 text-[11px] uppercase tracking-wider text-lyra-mutedDim">
+          <label className="grid gap-1 text-[11px] tracking-wider text-lyra-mutedDim">
             {t('platform.editSlug')}
             <input
               required
@@ -163,7 +163,7 @@ export default function PlatformOrganizationsPanel({ organizations = [], platfor
               className="rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 font-mono text-sm normal-case text-lyra-text"
             />
           </label>
-          <label className="grid gap-1 text-[11px] uppercase tracking-wider text-lyra-mutedDim">
+          <label className="grid gap-1 text-[11px] tracking-wider text-lyra-mutedDim">
             {t('platform.editName')}
             <input
               required
@@ -184,15 +184,15 @@ export default function PlatformOrganizationsPanel({ organizations = [], platfor
 
       <div className="grid gap-3">
         <div>
-          <h3 className="font-mono text-xs uppercase tracking-wider text-lyra-gold">{t('platform.admins')}</h3>
+          <h3 className="font-mono text-xs tracking-wider text-lyra-gold">{t('platform.admins')}</h3>
           <p className="mt-1 text-xs text-lyra-muted">{t('platform.adminsHint')}</p>
         </div>
         <TableScroll>
           <table className="w-full text-left text-sm">
             <thead><tr className="border-b border-lyra-borderSoft">
-              <th className="pb-2 text-[11px] uppercase text-lyra-mutedDim">{t('platform.user')}</th>
-              <th className="pb-2 text-[11px] uppercase text-lyra-mutedDim">{t('platform.organization')}</th>
-              <th className="pb-2 text-[11px] uppercase text-lyra-mutedDim">{t('platform.access')}</th>
+              <th className="pb-2 text-[11px] text-lyra-mutedDim">{t('platform.user')}</th>
+              <th className="pb-2 text-[11px] text-lyra-mutedDim">{t('platform.organization')}</th>
+              <th className="pb-2 text-[11px] text-lyra-mutedDim">{t('platform.access')}</th>
               <th className="pb-2" />
             </tr></thead>
             <tbody>

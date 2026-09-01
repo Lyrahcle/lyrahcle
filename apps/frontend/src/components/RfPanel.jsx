@@ -19,16 +19,16 @@ export default function RfPanel({ readings }) {
       <table className="w-full text-left text-sm">
         <thead>
           <tr className="border-b border-lyra-borderSoft">
-            <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+            <th scope="col" className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">
               {t('rf.agent')}
             </th>
-            <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+            <th scope="col" className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">
               {t('rf.frequency')}
             </th>
-            <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+            <th scope="col" className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">
               {t('rf.signal')}
             </th>
-            <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+            <th scope="col" className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">
               {t('rf.captured')}
             </th>
           </tr>

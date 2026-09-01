@@ -42,7 +42,7 @@ func TestRemoteProviderRetrievesWithoutExposingToken(t *testing.T) {
 	}))
 	defer srv.Close()
 	client := srv.Client()
-	client.Transport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true} // test server only
+	client.Transport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	p := RemoteProvider{Endpoint: srv.URL, Token: "bootstrap", Client: client}
 	got, err := p.Get(context.Background(), "JWT_SECRET")
 	if err != nil {

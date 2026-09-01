@@ -3,8 +3,8 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 FULL=0
-DB_URL="${TEST_DATABASE_URL:-}"
-REDIS_ADDR="${TEST_REDIS_ADDR:-}"
+DB_URL="${TEST_DATABASE_URL:-postgres://lyrahcle:lyrahcle@127.0.0.1:5432/lyrahcle_test?sslmode=disable}"
+REDIS_ADDR="${TEST_REDIS_ADDR:-127.0.0.1:6379}"
 if [[ "${1:-}" == "--full" ]]; then
   FULL=1
 fi
@@ -27,7 +27,7 @@ except OSError as exc:
 PY
   then
     printf '\nERROR: %s is not reachable at %s:%s.\n' "$label" "$host" "$port" >&2
-    printf 'Start the local test service or unset its TEST_* environment variable before running the gate.\n' >&2
+    printf 'Start the local services with: docker compose up -d postgres redis\n' >&2
     return 1
   fi
 }
@@ -81,8 +81,6 @@ section "Security and parity contracts"
 
 section "Backend tests"
 cd "$ROOT/apps/backend"
-# Unit tests must not become integration tests merely because the caller has
-# TEST_DATABASE_URL / TEST_REDIS_ADDR exported in their shell.
 TEST_DATABASE_URL= TEST_REDIS_ADDR= go test ./...
 
 if [[ -n "$REDIS_ADDR" ]]; then

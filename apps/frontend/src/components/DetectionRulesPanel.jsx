@@ -86,7 +86,7 @@ export default function DetectionRulesPanel({ page, onChanged }) {
             <input type="checkbox" checked={form.autoIncident} onChange={(e) => setForm({ ...form, autoIncident: e.target.checked })} />
             {t('detections.autoIncident')}
           </label>
-          <button disabled={saving} className="justify-self-start rounded border border-lyra-gold/40 px-4 py-2 font-mono text-xs uppercase tracking-wide text-lyra-goldBright disabled:opacity-50">
+          <button disabled={saving} className="justify-self-start rounded border border-lyra-gold/40 px-4 py-2 font-mono text-xs tracking-wide text-lyra-goldBright disabled:opacity-50">
             {saving ? t('common.saving') : t('detections.create')}
           </button>
         </form>
@@ -98,7 +98,7 @@ export default function DetectionRulesPanel({ page, onChanged }) {
         <TableScroll>
           <table className="w-full text-left text-sm">
             <thead><tr className="border-b border-lyra-borderSoft">
-              {[t('detections.name'), t('detections.condition'), t('incidents.severity'), t('detections.cooldown'), t('detections.incident'), t('detections.status')].map((label) => <th key={label} className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">{label}</th>)}
+              {[t('detections.name'), t('detections.condition'), t('incidents.severity'), t('detections.cooldown'), t('detections.incident'), t('detections.status')].map((label) => <th key={label} className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">{label}</th>)}
             </tr></thead>
             <tbody>
               {rules.map((rule) => (
@@ -113,11 +113,11 @@ export default function DetectionRulesPanel({ page, onChanged }) {
                   <td className="py-3 pr-4 font-mono text-xs text-lyra-muted">{rule.auto_incident ? t('detections.yes') : t('detections.no')}</td>
                   <td className="py-3">
                     {canManage ? (
-                      <button type="button" disabled={saving} onClick={() => toggleRule(rule)} className="rounded border border-lyra-border px-2 py-1 font-mono text-[11px] uppercase text-lyra-goldBright disabled:opacity-50">
+                      <button type="button" disabled={saving} onClick={() => toggleRule(rule)} className="rounded border border-lyra-border px-2 py-1 font-mono text-[11px] text-lyra-goldBright disabled:opacity-50">
                         {rule.enabled ? t('detections.enabled') : t('detections.disabled')}
                       </button>
                     ) : (
-                      <span className="font-mono text-[11px] uppercase text-lyra-muted">{rule.enabled ? t('detections.enabled') : t('detections.disabled')}</span>
+                      <span className="font-mono text-[11px] text-lyra-muted">{rule.enabled ? t('detections.enabled') : t('detections.disabled')}</span>
                     )}
                   </td>
                 </tr>

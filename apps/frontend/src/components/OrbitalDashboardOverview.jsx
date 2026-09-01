@@ -40,7 +40,7 @@ export default function OrbitalDashboardOverview({ satellites = [], live = false
     <section aria-labelledby="orbital-dashboard-heading" className="grid gap-5">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-[10px] uppercase tracking-[0.18em] text-lyra-mutedDim">{t('orbitalDashboard.eyebrow')}</p>
+          <p className="text-[10px] tracking-[0.18em] text-lyra-mutedDim">{t('orbitalDashboard.eyebrow')}</p>
           <h1 id="orbital-dashboard-heading" className="mt-1 font-display text-2xl font-medium text-lyra-text">{t('orbitalDashboard.title')}</h1>
           <p className="mt-1 max-w-2xl text-sm text-lyra-muted">{t('orbitalDashboard.subtitle')}</p>
         </div>
@@ -61,7 +61,7 @@ export default function OrbitalDashboardOverview({ satellites = [], live = false
         <div className="rounded-lg border border-lyra-border bg-lyra-panel/50 p-5">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-[10px] uppercase tracking-[0.15em] text-lyra-mutedDim">{t('orbitalDashboard.attentionEyebrow')}</p>
+              <p className="text-[10px] tracking-[0.15em] text-lyra-mutedDim">{t('orbitalDashboard.attentionEyebrow')}</p>
               <h2 className="mt-1 font-display text-base font-medium text-lyra-text">{t('orbitalDashboard.attention')}</h2>
             </div>
             <TriangleAlert className={`h-4 w-4 ${attention.length ? 'text-lyra-warn' : 'text-lyra-good'}`} aria-hidden="true" />
@@ -81,7 +81,7 @@ export default function OrbitalDashboardOverview({ satellites = [], live = false
         </div>
 
         <div className="rounded-lg border border-lyra-border bg-lyra-panel/50 p-5">
-          <p className="text-[10px] uppercase tracking-[0.15em] text-lyra-mutedDim">{t('orbitalDashboard.recentEyebrow')}</p>
+          <p className="text-[10px] tracking-[0.15em] text-lyra-mutedDim">{t('orbitalDashboard.recentEyebrow')}</p>
           <h2 className="mt-1 font-display text-base font-medium text-lyra-text">{t('orbitalDashboard.recent')}</h2>
           {recent.length === 0 ? (
             <p className="mt-4 text-sm text-lyra-muted">{t('orbitalDashboard.empty')}</p>

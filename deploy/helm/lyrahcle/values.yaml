@@ -1,6 +1,3 @@
-# Default values intentionally target a development Kubernetes cluster.
-# For an Internet-facing deployment start from values-production.yaml and
-# provide external PostgreSQL/Redis, TLS and application secrets.
 nameOverride: ""
 fullnameOverride: ""
 
@@ -21,9 +18,6 @@ application:
   jwtAccessTtl: 30m
 
 secrets:
-  # Existing Secret keys consumed by the backend file provider and CVE worker:
-  # DATABASE_URL, REDIS_URL, JWT_SECRET, SEED_ADMIN_PASSWORD and optionally
-  # JWT_SECRET_PREVIOUS, SMTP_PASSWORD, AGENT_CONFIG_SIGNER_TOKEN.
   existingSecret: lyrahcle-app-secrets
 
 backend:
@@ -158,9 +152,6 @@ ingress:
     enabled: false
     secretName: lyrahcle-public-tls
 
-# Optional direct backend service for SDR agents. In a production AWS overlay
-# this maps naturally to an NLB with TCP/TLS passthrough so Go keeps validating
-# client certificates itself.
 agentService:
   enabled: false
   type: LoadBalancer
@@ -170,20 +161,14 @@ agentService:
   externalTrafficPolicy: Cluster
 
 networkPolicy:
-  # Deliberately opt-in: policy semantics depend on the cluster CNI and on how
-  # the ingress/load-balancer controller reaches Pods.
   enabled: false
   monitoring:
-    # When NetworkPolicy is enabled, opt this in so Prometheus can scrape the
-    # backend and CVE worker from a dedicated monitoring namespace.
     enabled: false
     namespaceLabels:
       kubernetes.io/metadata.name: monitoring
     podLabels: {}
 
 monitoring:
-  # Legacy annotation discovery is handy for small/dev clusters. For production
-  # prefer ServiceMonitor when Prometheus Operator is present.
   prometheusAnnotations:
     enabled: false
   serviceMonitor:

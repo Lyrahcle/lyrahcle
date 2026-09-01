@@ -3,14 +3,6 @@ import { createPortal } from 'react-dom'
 import { useI18n } from '../lib/I18nContext.jsx'
 import { useFocusTrap } from '../lib/useFocusTrap.js'
 
-/**
- * Themed replacement for window.confirm(). Mount conditionally from the
- * caller (e.g. `{pending && <ConfirmDialog ... />}`) so it stays uncontrolled
- * when not needed.
- *
- * `danger` (default true) styles the confirm button as destructive; pass
- * `danger={false}` for non-destructive confirmations.
- */
 export default function ConfirmDialog({
   title,
   message,

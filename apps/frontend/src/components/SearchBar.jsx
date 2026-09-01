@@ -95,7 +95,7 @@ export default function SearchBar({ onNavigate }) {
       {open && value.trim().length >= 2 && (
         <div className="absolute left-0 top-full z-50 mt-2 w-96 overflow-hidden rounded border border-lyra-border bg-lyra-panel shadow-lg">
           <div className="border-b border-lyra-borderSoft px-3 py-2">
-            <select value={type} onChange={(e) => setType(e.target.value)} className="rounded border border-lyra-border bg-lyra-bgSoft px-1.5 py-1 font-mono text-[10px] uppercase tracking-wider text-lyra-muted outline-none focus:border-lyra-gold">
+            <select value={type} onChange={(e) => setType(e.target.value)} className="rounded border border-lyra-border bg-lyra-bgSoft px-1.5 py-1 font-mono text-[10px] tracking-wider text-lyra-muted outline-none focus:border-lyra-gold">
               {TYPES.map((item) => <option key={item} value={item}>{t(`header.searchType.${item}`)}</option>)}
             </select>
           </div>
@@ -108,7 +108,7 @@ export default function SearchBar({ onNavigate }) {
               {visibleResults.map((result) => (
                 <li key={`${result.type}-${result.id}`}>
                   <button type="button" onClick={() => handleSelect(result)} className="flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left outline-none transition-colors hover:bg-lyra-bgSoft focus-visible:bg-lyra-bgSoft">
-                    <span className="font-mono text-[10px] uppercase tracking-wider text-lyra-mutedDim">{t(`header.searchType.${result.type}`)}</span>
+                    <span className="font-mono text-[10px] tracking-wider text-lyra-mutedDim">{t(`header.searchType.${result.type}`)}</span>
                     <span className="max-w-full truncate text-xs text-lyra-text">{result.label}</span>
                     <span className="max-w-full truncate text-[11px] text-lyra-mutedDim">{result.subtitle}</span>
                   </button>

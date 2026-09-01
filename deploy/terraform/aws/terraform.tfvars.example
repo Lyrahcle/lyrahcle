@@ -2,13 +2,10 @@ aws_region  = "eu-west-1"
 name        = "lyrahcle"
 environment = "staging"
 
-# Current conservative default. EKS supports newer minors; upgrade deliberately.
 kubernetes_version = "1.35"
 
-# Replace with your office/VPN egress CIDR before production.
 cluster_endpoint_public_access_cidrs = ["203.0.113.10/32"]
 
-# Cheap staging: one NAT. Production automatically creates one NAT per AZ.
 single_nat_gateway = true
 
 node_instance_types = ["m6i.large", "m6a.large", "m5.large"]
@@ -20,10 +17,7 @@ postgres_instance_class            = "db.t4g.medium"
 postgres_allocated_storage_gib     = 40
 postgres_max_allocated_storage_gib = 200
 
-# IMPORTANT: keep false until Lyrahcle application Redis TLS/auth support is
-# implemented and verified. The resource itself is TLS+KMS encrypted.
 create_redis = false
-# redis_auth_token = "supply-via-TF_VAR_redis_auth_token-or-secret-CI-variable"
 
 tags = {
   Owner      = "platform"

@@ -242,7 +242,6 @@ func TestLocalProviderRejectsEmptyActivePathAndNonEd25519Key(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Append a second PEM block to exercise the exactly-one-key guard.
 	path := writePrivateKey(t, rsaLikePrivate)
 	data, err := os.ReadFile(path)
 	if err != nil {

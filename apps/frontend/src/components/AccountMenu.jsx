@@ -42,7 +42,7 @@ export default function AccountMenu({ onLogout }) {
         onClick={() => setMenuOpen((v) => !v)}
         aria-haspopup="menu"
         aria-expanded={menuOpen}
-        className="flex items-center gap-2 rounded border border-lyra-border px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-lyra-muted outline-none transition-colors hover:border-lyra-gold/40 hover:text-lyra-goldBright focus-visible:ring-1 focus-visible:ring-lyra-gold"
+        className="flex items-center gap-2 rounded border border-lyra-border px-3 py-1.5 font-mono text-[11px] tracking-wider text-lyra-muted outline-none transition-colors hover:border-lyra-gold/40 hover:text-lyra-goldBright focus-visible:ring-1 focus-visible:ring-lyra-gold"
       >
         {role && <span className={`h-1.5 w-1.5 rounded-full ${ROLE_DOT_COLOR[role] ?? 'bg-lyra-gold'}`} />}
         {role ?? t('header.account')}
@@ -57,7 +57,7 @@ export default function AccountMenu({ onLogout }) {
               setChangingPassword(true)
               setMenuOpen(false)
             }}
-            className="block w-full px-4 py-2.5 text-left font-mono text-[11px] uppercase tracking-wider text-lyra-muted outline-none transition-colors hover:bg-lyra-bgSoft hover:text-lyra-goldBright"
+            className="block w-full px-4 py-2.5 text-left font-mono text-[11px] tracking-wider text-lyra-muted outline-none transition-colors hover:bg-lyra-bgSoft hover:text-lyra-goldBright"
           >
             {t('header.changePassword')}
           </button>
@@ -67,7 +67,7 @@ export default function AccountMenu({ onLogout }) {
               setManagingTwoFactor(true)
               setMenuOpen(false)
             }}
-            className="block w-full border-t border-lyra-borderSoft px-4 py-2.5 text-left font-mono text-[11px] uppercase tracking-wider text-lyra-muted outline-none transition-colors hover:bg-lyra-bgSoft hover:text-lyra-goldBright"
+            className="block w-full border-t border-lyra-borderSoft px-4 py-2.5 text-left font-mono text-[11px] tracking-wider text-lyra-muted outline-none transition-colors hover:bg-lyra-bgSoft hover:text-lyra-goldBright"
           >
             {t('header.twoFactor')}
           </button>
@@ -77,7 +77,7 @@ export default function AccountMenu({ onLogout }) {
               setManagingSessions(true)
               setMenuOpen(false)
             }}
-            className="block w-full border-t border-lyra-borderSoft px-4 py-2.5 text-left font-mono text-[11px] uppercase tracking-wider text-lyra-muted outline-none transition-colors hover:bg-lyra-bgSoft hover:text-lyra-goldBright"
+            className="block w-full border-t border-lyra-borderSoft px-4 py-2.5 text-left font-mono text-[11px] tracking-wider text-lyra-muted outline-none transition-colors hover:bg-lyra-bgSoft hover:text-lyra-goldBright"
           >
             {t('header.sessions')}
           </button>
@@ -87,7 +87,7 @@ export default function AccountMenu({ onLogout }) {
               setMenuOpen(false)
               onLogout()
             }}
-            className="block w-full border-t border-lyra-borderSoft px-4 py-2.5 text-left font-mono text-[11px] uppercase tracking-wider text-lyra-muted outline-none transition-colors hover:bg-lyra-bgSoft hover:text-lyra-bad"
+            className="block w-full border-t border-lyra-borderSoft px-4 py-2.5 text-left font-mono text-[11px] tracking-wider text-lyra-muted outline-none transition-colors hover:bg-lyra-bgSoft hover:text-lyra-bad"
           >
             {t('header.signOut')}
           </button>

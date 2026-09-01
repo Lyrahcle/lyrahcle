@@ -25,7 +25,6 @@ func authenticatedTenantRateLimit(currentSecret, previousSecret []byte, limiter 
 			}
 			claims, err := auth.ParseTokenWithFallback(currentSecret, previousSecret, strings.TrimSpace(strings.TrimPrefix(header, "Bearer ")))
 			if err != nil || claims.OrganizationID == uuid.Nil || claims.UserID == uuid.Nil {
-				// Authentication middleware remains authoritative for invalid tokens.
 				next.ServeHTTP(w, r)
 				return
 			}

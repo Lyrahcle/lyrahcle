@@ -32,7 +32,7 @@ function SparkLine({ values, label, suffix = '' }) {
   return (
     <figure>
       <div className="mb-3 flex items-end justify-between gap-4">
-        <figcaption className="text-xs uppercase tracking-[0.16em] text-lyra-mutedDim">{label}</figcaption>
+        <figcaption className="text-xs tracking-[0.16em] text-lyra-mutedDim">{label}</figcaption>
         <span className="font-mono text-sm text-lyra-goldBright">{Number.isFinite(latest) ? `${latest.toFixed(1)}${suffix}` : '—'}</span>
       </div>
       <svg viewBox={`0 0 ${width} ${height}`} className="h-44 w-full overflow-visible" role="img" aria-label={label}>
@@ -71,7 +71,7 @@ export function IncidentSeverityChart({ incidents }) {
   const max = Math.max(1, ...Object.values(counts))
   return (
     <figure>
-      <figcaption className="mb-4 text-xs uppercase tracking-[0.16em] text-lyra-mutedDim">Current incident severity mix</figcaption>
+      <figcaption className="mb-4 text-xs tracking-[0.16em] text-lyra-mutedDim">Current incident severity mix</figcaption>
       <div className="grid h-44 grid-cols-4 items-end gap-4" role="img" aria-label="Incidents grouped by severity">
         {Object.entries(counts).map(([severity, count]) => (
           <div key={severity} className="flex h-full flex-col justify-end gap-2">
@@ -84,7 +84,7 @@ export function IncidentSeverityChart({ incidents }) {
             </div>
             <div className="text-center">
               <div className="font-mono text-sm text-lyra-text">{count}</div>
-              <div className="text-[10px] uppercase tracking-wider text-lyra-mutedDim">{severity}</div>
+              <div className="text-[10px] tracking-wider text-lyra-mutedDim">{severity}</div>
             </div>
           </div>
         ))}
@@ -102,12 +102,12 @@ export function CVESeverityChart({ cves }) {
   const total = Object.values(counts).reduce((sum, value) => sum + value, 0)
   return (
     <figure>
-      <figcaption className="mb-4 text-xs uppercase tracking-[0.16em] text-lyra-mutedDim">Visible CVEs by severity</figcaption>
+      <figcaption className="mb-4 text-xs tracking-[0.16em] text-lyra-mutedDim">Visible CVEs by severity</figcaption>
       {!total ? <EmptyChart>No CVEs in the current result set.</EmptyChart> : (
         <div className="space-y-3">
           {Object.entries(counts).map(([severity, count]) => (
             <div key={severity} className="grid grid-cols-[5rem_1fr_2rem] items-center gap-3">
-              <span className="text-[10px] uppercase tracking-wider text-lyra-mutedDim">{severity}</span>
+              <span className="text-[10px] tracking-wider text-lyra-mutedDim">{severity}</span>
               <div className="h-3 overflow-hidden rounded-full bg-lyra-bgSoft">
                 <div className="h-full rounded-full bg-lyra-gold/70" style={{ width: `${(count / total) * 100}%` }} />
               </div>
@@ -140,7 +140,7 @@ export function RFSpectrumChart({ readings }) {
   return (
     <figure>
       <div className="mb-4 flex items-end justify-between gap-4">
-        <figcaption className="text-xs uppercase tracking-[0.16em] text-lyra-mutedDim">RF spectrum snapshot</figcaption>
+        <figcaption className="text-xs tracking-[0.16em] text-lyra-mutedDim">RF spectrum snapshot</figcaption>
         <span className="font-mono text-xs text-lyra-mutedDim">{rows[0].frequency.toFixed(3)}–{rows.at(-1).frequency.toFixed(3)} MHz</span>
       </div>
       <div className="flex h-44 items-end gap-1" role="img" aria-label="RF spectrum power by frequency">
@@ -197,7 +197,7 @@ function TimeBucketBars({ items, timestampKey, label, emptyText }) {
   const max = Math.max(1, ...rows.map(([, count]) => count))
   return (
     <figure>
-      <figcaption className="mb-4 text-xs uppercase tracking-[0.16em] text-lyra-mutedDim">{label}</figcaption>
+      <figcaption className="mb-4 text-xs tracking-[0.16em] text-lyra-mutedDim">{label}</figcaption>
       <div className="flex h-44 items-end gap-2" role="img" aria-label={label}>
         {rows.map(([key, count]) => (
           <div key={key} className="flex min-w-0 flex-1 flex-col justify-end gap-2 self-stretch">
@@ -236,7 +236,7 @@ export function OrbitalAltitudeChart({ satellites }) {
   return (
     <figure>
       <div className="mb-4 flex items-end justify-between gap-4">
-        <figcaption className="text-xs uppercase tracking-[0.16em] text-lyra-mutedDim">Orbital altitude profile</figcaption>
+        <figcaption className="text-xs tracking-[0.16em] text-lyra-mutedDim">Orbital altitude profile</figcaption>
         <span className="font-mono text-xs text-lyra-mutedDim">Top {rows.length} tracked objects</span>
       </div>
       <div className="space-y-2" role="img" aria-label="Tracked satellites by current altitude">

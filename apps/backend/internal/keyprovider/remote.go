@@ -14,7 +14,6 @@ import (
 	"time"
 )
 
-// ProviderInfo exposes non-secret operational metadata for platform UI/health.
 type ProviderInfo struct {
 	Name      string `json:"name"`
 	External  bool   `json:"external"`
@@ -35,9 +34,6 @@ type HealthProvider interface {
 	Health(context.Context) ProviderHealth
 }
 
-// RemoteProvider delegates signing to an HTTPS service. Private key bytes never
-// enter the Lyrahcle backend process. A Vault/KMS/HSM adapter can implement the
-// tiny HTTP contract documented in docs/key-management.md.
 type RemoteProvider struct {
 	endpoint  string
 	token     string

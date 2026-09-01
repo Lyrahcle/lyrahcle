@@ -57,7 +57,7 @@ export default function SecurityKeysPanel({ onSecurityChange }) {
     <div className="mt-5 border-t border-lyra-borderSoft pt-5">
       <div className="flex items-center gap-2">
         <KeyRound className="h-4 w-4 text-lyra-gold" />
-        <p className="font-mono text-[11px] uppercase tracking-wider text-lyra-gold">{t('settings.securityKeys')}</p>
+        <p className="font-mono text-[11px] tracking-wider text-lyra-gold">{t('settings.securityKeys')}</p>
       </div>
       <p className="mt-2 text-xs text-lyra-mutedDim">{t('settings.securityKeysHint')}</p>
       <div className="mt-3 grid gap-2 sm:grid-cols-2">

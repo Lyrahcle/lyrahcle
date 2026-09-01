@@ -109,9 +109,6 @@ func Load(metaPath string) (Metadata, []complex64, error) {
 	return meta, samples, nil
 }
 
-// LoadWithin loads a capture metadata file by relative name from baseDir.
-// It rejects absolute paths, traversal and symlinks before reading either
-// metadata or sample data.
 func LoadWithin(baseDir, name string) (Metadata, []complex64, error) {
 	metaPath, err := ResolveWithin(baseDir, name)
 	if err != nil {

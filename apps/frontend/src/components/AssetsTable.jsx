@@ -80,10 +80,10 @@ export default function AssetsTable({ page, programs = [], onPrev, onNext, onCha
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b border-lyra-borderSoft">
-              <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">{t('assetInventory.kind')}</th>
-              <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">{t('assetInventory.value')}</th>
-              <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">{t('assetInventory.program')}</th>
-              {canManage && <th scope="col" className="pb-2 text-right text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">{t('assetInventory.actions')}</th>}
+              <th scope="col" className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">{t('assetInventory.kind')}</th>
+              <th scope="col" className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">{t('assetInventory.value')}</th>
+              <th scope="col" className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">{t('assetInventory.program')}</th>
+              {canManage && <th scope="col" className="pb-2 text-right text-[11px] font-normal tracking-wider text-lyra-mutedDim">{t('assetInventory.actions')}</th>}
             </tr>
           </thead>
           <tbody>

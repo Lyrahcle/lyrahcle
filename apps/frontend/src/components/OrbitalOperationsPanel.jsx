@@ -190,7 +190,7 @@ export default function OrbitalOperationsPanel({ satellites = [] }) {
               <p className="mt-1 text-xs text-lyra-muted">{selectedSatellite?.name ?? '—'}</p>
             </div>
             {prediction && (
-              <div className="flex gap-2 font-mono text-[10px] uppercase tracking-wider">
+              <div className="flex gap-2 font-mono text-[10px] tracking-wider">
                 <span className="rounded border border-lyra-border px-2 py-1 text-lyra-muted">TLE {prediction.tle_status}</span>
                 <span className="rounded border border-lyra-border px-2 py-1 text-lyra-muted">{prediction.orbital_confidence}</span>
               </div>
@@ -205,10 +205,10 @@ export default function OrbitalOperationsPanel({ satellites = [] }) {
             <TableScroll>
               <table className="w-full text-left text-sm">
                 <thead><tr className="border-b border-lyra-borderSoft">
-                  <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">AOS</th>
-                  <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">LOS</th>
-                  <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">{t('orbitalOperations.peak')}</th>
-                  <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">{t('orbitalOperations.duration')}</th>
+                  <th className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">AOS</th>
+                  <th className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">LOS</th>
+                  <th className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">{t('orbitalOperations.peak')}</th>
+                  <th className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">{t('orbitalOperations.duration')}</th>
                 </tr></thead>
                 <tbody>{prediction.passes.map((pass, index) => (
                   <tr key={`${pass.aos}-${index}`} className="border-b border-lyra-borderSoft/60 last:border-0">
@@ -238,11 +238,11 @@ export default function OrbitalOperationsPanel({ satellites = [] }) {
             <TableScroll>
               <table className="w-full text-left text-sm">
                 <thead><tr className="border-b border-lyra-borderSoft">
-                  <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">{t('orbitalOperations.type')}</th>
-                  <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">{t('orbitalOperations.time')}</th>
-                  <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">{t('orbitalOperations.source')}</th>
-                  <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">{t('orbitalOperations.confidence')}</th>
-                  <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">{t('orbitalOperations.severity')}</th>
+                  <th className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">{t('orbitalOperations.type')}</th>
+                  <th className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">{t('orbitalOperations.time')}</th>
+                  <th className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">{t('orbitalOperations.source')}</th>
+                  <th className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">{t('orbitalOperations.confidence')}</th>
+                  <th className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">{t('orbitalOperations.severity')}</th>
                 </tr></thead>
                 <tbody>{events.map((item) => (
                   <tr key={item.id} className="border-b border-lyra-borderSoft/60 last:border-0">

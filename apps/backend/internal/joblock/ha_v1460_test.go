@@ -72,7 +72,6 @@ func TestHeartbeatStopsWhenLeaseOwnershipIsLost(t *testing.T) {
 	if got, err := client.Get(ctx, key).Result(); err != nil || got != "replacement-owner" {
 		t.Fatalf("replacement lease changed: value=%q err=%v", got, err)
 	}
-	// Stale unlock remains token-guarded and cannot remove the replacement.
 	if err := unlock(ctx); err != nil {
 		t.Fatal(err)
 	}

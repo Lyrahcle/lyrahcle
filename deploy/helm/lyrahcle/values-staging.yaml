@@ -1,8 +1,5 @@
 fullnameOverride: lyrahcle
 
-# Portable pre-production baseline. This overlay intentionally keeps ingress and
-# internal TLS disabled so it can run in kind/k3d without a certificate stack.
-# Production deployments must start from values-production.yaml instead.
 application:
   host: lyrahcle.local
   environment: staging
@@ -50,8 +47,6 @@ cveSync:
     tag: dev
     pullPolicy: IfNotPresent
 
-# Annotation discovery gives a small staging Prometheus a zero-CRD path. If the
-# cluster uses Prometheus Operator, disable annotations and enable ServiceMonitor.
 monitoring:
   prometheusAnnotations:
     enabled: true
@@ -64,6 +59,4 @@ ingress:
   enabled: false
 
 networkPolicy:
-  # Leave disabled in the disposable kind environment. Enable in a real staging
-  # cluster only after defining the ingress-controller/monitoring paths for its CNI.
   enabled: false

@@ -33,9 +33,6 @@ func RequireAnyPermissionWithFallback(
 	}
 }
 
-// RequireAgentCredentialOrPermissionWithFallback authenticates agent traffic with
-// mTLS/API keys and human traffic with the requested tenant capability. Presented
-// but invalid agent credentials fail closed and are never downgraded to JWT auth.
 func RequireAgentCredentialOrPermissionWithFallback(
 	secret []byte,
 	previousSecret []byte,

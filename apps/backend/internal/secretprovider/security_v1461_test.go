@@ -204,7 +204,7 @@ func TestRemoteProviderValidationAndNetworkFailures(t *testing.T) {
 
 	client := &http.Client{
 		Timeout:   100 * time.Millisecond,
-		Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}, // unreachable test endpoint only
+		Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
 	}
 	provider := RemoteProvider{Endpoint: "https://127.0.0.1:1", Client: client}
 	if _, err := provider.Get(context.Background(), "JWT_SECRET"); err == nil || !strings.Contains(err.Error(), "remote get") {

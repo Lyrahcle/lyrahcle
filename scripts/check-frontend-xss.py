@@ -9,8 +9,6 @@ ROOT = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else ".").resolve()
 FRONTEND = ROOT / "apps" / "frontend" / "src"
 EXTS = {".js", ".jsx", ".ts", ".tsx"}
 
-# WorldMap is the sole reviewed raw-HTML sink. Its HTML is produced locally by
-# dotted-map from bundled static world-map-data.json, not from API/user content.
 RAW_HTML_ALLOWLIST = {"components/WorldMap.jsx"}
 
 errors: list[str] = []
@@ -34,16 +32,11 @@ for path in FRONTEND.rglob("*"):
         elif "dangerouslySetInnerHTML={{ __html: baseSvg }}" not in text or "world-map-data.json" not in text:
             errors.append(f"{rel}: reviewed WorldMap raw HTML contract changed")
 
-    # Every new-tab link must explicitly sever opener and referrer relationships.
     for match in re.finditer(r"<a\b[^>]*target=[\"']_blank[\"'][^>]*>", text, re.S):
         tag = match.group(0)
         line = text.count("\n", 0, match.start()) + 1
         rel_matches = re.findall(r"\brel=[\"']([^\"']*)[\"']", tag)
         if len(rel_matches) > 1:
-            # A duplicate JSX attribute is valid JS (later key wins in the
-            # transpiled object literal), so only the LAST rel value is
-            # actually applied at runtime -- any earlier one is silently
-            # discarded. This has previously masked a missing `noopener`.
             errors.append(
                 f"{rel}:{line}: target=_blank has {len(rel_matches)} rel attributes; "
                 "only the last is applied at runtime, so this is always a bug"

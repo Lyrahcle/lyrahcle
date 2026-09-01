@@ -39,13 +39,11 @@ def quoted_literals(text: str):
 
 
 def has_dynamic_sql(text: str) -> bool:
-    # SQL literal used as the format string of fmt.Sprintf.
     for m in re.finditer(r"fmt\.Sprintf\s*\(\s*", text):
         after = text[m.end():]
         literals = list(quoted_literals(after[:4000]))
         if literals and literals[0][0] == 0 and SQL_WORD.search(literals[0][2]):
             return True
-    # SQL literal immediately concatenated with runtime text.
     for start, end, literal in quoted_literals(text):
         if not SQL_WORD.search(literal):
             continue

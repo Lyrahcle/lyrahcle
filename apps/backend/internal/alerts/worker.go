@@ -18,8 +18,6 @@ import (
 )
 
 const (
-	// QueueKey is the pre-v13.9 Redis list. Workers keep draining it during a
-	// rolling upgrade so events produced by an older cve-sync are not stranded.
 	QueueKey = "lyrahcle:cve-events"
 
 	StreamKey     = "lyrahcle:cve-events:v2"
@@ -137,10 +135,6 @@ func (w *Worker) ensureConsumerGroup(ctx context.Context) error {
 	return nil
 }
 
-// drainLegacyQueue keeps rolling upgrades lossless. Old cve-sync versions use
-// LPUSH on QueueKey; each legacy item is atomically popped and re-published to
-// the durable stream. Duplicate deliveries are harmless because PostgreSQL
-// enforces asset/CVE idempotency.
 func (w *Worker) drainLegacyQueue(ctx context.Context) error {
 	for i := int64(0); i < w.legacyBatch; i++ {
 		result, err := migrateLegacyEventScript.Run(ctx, w.redis, []string{QueueKey, StreamKey}).Slice()
@@ -197,8 +191,6 @@ func (w *Worker) handleMessage(ctx context.Context, message redis.XMessage, recl
 		process = w.process
 	}
 	if err := process(ctx, cveID); err != nil {
-		// Deliberately do not ACK. The message remains pending and becomes
-		// claimable after claimIdle, including after a process crash/restart.
 		metrics.BackgroundJobEventsTotal.WithLabelValues("cve-alerts", "failed").Inc()
 		log.Printf("alerts: process %s (message %s): %v", cveID, message.ID, err)
 		return
@@ -212,8 +204,6 @@ func (w *Worker) ackMessage(ctx context.Context, messageID string) {
 	pipe.XAck(ctx, StreamKey, ConsumerGroup, messageID)
 	pipe.XDel(ctx, StreamKey, messageID)
 	if _, err := pipe.Exec(ctx); err != nil {
-		// Failure to ACK is safe: the event can be redelivered and the durable
-		// stores are idempotent. Surface it so operators can see retry pressure.
 		metrics.BackgroundJobEventsTotal.WithLabelValues("cve-alerts", "ack_failed").Inc()
 		log.Printf("alerts: ack stream message %s: %v", messageID, err)
 	}

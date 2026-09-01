@@ -7,9 +7,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 CHECK = ROOT / 'scripts' / 'check-rls-coverage.py'
 
-# The check's filename uses a hyphen, which is not an importable module
-# identifier; exec its source into a namespace to reuse its exception set
-# instead of duplicating that list in this test file.
 _ns: dict = {}
 exec(compile((ROOT / 'scripts' / 'check-rls-coverage.py').read_text(), 'check-rls-coverage.py', 'exec'), _ns)
 APP_LEVEL_TENANT_EXCEPTIONS = _ns['APP_LEVEL_TENANT_EXCEPTIONS']
@@ -95,9 +92,6 @@ class RlsCoverageContractTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_stale_exception_for_now_covered_table_fails(self):
-        # A table hardcoded into APP_LEVEL_TENANT_EXCEPTIONS (e.g. "users")
-        # that gains real RLS coverage should force the exception to be
-        # removed, not silently accepted twice.
         with tempfile.TemporaryDirectory() as td:
             fake = Path(td)
             migrations = fake / 'apps' / 'backend' / 'migrations'

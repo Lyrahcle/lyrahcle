@@ -44,7 +44,7 @@ func Connect(ctx context.Context, dsn string) (*pgxpool.Pool, error) {
 	return pool, nil
 }
 
-const migrationAdvisoryLockID int64 = 0x4c59524148434c45 // "LYRAHCLE"
+const migrationAdvisoryLockID int64 = 0x4c59524148434c45
 
 func Migrate(ctx context.Context, pool *pgxpool.Pool, dir string) error {
 	conn, err := pool.Acquire(ctx)

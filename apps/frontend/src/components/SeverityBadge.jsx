@@ -10,7 +10,7 @@ export default function SeverityBadge({ severity }) {
   const key = (severity || 'unknown').toUpperCase()
   const cls = colors[key] ?? colors.UNKNOWN
   return (
-    <span className={`rounded border px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide ${cls}`}>
+    <span className={`rounded border px-2 py-0.5 font-mono text-[10px] tracking-wide ${cls}`}>
       {key}
     </span>
   )

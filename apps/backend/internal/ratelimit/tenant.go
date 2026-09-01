@@ -21,9 +21,6 @@ const (
 	ClassAgent = "agent"
 )
 
-// Policy keeps authenticated rate budgets independent from the coarse platform
-// ceiling. Tenant budgets protect noisy-neighbor isolation; actor budgets stop a
-// single user/agent from consuming the whole tenant allowance.
 type Policy struct {
 	Window           time.Duration
 	TenantReadLimit  int

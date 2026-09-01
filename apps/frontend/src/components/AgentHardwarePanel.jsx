@@ -54,7 +54,7 @@ export default function AgentHardwarePanel({ agents = [], legacyKeys = [] }) {
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label={t('connectivity.hardwareSummary')}>
         {['compatible', 'degraded', 'unsupported', 'stale'].map((status) => (
           <div key={status} className="rounded-lg border border-lyra-border bg-lyra-panel/30 px-4 py-3">
-            <p className="font-mono text-[10px] uppercase tracking-wider text-lyra-mutedDim">{t(`connectivity.compatibility.${status}`)}</p>
+            <p className="font-mono text-[10px] tracking-wider text-lyra-mutedDim">{t(`connectivity.compatibility.${status}`)}</p>
             <p className="mt-1 font-display text-2xl text-lyra-text">{counts[status] || 0}</p>
           </div>
         ))}
@@ -64,11 +64,11 @@ export default function AgentHardwarePanel({ agents = [], legacyKeys = [] }) {
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b border-lyra-borderSoft">
-              <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">{t('connectivity.agent')}</th>
-              <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">{t('connectivity.device')}</th>
-              <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">{t('connectivity.hardwareCapability')}</th>
-              <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">{t('connectivity.hardwareCompatibility')}</th>
-              <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">{t('connectivity.reportedAt')}</th>
+              <th scope="col" className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">{t('connectivity.agent')}</th>
+              <th scope="col" className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">{t('connectivity.device')}</th>
+              <th scope="col" className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">{t('connectivity.hardwareCapability')}</th>
+              <th scope="col" className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">{t('connectivity.hardwareCompatibility')}</th>
+              <th scope="col" className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">{t('connectivity.reportedAt')}</th>
             </tr>
           </thead>
           <tbody>
@@ -80,7 +80,7 @@ export default function AgentHardwarePanel({ agents = [], legacyKeys = [] }) {
                 <tr key={agent.agent_id} className="border-b border-lyra-borderSoft/60 align-top last:border-0">
                   <td className="py-3 pr-5">
                     <div className="font-mono text-xs text-lyra-goldBright">{agent.agent_id}</div>
-                    <div className="mt-1 font-mono text-[10px] uppercase text-lyra-mutedDim">{agent.source === 'legacy' ? t('connectivity.legacyAgentKey') : 'mTLS'}</div>
+                    <div className="mt-1 font-mono text-[10px] text-lyra-mutedDim">{agent.source === 'legacy' ? t('connectivity.legacyAgentKey') : 'mTLS'}</div>
                   </td>
                   <td className="py-3 pr-5">
                     {device ? (
@@ -114,7 +114,7 @@ export default function AgentHardwarePanel({ agents = [], legacyKeys = [] }) {
                   <td className="py-3 pr-5">
                     {device ? (
                       <div className="max-w-72">
-                        <span className={`inline-flex rounded-full border px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider ${compatibilityClass(status)}`}>{t(`connectivity.compatibility.${status}`)}</span>
+                        <span className={`inline-flex rounded-full border px-2 py-0.5 font-mono text-[10px] tracking-wider ${compatibilityClass(status)}`}>{t(`connectivity.compatibility.${status}`)}</span>
                         <p className="mt-1.5 text-xs text-lyra-muted">{device.compatibility_reason}</p>
                       </div>
                     ) : '—'}

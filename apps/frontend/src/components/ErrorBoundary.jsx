@@ -26,7 +26,7 @@ export default class ErrorBoundary extends Component {
       <div className="flex min-h-screen items-center justify-center px-6">
         <div className="w-full max-w-sm text-center">
           <LogoMark className="mx-auto mb-5 h-12 w-12 opacity-70" />
-          <p className="font-mono text-xs uppercase tracking-[0.3em] text-lyra-bad">
+          <p className="font-mono text-xs tracking-[0.3em] text-lyra-bad">
             Unexpected Error
           </p>
           <h1 className="mt-3 font-display text-lg font-medium text-lyra-text">

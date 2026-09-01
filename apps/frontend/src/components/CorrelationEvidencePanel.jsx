@@ -27,9 +27,9 @@ function ContextItems({ item, title, emptyLabel }) {
   return (
     <div className="rounded border border-lyra-borderSoft bg-lyra-bgSoft/20 p-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h5 className="font-mono text-[11px] uppercase tracking-wider text-lyra-goldBright">{title}</h5>
+        <h5 className="font-mono text-[11px] tracking-wider text-lyra-goldBright">{title}</h5>
         {(item.metadata?.candidate_only || item.metadata?.context_only) && (
-          <span className="rounded border border-lyra-border px-2 py-1 font-mono text-[10px] uppercase text-lyra-muted">
+          <span className="rounded border border-lyra-border px-2 py-1 font-mono text-[10px] text-lyra-muted">
             {item.metadata?.context_only ? t('correlation.contextOnly') : t('correlation.candidateOnly')}
           </span>
         )}
@@ -40,7 +40,7 @@ function ContextItems({ item, title, emptyLabel }) {
         <div className="mt-2 grid gap-2">
           {rows.slice(0, 6).map((row, index) => (
             <div key={row.id || row.alert_id || `${item.id}-${index}`} className="rounded border border-lyra-borderSoft/70 px-3 py-2 text-xs">
-              {row.event_type && <span className="font-mono uppercase text-lyra-goldBright">{domainLabel(row.event_type)}</span>}
+              {row.event_type && <span className="font-mono text-lyra-goldBright">{domainLabel(row.event_type)}</span>}
               {row.action && <span className="font-mono text-lyra-goldBright">{row.action}</span>}
               {row.cve_id && <span className="font-mono text-lyra-goldBright">{row.cve_id}</span>}
               {row.asset_value && <p className="mt-1 break-all text-lyra-text">{row.asset_value}</p>}
@@ -77,46 +77,46 @@ export default function CorrelationEvidencePanel({ evidence = [] }) {
     <section aria-label={t('correlation.title')} className="grid gap-3 rounded border border-lyra-gold/30 bg-lyra-gold/5 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-lyra-gold">{t('correlation.eyebrow')}</p>
+          <p className="font-mono text-[10px] tracking-[0.18em] text-lyra-gold">{t('correlation.eyebrow')}</p>
           <h4 className="mt-1 text-base text-lyra-text">{t('correlation.title')}</h4>
           <p className="mt-1 max-w-3xl text-xs text-lyra-muted">{t('correlation.explain')}</p>
         </div>
         <div className="text-right">
           <p className="font-mono text-2xl text-lyra-goldBright">{percent(metadata.confidence)}</p>
-          <p className="font-mono text-[10px] uppercase text-lyra-mutedDim">{t('correlation.confidence')}</p>
+          <p className="font-mono text-[10px] text-lyra-mutedDim">{t('correlation.confidence')}</p>
         </div>
       </div>
 
       <div className="grid gap-3 md:grid-cols-2">
         <div className="rounded border border-lyra-borderSoft bg-lyra-bgSoft/30 p-3">
-          <p className="font-mono text-[10px] uppercase tracking-wider text-lyra-mutedDim">{t('correlation.candidateSeverity')}</p>
+          <p className="font-mono text-[10px] tracking-wider text-lyra-mutedDim">{t('correlation.candidateSeverity')}</p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             {metadata.candidate_severity ? <SeverityBadge severity={metadata.candidate_severity} /> : <span className="text-xs text-lyra-muted">{t('correlation.none')}</span>}
-            <span className="rounded border border-lyra-border px-2 py-1 font-mono text-[10px] uppercase text-lyra-muted">
+            <span className="rounded border border-lyra-border px-2 py-1 font-mono text-[10px] text-lyra-muted">
               {metadata.severity_applied ? t('correlation.applied') : t('correlation.notApplied')}
             </span>
           </div>
         </div>
         <div className="rounded border border-lyra-borderSoft bg-lyra-bgSoft/30 p-3">
-          <p className="font-mono text-[10px] uppercase tracking-wider text-lyra-mutedDim">{t('correlation.policy')}</p>
+          <p className="font-mono text-[10px] tracking-wider text-lyra-mutedDim">{t('correlation.policy')}</p>
           <p className="mt-2 font-mono text-xs text-lyra-text">{metadata.policy || '—'}</p>
         </div>
       </div>
 
       <div className="grid gap-3 lg:grid-cols-2">
         <div>
-          <p className="mb-2 font-mono text-[10px] uppercase tracking-wider text-lyra-mutedDim">{t('correlation.corroborating')}</p>
+          <p className="mb-2 font-mono text-[10px] tracking-wider text-lyra-mutedDim">{t('correlation.corroborating')}</p>
           <div className="flex flex-wrap gap-2">
             {corroborating.length ? corroborating.map((domain) => (
-              <span key={domain} className="rounded border border-lyra-ok/40 bg-lyra-ok/5 px-2 py-1 font-mono text-[10px] uppercase text-lyra-ok">{domainLabel(domain)}</span>
+              <span key={domain} className="rounded border border-lyra-ok/40 bg-lyra-ok/5 px-2 py-1 font-mono text-[10px] text-lyra-ok">{domainLabel(domain)}</span>
             )) : <span className="text-xs text-lyra-muted">{t('correlation.none')}</span>}
           </div>
         </div>
         <div>
-          <p className="mb-2 font-mono text-[10px] uppercase tracking-wider text-lyra-mutedDim">{t('correlation.contextDomains')}</p>
+          <p className="mb-2 font-mono text-[10px] tracking-wider text-lyra-mutedDim">{t('correlation.contextDomains')}</p>
           <div className="flex flex-wrap gap-2">
             {contextOnly.length ? contextOnly.map((domain) => (
-              <span key={domain} className="rounded border border-lyra-border px-2 py-1 font-mono text-[10px] uppercase text-lyra-muted">{domainLabel(domain)}</span>
+              <span key={domain} className="rounded border border-lyra-border px-2 py-1 font-mono text-[10px] text-lyra-muted">{domainLabel(domain)}</span>
             )) : <span className="text-xs text-lyra-muted">{t('correlation.none')}</span>}
           </div>
         </div>
@@ -124,7 +124,7 @@ export default function CorrelationEvidencePanel({ evidence = [] }) {
 
       {!!reasons.length && (
         <div>
-          <p className="mb-2 font-mono text-[10px] uppercase tracking-wider text-lyra-mutedDim">{t('correlation.reasons')}</p>
+          <p className="mb-2 font-mono text-[10px] tracking-wider text-lyra-mutedDim">{t('correlation.reasons')}</p>
           <ul className="grid gap-1.5 text-xs text-lyra-text">
             {reasons.map((reason) => <li key={reason} className="flex gap-2"><span aria-hidden="true" className="text-lyra-gold">•</span><span>{reason}</span></li>)}
           </ul>

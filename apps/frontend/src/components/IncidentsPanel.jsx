@@ -140,7 +140,7 @@ export default function IncidentsPanel({ page, filters, onFiltersChange, onPrev,
       <section aria-labelledby="incident-operations-heading" className="grid gap-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-[10px] uppercase tracking-[0.18em] text-lyra-mutedDim">{t('incidents.operationsEyebrow')}</p>
+            <p className="text-[10px] tracking-[0.18em] text-lyra-mutedDim">{t('incidents.operationsEyebrow')}</p>
             <h2 id="incident-operations-heading" className="mt-1 font-display text-xl font-medium text-lyra-text">{t('incidents.operationsTitle')}</h2>
             <p className="mt-1 text-sm text-lyra-muted">{t('incidents.operationsDescription')}</p>
           </div>
@@ -156,7 +156,7 @@ export default function IncidentsPanel({ page, filters, onFiltersChange, onPrev,
             [t('incidents.visibleUnassigned'), visibleUnassigned, visibleUnassigned ? 'text-lyra-warn' : 'text-lyra-good'],
           ].map(([label, value, tone]) => (
             <div key={label} className="rounded-lg border border-lyra-border bg-lyra-panel/50 px-5 py-4">
-              <p className="text-[10px] uppercase tracking-[0.15em] text-lyra-muted">{label}</p>
+              <p className="text-[10px] tracking-[0.15em] text-lyra-muted">{label}</p>
               <p className={`mt-2 font-mono text-2xl font-medium ${tone}`}>{value}</p>
             </div>
           ))}
@@ -218,7 +218,7 @@ export default function IncidentsPanel({ page, filters, onFiltersChange, onPrev,
               </select>
             ) : <span />}
           </div>
-          <button disabled={saving} className="justify-self-start rounded border border-lyra-gold/40 px-4 py-2 font-mono text-xs uppercase tracking-wide text-lyra-goldBright disabled:opacity-50">
+          <button disabled={saving} className="justify-self-start rounded border border-lyra-gold/40 px-4 py-2 font-mono text-xs tracking-wide text-lyra-goldBright disabled:opacity-50">
             {saving ? t('common.saving') : t('incidents.create')}
           </button>
         </form>
@@ -231,7 +231,7 @@ export default function IncidentsPanel({ page, filters, onFiltersChange, onPrev,
           <TableScroll>
             <table className="w-full text-left text-sm">
               <thead><tr className="border-b border-lyra-borderSoft">
-                {[t('incidents.reference'), t('incidents.title'), t('incidents.severity'), t('incidents.status'), t('incidents.source'), t('incidents.updated')].map((label) => <th key={label} className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">{label}</th>)}
+                {[t('incidents.reference'), t('incidents.title'), t('incidents.severity'), t('incidents.status'), t('incidents.source'), t('incidents.updated')].map((label) => <th key={label} className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">{label}</th>)}
               </tr></thead>
               <tbody>
                 {incidents.map((incident) => (
@@ -239,7 +239,7 @@ export default function IncidentsPanel({ page, filters, onFiltersChange, onPrev,
                     <td className="py-3 pr-4 font-mono text-xs text-lyra-goldBright"><button type="button" onClick={() => setSelectedId(incident.id)} className="outline-none hover:underline focus:underline">{incident.reference}</button></td>
                     <td className="py-3 pr-4 text-xs text-lyra-text">{incident.title}</td>
                     <td className="py-3 pr-4"><SeverityBadge severity={incident.severity} /></td>
-                    <td className="py-3 pr-4 font-mono text-[11px] uppercase text-lyra-muted">{t(`incidents.statuses.${incident.status}`)}</td>
+                    <td className="py-3 pr-4 font-mono text-[11px] text-lyra-muted">{t(`incidents.statuses.${incident.status}`)}</td>
                     <td className="py-3 pr-4 font-mono text-xs text-lyra-mutedDim">{incident.source_type}</td>
                     <td className="py-3 font-mono text-xs text-lyra-mutedDim">{new Date(incident.updated_at).toLocaleString()}</td>
                   </tr>
@@ -263,10 +263,10 @@ export default function IncidentsPanel({ page, filters, onFiltersChange, onPrev,
           </div>
 
           <div className="grid gap-3 rounded border border-lyra-borderSoft bg-lyra-bgSoft/30 p-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div><p className="text-[10px] uppercase tracking-wider text-lyra-mutedDim">{t('incidents.status')}</p><p className="mt-1 font-mono text-xs uppercase text-lyra-text">{t(`incidents.statuses.${selected.status}`)}</p></div>
-            <div><p className="text-[10px] uppercase tracking-wider text-lyra-mutedDim">{t('incidents.agent')}</p><p className="mt-1 truncate font-mono text-xs text-lyra-text">{selected.agent_id || '—'}</p></div>
-            <div><p className="text-[10px] uppercase tracking-wider text-lyra-mutedDim">{t('incidents.satellite')}</p><p className="mt-1 truncate text-xs text-lyra-text">{satellites.find((satellite) => satellite.id === selected.satellite_id)?.name || selected.satellite_id || '—'}</p></div>
-            <div><p className="text-[10px] uppercase tracking-wider text-lyra-mutedDim">{t('incidents.updated')}</p><p className="mt-1 font-mono text-xs text-lyra-text">{new Date(selected.updated_at).toLocaleString()}</p></div>
+            <div><p className="text-[10px] tracking-wider text-lyra-mutedDim">{t('incidents.status')}</p><p className="mt-1 font-mono text-xs text-lyra-text">{t(`incidents.statuses.${selected.status}`)}</p></div>
+            <div><p className="text-[10px] tracking-wider text-lyra-mutedDim">{t('incidents.agent')}</p><p className="mt-1 truncate font-mono text-xs text-lyra-text">{selected.agent_id || '—'}</p></div>
+            <div><p className="text-[10px] tracking-wider text-lyra-mutedDim">{t('incidents.satellite')}</p><p className="mt-1 truncate text-xs text-lyra-text">{satellites.find((satellite) => satellite.id === selected.satellite_id)?.name || selected.satellite_id || '—'}</p></div>
+            <div><p className="text-[10px] tracking-wider text-lyra-mutedDim">{t('incidents.updated')}</p><p className="mt-1 font-mono text-xs text-lyra-text">{new Date(selected.updated_at).toLocaleString()}</p></div>
           </div>
 
           {canManage && (
@@ -289,12 +289,12 @@ export default function IncidentsPanel({ page, filters, onFiltersChange, onPrev,
           <CorrelationEvidencePanel evidence={detail.evidence || []} />
 
           <div>
-            <h4 className="mb-2 font-mono text-xs uppercase tracking-wider text-lyra-muted">{t('incidents.timeline')}</h4>
+            <h4 className="mb-2 font-mono text-xs tracking-wider text-lyra-muted">{t('incidents.timeline')}</h4>
             <div className="relative grid gap-2 before:absolute before:bottom-2 before:left-[7px] before:top-2 before:w-px before:bg-lyra-borderSoft">
               {(detail.events || []).map((event) => (
                 <div key={event.id} className="relative ml-5 rounded border border-lyra-borderSoft px-3 py-2 before:absolute before:-left-[18px] before:top-3 before:h-2 before:w-2 before:rounded-full before:border before:border-lyra-gold before:bg-lyra-bg">
                   <div className="flex flex-wrap justify-between gap-2">
-                    <span className="font-mono text-[11px] uppercase text-lyra-goldBright">{event.event_type}</span>
+                    <span className="font-mono text-[11px] text-lyra-goldBright">{event.event_type}</span>
                     <span className="font-mono text-[11px] text-lyra-mutedDim">{new Date(event.created_at).toLocaleString()}</span>
                   </div>
                   {event.actor_username && <p className="mt-1 text-xs text-lyra-muted">{event.actor_username}</p>}
@@ -305,12 +305,12 @@ export default function IncidentsPanel({ page, filters, onFiltersChange, onPrev,
           </div>
 
           <div>
-            <h4 className="mb-2 font-mono text-xs uppercase tracking-wider text-lyra-muted">{t('incidents.evidence')}</h4>
+            <h4 className="mb-2 font-mono text-xs tracking-wider text-lyra-muted">{t('incidents.evidence')}</h4>
             <div className="grid gap-2">
               {(detail.evidence || []).map((item) => (
                 <div key={item.id} className="rounded border border-lyra-borderSoft px-3 py-2">
                   <div className="flex flex-wrap justify-between gap-2">
-                    <span className="font-mono text-[11px] uppercase text-lyra-goldBright">{item.evidence_type}</span>
+                    <span className="font-mono text-[11px] text-lyra-goldBright">{item.evidence_type}</span>
                     <span className="font-mono text-[11px] text-lyra-mutedDim">{new Date(item.created_at).toLocaleString()}</span>
                   </div>
                   <p className="mt-1 break-all font-mono text-xs text-lyra-text">{item.evidence_ref}</p>
@@ -327,14 +327,14 @@ export default function IncidentsPanel({ page, filters, onFiltersChange, onPrev,
               </select>
               <input required maxLength={256} value={evidence.reference} onChange={(e) => setEvidence({ ...evidence, reference: e.target.value })} placeholder={t('incidents.evidenceReference')} className="rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 text-sm text-lyra-text" />
               <input maxLength={160} value={evidence.label} onChange={(e) => setEvidence({ ...evidence, label: e.target.value })} placeholder={t('incidents.evidenceLabel')} className="rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 text-sm text-lyra-text" />
-              <button disabled={saving || !evidence.reference.trim()} className="rounded border border-lyra-border px-3 py-2 font-mono text-xs uppercase text-lyra-goldBright disabled:opacity-50">{t('incidents.addEvidence')}</button>
+              <button disabled={saving || !evidence.reference.trim()} className="rounded border border-lyra-border px-3 py-2 font-mono text-xs text-lyra-goldBright disabled:opacity-50">{t('incidents.addEvidence')}</button>
             </form>
           )}
 
           {canManage && (
             <form onSubmit={handleNote} className="flex gap-2">
               <input aria-label={t('incidents.notePlaceholder')} value={note} onChange={(e) => setNote(e.target.value)} maxLength={2000} placeholder={t('incidents.notePlaceholder')} className="min-w-0 flex-1 rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 text-sm text-lyra-text" />
-              <button disabled={saving || !note.trim()} className="rounded border border-lyra-border px-3 py-2 font-mono text-xs uppercase text-lyra-goldBright disabled:opacity-50">{t('incidents.addNote')}</button>
+              <button disabled={saving || !note.trim()} className="rounded border border-lyra-border px-3 py-2 font-mono text-xs text-lyra-goldBright disabled:opacity-50">{t('incidents.addNote')}</button>
             </form>
           )}
         </section>

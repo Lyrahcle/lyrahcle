@@ -4,11 +4,6 @@ import { useI18n } from '../lib/I18nContext.jsx'
 
 const RESET_DELAY_MS = 1500
 
-/**
- * Small icon button that copies `value` to the clipboard and shows a brief
- * confirmation state. `label` is the human-readable name of what is being
- * copied (e.g. "NORAD ID"), used to build the accessible name.
- */
 export default function CopyButton({ value, label, className = '' }) {
   const { t } = useI18n()
   const [copied, setCopied] = useState(false)

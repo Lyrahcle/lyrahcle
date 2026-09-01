@@ -153,7 +153,7 @@ export default function TwoFactorModal({ onClose, onSecurityChange }) {
           <form onSubmit={handleDisable}>
             <p className="mb-4 text-sm text-lyra-muted">{t('twoFactorModal.enabledIntro')}</p>
             <div className="mb-5">
-              <label htmlFor="totp-disable-password" className="mb-1.5 block text-xs uppercase tracking-wider text-lyra-mutedDim">
+              <label htmlFor="totp-disable-password" className="mb-1.5 block text-xs tracking-wider text-lyra-mutedDim">
                 {t('twoFactorModal.disablePasswordLabel')}
               </label>
               <input
@@ -206,9 +206,9 @@ export default function TwoFactorModal({ onClose, onSecurityChange }) {
           <form onSubmit={handleConfirm}>
             <p className="mb-4 text-sm text-lyra-muted">{t('twoFactorModal.googleOnlyIntro')}</p>
             <div className="mb-4 rounded border border-lyra-border bg-lyra-bgSoft p-4">
-              <p className="mb-2 text-[11px] uppercase tracking-wider text-lyra-mutedDim">{t('twoFactorModal.accountLabel')}</p>
+              <p className="mb-2 text-[11px] tracking-wider text-lyra-mutedDim">{t('twoFactorModal.accountLabel')}</p>
               <p className="mb-4 break-all font-mono text-sm text-lyra-text">{setup.account_name || 'Lyrahcle'}</p>
-              <p className="mb-2 text-[11px] uppercase tracking-wider text-lyra-mutedDim">{t('twoFactorModal.secretLabel')}</p>
+              <p className="mb-2 text-[11px] tracking-wider text-lyra-mutedDim">{t('twoFactorModal.secretLabel')}</p>
               <div className="flex items-start gap-2">
                 <p className="min-w-0 flex-1 break-all font-mono text-sm text-lyra-goldBright">{setup.secret}</p>
                 <button
@@ -230,7 +230,7 @@ export default function TwoFactorModal({ onClose, onSecurityChange }) {
               )}
             </div>
             <div className="mb-5">
-              <label htmlFor="totp-code" className="mb-1.5 block text-xs uppercase tracking-wider text-lyra-mutedDim">
+              <label htmlFor="totp-code" className="mb-1.5 block text-xs tracking-wider text-lyra-mutedDim">
                 {t('twoFactorModal.codeLabel')}
               </label>
               <input

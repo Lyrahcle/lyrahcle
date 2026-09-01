@@ -87,7 +87,7 @@ export default function ChangePasswordModal({ onClose, onSecurityChange, require
         ) : (
           <form onSubmit={handleSubmit}>
             <div className="mb-4">
-              <label htmlFor="current-password" className="mb-1.5 block text-xs uppercase tracking-wider text-lyra-mutedDim">
+              <label htmlFor="current-password" className="mb-1.5 block text-xs tracking-wider text-lyra-mutedDim">
                 {t('changePasswordModal.currentPassword')}
               </label>
               <input
@@ -102,7 +102,7 @@ export default function ChangePasswordModal({ onClose, onSecurityChange, require
             </div>
 
             <div className="mb-4">
-              <label htmlFor="new-password" className="mb-1.5 block text-xs uppercase tracking-wider text-lyra-mutedDim">
+              <label htmlFor="new-password" className="mb-1.5 block text-xs tracking-wider text-lyra-mutedDim">
                 {t('changePasswordModal.newPassword')}
               </label>
               <input
@@ -119,7 +119,7 @@ export default function ChangePasswordModal({ onClose, onSecurityChange, require
             </div>
 
             <div className="mb-5">
-              <label htmlFor="confirm-new-password" className="mb-1.5 block text-xs uppercase tracking-wider text-lyra-mutedDim">
+              <label htmlFor="confirm-new-password" className="mb-1.5 block text-xs tracking-wider text-lyra-mutedDim">
                 {t('changePasswordModal.confirmNewPassword')}
               </label>
               <input

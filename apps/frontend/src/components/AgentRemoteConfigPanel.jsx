@@ -93,21 +93,21 @@ export default function AgentRemoteConfigPanel({ agents, satellites = [], canMan
     <div>
       <p className="mb-4 text-sm text-lyra-muted">{t('connectivity.remoteConfigHint')}</p>
       <form onSubmit={submit} className="grid gap-3 md:grid-cols-[1.3fr_1fr_1fr_1.2fr_auto] md:items-end">
-        <label className="grid gap-1 text-[11px] uppercase tracking-wider text-lyra-mutedDim">
+        <label className="grid gap-1 text-[11px] tracking-wider text-lyra-mutedDim">
           {t('connectivity.agent')}
           <select value={agentId} onChange={(e) => setAgentId(e.target.value)} className="rounded border border-lyra-border bg-lyra-bgSoft px-2 py-2 font-mono text-sm normal-case text-lyra-text">
             {activeAgents.map((agent) => <option key={agent.agent_id} value={agent.agent_id}>{agent.agent_id}</option>)}
           </select>
         </label>
-        <label className="grid gap-1 text-[11px] uppercase tracking-wider text-lyra-mutedDim">
+        <label className="grid gap-1 text-[11px] tracking-wider text-lyra-mutedDim">
           {t('connectivity.remoteFrequency')}
           <input type="number" disabled={!canManage} min="100000" max="6000000000" required value={frequencyHz} onChange={(e) => setFrequencyHz(e.target.value)} className="rounded border border-lyra-border bg-lyra-bgSoft px-2 py-2 font-mono text-sm normal-case text-lyra-text" />
         </label>
-        <label className="grid gap-1 text-[11px] uppercase tracking-wider text-lyra-mutedDim">
+        <label className="grid gap-1 text-[11px] tracking-wider text-lyra-mutedDim">
           {t('connectivity.remoteInterval')}
           <input type="number" disabled={!canManage} min="1" max="3600" required value={intervalSeconds} onChange={(e) => setIntervalSeconds(e.target.value)} className="rounded border border-lyra-border bg-lyra-bgSoft px-2 py-2 font-mono text-sm normal-case text-lyra-text" />
         </label>
-        <label className="grid gap-1 text-[11px] uppercase tracking-wider text-lyra-mutedDim">
+        <label className="grid gap-1 text-[11px] tracking-wider text-lyra-mutedDim">
           {t('connectivity.remoteSatellite')}
           <select value={satelliteId} disabled={!canManage} onChange={(e) => setSatelliteId(e.target.value)} className="rounded border border-lyra-border bg-lyra-bgSoft px-2 py-2 font-mono text-sm normal-case text-lyra-text">
             <option value="">{t('connectivity.remoteNoSatellite')}</option>
@@ -131,17 +131,17 @@ export default function AgentRemoteConfigPanel({ agents, satellites = [], canMan
 
       {history.length > 0 && (
         <div className="mt-5">
-          <p className="mb-2 font-mono text-[11px] uppercase tracking-wider text-lyra-gold">{t('connectivity.remoteHistory')}</p>
+          <p className="mb-2 font-mono text-[11px] tracking-wider text-lyra-gold">{t('connectivity.remoteHistory')}</p>
           <TableScroll>
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-lyra-borderSoft">
-                  <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">{t('connectivity.remoteVersion')}</th>
-                  <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">{t('connectivity.remoteFrequency')}</th>
-                  <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">{t('connectivity.remoteInterval')}</th>
-                  <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">{t('connectivity.remoteSatellite')}</th>
-                  <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">{t('connectivity.remoteSigningKey')}</th>
-                  <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">{t('connectivity.remoteAckLabel')}</th>
+                  <th className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">{t('connectivity.remoteVersion')}</th>
+                  <th className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">{t('connectivity.remoteFrequency')}</th>
+                  <th className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">{t('connectivity.remoteInterval')}</th>
+                  <th className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">{t('connectivity.remoteSatellite')}</th>
+                  <th className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">{t('connectivity.remoteSigningKey')}</th>
+                  <th className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">{t('connectivity.remoteAckLabel')}</th>
                   <th className="pb-2" />
                 </tr>
               </thead>
@@ -155,7 +155,7 @@ export default function AgentRemoteConfigPanel({ agents, satellites = [], canMan
                     <td className="max-w-[260px] break-all py-2.5 pr-4 font-mono text-[10px] text-lyra-mutedDim" title={item.signing_kid || ''}>{shortKID(item.signing_kid, t('connectivity.remoteLegacySigningKey'))}</td>
                     <td className="py-2.5 font-mono text-xs text-lyra-mutedDim">{item.ack_status || '—'}</td>
                     <td className="py-2.5 text-right">
-                      {canManage && item.version !== current?.version && <button type="button" disabled={busy} onClick={() => rollback(item.version)} className="font-mono text-xs uppercase text-lyra-goldBright hover:underline disabled:opacity-50">{t('connectivity.remoteRollback')}</button>}
+                      {canManage && item.version !== current?.version && <button type="button" disabled={busy} onClick={() => rollback(item.version)} className="font-mono text-xs text-lyra-goldBright hover:underline disabled:opacity-50">{t('connectivity.remoteRollback')}</button>}
                     </td>
                   </tr>
                 ))}

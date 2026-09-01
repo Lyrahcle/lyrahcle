@@ -5,7 +5,7 @@ import { useI18n } from '../lib/I18nContext.jsx'
 function BudgetCard({ label, tenant, actor, suffix }) {
   return (
     <div className="rounded border border-lyra-borderSoft bg-lyra-bgSoft/20 p-3">
-      <p className="font-mono text-[10px] uppercase tracking-wider text-lyra-mutedDim">{label}</p>
+      <p className="font-mono text-[10px] tracking-wider text-lyra-mutedDim">{label}</p>
       <div className="mt-2 grid grid-cols-2 gap-3 text-sm">
         <div>
           <p className="text-xs text-lyra-muted">Tenant</p>
@@ -40,7 +40,7 @@ export default function RateLimitPolicyPanel() {
     <div className="grid gap-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <p className="max-w-3xl text-sm text-lyra-muted">{t('rateLimits.hint')}</p>
-        <span className={`rounded border px-2 py-1 font-mono text-[10px] uppercase ${state.redis_distributed ? 'border-lyra-ok/50 text-lyra-ok' : 'border-lyra-warn/50 text-lyra-warn'}`}>
+        <span className={`rounded border px-2 py-1 font-mono text-[10px] ${state.redis_distributed ? 'border-lyra-ok/50 text-lyra-ok' : 'border-lyra-warn/50 text-lyra-warn'}`}>
           {state.redis_distributed ? t('rateLimits.distributed') : t('rateLimits.localFallback')}
         </span>
       </div>

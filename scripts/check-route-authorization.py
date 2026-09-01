@@ -43,8 +43,6 @@ AUTH_MARKERS = [
     'hashEnrollmentToken(',
 ]
 
-# Route-path suffix -> reason it is intentionally public or uses a
-# non-JWT-session auth mechanism validated inline in the handler body.
 PUBLIC_ROUTES = {
     '/healthz': 'liveness probe',
     '/readyz': 'readiness probe',
@@ -59,10 +57,6 @@ PUBLIC_ROUTES = {
     '/agents/enroll': 'protected by hashed single-use enrollment token, not a session',
 }
 
-# Only matches an actual chi route registration (trimmed line starts with
-# `r.` and, optionally, a `.With(...)` chain, directly followed by the verb
-# call). Deliberately excludes unrelated calls that also end in
-# `.Get("...")`, such as `r.Header.Get(...)` or `r.URL.Query().Get(...)`.
 ROUTE_RE = re.compile(r'^r\.(?:With\((?P<with>.*)\)\.)?(Get|Post|Put|Delete|Patch)\(\s*"([^"]+)"')
 
 
@@ -74,10 +68,6 @@ class RouteBlock:
         self.gated = False
 
 
-# A local variable assigned from one of these is itself an auth gate, even
-# though its own name (e.g. `read`, `manage`, `agentRead`) doesn't appear in
-# AUTH_MARKERS. Catches indirection like `read := auth.RequireAnyPermission...`
-# followed by `.With(read)`.
 GATE_ASSIGNMENT_RE = re.compile(
     r'^(\w+)\s*:=\s*(?:auth\.\w*(?:RequireRoleWithFallback|RequirePermissionWithFallback|'
     r'RequireAnyPermissionWithFallback)\(|requirePlatformAdmin\b|credentialAuth\b)'
@@ -101,8 +91,8 @@ def scan_file(path, root):
             gate_vars.add(gm.group(1))
 
     depth = 0
-    blocks = []      # stack of enclosing RouteBlock frames
-    findings = []     # handlers whose gate status is still undetermined
+    blocks = []
+    findings = []
 
     for i, line in enumerate(lines):
         if blocks and 'r.Use(' in line and line_is_gated(line, gate_vars):

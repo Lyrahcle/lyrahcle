@@ -160,10 +160,6 @@ func (s *DetectionRuleStore) RecordMatchIfAllowed(ctx context.Context, organizat
 		return DetectionMatch{}, false, err
 	}
 
-	// Retries of the same anomaly must recover the durable match before the
-	// cooldown check. Otherwise a crash after recording the match but before
-	// creating/attaching the incident would make the retry look "suppressed"
-	// and permanently lose the downstream incident side effect.
 	var existing DetectionMatch
 	err = tx.QueryRow(ctx, `
 		SELECT id, rule_id, anomaly_id, incident_id, agent_id, metric, z_score, matched_at

@@ -43,9 +43,6 @@ func TestIncidentsCacheKeyDiffersByFilterAndPage(t *testing.T) {
 
 func TestIncidentsCacheKeyDefaultMatchesDashboardDefaultQuery(t *testing.T) {
 	org := uuid.New()
-	// The frontend's default poll requests PAGE_LIMIT=50, offset 0, no filters.
-	// If this drifts out of sync, cache invalidation after writes silently
-	// stops reaching the view every dashboard actually polls.
 	want := incidentsCacheKey(org, 50, 0, store.IncidentFilter{})
 	got := incidentsCacheKeyDefault(org)
 	if got != want {

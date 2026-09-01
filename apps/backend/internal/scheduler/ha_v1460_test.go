@@ -39,8 +39,6 @@ func TestSchedulerRecoversPanicsFromJobs(t *testing.T) {
 		t.Fatalf("entries=%d want 1", len(entries))
 	}
 
-	// The configured cron recovery chain must contain the panic rather than
-	// allowing it to escape the scheduler goroutine/process.
 	entries[0].Job.Run()
 }
 
@@ -71,7 +69,6 @@ func TestSchedulerSkipsOverlappingRunsInSameReplica(t *testing.T) {
 		t.Fatal("first run did not start")
 	}
 
-	// This returns immediately because SkipIfStillRunning owns the wrapped job.
 	entry.Job.Run()
 	if got := runs.Load(); got != 1 {
 		t.Fatalf("overlapping executions=%d want 1", got)

@@ -7,10 +7,10 @@ const REPO_URL = 'https://github.com/mlko01/lyrahcle'
 function FooterColumn({ heading, lead, links }) {
   return (
     <div>
-      <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-lyra-gold">{heading}</p>
+      <p className="font-mono text-[11px] tracking-[0.2em] text-lyra-gold">{heading}</p>
       <ul className="mt-3 space-y-2 text-sm text-lyra-muted">
         {lead && (
-          <li className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-wider text-lyra-mutedDim">
+          <li className="flex items-center gap-2 font-mono text-[11px] tracking-wider text-lyra-mutedDim">
             <span className="h-1.5 w-1.5 rounded-full bg-lyra-good" />
             {lead}
           </li>
@@ -18,7 +18,7 @@ function FooterColumn({ heading, lead, links }) {
         {links.map(({ label, href }) => (
           <li key={label}>
             <a
-              className="font-mono text-[11px] uppercase tracking-wider outline-none transition-colors hover:text-lyra-goldBright focus-visible:text-lyra-goldBright"
+              className="font-mono text-[11px] tracking-wider outline-none transition-colors hover:text-lyra-goldBright focus-visible:text-lyra-goldBright"
               href={href}
             >
               {label}
@@ -83,7 +83,7 @@ export default function Footer() {
           <p className="font-mono text-[11px] text-lyra-mutedDim">
             © {year} Lyrahcle. {t('footer.license')} {t('footer.designedBy')}
           </p>
-          <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-lyra-mutedDim">
+          <p className="font-mono text-[11px] tracking-[0.2em] text-lyra-mutedDim">
             v{pkg.version}
           </p>
         </div>

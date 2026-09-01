@@ -67,7 +67,6 @@ func TestPendingEventIsReclaimedAfterWorkerCrash(t *testing.T) {
 	if streams[0].Messages[0].ID != messageID {
 		t.Fatalf("claimed ID=%s want %s", streams[0].Messages[0].ID, messageID)
 	}
-	// Simulate a crash: first worker never calls handleMessage/ACK.
 	time.Sleep(30 * time.Millisecond)
 
 	var processed atomic.Int32

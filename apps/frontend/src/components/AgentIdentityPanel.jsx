@@ -63,7 +63,7 @@ export default function AgentIdentityPanel({ agents, onChanged, canManage = true
 
       {canManage && <form onSubmit={issue} className="mb-5 flex flex-wrap items-end gap-3">
         <div>
-          <label htmlFor="mtls-agent-id" className="mb-1 block text-[11px] uppercase tracking-wider text-lyra-mutedDim">
+          <label htmlFor="mtls-agent-id" className="mb-1 block text-[11px] tracking-wider text-lyra-mutedDim">
             Agent ID
           </label>
           <input
@@ -88,7 +88,7 @@ export default function AgentIdentityPanel({ agents, onChanged, canManage = true
 
       {canManage && agents.length > 0 && (
         <form onSubmit={saveStation} className="mb-5 grid gap-3 rounded border border-lyra-borderSoft bg-lyra-bgSoft/30 p-3 md:grid-cols-[1.2fr_1fr_1fr_1fr_auto] md:items-end">
-          <label className="grid gap-1 text-[11px] uppercase tracking-wider text-lyra-mutedDim">
+          <label className="grid gap-1 text-[11px] tracking-wider text-lyra-mutedDim">
             {t('connectivity.stationAgent')}
             <select required value={stationAgentId} onChange={(e) => {
               const id = e.target.value
@@ -102,19 +102,19 @@ export default function AgentIdentityPanel({ agents, onChanged, canManage = true
               {agents.map((agent) => <option key={agent.agent_id} value={agent.agent_id}>{agent.agent_id}</option>)}
             </select>
           </label>
-          <label className="grid gap-1 text-[11px] uppercase tracking-wider text-lyra-mutedDim">
+          <label className="grid gap-1 text-[11px] tracking-wider text-lyra-mutedDim">
             {t('connectivity.stationLatitude')}
             <input required type="number" step="0.000001" min="-90" max="90" value={latitude} onChange={(e) => setLatitude(e.target.value)} className="rounded border border-lyra-border bg-lyra-bgSoft px-2 py-2 font-mono text-sm normal-case text-lyra-text" />
           </label>
-          <label className="grid gap-1 text-[11px] uppercase tracking-wider text-lyra-mutedDim">
+          <label className="grid gap-1 text-[11px] tracking-wider text-lyra-mutedDim">
             {t('connectivity.stationLongitude')}
             <input required type="number" step="0.000001" min="-180" max="180" value={longitude} onChange={(e) => setLongitude(e.target.value)} className="rounded border border-lyra-border bg-lyra-bgSoft px-2 py-2 font-mono text-sm normal-case text-lyra-text" />
           </label>
-          <label className="grid gap-1 text-[11px] uppercase tracking-wider text-lyra-mutedDim">
+          <label className="grid gap-1 text-[11px] tracking-wider text-lyra-mutedDim">
             {t('connectivity.stationAltitude')}
             <input required type="number" step="0.1" min="-500" max="10000" value={altitude} onChange={(e) => setAltitude(e.target.value)} className="rounded border border-lyra-border bg-lyra-bgSoft px-2 py-2 font-mono text-sm normal-case text-lyra-text" />
           </label>
-          <button disabled={busy || !stationAgentId} className="rounded border border-lyra-border px-3 py-2 font-mono text-xs uppercase text-lyra-goldBright disabled:opacity-50">{t('connectivity.stationSave')}</button>
+          <button disabled={busy || !stationAgentId} className="rounded border border-lyra-border px-3 py-2 font-mono text-xs text-lyra-goldBright disabled:opacity-50">{t('connectivity.stationSave')}</button>
         </form>
       )}
 
@@ -133,10 +133,10 @@ export default function AgentIdentityPanel({ agents, onChanged, canManage = true
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-lyra-borderSoft">
-                <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">{t('connectivity.agent')}</th>
-                <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">{t('connectivity.identityStatus')}</th>
-                <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">{t('connectivity.certificate')}</th>
-                <th className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">{t('connectivity.lastSeen')}</th>
+                <th className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">{t('connectivity.agent')}</th>
+                <th className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">{t('connectivity.identityStatus')}</th>
+                <th className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">{t('connectivity.certificate')}</th>
+                <th className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">{t('connectivity.lastSeen')}</th>
                 <th className="pb-2" />
               </tr>
             </thead>
@@ -153,9 +153,9 @@ export default function AgentIdentityPanel({ agents, onChanged, canManage = true
                   </td>
                   <td className="py-2.5 font-mono text-xs text-lyra-mutedDim">{agent.last_seen_at ? new Date(agent.last_seen_at).toLocaleString() : '—'}</td>
                   <td className="py-2.5 text-right">
-                    {canManage && agent.status === 'active' && <button onClick={() => changeStatus(agent.agent_id, 'quarantined')} className="mr-3 font-mono text-xs uppercase text-lyra-goldBright hover:underline">{t('connectivity.quarantine')}</button>}
-                    {canManage && agent.status === 'quarantined' && <button onClick={() => changeStatus(agent.agent_id, 'active')} className="mr-3 font-mono text-xs uppercase text-lyra-good hover:underline">{t('connectivity.activate')}</button>}
-                    {canManage && agent.status !== 'revoked' && <button onClick={() => changeStatus(agent.agent_id, 'revoked')} className="font-mono text-xs uppercase text-lyra-bad hover:underline">{t('connectivity.revoke')}</button>}
+                    {canManage && agent.status === 'active' && <button onClick={() => changeStatus(agent.agent_id, 'quarantined')} className="mr-3 font-mono text-xs text-lyra-goldBright hover:underline">{t('connectivity.quarantine')}</button>}
+                    {canManage && agent.status === 'quarantined' && <button onClick={() => changeStatus(agent.agent_id, 'active')} className="mr-3 font-mono text-xs text-lyra-good hover:underline">{t('connectivity.activate')}</button>}
+                    {canManage && agent.status !== 'revoked' && <button onClick={() => changeStatus(agent.agent_id, 'revoked')} className="font-mono text-xs text-lyra-bad hover:underline">{t('connectivity.revoke')}</button>}
                   </td>
                 </tr>
               ))}

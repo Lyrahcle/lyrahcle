@@ -18,7 +18,7 @@ function FilterBar({ filters, onFiltersChange, keywords, t }) {
   return (
     <div className="mb-4 flex flex-wrap items-end gap-3">
       <div>
-        <label htmlFor="cve-severity" className="mb-1 block text-[10px] uppercase tracking-wider text-lyra-mutedDim">
+        <label htmlFor="cve-severity" className="mb-1 block text-[10px] tracking-wider text-lyra-mutedDim">
           {t('threatIntel.severity')}
         </label>
         <select
@@ -37,7 +37,7 @@ function FilterBar({ filters, onFiltersChange, keywords, t }) {
       </div>
 
       <div>
-        <label htmlFor="cve-keyword" className="mb-1 block text-[10px] uppercase tracking-wider text-lyra-mutedDim">
+        <label htmlFor="cve-keyword" className="mb-1 block text-[10px] tracking-wider text-lyra-mutedDim">
           {t('threatIntel.keyword')}
         </label>
         <select
@@ -56,7 +56,7 @@ function FilterBar({ filters, onFiltersChange, keywords, t }) {
       </div>
 
       <div>
-        <label htmlFor="cve-from" className="mb-1 block text-[10px] uppercase tracking-wider text-lyra-mutedDim">
+        <label htmlFor="cve-from" className="mb-1 block text-[10px] tracking-wider text-lyra-mutedDim">
           {t('threatIntel.publishedFrom')}
         </label>
         <input
@@ -69,7 +69,7 @@ function FilterBar({ filters, onFiltersChange, keywords, t }) {
       </div>
 
       <div>
-        <label htmlFor="cve-to" className="mb-1 block text-[10px] uppercase tracking-wider text-lyra-mutedDim">
+        <label htmlFor="cve-to" className="mb-1 block text-[10px] tracking-wider text-lyra-mutedDim">
           {t('threatIntel.publishedTo')}
         </label>
         <input
@@ -82,7 +82,7 @@ function FilterBar({ filters, onFiltersChange, keywords, t }) {
       </div>
 
       <div>
-        <label htmlFor="cve-sort" className="mb-1 block text-[10px] uppercase tracking-wider text-lyra-mutedDim">
+        <label htmlFor="cve-sort" className="mb-1 block text-[10px] tracking-wider text-lyra-mutedDim">
           {t('threatIntel.sortBy')}
         </label>
         <div className="flex gap-1.5">
@@ -114,7 +114,7 @@ function FilterBar({ filters, onFiltersChange, keywords, t }) {
         <button
           type="button"
           onClick={() => onFiltersChange({ severity: '', keyword: '', publishedFrom: '', publishedTo: '', sort: filters.sort, order: filters.order })}
-          className="rounded border border-lyra-border px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-lyra-muted outline-none transition-colors hover:border-lyra-gold/40 hover:text-lyra-goldBright focus-visible:ring-1 focus-visible:ring-lyra-gold"
+          className="rounded border border-lyra-border px-3 py-1.5 font-mono text-[11px] tracking-wider text-lyra-muted outline-none transition-colors hover:border-lyra-gold/40 hover:text-lyra-goldBright focus-visible:ring-1 focus-visible:ring-lyra-gold"
         >
           {t('threatIntel.clearFilters')}
         </button>
@@ -150,19 +150,19 @@ export default function ThreatIntelPanel({ page, loading, filters, onFiltersChan
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-lyra-borderSoft">
-                  <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+                  <th scope="col" className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">
                     {t('threatIntel.cve')}
                   </th>
-                  <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+                  <th scope="col" className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">
                     {t('threatIntel.severity')}
                   </th>
-                  <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+                  <th scope="col" className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">
                     {t('threatIntel.score')}
                   </th>
-                  <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+                  <th scope="col" className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">
                     {t('threatIntel.published')}
                   </th>
-                  <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+                  <th scope="col" className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">
                     {t('threatIntel.description')}
                   </th>
                 </tr>

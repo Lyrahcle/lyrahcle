@@ -63,7 +63,6 @@ class AwsDriftWorkflowContractTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             fake = Path(td)
             write(fake, GOOD_WORKFLOW + "\n      - run: terraform apply -auto-approve\n", GOOD_SCRIPT)
-            # sanity: this is a real command invocation, not prose containing "apply"
             result = run(fake)
             self.assertNotEqual(result.returncode, 0)
             self.assertIn('apply', result.stdout.lower())

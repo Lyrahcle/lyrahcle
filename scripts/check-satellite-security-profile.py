@@ -9,7 +9,7 @@ checks = {
         "fetchIncidents(50, 0, { satelliteId: satellite.id })",
         'item.satellite_id === satellite.id',
         "identities.has(String(item.asset_value || '').toLowerCase())",
-        'riskFor(',
+        'calculateSatelliteRisk(',
         "onNavigate('incidents')",
         "onNavigate('signal')",
     ],

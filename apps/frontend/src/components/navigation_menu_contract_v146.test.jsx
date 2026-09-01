@@ -7,22 +7,24 @@ function source(relativePath) {
 }
 
 describe('navigation shell contract v1.46', () => {
-  it('uses the top-left dropdown instead of horizontal primary tabs', () => {
+  it('uses a persistent sidebar instead of horizontal primary tabs', () => {
     const dashboard = source('components/Dashboard.jsx')
     const header = source('components/Header.jsx')
     expect(dashboard).not.toContain("import Tabs from './Tabs.jsx'")
-    expect(dashboard).toContain('navigationItems={tabs}')
-    expect(header).toContain('<NavigationMenu')
+    expect(dashboard).toContain('<NavigationMenu')
+    expect(dashboard).toContain("lg:pl-20")
+    expect(dashboard).toContain("lg:pl-64")
+    expect(header).toContain('onOpenNavigation')
   })
 
-  it('keeps orbital as the home/default dashboard and settings in page navigation', () => {
+  it('keeps orbital as the home route and settings in page navigation', () => {
     const app = source('App.jsx')
     const dashboard = source('components/Dashboard.jsx')
     const routeTabs = source('lib/routeTabs.js')
     expect(routeTabs).toContain("export const DEFAULT_TAB = 'orbital'")
     expect(app).toContain('getTabFromLocation(DEFAULT_TAB)')
     expect(dashboard).toContain("onHome={() => onChangeTab('orbital')}")
-    expect(dashboard).toContain("{ id: 'settings', label: t('tabs.settings') }")
+    expect(dashboard).toContain("{ id: 'settings', label: t('tabs.settings'), section: 'preferences' }")
   })
 
   it('keeps the active section deep-linkable via the URL hash', () => {

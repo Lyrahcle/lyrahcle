@@ -40,7 +40,7 @@ export default function AgentKeysPanel({ keys, onChanged, canManage = true }) {
     <div>
       {canManage && <form onSubmit={handleCreate} className="mb-5 flex flex-wrap items-end gap-3">
         <div>
-          <label htmlFor="new-agent-id" className="mb-1 block text-[11px] uppercase tracking-wider text-lyra-mutedDim">
+          <label htmlFor="new-agent-id" className="mb-1 block text-[11px] tracking-wider text-lyra-mutedDim">
             {t('agentKeys.newAgentId')}
           </label>
           <input
@@ -83,16 +83,16 @@ export default function AgentKeysPanel({ keys, onChanged, canManage = true }) {
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-lyra-borderSoft">
-                <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+                <th scope="col" className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">
                   {t('agentKeys.agent')}
                 </th>
-                <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+                <th scope="col" className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">
                   {t('agentKeys.created')}
                 </th>
-                <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+                <th scope="col" className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">
                   {t('agentKeys.lastUsed')}
                 </th>
-                <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+                <th scope="col" className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">
                   {t('agentKeys.status')}
                 </th>
                 <th scope="col" className="pb-2" />
@@ -118,7 +118,7 @@ export default function AgentKeysPanel({ keys, onChanged, canManage = true }) {
                       <button
                         onClick={() => handleRevoke(k.agent_id)}
                         aria-label={t('agentKeys.revokeLabel', { agent: k.agent_id })}
-                        className="font-mono text-xs uppercase tracking-wide text-lyra-bad outline-none hover:underline"
+                        className="font-mono text-xs tracking-wide text-lyra-bad outline-none hover:underline"
                       >
                         {t('agentKeys.revoke')}
                       </button>

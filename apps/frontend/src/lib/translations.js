@@ -21,7 +21,7 @@ export const translations = {
       confirmActionTitle: 'Confirm action',
     },
     header: {
-      tagline: 'Constellation Analytics',
+      tagline: 'Constellation analytics',
       searchPlaceholder: 'Search assets, satellites, CVEs…',
       searchNoResults: 'No matches found.',
       searchType: {
@@ -79,6 +79,7 @@ export const translations = {
       longitude: 'Longitude',
       altitude: 'Altitude',
       tleStatus: 'TLE status',
+      risk: 'Risk score',
       updated: 'Updated',
       editEyebrow: 'Satellite management',
       editSatellite: 'Edit {name}',
@@ -179,27 +180,27 @@ export const translations = {
       state: { online: 'online', offline: 'offline', checking: 'checking', live: 'live', idle: 'idle' },
     },
     panels: {
-      groundTrack: 'Ground Track',
+      groundTrack: 'Ground track',
       liveOrbitalPositions: 'Live orbital positions',
       live: 'Live',
-      orbitalTracking: 'Orbital Tracking',
+      orbitalTracking: 'Orbital tracking',
       trackedSatellites: 'Tracked satellites',
-      assetInventory: 'Asset Inventory',
+      assetInventory: 'Asset inventory',
       trackedAssets: 'Tracked assets',
-      signalIntelligence: 'Signal Intelligence',
+      signalIntelligence: 'Signal intelligence',
       rfSpectrum: 'RF spectrum',
-      anomalyDetection: 'Anomaly Detection',
+      anomalyDetection: 'Anomaly detection',
       flaggedAnomalies: 'Flagged RF anomalies',
-      threatIntelligence: 'Threat Intelligence',
+      threatIntelligence: 'Threat intelligence',
       spaceCves: 'Space-related CVEs',
-      assetAlerts: 'Asset Alerts',
+      assetAlerts: 'Asset alerts',
       matchedVulnerabilities: 'Vulnerabilities matched to tracked assets',
       tmtc: 'TM/TC',
       protocolDecoder: 'Protocol decoder',
       connectivity: 'Connectivity',
-      accessControl: 'Access Control',
+      accessControl: 'Access control',
       usersAndRoles: 'Users & roles',
-      sdrAgents: 'SDR Agents',
+      sdrAgents: 'SDR agents',
       agentApiKeys: 'Agent API keys',
       security: 'Security',
       auditLog: 'Audit log',
@@ -380,7 +381,7 @@ export const translations = {
       confirmActionTitle: 'Confirmar acción',
     },
     header: {
-      tagline: 'Constellation Analytics',
+      tagline: 'Constellation analytics',
       searchPlaceholder: 'Buscar activos, satélites, CVEs…',
       searchNoResults: 'No se encontraron coincidencias.',
       searchType: {
@@ -438,6 +439,7 @@ export const translations = {
       longitude: 'Longitud',
       altitude: 'Altitud',
       tleStatus: 'Estado TLE',
+      risk: 'Puntuación de riesgo',
       updated: 'Actualizado',
       editEyebrow: 'Gestión de satélite',
       editSatellite: 'Editar {name}',
@@ -739,7 +741,7 @@ export const translations = {
       confirmActionTitle: 'Confirmer l’action',
     },
     header: {
-      tagline: 'Constellation Analytics',
+      tagline: 'Constellation analytics',
       searchPlaceholder: 'Rechercher des actifs, satellites, CVE…',
       searchNoResults: 'Aucun résultat trouvé.',
       searchType: {
@@ -797,6 +799,7 @@ export const translations = {
       longitude: 'Longitude',
       altitude: 'Altitude',
       tleStatus: 'État TLE',
+      risk: 'Score de risque',
       updated: 'Mis à jour',
       editEyebrow: 'Gestion du satellite',
       editSatellite: 'Modifier {name}',
@@ -1098,7 +1101,7 @@ export const translations = {
       confirmActionTitle: 'Aktion bestätigen',
     },
     header: {
-      tagline: 'Constellation Analytics',
+      tagline: 'Constellation analytics',
       searchPlaceholder: 'Assets, Satelliten, CVEs durchsuchen…',
       searchNoResults: 'Keine Treffer gefunden.',
       searchType: {
@@ -1156,6 +1159,7 @@ export const translations = {
       longitude: 'Längengrad',
       altitude: 'Höhe',
       tleStatus: 'TLE-Status',
+      risk: 'Risikowert',
       updated: 'Aktualisiert',
       editEyebrow: 'Satellitenverwaltung',
       editSatellite: '{name} bearbeiten',
@@ -1984,7 +1988,7 @@ const missionSecurityTranslations = {
     eyebrow: 'Space security operations', title: 'Mission security operations', subtitle: 'Cross-domain posture for incidents, RF anomalies, SDR agents, orbital telemetry and asset exposure.',
     posture: { nominal: 'Nominal', elevated: 'Elevated', critical: 'Critical' }, partialAccess: '{count}/{total} security data sources available for your role.',
     openIncidents: 'Incidents', openSignal: 'RF detection', openFleet: 'SDR fleet', live: 'Live', polling: 'Polling',
-    metric: { satellites: 'Satellites monitored', criticalIncidents: 'Critical incidents', rfAnomalies: 'RF anomalies · 24h', agentsOnline: 'SDR agents online', assetAlerts: 'Unacked asset alerts', orbitalFeed: 'Orbital feed' },
+    metric: { riskScore: 'Mission risk', satellites: 'Satellites monitored', criticalIncidents: 'Critical incidents', rfAnomalies: 'RF anomalies · 24h', agentsOnline: 'SDR agents online', assetAlerts: 'Unacked asset alerts', orbitalFeed: 'Orbital feed' },
     queueEyebrow: 'Operator queue', queueTitle: 'Requires attention', queueHealthy: 'No high-priority items require attention.', queueHealthyHint: 'The loaded mission-security signals are within their expected operating posture.',
     queueIncident: '{severity} incident', queueVulnerability: 'Exposure on {asset}', queueStaleTle: 'TLE stale', queueMissingPosition: 'No orbital position', queueAgent: { attention: 'Agent trust or hardware posture needs attention', offline: 'Agent has not reported recently' },
     activityEyebrow: 'Unified timeline', activityTitle: 'Recent security activity', activityEmpty: 'No recent incident, RF anomaly or vulnerability activity is available.', activityIncident: 'Security incident', activityVulnerability: 'Asset vulnerability',
@@ -1994,7 +1998,7 @@ const missionSecurityTranslations = {
     eyebrow: 'Operaciones de seguridad espacial', title: 'Operaciones de seguridad de misión', subtitle: 'Postura multidominio de incidentes, anomalías RF, agentes SDR, telemetría orbital y exposición de activos.',
     posture: { nominal: 'Nominal', elevated: 'Elevada', critical: 'Crítica' }, partialAccess: '{count}/{total} fuentes de datos de seguridad disponibles para tu rol.',
     openIncidents: 'Incidentes', openSignal: 'Detección RF', openFleet: 'Flota SDR', live: 'En vivo', polling: 'Polling',
-    metric: { satellites: 'Satélites monitorizados', criticalIncidents: 'Incidentes críticos', rfAnomalies: 'Anomalías RF · 24h', agentsOnline: 'Agentes SDR en línea', assetAlerts: 'Alertas de activos sin confirmar', orbitalFeed: 'Feed orbital' },
+    metric: { riskScore: 'Riesgo de misión', satellites: 'Satélites monitorizados', criticalIncidents: 'Incidentes críticos', rfAnomalies: 'Anomalías RF · 24h', agentsOnline: 'Agentes SDR en línea', assetAlerts: 'Alertas de activos sin confirmar', orbitalFeed: 'Feed orbital' },
     queueEyebrow: 'Cola del operador', queueTitle: 'Requiere atención', queueHealthy: 'No hay elementos de alta prioridad que requieran atención.', queueHealthyHint: 'Las señales de seguridad de misión cargadas están dentro de su postura operativa esperada.',
     queueIncident: 'Incidente {severity}', queueVulnerability: 'Exposición en {asset}', queueStaleTle: 'TLE obsoleto', queueMissingPosition: 'Sin posición orbital', queueAgent: { attention: 'La confianza o el hardware del agente requieren atención', offline: 'El agente no ha informado recientemente' },
     activityEyebrow: 'Línea temporal unificada', activityTitle: 'Actividad de seguridad reciente', activityEmpty: 'No hay actividad reciente disponible de incidentes, anomalías RF o vulnerabilidades.', activityIncident: 'Incidente de seguridad', activityVulnerability: 'Vulnerabilidad de activo',
@@ -2004,7 +2008,7 @@ const missionSecurityTranslations = {
     eyebrow: 'Opérations de sécurité spatiale', title: 'Opérations de sécurité de mission', subtitle: 'Posture multidomaine des incidents, anomalies RF, agents SDR, télémétrie orbitale et exposition des actifs.',
     posture: { nominal: 'Nominale', elevated: 'Élevée', critical: 'Critique' }, partialAccess: '{count}/{total} sources de données de sécurité disponibles pour votre rôle.',
     openIncidents: 'Incidents', openSignal: 'Détection RF', openFleet: 'Flotte SDR', live: 'Direct', polling: 'Interrogation',
-    metric: { satellites: 'Satellites surveillés', criticalIncidents: 'Incidents critiques', rfAnomalies: 'Anomalies RF · 24h', agentsOnline: 'Agents SDR en ligne', assetAlerts: 'Alertes actifs non acquittées', orbitalFeed: 'Flux orbital' },
+    metric: { riskScore: 'Risque mission', satellites: 'Satellites surveillés', criticalIncidents: 'Incidents critiques', rfAnomalies: 'Anomalies RF · 24h', agentsOnline: 'Agents SDR en ligne', assetAlerts: 'Alertes actifs non acquittées', orbitalFeed: 'Flux orbital' },
     queueEyebrow: 'File opérateur', queueTitle: 'Attention requise', queueHealthy: 'Aucun élément prioritaire ne nécessite d’attention.', queueHealthyHint: 'Les signaux de sécurité de mission chargés restent dans leur posture opérationnelle attendue.',
     queueIncident: 'Incident {severity}', queueVulnerability: 'Exposition sur {asset}', queueStaleTle: 'TLE obsolète', queueMissingPosition: 'Aucune position orbitale', queueAgent: { attention: 'La confiance ou le matériel de l’agent nécessite une attention', offline: 'L’agent n’a pas communiqué récemment' },
     activityEyebrow: 'Chronologie unifiée', activityTitle: 'Activité de sécurité récente', activityEmpty: 'Aucune activité récente d’incident, d’anomalie RF ou de vulnérabilité n’est disponible.', activityIncident: 'Incident de sécurité', activityVulnerability: 'Vulnérabilité d’actif',
@@ -2014,7 +2018,7 @@ const missionSecurityTranslations = {
     eyebrow: 'Weltraum-Sicherheitsbetrieb', title: 'Missions-Sicherheitsbetrieb', subtitle: 'Domänenübergreifende Lage aus Vorfällen, RF-Anomalien, SDR-Agenten, Orbitaltelemetrie und Asset-Exposition.',
     posture: { nominal: 'Normal', elevated: 'Erhöht', critical: 'Kritisch' }, partialAccess: '{count}/{total} Sicherheitsdatenquellen sind für Ihre Rolle verfügbar.',
     openIncidents: 'Vorfälle', openSignal: 'RF-Erkennung', openFleet: 'SDR-Flotte', live: 'Live', polling: 'Polling',
-    metric: { satellites: 'Überwachte Satelliten', criticalIncidents: 'Kritische Vorfälle', rfAnomalies: 'RF-Anomalien · 24h', agentsOnline: 'SDR-Agenten online', assetAlerts: 'Unbestätigte Asset-Warnungen', orbitalFeed: 'Orbital-Feed' },
+    metric: { riskScore: 'Missionsrisiko', satellites: 'Überwachte Satelliten', criticalIncidents: 'Kritische Vorfälle', rfAnomalies: 'RF-Anomalien · 24h', agentsOnline: 'SDR-Agenten online', assetAlerts: 'Unbestätigte Asset-Warnungen', orbitalFeed: 'Orbital-Feed' },
     queueEyebrow: 'Operator-Warteschlange', queueTitle: 'Handlungsbedarf', queueHealthy: 'Keine Elemente mit hoher Priorität erfordern Aufmerksamkeit.', queueHealthyHint: 'Die geladenen Missionssicherheitssignale befinden sich innerhalb der erwarteten Betriebslage.',
     queueIncident: '{severity}-Vorfall', queueVulnerability: 'Exposition auf {asset}', queueStaleTle: 'TLE veraltet', queueMissingPosition: 'Keine Orbitalposition', queueAgent: { attention: 'Vertrauens- oder Hardwarestatus des Agenten benötigt Aufmerksamkeit', offline: 'Agent hat sich längere Zeit nicht gemeldet' },
     activityEyebrow: 'Einheitliche Zeitleiste', activityTitle: 'Aktuelle Sicherheitsaktivität', activityEmpty: 'Keine aktuellen Vorfall-, RF-Anomalie- oder Schwachstellenaktivitäten verfügbar.', activityIncident: 'Sicherheitsvorfall', activityVulnerability: 'Asset-Schwachstelle',
@@ -2030,6 +2034,7 @@ const satelliteProfileTranslations = {
     riskFactor: { tleUnusable: 'TLE unusable', tleStale: 'TLE stale', tleAging: 'TLE aging', criticalIncident: 'Critical incident', highIncident: 'High-severity incident', rfAnomaly: 'Severe RF anomaly · 24h', orbitalEvent: 'High-severity orbital event', exposure: 'Matched asset exposure' },
     altitude: 'Altitude', openIncidentsCount: 'Open incidents', rfAnomalies24h: 'RF anomalies · 24h', relatedAgents: 'Related SDR agents', openIncidents: 'Open incidents', openRf: 'Open RF detection',
     orbitalEyebrow: 'Orbital state', orbitalTitle: 'Tracking context', latitude: 'Latitude', longitude: 'Longitude', confidence: 'Confidence', tleStatus: 'TLE status',
+      risk: 'Risk score',
     securityEyebrow: 'Security posture', securityTitle: 'Correlated evidence', incidents: 'Incidents', rfAnomalies: 'RF anomalies', orbitalEvents: 'Orbital events', exposureMatches: 'Asset exposure matches', exposureNote: 'Exposure matches are contextual only: they require an exact asset-value match to the satellite name or NORAD identifier and do not assert an onboard vulnerability.', orbitalEventsUnavailable: 'Orbital events are temporarily unavailable.',
     agentsEyebrow: 'Ground segment', agentsTitle: 'Observed SDR agents', restricted: 'This data source is not available to your role.', noRelatedAgents: 'No SDR agent is linked through the loaded incident or RF evidence.',
     timelineEyebrow: 'Unified evidence', timelineTitle: 'Satellite activity timeline', timelineRf: 'RF anomaly · {metric}', timelineEmpty: 'No correlated activity is loaded for this satellite.', timelineEmptyHint: 'Incidents, RF anomalies, orbital events and contextual exposure matches will appear here.',
@@ -2040,6 +2045,7 @@ const satelliteProfileTranslations = {
     riskFactor: { tleUnusable: 'TLE inutilizable', tleStale: 'TLE obsoleto', tleAging: 'TLE envejecido', criticalIncident: 'Incidente crítico', highIncident: 'Incidente de severidad alta', rfAnomaly: 'Anomalía RF grave · 24 h', orbitalEvent: 'Evento orbital de severidad alta', exposure: 'Exposición de activo coincidente' },
     altitude: 'Altitud', openIncidentsCount: 'Incidentes abiertos', rfAnomalies24h: 'Anomalías RF · 24 h', relatedAgents: 'Agentes SDR relacionados', openIncidents: 'Abrir incidentes', openRf: 'Abrir detección RF',
     orbitalEyebrow: 'Estado orbital', orbitalTitle: 'Contexto de seguimiento', latitude: 'Latitud', longitude: 'Longitud', confidence: 'Confianza', tleStatus: 'Estado TLE',
+      risk: 'Puntuación de riesgo',
     securityEyebrow: 'Postura de seguridad', securityTitle: 'Evidencia correlacionada', incidents: 'Incidentes', rfAnomalies: 'Anomalías RF', orbitalEvents: 'Eventos orbitales', exposureMatches: 'Coincidencias de exposición', exposureNote: 'Las coincidencias de exposición son sólo contextuales: requieren coincidencia exacta del valor del activo con el nombre o NORAD del satélite y no afirman una vulnerabilidad a bordo.', orbitalEventsUnavailable: 'Los eventos orbitales no están disponibles temporalmente.',
     agentsEyebrow: 'Segmento terreno', agentsTitle: 'Agentes SDR observados', restricted: 'Esta fuente de datos no está disponible para tu rol.', noRelatedAgents: 'Ningún agente SDR está relacionado mediante las evidencias de incidentes o RF cargadas.',
     timelineEyebrow: 'Evidencia unificada', timelineTitle: 'Línea temporal de actividad del satélite', timelineRf: 'Anomalía RF · {metric}', timelineEmpty: 'No hay actividad correlacionada cargada para este satélite.', timelineEmptyHint: 'Aquí aparecerán incidentes, anomalías RF, eventos orbitales y coincidencias contextuales de exposición.',
@@ -2050,6 +2056,7 @@ const satelliteProfileTranslations = {
     riskFactor: { tleUnusable: 'TLE inutilisable', tleStale: 'TLE obsolète', tleAging: 'TLE vieillissante', criticalIncident: 'Incident critique', highIncident: 'Incident de sévérité élevée', rfAnomaly: 'Anomalie RF sévère · 24 h', orbitalEvent: 'Événement orbital de sévérité élevée', exposure: 'Exposition d’actif correspondante' },
     altitude: 'Altitude', openIncidentsCount: 'Incidents ouverts', rfAnomalies24h: 'Anomalies RF · 24 h', relatedAgents: 'Agents SDR liés', openIncidents: 'Ouvrir les incidents', openRf: 'Ouvrir la détection RF',
     orbitalEyebrow: 'État orbital', orbitalTitle: 'Contexte de suivi', latitude: 'Latitude', longitude: 'Longitude', confidence: 'Confiance', tleStatus: 'État TLE',
+      risk: 'Score de risque',
     securityEyebrow: 'Posture de sécurité', securityTitle: 'Preuves corrélées', incidents: 'Incidents', rfAnomalies: 'Anomalies RF', orbitalEvents: 'Événements orbitaux', exposureMatches: 'Correspondances d’exposition', exposureNote: 'Les correspondances d’exposition sont uniquement contextuelles : elles exigent une correspondance exacte de la valeur de l’actif avec le nom ou le NORAD du satellite et n’affirment pas une vulnérabilité embarquée.', orbitalEventsUnavailable: 'Les événements orbitaux sont temporairement indisponibles.',
     agentsEyebrow: 'Segment sol', agentsTitle: 'Agents SDR observés', restricted: 'Cette source de données n’est pas disponible pour votre rôle.', noRelatedAgents: 'Aucun agent SDR n’est lié par les preuves d’incident ou RF chargées.',
     timelineEyebrow: 'Preuves unifiées', timelineTitle: 'Chronologie d’activité du satellite', timelineRf: 'Anomalie RF · {metric}', timelineEmpty: 'Aucune activité corrélée n’est chargée pour ce satellite.', timelineEmptyHint: 'Les incidents, anomalies RF, événements orbitaux et correspondances contextuelles d’exposition apparaîtront ici.',
@@ -2060,9 +2067,117 @@ const satelliteProfileTranslations = {
     riskFactor: { tleUnusable: 'TLE unbrauchbar', tleStale: 'TLE veraltet', tleAging: 'TLE alternd', criticalIncident: 'Kritischer Vorfall', highIncident: 'Vorfall mit hoher Schwere', rfAnomaly: 'Schwere RF-Anomalie · 24 h', orbitalEvent: 'Orbitalereignis mit hoher Schwere', exposure: 'Passende Asset-Exposition' },
     altitude: 'Höhe', openIncidentsCount: 'Offene Vorfälle', rfAnomalies24h: 'RF-Anomalien · 24 h', relatedAgents: 'Zugehörige SDR-Agenten', openIncidents: 'Vorfälle öffnen', openRf: 'RF-Erkennung öffnen',
     orbitalEyebrow: 'Orbitalstatus', orbitalTitle: 'Tracking-Kontext', latitude: 'Breitengrad', longitude: 'Längengrad', confidence: 'Konfidenz', tleStatus: 'TLE-Status',
+      risk: 'Risikowert',
     securityEyebrow: 'Sicherheitslage', securityTitle: 'Korrelierte Nachweise', incidents: 'Vorfälle', rfAnomalies: 'RF-Anomalien', orbitalEvents: 'Orbitalereignisse', exposureMatches: 'Asset-Expositionsübereinstimmungen', exposureNote: 'Expositionsübereinstimmungen sind nur kontextuell: Sie erfordern eine exakte Übereinstimmung des Asset-Werts mit Satellitenname oder NORAD und behaupten keine Schwachstelle an Bord.', orbitalEventsUnavailable: 'Orbitalereignisse sind vorübergehend nicht verfügbar.',
     agentsEyebrow: 'Bodensegment', agentsTitle: 'Beobachtete SDR-Agenten', restricted: 'Diese Datenquelle ist für Ihre Rolle nicht verfügbar.', noRelatedAgents: 'Kein SDR-Agent ist über die geladenen Vorfall- oder RF-Nachweise verknüpft.',
     timelineEyebrow: 'Vereinheitlichte Nachweise', timelineTitle: 'Satelliten-Aktivitätszeitleiste', timelineRf: 'RF-Anomalie · {metric}', timelineEmpty: 'Für diesen Satelliten ist keine korrelierte Aktivität geladen.', timelineEmptyHint: 'Vorfälle, RF-Anomalien, Orbitalereignisse und kontextuelle Expositionsübereinstimmungen erscheinen hier.',
   },
 }
 for (const [language, extra] of Object.entries(satelliteProfileTranslations)) translations[language].satelliteProfile = extra
+
+const groundStationTranslations = {
+  en: {
+    tab: 'Ground stations',
+    copy: {
+      eyebrow: 'Ground segment operations', title: 'Ground station operations', description: 'Operational posture for configured SDR stations, current satellite visibility, RF activity and correlated security evidence.', manageStations: 'Manage station configuration',
+      back: 'Back to ground stations', detailEyebrow: 'Ground station profile', detailDescription: 'Live operational and security context for this SDR ground-station endpoint.', openRf: 'Open RF detection', openIncidents: 'Open incidents', openFleet: 'Open SDR fleet',
+      metric: { configured: 'Configured stations', online: 'Online stations', attention: 'Needs attention', offline: 'Offline stations', visible: 'Satellites visible now', observed: 'Observed · 24h', incidents: 'Open incidents', anomalies: 'RF anomalies · 24h', status: 'Station status', risk: 'Risk score' },
+      state: { online: 'Online', attention: 'Attention', offline: 'Offline' }, filterLabel: 'Filter ground stations', filter: { all: 'All stations', online: 'Online', attention: 'Attention', offline: 'Offline' }, search: 'Search station agent…', noMatches: 'No ground stations match the current filters.',
+      empty: 'No ground stations are configured.', emptyHint: 'Assign trusted coordinates to an SDR agent from connectivity to make it available here.', riskValue: 'Risk {score}', visibleValue: '{count} visible now', observedValue: '{count} observed · 24h', restrictedShort: 'Restricted', hardwareUnknown: 'Hardware not reported',
+      stationEyebrow: 'Station state', stationTitle: 'Location and hardware', latitude: 'Latitude', longitude: 'Longitude', altitude: 'Altitude', lastContact: 'Last contact', hardware: 'SDR hardware', integrity: 'Integrity state', riskFactors: 'Active risk factors', noRiskFactors: 'No active risk factors in the loaded evidence.',
+      riskFactor: { agentAttention: 'Agent trust or hardware posture', agentOffline: 'Agent has not reported recently', criticalIncident: 'Critical incident', highIncident: 'High-severity incident', rfAnomaly: 'Severe RF anomaly · 24h' },
+      visibilityEyebrow: 'Orbital visibility', visibilityTitle: 'Visible satellites now', noVisible: 'No tracked satellite is currently above the local horizon.', visibilityMethod: 'Visibility is calculated from the station coordinates and the current propagated satellite positions. Elevation at or above 0° is considered visible.', restricted: 'This data source is not available to your role.',
+      observedEyebrow: 'RF observations', observedTitle: 'Satellites observed · 24h', noObserved: 'No satellite-tagged RF observations were received from this station in the last 24 hours.', securityEyebrow: 'Security posture', securityTitle: 'Correlated station evidence', rfAnomaly: 'RF anomaly', noSecurityEvidence: 'No active incident or recent RF anomaly is correlated with this station.',
+      rfEyebrow: 'Signal activity', rfTitle: 'Recent RF captures · 24h', noRf: 'No RF captures were received from this station in the last 24 hours.', frequency: 'Frequency', signal: 'Signal', satellite: 'Satellite', captured: 'Captured',
+    },
+  },
+  es: {
+    tab: 'Estaciones terrestres',
+    copy: {
+      eyebrow: 'Operaciones del segmento terreno', title: 'Operaciones de estaciones terrestres', description: 'Postura operativa de las estaciones SDR configuradas, visibilidad actual de satélites, actividad RF y evidencias de seguridad correlacionadas.', manageStations: 'Gestionar configuración de estaciones',
+      back: 'Volver a estaciones terrestres', detailEyebrow: 'Perfil de estación terrestre', detailDescription: 'Contexto operativo y de seguridad actual de este endpoint SDR de estación terrestre.', openRf: 'Abrir detección RF', openIncidents: 'Abrir incidentes', openFleet: 'Abrir flota SDR',
+      metric: { configured: 'Estaciones configuradas', online: 'Estaciones en línea', attention: 'Requieren atención', offline: 'Estaciones sin conexión', visible: 'Satélites visibles ahora', observed: 'Observados · 24 h', incidents: 'Incidentes abiertos', anomalies: 'Anomalías RF · 24 h', status: 'Estado de la estación', risk: 'Puntuación de riesgo' },
+      state: { online: 'En línea', attention: 'Atención', offline: 'Sin conexión' }, filterLabel: 'Filtrar estaciones terrestres', filter: { all: 'Todas las estaciones', online: 'En línea', attention: 'Atención', offline: 'Sin conexión' }, search: 'Buscar agente de estación…', noMatches: 'Ninguna estación terrestre coincide con los filtros actuales.',
+      empty: 'No hay estaciones terrestres configuradas.', emptyHint: 'Asigna coordenadas de confianza a un agente SDR desde conectividad para que aparezca aquí.', riskValue: 'Riesgo {score}', visibleValue: '{count} visibles ahora', observedValue: '{count} observados · 24 h', restrictedShort: 'Restringido', hardwareUnknown: 'Hardware no informado',
+      stationEyebrow: 'Estado de la estación', stationTitle: 'Ubicación y hardware', latitude: 'Latitud', longitude: 'Longitud', altitude: 'Altitud', lastContact: 'Último contacto', hardware: 'Hardware SDR', integrity: 'Estado de integridad', riskFactors: 'Factores de riesgo activos', noRiskFactors: 'No hay factores de riesgo activos en las evidencias cargadas.',
+      riskFactor: { agentAttention: 'Postura de confianza o hardware del agente', agentOffline: 'El agente no ha informado recientemente', criticalIncident: 'Incidente crítico', highIncident: 'Incidente de severidad alta', rfAnomaly: 'Anomalía RF grave · 24 h' },
+      visibilityEyebrow: 'Visibilidad orbital', visibilityTitle: 'Satélites visibles ahora', noVisible: 'Ningún satélite monitorizado está actualmente sobre el horizonte local.', visibilityMethod: 'La visibilidad se calcula con las coordenadas de la estación y las posiciones propagadas actuales de los satélites. Una elevación igual o superior a 0° se considera visible.', restricted: 'Esta fuente de datos no está disponible para tu rol.',
+      observedEyebrow: 'Observaciones RF', observedTitle: 'Satélites observados · 24 h', noObserved: 'No se han recibido observaciones RF etiquetadas con satélite desde esta estación en las últimas 24 horas.', securityEyebrow: 'Postura de seguridad', securityTitle: 'Evidencia correlacionada de la estación', rfAnomaly: 'Anomalía RF', noSecurityEvidence: 'No hay incidentes activos ni anomalías RF recientes correlacionadas con esta estación.',
+      rfEyebrow: 'Actividad de señal', rfTitle: 'Capturas RF recientes · 24 h', noRf: 'No se han recibido capturas RF desde esta estación en las últimas 24 horas.', frequency: 'Frecuencia', signal: 'Señal', satellite: 'Satélite', captured: 'Capturada',
+    },
+  },
+  fr: {
+    tab: 'Stations sol',
+    copy: {
+      eyebrow: 'Opérations du segment sol', title: 'Opérations des stations sol', description: 'Posture opérationnelle des stations SDR configurées, visibilité actuelle des satellites, activité RF et preuves de sécurité corrélées.', manageStations: 'Gérer la configuration des stations',
+      back: 'Retour aux stations sol', detailEyebrow: 'Profil de station sol', detailDescription: 'Contexte opérationnel et de sécurité actuel pour ce point de terminaison SDR de station sol.', openRf: 'Ouvrir la détection RF', openIncidents: 'Ouvrir les incidents', openFleet: 'Ouvrir la flotte SDR',
+      metric: { configured: 'Stations configurées', online: 'Stations en ligne', attention: 'Attention requise', offline: 'Stations hors ligne', visible: 'Satellites visibles maintenant', observed: 'Observés · 24 h', incidents: 'Incidents ouverts', anomalies: 'Anomalies RF · 24 h', status: 'État de la station', risk: 'Score de risque' },
+      state: { online: 'En ligne', attention: 'Attention', offline: 'Hors ligne' }, filterLabel: 'Filtrer les stations sol', filter: { all: 'Toutes les stations', online: 'En ligne', attention: 'Attention', offline: 'Hors ligne' }, search: 'Rechercher un agent de station…', noMatches: 'Aucune station sol ne correspond aux filtres actuels.',
+      empty: 'Aucune station sol n’est configurée.', emptyHint: 'Attribuez des coordonnées de confiance à un agent SDR depuis la connectivité pour le rendre disponible ici.', riskValue: 'Risque {score}', visibleValue: '{count} visibles maintenant', observedValue: '{count} observés · 24 h', restrictedShort: 'Restreint', hardwareUnknown: 'Matériel non signalé',
+      stationEyebrow: 'État de la station', stationTitle: 'Localisation et matériel', latitude: 'Latitude', longitude: 'Longitude', altitude: 'Altitude', lastContact: 'Dernier contact', hardware: 'Matériel SDR', integrity: 'État d’intégrité', riskFactors: 'Facteurs de risque actifs', noRiskFactors: 'Aucun facteur de risque actif dans les preuves chargées.',
+      riskFactor: { agentAttention: 'Posture de confiance ou matérielle de l’agent', agentOffline: 'L’agent n’a pas communiqué récemment', criticalIncident: 'Incident critique', highIncident: 'Incident de sévérité élevée', rfAnomaly: 'Anomalie RF sévère · 24 h' },
+      visibilityEyebrow: 'Visibilité orbitale', visibilityTitle: 'Satellites visibles maintenant', noVisible: 'Aucun satellite suivi n’est actuellement au-dessus de l’horizon local.', visibilityMethod: 'La visibilité est calculée à partir des coordonnées de la station et des positions propagées actuelles des satellites. Une élévation supérieure ou égale à 0° est considérée comme visible.', restricted: 'Cette source de données n’est pas disponible pour votre rôle.',
+      observedEyebrow: 'Observations RF', observedTitle: 'Satellites observés · 24 h', noObserved: 'Aucune observation RF associée à un satellite n’a été reçue de cette station au cours des dernières 24 heures.', securityEyebrow: 'Posture de sécurité', securityTitle: 'Preuves corrélées de la station', rfAnomaly: 'Anomalie RF', noSecurityEvidence: 'Aucun incident actif ni anomalie RF récente n’est corrélé à cette station.',
+      rfEyebrow: 'Activité du signal', rfTitle: 'Captures RF récentes · 24 h', noRf: 'Aucune capture RF n’a été reçue de cette station au cours des dernières 24 heures.', frequency: 'Fréquence', signal: 'Signal', satellite: 'Satellite', captured: 'Capturée',
+    },
+  },
+  de: {
+    tab: 'Bodenstationen',
+    copy: {
+      eyebrow: 'Bodensegmentbetrieb', title: 'Bodenstationsbetrieb', description: 'Betriebslage konfigurierter SDR-Stationen, aktuelle Satellitensichtbarkeit, RF-Aktivität und korrelierte Sicherheitsnachweise.', manageStations: 'Stationskonfiguration verwalten',
+      back: 'Zurück zu Bodenstationen', detailEyebrow: 'Bodenstationsprofil', detailDescription: 'Aktueller Betriebs- und Sicherheitskontext für diesen SDR-Bodenstationsendpunkt.', openRf: 'RF-Erkennung öffnen', openIncidents: 'Vorfälle öffnen', openFleet: 'SDR-Flotte öffnen',
+      metric: { configured: 'Konfigurierte Stationen', online: 'Stationen online', attention: 'Aufmerksamkeit nötig', offline: 'Stationen offline', visible: 'Jetzt sichtbare Satelliten', observed: 'Beobachtet · 24 h', incidents: 'Offene Vorfälle', anomalies: 'RF-Anomalien · 24 h', status: 'Stationsstatus', risk: 'Risikowert' },
+      state: { online: 'Online', attention: 'Aufmerksamkeit', offline: 'Offline' }, filterLabel: 'Bodenstationen filtern', filter: { all: 'Alle Stationen', online: 'Online', attention: 'Aufmerksamkeit', offline: 'Offline' }, search: 'Stationsagent suchen…', noMatches: 'Keine Bodenstation entspricht den aktuellen Filtern.',
+      empty: 'Keine Bodenstationen sind konfiguriert.', emptyHint: 'Weisen Sie einem SDR-Agenten unter Konnektivität vertrauenswürdige Koordinaten zu, damit er hier verfügbar ist.', riskValue: 'Risiko {score}', visibleValue: '{count} jetzt sichtbar', observedValue: '{count} beobachtet · 24 h', restrictedShort: 'Eingeschränkt', hardwareUnknown: 'Hardware nicht gemeldet',
+      stationEyebrow: 'Stationsstatus', stationTitle: 'Standort und Hardware', latitude: 'Breitengrad', longitude: 'Längengrad', altitude: 'Höhe', lastContact: 'Letzter Kontakt', hardware: 'SDR-Hardware', integrity: 'Integritätsstatus', riskFactors: 'Aktive Risikofaktoren', noRiskFactors: 'Keine aktiven Risikofaktoren in den geladenen Nachweisen.',
+      riskFactor: { agentAttention: 'Vertrauens- oder Hardwarestatus des Agenten', agentOffline: 'Agent hat sich längere Zeit nicht gemeldet', criticalIncident: 'Kritischer Vorfall', highIncident: 'Vorfall mit hoher Schwere', rfAnomaly: 'Schwere RF-Anomalie · 24 h' },
+      visibilityEyebrow: 'Orbitale Sichtbarkeit', visibilityTitle: 'Jetzt sichtbare Satelliten', noVisible: 'Kein verfolgter Satellit befindet sich derzeit über dem lokalen Horizont.', visibilityMethod: 'Die Sichtbarkeit wird aus den Stationskoordinaten und den aktuellen propagierten Satellitenpositionen berechnet. Eine Elevation ab 0° gilt als sichtbar.', restricted: 'Diese Datenquelle ist für Ihre Rolle nicht verfügbar.',
+      observedEyebrow: 'RF-Beobachtungen', observedTitle: 'Beobachtete Satelliten · 24 h', noObserved: 'Von dieser Station wurden in den letzten 24 Stunden keine satellitenbezogenen RF-Beobachtungen empfangen.', securityEyebrow: 'Sicherheitslage', securityTitle: 'Korrelierte Stationsnachweise', rfAnomaly: 'RF-Anomalie', noSecurityEvidence: 'Mit dieser Station sind keine aktiven Vorfälle oder aktuellen RF-Anomalien korreliert.',
+      rfEyebrow: 'Signalaktivität', rfTitle: 'Aktuelle RF-Erfassungen · 24 h', noRf: 'Von dieser Station wurden in den letzten 24 Stunden keine RF-Erfassungen empfangen.', frequency: 'Frequenz', signal: 'Signal', satellite: 'Satellit', captured: 'Erfasst',
+    },
+  },
+}
+for (const [language, extra] of Object.entries(groundStationTranslations)) {
+  translations[language].tabs.stations = extra.tab
+  translations[language].groundStations = extra.copy
+}
+
+const navigationShellTranslations = {
+  en: {
+    workspace: 'Workspace', home: 'Open mission overview', close: 'Close navigation', collapse: 'Collapse sidebar', expand: 'Expand sidebar',
+    sections: { overview: 'Overview', mission: 'Mission', security: 'Security', rf: 'RF operations', platform: 'Platform', preferences: 'Preferences' },
+    items: { overview: 'Mission overview', rfDetection: 'RF detection', sdrFleet: 'SDR fleet', accessControl: 'Access control' },
+  },
+  es: {
+    workspace: 'Espacio de trabajo', home: 'Abrir resumen de misión', close: 'Cerrar navegación', collapse: 'Plegar barra lateral', expand: 'Expandir barra lateral',
+    sections: { overview: 'Resumen', mission: 'Misión', security: 'Seguridad', rf: 'Operaciones RF', platform: 'Plataforma', preferences: 'Preferencias' },
+    items: { overview: 'Resumen de misión', rfDetection: 'Detección RF', sdrFleet: 'Flota SDR', accessControl: 'Control de acceso' },
+  },
+  fr: {
+    workspace: 'Espace de travail', home: 'Ouvrir la vue mission', close: 'Fermer la navigation', collapse: 'Réduire la barre latérale', expand: 'Déployer la barre latérale',
+    sections: { overview: 'Vue générale', mission: 'Mission', security: 'Sécurité', rf: 'Opérations RF', platform: 'Plateforme', preferences: 'Préférences' },
+    items: { overview: 'Vue mission', rfDetection: 'Détection RF', sdrFleet: 'Flotte SDR', accessControl: 'Contrôle d’accès' },
+  },
+  de: {
+    workspace: 'Arbeitsbereich', home: 'Missionsübersicht öffnen', close: 'Navigation schließen', collapse: 'Seitenleiste einklappen', expand: 'Seitenleiste ausklappen',
+    sections: { overview: 'Übersicht', mission: 'Mission', security: 'Sicherheit', rf: 'RF-Betrieb', platform: 'Plattform', preferences: 'Einstellungen' },
+    items: { overview: 'Missionsübersicht', rfDetection: 'RF-Erkennung', sdrFleet: 'SDR-Flotte', accessControl: 'Zugriffskontrolle' },
+  },
+}
+for (const [language, extra] of Object.entries(navigationShellTranslations)) Object.assign(translations[language].navigation, extra)
+
+const commandPaletteTranslations = {
+  en: {
+    open: 'Open command palette', trigger: 'Search or jump', title: 'Command palette', inputLabel: 'Search or jump to a destination', placeholder: 'Search Lyrahcle or jump to a section…', results: 'Command palette results', navigation: 'Navigation', searchResults: 'Search results', jump: 'Jump', profile: 'Profile', startTyping: 'Choose a destination or start typing to search Lyrahcle.', noResults: 'No matching destinations or records found.', move: 'Move', select: 'Select', close: 'Close',
+  },
+  es: {
+    open: 'Abrir paleta de comandos', trigger: 'Buscar o ir', title: 'Paleta de comandos', inputLabel: 'Buscar o ir a un destino', placeholder: 'Buscar en Lyrahcle o ir a una sección…', results: 'Resultados de la paleta de comandos', navigation: 'Navegación', searchResults: 'Resultados de búsqueda', jump: 'Ir', profile: 'Perfil', startTyping: 'Elige un destino o empieza a escribir para buscar en Lyrahcle.', noResults: 'No se encontraron destinos ni registros coincidentes.', move: 'Mover', select: 'Seleccionar', close: 'Cerrar',
+  },
+  fr: {
+    open: 'Ouvrir la palette de commandes', trigger: 'Rechercher ou accéder', title: 'Palette de commandes', inputLabel: 'Rechercher ou accéder à une destination', placeholder: 'Rechercher dans Lyrahcle ou accéder à une section…', results: 'Résultats de la palette de commandes', navigation: 'Navigation', searchResults: 'Résultats de recherche', jump: 'Accéder', profile: 'Profil', startTyping: 'Choisissez une destination ou commencez à saisir pour rechercher dans Lyrahcle.', noResults: 'Aucune destination ni donnée correspondante trouvée.', move: 'Déplacer', select: 'Sélectionner', close: 'Fermer',
+  },
+  de: {
+    open: 'Befehlspalette öffnen', trigger: 'Suchen oder wechseln', title: 'Befehlspalette', inputLabel: 'Suchen oder zu einem Ziel wechseln', placeholder: 'Lyrahcle durchsuchen oder zu einem Bereich wechseln…', results: 'Ergebnisse der Befehlspalette', navigation: 'Navigation', searchResults: 'Suchergebnisse', jump: 'Wechseln', profile: 'Profil', startTyping: 'Wählen Sie ein Ziel oder beginnen Sie mit der Eingabe, um Lyrahcle zu durchsuchen.', noResults: 'Keine passenden Ziele oder Datensätze gefunden.', move: 'Bewegen', select: 'Auswählen', close: 'Schließen',
+  },
+}
+for (const [language, extra] of Object.entries(commandPaletteTranslations)) translations[language].commandPalette = extra

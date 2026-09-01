@@ -9,9 +9,6 @@ import (
 	"github.com/mlko01/lyrahcle/apps/backend/internal/secretprovider"
 )
 
-// loadSecretProvider defaults to the environment-variable provider when
-// SECRET_PROVIDER is unset, which is the safe out-of-the-box behavior for
-// local development and CI.
 func TestLoadSecretProvider_DefaultsToEnv(t *testing.T) {
 	t.Setenv("SECRET_PROVIDER", "")
 
@@ -25,9 +22,6 @@ func TestLoadSecretProvider_DefaultsToEnv(t *testing.T) {
 	}
 }
 
-// SECRET_PROVIDER=file with SECRET_FILE_DIR set must select a FileProvider
-// pointed at that directory, and must not touch the network or crash the
-// process before Load() gets a chance to run its own production health gate.
 func TestLoadSecretProvider_FileMode(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("SECRET_PROVIDER", "file")
@@ -47,10 +41,6 @@ func TestLoadSecretProvider_FileMode(t *testing.T) {
 	}
 }
 
-// SECRET_PROVIDER=remote outside of production must not perform the
-// blocking health check that Load() enforces only when production is true;
-// it should simply construct the RemoteProvider from the endpoint and an
-// inline token.
 func TestLoadSecretProvider_RemoteMode_NonProduction_SkipsHealthCheck(t *testing.T) {
 	t.Setenv("SECRET_PROVIDER", "remote")
 	t.Setenv("SECRET_PROVIDER_ENDPOINT", "https://vault.internal.example")
@@ -71,8 +61,6 @@ func TestLoadSecretProvider_RemoteMode_NonProduction_SkipsHealthCheck(t *testing
 	}
 }
 
-// When SECRET_PROVIDER_TOKEN is empty but SECRET_PROVIDER_TOKEN_FILE points
-// at a readable file, the token must be read from disk and trimmed.
 func TestLoadSecretProvider_RemoteMode_ReadsTokenFromFile(t *testing.T) {
 	dir := t.TempDir()
 	tokenPath := filepath.Join(dir, "token")
@@ -96,8 +84,6 @@ func TestLoadSecretProvider_RemoteMode_ReadsTokenFromFile(t *testing.T) {
 	}
 }
 
-// getSecret must fall back to the caller-supplied default when the provider
-// reports the key as not found, without treating that as a fatal error.
 func TestGetSecret_FallsBackOnNotFound(t *testing.T) {
 	got := getSecret(secretprovider.EnvProvider{}, "LYRAHCLE_CONFIG_TEST_MISSING_KEY", "fallback-value")
 	if got != "fallback-value" {
@@ -105,8 +91,6 @@ func TestGetSecret_FallsBackOnNotFound(t *testing.T) {
 	}
 }
 
-// getSecret must return the provider's value untouched when present, taking
-// priority over the fallback.
 func TestGetSecret_ReturnsProviderValueWhenPresent(t *testing.T) {
 	t.Setenv("LYRAHCLE_CONFIG_TEST_PRESENT_KEY", "provider-value")
 

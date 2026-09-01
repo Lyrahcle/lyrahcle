@@ -16,16 +16,16 @@ export default function AuditLogPanel({ page, onPrev, onNext }) {
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b border-lyra-borderSoft">
-              <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+              <th scope="col" className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">
                 {t('auditLog.when')}
               </th>
-              <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+              <th scope="col" className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">
                 {t('auditLog.action')}
               </th>
-              <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+              <th scope="col" className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">
                 {t('auditLog.actor')}
               </th>
-              <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+              <th scope="col" className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">
                 {t('auditLog.ip')}
               </th>
             </tr>

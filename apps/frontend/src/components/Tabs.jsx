@@ -5,7 +5,7 @@ export default function Tabs({ tabs, active, onChange }) {
         <button
           key={tab.id}
           onClick={() => onChange(tab.id)}
-          className={`relative rounded-sm px-5 py-3 font-mono text-xs uppercase tracking-wider outline-none transition-colors focus-visible:ring-1 focus-visible:ring-lyra-gold ${
+          className={`relative rounded-sm px-5 py-3 font-mono text-xs tracking-wider outline-none transition-colors focus-visible:ring-1 focus-visible:ring-lyra-gold ${
             active === tab.id
               ? 'text-lyra-goldBright'
               : 'text-lyra-mutedDim hover:text-lyra-muted'

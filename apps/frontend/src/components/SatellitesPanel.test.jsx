@@ -121,7 +121,6 @@ describe('SatellitesPanel sorting', () => {
   it('sorts by altitude numerically, not lexicographically', () => {
     render(<I18nProvider><SatellitesPanel satellites={[satellite, satelliteB]} /></I18nProvider>)
     fireEvent.click(screen.getByRole('button', { name: /sort by altitude/i }))
-    // 418.7 km < 705 km
     expect(namesInOrder()).toEqual(['ISS', 'AQUA'])
   })
 
@@ -137,9 +136,9 @@ describe('SatellitesPanel sorting', () => {
   it('switching sort column resets to ascending order', () => {
     render(<I18nProvider><SatellitesPanel satellites={[satellite, satelliteB]} /></I18nProvider>)
     fireEvent.click(screen.getByRole('button', { name: /sort by satellite/i }))
-    fireEvent.click(screen.getByRole('button', { name: /sort by satellite/i })) // now descending: ISS, AQUA
+    fireEvent.click(screen.getByRole('button', { name: /sort by satellite/i }))
     fireEvent.click(screen.getByRole('button', { name: /sort by norad id/i }))
-    expect(namesInOrder()).toEqual(['ISS', 'AQUA']) // 25544 < 43700, ascending
+    expect(namesInOrder()).toEqual(['ISS', 'AQUA'])
     expect(screen.getByRole('columnheader', { name: /norad id/i })).toHaveAttribute('aria-sort', 'ascending')
   })
 })

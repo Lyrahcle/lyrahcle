@@ -47,8 +47,6 @@ func NewSigner(provider keyprovider.Provider) (*Signer, error) {
 	return &Signer{provider: provider}, nil
 }
 
-// LoadSigner preserves the existing file-based configuration while routing all
-// private-key use through the KeyProvider abstraction.
 func LoadSigner(path string) (*Signer, error) {
 	provider, err := keyprovider.NewLocalProvider(path)
 	if err != nil {

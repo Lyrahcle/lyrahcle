@@ -89,7 +89,7 @@ function App() {
         />
         <main className="mx-auto flex min-h-[70vh] max-w-3xl items-center justify-center px-6 text-center">
           <div>
-            <p className="font-mono text-xs uppercase tracking-[0.2em] text-lyra-gold">Lyrahcle</p>
+            <p className="font-mono text-xs tracking-[0.2em] text-lyra-gold">Lyrahcle</p>
             <p className="mt-3 text-sm text-lyra-muted">{permissionsError ? t('httpErrors.accessContextFailed') : t('httpErrors.loadingAccessContext')}</p>
           </div>
         </main>

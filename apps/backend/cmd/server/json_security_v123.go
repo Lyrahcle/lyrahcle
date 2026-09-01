@@ -7,9 +7,6 @@ import (
 	"net/http"
 )
 
-// decodeStrictJSON decodes exactly one JSON object/value from the request body.
-// Unknown object fields and trailing JSON/garbage are rejected so security-
-// sensitive handlers do not silently accept ambiguous payloads.
 func decodeStrictJSON(r *http.Request, dst interface{}) error {
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()

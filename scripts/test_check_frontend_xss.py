@@ -26,10 +26,6 @@ class FrontendXSSContractTests(unittest.TestCase):
         self.assertNotEqual(r.returncode, 0)
 
     def test_duplicate_rel_attribute_fails(self):
-        # Regression test: a duplicate `rel` prop is valid JS (the object
-        # literal's last key wins), so only the last value is ever applied
-        # at runtime -- this previously let a `noopener`-bearing but
-        # shadowed first `rel` mask a real missing-noopener bug.
         r = self.run_scan({
             "A.jsx": '<a href="https://example.com" target="_blank" rel="noopener noreferrer" rel="noreferrer">x</a>'
         })

@@ -1,6 +1,7 @@
 import { Activity, Clock3, Orbit, RadioTower, ShieldAlert, ShieldCheck, TriangleAlert } from 'lucide-react'
 import StatCard from './StatCard.jsx'
 import { useI18n } from '../lib/I18nContext.jsx'
+import { calculateMissionRisk } from '../lib/risk.js'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 const AGENT_ONLINE_WINDOW_MS = 5 * 60 * 1000
@@ -173,15 +174,24 @@ export default function MissionSecurityOperationsDashboard({
   })
 
   const dataSources = [access.incidents, access.rf, access.agents, access.alerts].filter(Boolean).length
+  const missionRisk = calculateMissionRisk({
+    satellites,
+    incidents: access.incidents ? incidentItems : [],
+    anomalies: access.rf ? (anomalies ?? []) : [],
+    agents: access.agents ? agents : [],
+    alerts: access.alerts ? (assetAlerts?.items ?? []) : [],
+    backendStatus,
+    now,
+  })
 
   return (
     <section aria-labelledby="mission-security-heading" className="grid gap-5">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-[10px] uppercase tracking-[0.18em] text-lyra-mutedDim">{t('missionSecurity.eyebrow')}</p>
+          <p className="text-[10px] tracking-[0.18em] text-lyra-mutedDim">{t('missionSecurity.eyebrow')}</p>
           <div className="mt-1 flex flex-wrap items-center gap-3">
             <h1 id="mission-security-heading" className="font-display text-2xl font-medium text-lyra-text">{t('missionSecurity.title')}</h1>
-            <span className={`inline-flex rounded-full border px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.14em] ${stateAccent(posture)}`}>
+            <span className={`inline-flex rounded-full border px-2.5 py-1 font-mono text-[10px] tracking-[0.14em] ${stateAccent(posture)}`}>
               {t(`missionSecurity.posture.${posture}`)}
             </span>
           </div>
@@ -197,7 +207,8 @@ export default function MissionSecurityOperationsDashboard({
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-7">
+        <StatCard icon={ShieldCheck} label={t('missionSecurity.metric.riskScore')} value={`${missionRisk.score}/100`} accent={missionRisk.level === 'critical' ? 'bad' : missionRisk.level === 'elevated' ? 'warn' : 'good'} />
         <StatCard icon={Orbit} label={t('missionSecurity.metric.satellites')} value={satellites.length} />
         <StatCard icon={ShieldAlert} label={t('missionSecurity.metric.criticalIncidents')} value={access.incidents ? criticalIncidents : '—'} accent={criticalIncidents ? 'bad' : 'good'} />
         <StatCard icon={TriangleAlert} label={t('missionSecurity.metric.rfAnomalies')} value={access.rf ? recentAnomalies.length : '—'} accent={severeAnomalies ? 'bad' : recentAnomalies.length ? 'warn' : 'good'} />
@@ -210,7 +221,7 @@ export default function MissionSecurityOperationsDashboard({
         <div className="rounded-lg border border-lyra-border bg-lyra-panel/50 p-5">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-[10px] uppercase tracking-[0.15em] text-lyra-mutedDim">{t('missionSecurity.queueEyebrow')}</p>
+              <p className="text-[10px] tracking-[0.15em] text-lyra-mutedDim">{t('missionSecurity.queueEyebrow')}</p>
               <h2 className="mt-1 font-display text-base font-medium text-lyra-text">{t('missionSecurity.queueTitle')}</h2>
             </div>
             <TriangleAlert className={`h-4 w-4 ${queue.length ? 'text-lyra-warn' : 'text-lyra-good'}`} aria-hidden="true" />
@@ -229,7 +240,7 @@ export default function MissionSecurityOperationsDashboard({
                       <span className="block truncate text-sm text-lyra-text">{item.label}</span>
                       <span className="mt-0.5 block truncate text-[11px] text-lyra-mutedDim">{item.detail}</span>
                     </span>
-                    <span className={`shrink-0 rounded border px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider ${severityClass(item.severity)}`}>{String(item.severity || 'info').toUpperCase()}</span>
+                    <span className={`shrink-0 rounded border px-2 py-0.5 font-mono text-[9px] tracking-wider ${severityClass(item.severity)}`}>{String(item.severity || 'info').toUpperCase()}</span>
                   </button>
                 </li>
               ))}
@@ -240,7 +251,7 @@ export default function MissionSecurityOperationsDashboard({
         <div className="rounded-lg border border-lyra-border bg-lyra-panel/50 p-5">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-[10px] uppercase tracking-[0.15em] text-lyra-mutedDim">{t('missionSecurity.activityEyebrow')}</p>
+              <p className="text-[10px] tracking-[0.15em] text-lyra-mutedDim">{t('missionSecurity.activityEyebrow')}</p>
               <h2 className="mt-1 font-display text-base font-medium text-lyra-text">{t('missionSecurity.activityTitle')}</h2>
             </div>
             <Activity className="h-4 w-4 text-lyra-mutedDim" aria-hidden="true" />
@@ -256,7 +267,7 @@ export default function MissionSecurityOperationsDashboard({
                     <span className="min-w-0">
                       <span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
                         <span className="truncate text-sm text-lyra-text">{item.title}</span>
-                        <span className="font-mono text-[9px] uppercase tracking-wider text-lyra-mutedDim">{t(`missionSecurity.activityKind.${item.kind}`)}</span>
+                        <span className="font-mono text-[9px] tracking-wider text-lyra-mutedDim">{t(`missionSecurity.activityKind.${item.kind}`)}</span>
                       </span>
                       {item.detail && <span className="mt-0.5 block truncate text-[11px] text-lyra-mutedDim">{item.detail}</span>}
                     </span>

@@ -564,10 +564,6 @@ func incidentsCacheKey(orgID uuid.UUID, limit, offset int, filter store.Incident
 		orgID, limit, offset, filter.Status, filter.Severity, filter.AgentID, assignedTo, satelliteID)
 }
 
-// incidentsCacheKeyDefault is the key for the unfiltered first page, the
-// view every dashboard poll requests by default. Mutations invalidate only
-// this key; any other filter/offset combination relies on the short TTL to
-// bound staleness instead of being invalidated precisely.
 func incidentsCacheKeyDefault(orgID uuid.UUID) string {
 	return incidentsCacheKey(orgID, 50, 0, store.IncidentFilter{})
 }
@@ -735,7 +731,6 @@ func correlateRFDetectionRules(ctx context.Context, rules *store.DetectionRuleSt
 			continue
 		}
 		if match.ID == uuid.Nil {
-			// A different recent anomaly consumed this rule's cooldown budget.
 			continue
 		}
 		matched = append(matched, matchedRule{rule: rule, match: match})

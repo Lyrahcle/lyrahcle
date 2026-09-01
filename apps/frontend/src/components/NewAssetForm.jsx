@@ -57,7 +57,7 @@ export default function NewAssetForm({ onCreated, programs: providedPrograms = n
     return (
       <button
         onClick={() => setOpen(true)}
-        className="rounded border border-lyra-border px-3 py-1.5 font-mono text-xs uppercase tracking-wider text-lyra-muted outline-none transition-colors hover:border-lyra-gold/40 hover:text-lyra-goldBright focus-visible:ring-1 focus-visible:ring-lyra-gold"
+        className="rounded border border-lyra-border px-3 py-1.5 font-mono text-xs tracking-wider text-lyra-muted outline-none transition-colors hover:border-lyra-gold/40 hover:text-lyra-goldBright focus-visible:ring-1 focus-visible:ring-lyra-gold"
       >
         + New asset
       </button>
@@ -68,7 +68,7 @@ export default function NewAssetForm({ onCreated, programs: providedPrograms = n
     <form onSubmit={handleSubmit} className="mb-6 rounded border border-lyra-borderSoft bg-lyra-bgSoft/30 p-4">
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
-          <label htmlFor="asset-program" className="mb-1 block text-[11px] uppercase tracking-wider text-lyra-mutedDim">
+          <label htmlFor="asset-program" className="mb-1 block text-[11px] tracking-wider text-lyra-mutedDim">
             Program
           </label>
           <select
@@ -101,7 +101,7 @@ export default function NewAssetForm({ onCreated, programs: providedPrograms = n
         </div>
 
         <div>
-          <label htmlFor="asset-kind" className="mb-1 block text-[11px] uppercase tracking-wider text-lyra-mutedDim">
+          <label htmlFor="asset-kind" className="mb-1 block text-[11px] tracking-wider text-lyra-mutedDim">
             Kind
           </label>
           <select
@@ -119,7 +119,7 @@ export default function NewAssetForm({ onCreated, programs: providedPrograms = n
         </div>
 
         <div className="sm:col-span-2">
-          <label htmlFor="asset-value" className="mb-1 block text-[11px] uppercase tracking-wider text-lyra-mutedDim">
+          <label htmlFor="asset-value" className="mb-1 block text-[11px] tracking-wider text-lyra-mutedDim">
             Value
           </label>
           <input

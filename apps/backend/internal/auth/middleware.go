@@ -115,9 +115,6 @@ func hasPresentedAgentCredential(r *http.Request) bool {
 	return (r.TLS != nil && len(r.TLS.PeerCertificates) > 0) || r.Header.Get("X-Agent-Key") != ""
 }
 
-// RequireAgentCredential authenticates machine-only endpoints with either an mTLS
-// certificate or an agent API key. If a certificate is presented, it always takes
-// precedence; a revoked certificate must never downgrade to an API key.
 func RequireAgentCredential(keyLookup AgentKeyLookup, certificateLookup AgentCertificateLookup) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

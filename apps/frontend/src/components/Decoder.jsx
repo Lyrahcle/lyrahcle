@@ -41,7 +41,7 @@ export default function Decoder() {
               key={p.id}
               type="button"
               onClick={() => setProtocol(p.id)}
-              className={`rounded border px-3 py-1.5 font-mono text-xs uppercase tracking-wider outline-none transition-colors focus-visible:ring-1 focus-visible:ring-lyra-gold ${
+              className={`rounded border px-3 py-1.5 font-mono text-xs tracking-wider outline-none transition-colors focus-visible:ring-1 focus-visible:ring-lyra-gold ${
                 protocol === p.id
                   ? 'border-lyra-gold/50 bg-lyra-gold/10 text-lyra-goldBright'
                   : 'border-lyra-border text-lyra-mutedDim hover:text-lyra-muted'
@@ -53,7 +53,7 @@ export default function Decoder() {
         </div>
 
         <div>
-          <label htmlFor="hex-input" className="mb-1.5 block text-xs uppercase tracking-wider text-lyra-mutedDim">
+          <label htmlFor="hex-input" className="mb-1.5 block text-xs tracking-wider text-lyra-mutedDim">
             Hex frame
           </label>
           <textarea
@@ -88,7 +88,7 @@ export default function Decoder() {
             <tbody>
               {Object.entries(result).map(([key, value]) => (
                 <tr key={key} className="border-b border-lyra-borderSoft/60 last:border-0">
-                  <td className="w-1/3 bg-lyra-bgSoft/40 px-3 py-2 font-mono text-xs uppercase tracking-wide text-lyra-mutedDim">
+                  <td className="w-1/3 bg-lyra-bgSoft/40 px-3 py-2 font-mono text-xs tracking-wide text-lyra-mutedDim">
                     {key}
                   </td>
                   <td className="px-3 py-2 font-mono text-xs text-lyra-text">{String(value)}</td>

@@ -41,7 +41,7 @@ export default function NewSatelliteForm({ onCreated }) {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="mb-6 flex items-center gap-2 rounded border border-lyra-border px-3 py-1.5 font-mono text-xs uppercase tracking-wider text-lyra-muted outline-none transition-colors hover:border-lyra-gold/40 hover:text-lyra-goldBright focus-visible:ring-1 focus-visible:ring-lyra-gold"
+        className="mb-6 flex items-center gap-2 rounded border border-lyra-border px-3 py-1.5 font-mono text-xs tracking-wider text-lyra-muted outline-none transition-colors hover:border-lyra-gold/40 hover:text-lyra-goldBright focus-visible:ring-1 focus-visible:ring-lyra-gold"
       >
         <Rocket className="h-3.5 w-3.5" strokeWidth={1.75} />
         {t('satelliteForm.registerButton')}
@@ -58,7 +58,7 @@ export default function NewSatelliteForm({ onCreated }) {
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <label htmlFor="sat-norad-id" className="mb-1.5 block text-xs uppercase tracking-wider text-lyra-mutedDim">
+          <label htmlFor="sat-norad-id" className="mb-1.5 block text-xs tracking-wider text-lyra-mutedDim">
             {t('satelliteForm.noradId')}
           </label>
           <input
@@ -72,7 +72,7 @@ export default function NewSatelliteForm({ onCreated }) {
           />
         </div>
         <div>
-          <label htmlFor="sat-name" className="mb-1.5 block text-xs uppercase tracking-wider text-lyra-mutedDim">
+          <label htmlFor="sat-name" className="mb-1.5 block text-xs tracking-wider text-lyra-mutedDim">
             {t('satelliteForm.name')}
           </label>
           <input
@@ -89,7 +89,7 @@ export default function NewSatelliteForm({ onCreated }) {
           <p className="mb-1.5 text-[11px] text-lyra-mutedDim">{t('satelliteForm.tleHint')}</p>
           <div className="space-y-2 rounded border border-lyra-borderSoft bg-lyra-bgSoft/40 p-3">
             <div>
-              <label htmlFor="sat-tle1" className="mb-1 block text-[10px] uppercase tracking-wider text-lyra-mutedDim">
+              <label htmlFor="sat-tle1" className="mb-1 block text-[10px] tracking-wider text-lyra-mutedDim">
                 {t('satelliteForm.tle1')}
               </label>
               <input
@@ -102,7 +102,7 @@ export default function NewSatelliteForm({ onCreated }) {
               />
             </div>
             <div>
-              <label htmlFor="sat-tle2" className="mb-1 block text-[10px] uppercase tracking-wider text-lyra-mutedDim">
+              <label htmlFor="sat-tle2" className="mb-1 block text-[10px] tracking-wider text-lyra-mutedDim">
                 {t('satelliteForm.tle2')}
               </label>
               <input

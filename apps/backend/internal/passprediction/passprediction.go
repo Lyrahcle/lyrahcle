@@ -165,8 +165,6 @@ func findPeak(station orbitalcontext.Station, line1, line2 string, start, end ti
 		return start, elevation, err
 	}
 
-	// Elevation over a single pass is effectively unimodal. Ternary refinement
-	// avoids coupling peak accuracy to the coarse horizon scan step.
 	low, high := start, end
 	for high.Sub(low) > 2*time.Second {
 		span := high.Sub(low)

@@ -11,9 +11,6 @@ import pathlib
 import re
 import sys
 
-# Matches an actual IaC apply invocation ("terraform apply", "tofu apply",
-# "$IAC apply", ... -auto-approve), not English prose that happens to
-# contain the word "apply" (e.g. "review the plan, then apply the change").
 APPLY_COMMAND_RE = re.compile(r"(?:terraform|tofu|\$IAC)\s+apply\b", re.IGNORECASE)
 
 ROOT = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else ".").resolve()

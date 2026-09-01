@@ -17,8 +17,8 @@ describe('routeTabs', () => {
   })
 
   it('reads a known tab id from the hash', () => {
-    window.location.hash = '#/admin'
-    expect(getTabFromLocation()).toBe('admin')
+    window.location.hash = '#/stations'
+    expect(getTabFromLocation()).toBe('stations')
   })
 
   it('writes a valid tab id to the hash', () => {

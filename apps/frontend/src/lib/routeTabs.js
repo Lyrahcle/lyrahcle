@@ -1,12 +1,9 @@
-// Syncs the dashboard's active section with the URL hash so sections are
-// deep-linkable, bookmarkable, and reachable via browser back/forward.
-// Deliberately hash-based (not History API paths) so no server-side SPA
-// fallback/rewrite rule is required in any deployment target.
 
 export const DEFAULT_TAB = 'orbital'
 
 const VALID_TABS = [
   'orbital',
+  'stations',
   'assets',
   'signal',
   'incidents',

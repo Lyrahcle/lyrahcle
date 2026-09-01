@@ -48,7 +48,7 @@ export default function ApiStatusBanner({ issue, onRetry, onDismiss }) {
               type="button"
               onClick={onRetry}
               disabled={retryDisabled}
-              className="rounded border border-lyra-gold/40 px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-lyra-goldBright disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded border border-lyra-gold/40 px-3 py-1.5 font-mono text-[11px] tracking-wider text-lyra-goldBright disabled:cursor-not-allowed disabled:opacity-50"
             >
               {retryDisabled ? t('httpErrors.retryIn', { seconds: remaining }) : t('httpErrors.retry')}
             </button>
@@ -56,7 +56,7 @@ export default function ApiStatusBanner({ issue, onRetry, onDismiss }) {
           <button
             type="button"
             onClick={onDismiss}
-            className="rounded border border-lyra-border px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-lyra-muted"
+            className="rounded border border-lyra-border px-3 py-1.5 font-mono text-[11px] tracking-wider text-lyra-muted"
           >
             {t('httpErrors.dismiss')}
           </button>

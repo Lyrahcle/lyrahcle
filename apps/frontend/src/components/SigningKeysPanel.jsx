@@ -145,7 +145,7 @@ export default function SigningKeysPanel() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-sm text-lyra-muted">{t('signingKeys.hint')}</p>
-          <p className="mt-1 font-mono text-[10px] uppercase text-lyra-mutedDim">
+          <p className="mt-1 font-mono text-[10px] text-lyra-mutedDim">
             {t('signingKeys.provider')}: {state?.provider || '—'}
           </p>
         </div>
@@ -162,7 +162,7 @@ export default function SigningKeysPanel() {
       {state?.provider_info?.external && (
         <section aria-label="External signing custody" className="rounded border border-lyra-ok/30 bg-lyra-ok/5 p-3 text-xs text-lyra-text">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="font-mono uppercase text-lyra-ok">External key custody</span>
+            <span className="font-mono text-lyra-ok">External key custody</span>
             <span className={state?.provider_health?.healthy ? 'text-lyra-ok' : 'text-lyra-bad'}>
               {state?.provider_health?.healthy ? 'Signer healthy' : 'Signer unavailable'}
             </span>
@@ -184,7 +184,7 @@ export default function SigningKeysPanel() {
         <form onSubmit={savePolicy} className="grid gap-3 rounded border border-lyra-borderSoft bg-lyra-bgSoft/20 p-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h3 className="font-mono text-xs uppercase tracking-wider text-lyra-goldBright">{t('signingKeys.rotationPolicy')}</h3>
+              <h3 className="font-mono text-xs tracking-wider text-lyra-goldBright">{t('signingKeys.rotationPolicy')}</h3>
               <p className="mt-1 text-xs text-lyra-muted">{t('signingKeys.rotationPolicyHint')}</p>
             </div>
             <button type="submit" disabled={busy} className="rounded border border-lyra-gold/50 px-3 py-1.5 text-xs text-lyra-goldBright disabled:opacity-50">{t('signingKeys.savePolicy')}</button>
@@ -194,15 +194,15 @@ export default function SigningKeysPanel() {
             {t('signingKeys.automaticPrepare')}
           </label>
           <div className="grid gap-3 md:grid-cols-3">
-            <label className="grid gap-1 text-[11px] uppercase tracking-wider text-lyra-mutedDim">
+            <label className="grid gap-1 text-[11px] tracking-wider text-lyra-mutedDim">
               {t('signingKeys.intervalDays')}
               <input aria-label={t('signingKeys.intervalDays')} type="number" min="1" max="365" value={policyDraft.intervalDays} onChange={(e) => setPolicyDraft((current) => ({ ...current, intervalDays: e.target.value }))} className="rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 font-mono text-sm normal-case text-lyra-text" />
             </label>
-            <label className="grid gap-1 text-[11px] uppercase tracking-wider text-lyra-mutedDim">
+            <label className="grid gap-1 text-[11px] tracking-wider text-lyra-mutedDim">
               {t('signingKeys.stagedAlertHours')}
               <input aria-label={t('signingKeys.stagedAlertHours')} type="number" min="1" max="720" value={policyDraft.stagedAlertHours} onChange={(e) => setPolicyDraft((current) => ({ ...current, stagedAlertHours: e.target.value }))} className="rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 font-mono text-sm normal-case text-lyra-text" />
             </label>
-            <label className="grid gap-1 text-[11px] uppercase tracking-wider text-lyra-mutedDim">
+            <label className="grid gap-1 text-[11px] tracking-wider text-lyra-mutedDim">
               {t('signingKeys.graceAlertHours')}
               <input aria-label={t('signingKeys.graceAlertHours')} type="number" min="1" max="720" value={policyDraft.graceAlertHours} onChange={(e) => setPolicyDraft((current) => ({ ...current, graceAlertHours: e.target.value }))} className="rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 font-mono text-sm normal-case text-lyra-text" />
             </label>
@@ -216,7 +216,7 @@ export default function SigningKeysPanel() {
 
       {state?.health?.warnings?.length > 0 && (
         <section aria-label={t('signingKeys.alerts')} className="grid gap-2">
-          <h3 className="font-mono text-xs uppercase tracking-wider text-lyra-warn">{t('signingKeys.alerts')}</h3>
+          <h3 className="font-mono text-xs tracking-wider text-lyra-warn">{t('signingKeys.alerts')}</h3>
           {state.health.warnings.map((warning, index) => (
             <div key={`${warning.code}-${warning.kid || index}`} className={`rounded border p-3 text-xs ${warning.severity === 'critical' ? 'border-lyra-bad/40 bg-lyra-bad/5 text-lyra-bad' : 'border-lyra-warn/40 bg-lyra-warn/5 text-lyra-warn'}`}>
               <span>{warningLabel(t, warning)}</span>
@@ -232,10 +232,10 @@ export default function SigningKeysPanel() {
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-lyra-borderSoft">
-                <th className="pb-2 text-[11px] uppercase text-lyra-mutedDim">KID</th>
-                <th className="pb-2 text-[11px] uppercase text-lyra-mutedDim">{t('signingKeys.status')}</th>
-                <th className="pb-2 text-[11px] uppercase text-lyra-mutedDim">{t('signingKeys.created')}</th>
-                <th className="pb-2 text-[11px] uppercase text-lyra-mutedDim">{t('signingKeys.graceUntil')}</th>
+                <th className="pb-2 text-[11px] text-lyra-mutedDim">KID</th>
+                <th className="pb-2 text-[11px] text-lyra-mutedDim">{t('signingKeys.status')}</th>
+                <th className="pb-2 text-[11px] text-lyra-mutedDim">{t('signingKeys.created')}</th>
+                <th className="pb-2 text-[11px] text-lyra-mutedDim">{t('signingKeys.graceUntil')}</th>
                 <th className="pb-2" />
               </tr>
             </thead>
@@ -243,7 +243,7 @@ export default function SigningKeysPanel() {
               {state.keys.map((key) => (
                 <tr key={key.kid} className="border-b border-lyra-borderSoft/60 last:border-0">
                   <td className="py-3 pr-4 font-mono text-[10px] text-lyra-goldBright" title={key.kid}>{shortKID(key.kid)}</td>
-                  <td className="py-3 pr-4"><span className={`rounded border px-2 py-1 font-mono text-[10px] uppercase ${statusClass(key.status)}`}>{key.status}</span></td>
+                  <td className="py-3 pr-4"><span className={`rounded border px-2 py-1 font-mono text-[10px] ${statusClass(key.status)}`}>{key.status}</span></td>
                   <td className="py-3 pr-4 text-xs text-lyra-muted">{key.created_at ? new Date(key.created_at).toLocaleString() : '—'}</td>
                   <td className="py-3 pr-4 text-xs text-lyra-muted">{key.grace_expires_at ? new Date(key.grace_expires_at).toLocaleString() : '—'}</td>
                   <td className="py-3 text-right">
@@ -265,7 +265,7 @@ export default function SigningKeysPanel() {
       )}
 
       {staged && (
-        <label className="grid max-w-xs gap-1 text-[11px] uppercase tracking-wider text-lyra-mutedDim">
+        <label className="grid max-w-xs gap-1 text-[11px] tracking-wider text-lyra-mutedDim">
           {t('signingKeys.graceHours')}
           <input type="number" min="1" max="720" value={graceHours} onChange={(e) => setGraceHours(e.target.value)} className="rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 font-mono text-sm normal-case text-lyra-text" />
         </label>
@@ -275,7 +275,7 @@ export default function SigningKeysPanel() {
         <section aria-label={t('signingKeys.publicKey')} className="rounded border border-lyra-gold/30 bg-lyra-gold/5 p-4">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h3 className="font-mono text-xs uppercase tracking-wider text-lyra-gold">{t('signingKeys.publicKey')}</h3>
+              <h3 className="font-mono text-xs tracking-wider text-lyra-gold">{t('signingKeys.publicKey')}</h3>
               <p className="mt-1 break-all font-mono text-[10px] text-lyra-muted">{publicKey.kid}</p>
             </div>
             <button type="button" onClick={() => setPublicKey(null)} className="text-xs text-lyra-muted hover:text-lyra-text">{t('common.close')}</button>

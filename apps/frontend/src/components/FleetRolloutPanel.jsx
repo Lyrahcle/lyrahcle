@@ -15,7 +15,7 @@ const STATUS_TONE = {
 }
 
 function StatusPill({ status }) {
-  return <span className={`inline-flex rounded border px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide ${STATUS_TONE[status] || STATUS_TONE.pending}`}>{String(status || 'unknown').replaceAll('_', ' ')}</span>
+  return <span className={`inline-flex rounded border px-2 py-0.5 font-mono text-[10px] tracking-wide ${STATUS_TONE[status] || STATUS_TONE.pending}`}>{String(status || 'unknown').replaceAll('_', ' ')}</span>
 }
 
 function rolloutStats(targets = []) {
@@ -68,7 +68,7 @@ function AckDeadlineStatus({ rollout, now }) {
   const secs = remaining % 60
   const expired = remaining === 0
   return <div className={`rounded border px-3 py-2 ${expired ? 'border-lyra-bad/40 bg-lyra-bad/10' : 'border-lyra-borderSoft bg-lyra-bg/30'}`} aria-label="ACK deadline">
-    <p className="text-[10px] uppercase tracking-[0.15em] text-lyra-mutedDim">ACK deadline</p>
+    <p className="text-[10px] tracking-[0.15em] text-lyra-mutedDim">ACK deadline</p>
     <p className={`mt-1 font-mono text-sm ${expired ? 'text-lyra-bad' : 'text-lyra-text'}`}>{expired ? 'Expired · fail closed' : `${mins}:${String(secs).padStart(2, '0')} remaining`}</p>
   </div>
 }
@@ -81,7 +81,7 @@ function SoakStatus({ rollout, now }) {
   const mins = Math.floor(remaining / 60)
   const secs = remaining % 60
   return <div className="rounded border border-lyra-borderSoft bg-lyra-bg/30 px-3 py-2" aria-label="Soak timer">
-    <p className="text-[10px] uppercase tracking-[0.15em] text-lyra-mutedDim">Soak timer</p>
+    <p className="text-[10px] tracking-[0.15em] text-lyra-mutedDim">Soak timer</p>
     <p className="mt-1 font-mono text-sm text-lyra-text">{remaining === 0 ? 'Ready to promote' : `${mins}:${String(secs).padStart(2, '0')} remaining`}</p>
   </div>
 }
@@ -112,7 +112,7 @@ export default function FleetRolloutPanel({ agents, satellites = [], canManage =
     setItems(list)
     if (selectId) setSelected(await fetchAgentRollout(selectId))
   }
-  useEffect(() => { reload().catch((e) => setError(e.message)) }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { reload().catch((e) => setError(e.message)) }, [])
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000)
     return () => window.clearInterval(timer)
@@ -151,7 +151,7 @@ export default function FleetRolloutPanel({ agents, satellites = [], canManage =
   const ackExpired = Boolean(selected && activeIssuedAt && now >= activeIssuedAt + Number(selected.ack_timeout_seconds || 900) * 1000)
 
   return <section className="mt-8 border-t border-lyra-borderSoft pt-5" aria-labelledby="fleet-rollout-title">
-    <div className="flex flex-wrap items-center justify-between gap-2"><div><h3 id="fleet-rollout-title" className="font-mono text-sm uppercase tracking-wider text-lyra-gold">Fleet staged rollouts</h3><p className="mt-1 text-sm text-lyra-muted">Issue signed configuration as operator-promoted canary batches. Promotion revalidates SDR hardware/integrity policy, blocks while a batch is unacknowledged, and fails closed on rejection or ACK timeout.</p></div></div>
+    <div className="flex flex-wrap items-center justify-between gap-2"><div><h3 id="fleet-rollout-title" className="font-mono text-sm tracking-wider text-lyra-gold">Fleet staged rollouts</h3><p className="mt-1 text-sm text-lyra-muted">Issue signed configuration as operator-promoted canary batches. Promotion revalidates SDR hardware/integrity policy, blocks while a batch is unacknowledged, and fails closed on rejection or ACK timeout.</p></div></div>
     {canManage && <form onSubmit={create} className="mt-4 grid gap-3 rounded border border-lyra-borderSoft p-3 md:grid-cols-3">
       <label className="grid gap-1 text-xs text-lyra-muted">Name<input value={name} onChange={(e)=>setName(e.target.value)} required maxLength={120} className="rounded border border-lyra-border bg-lyra-bgSoft px-2 py-2 text-lyra-text" /></label>
       <label className="grid gap-1 text-xs text-lyra-muted">Frequency Hz<input type="number" min="100000" max="6000000000" value={frequencyHz} onChange={(e)=>setFrequencyHz(e.target.value)} className="rounded border border-lyra-border bg-lyra-bgSoft px-2 py-2 text-lyra-text" /></label>
@@ -169,9 +169,9 @@ export default function FleetRolloutPanel({ agents, satellites = [], canManage =
       <TableScroll><table className="w-full text-sm"><thead><tr><th className="pb-2 text-left text-xs text-lyra-muted">Rollout</th><th className="pb-2 text-left text-xs text-lyra-muted">Status</th></tr></thead><tbody>{items.map((r)=><tr key={r.id} className="border-t border-lyra-borderSoft"><td className="py-2"><button onClick={()=>fetchAgentRollout(r.id).then(setSelected).catch((e)=>setError(e.message))} className="text-left text-lyra-goldBright hover:underline">{r.name}</button></td><td><StatusPill status={r.status} /></td></tr>)}</tbody></table></TableScroll>
       <div className="rounded border border-lyra-borderSoft p-3">{selected ? <><div className="flex flex-wrap items-start justify-between gap-3"><div><div className="flex flex-wrap items-center gap-2"><p className="font-medium text-lyra-text">{selected.name}</p><StatusPill status={selected.status} /></div><p className="mt-1 font-mono text-xs text-lyra-muted">batch {selected.batch_size} · reject &gt; {selected.failure_threshold_percent}% · soak {selected.soak_seconds}s · ACK {selected.ack_timeout_seconds || 900}s</p></div>{canManage && <div className="flex flex-wrap gap-2">{selected.status==='draft'&&<button disabled={busy} onClick={()=>act('start')} className="rounded border border-lyra-gold px-2 py-1 text-xs text-lyra-gold disabled:opacity-50">Start canary</button>}{selected.status==='running'&&<><button disabled={busy || thresholdExceeded || (stats.issued > 0 && !ackExpired)} title={ackExpired ? 'Acknowledgement deadline exceeded; this action will fail the rollout closed' : stats.issued > 0 ? 'Wait for the active batch to acknowledge' : thresholdExceeded ? 'Rejection threshold exceeded' : ''} onClick={()=>act('advance')} className="rounded border border-lyra-gold px-2 py-1 text-xs text-lyra-gold disabled:opacity-40">{ackExpired ? 'Fail overdue batch' : 'Advance batch'}</button><button disabled={busy} onClick={()=>act('pause')} className="rounded border border-lyra-border px-2 py-1 text-xs text-lyra-muted disabled:opacity-50">Pause</button></>}{selected.status==='paused'&&<button disabled={busy} onClick={()=>act('resume')} className="rounded border border-lyra-gold px-2 py-1 text-xs text-lyra-gold disabled:opacity-50">Resume</button>}{!['rolled_back','draft'].includes(selected.status)&&<button disabled={busy} onClick={()=>act('rollback')} className="rounded border border-lyra-bad px-2 py-1 text-xs text-lyra-bad disabled:opacity-50">Rollback</button>}</div>}</div>
         <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
-          <div className="rounded border border-lyra-borderSoft bg-lyra-bg/30 px-3 py-2"><p className="text-[10px] uppercase tracking-[0.15em] text-lyra-mutedDim">Progress</p><p className="mt-1 font-mono text-sm text-lyra-text">{stats.complete}/{stats.total} · {stats.progress}%</p></div>
-          <div className="rounded border border-lyra-borderSoft bg-lyra-bg/30 px-3 py-2"><p className="text-[10px] uppercase tracking-[0.15em] text-lyra-mutedDim">Current batch</p><p className="mt-1 font-mono text-sm text-lyra-text">{batch ? `#${batch}` : '—'}</p></div>
-          <div className={`rounded border px-3 py-2 ${thresholdExceeded ? 'border-lyra-bad/40 bg-lyra-bad/10' : 'border-lyra-borderSoft bg-lyra-bg/30'}`}><p className="text-[10px] uppercase tracking-[0.15em] text-lyra-mutedDim">Rejections</p><p className={`mt-1 font-mono text-sm ${thresholdExceeded ? 'text-lyra-bad' : 'text-lyra-text'}`}>{stats.rejected}/{decidedTargets || 0} · {rejectionRate}%</p></div>
+          <div className="rounded border border-lyra-borderSoft bg-lyra-bg/30 px-3 py-2"><p className="text-[10px] tracking-[0.15em] text-lyra-mutedDim">Progress</p><p className="mt-1 font-mono text-sm text-lyra-text">{stats.complete}/{stats.total} · {stats.progress}%</p></div>
+          <div className="rounded border border-lyra-borderSoft bg-lyra-bg/30 px-3 py-2"><p className="text-[10px] tracking-[0.15em] text-lyra-mutedDim">Current batch</p><p className="mt-1 font-mono text-sm text-lyra-text">{batch ? `#${batch}` : '—'}</p></div>
+          <div className={`rounded border px-3 py-2 ${thresholdExceeded ? 'border-lyra-bad/40 bg-lyra-bad/10' : 'border-lyra-borderSoft bg-lyra-bg/30'}`}><p className="text-[10px] tracking-[0.15em] text-lyra-mutedDim">Rejections</p><p className={`mt-1 font-mono text-sm ${thresholdExceeded ? 'text-lyra-bad' : 'text-lyra-text'}`}>{stats.rejected}/{decidedTargets || 0} · {rejectionRate}%</p></div>
           <SoakStatus rollout={selected} now={now} />
           <AckDeadlineStatus rollout={selected} now={now} />
         </div>

@@ -165,7 +165,7 @@ export default function RFHeatMap({ agents, readings }) {
     <figure>
       <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-xs uppercase tracking-[0.16em] text-lyra-mutedDim">{t('rfHeatMap.title')}</p>
+          <p className="text-xs tracking-[0.16em] text-lyra-mutedDim">{t('rfHeatMap.title')}</p>
           <p className="mt-1 text-xs text-lyra-muted">{t('rfHeatMap.subtitle')}</p>
         </div>
         <span className="font-mono text-xs text-lyra-mutedDim">

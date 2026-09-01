@@ -36,14 +36,6 @@ func New(client *redis.Client) *Locker {
 	return &Locker{client: client, prefix: defaultPrefix}
 }
 
-// Try acquires a distributed lease for a scheduled job. The unlock function
-// only releases a lease still owned by this process, so an expired lease that
-// has already been acquired by another replica cannot be deleted accidentally.
-// While held, the lease is renewed periodically so jobs that legitimately run
-// longer than their initial TTL do not become eligible on another replica.
-// Renewal and release are token-guarded, so a stale owner cannot extend or
-// remove a replacement lease. With no Redis client (development only), it runs
-// locally; production already requires Redis at startup.
 func (l *Locker) Try(ctx context.Context, job string, ttl time.Duration) (unlock func(context.Context) error, acquired bool, err error) {
 	if job == "" {
 		return nil, false, errors.New("joblock: empty job name")
@@ -112,9 +104,6 @@ func (l *Locker) renewUntilStopped(key, token string, ttl time.Duration, stop <-
 			if err == nil && result == 0 {
 				return
 			}
-			// A transient Redis error does not immediately abandon renewal.
-			// If the lease expires and another replica acquires it, the
-			// token-guarded script returns 0 on the next successful check.
 			timer.Reset(interval)
 		}
 	}

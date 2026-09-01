@@ -23,10 +23,8 @@ type Result struct {
 	Reasons              []string `json:"reasons"`
 }
 
-// Evaluate produces an explainable candidate assessment. It intentionally does
-// not mutate incident severity: domain-specific safety gates remain authoritative.
 func Evaluate(in Input) Result {
-	confidence := 0.35 // RF anomaly is the originating signal.
+	confidence := 0.35
 	domains := []string{"rf"}
 	reasons := []string{"rf anomaly matched one or more enabled detection rules"}
 	candidate := ""

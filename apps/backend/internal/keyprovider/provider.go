@@ -37,17 +37,12 @@ const (
 	KeyStatusRevoked KeyStatus = "revoked"
 )
 
-// SigningKey abstracts a signing operation so callers do not need direct access
-// to private key material. External KMS/HSM implementations can satisfy this
-// interface without exporting the underlying key.
 type SigningKey interface {
 	KID() string
 	Algorithm() string
 	Sign(context.Context, []byte) ([]byte, error)
 }
 
-// Provider resolves signing keys and identifies the active key. The interface is
-// intentionally storage-agnostic so local files can later be replaced by a KMS.
 type Provider interface {
 	ActiveSigningKey(context.Context) (SigningKey, error)
 	SigningKey(context.Context, string) (SigningKey, error)
@@ -63,10 +58,6 @@ type KeyMetadata struct {
 	RevokedAt      *time.Time `json:"revoked_at,omitempty"`
 }
 
-// LifecycleProvider is implemented by providers that can safely stage, activate,
-// revoke and export public verification material. Staging is intentionally
-// separate from activation so operators can distribute a new public key to SDR
-// agents before the backend starts signing configuration with it.
 type LifecycleProvider interface {
 	Provider
 	Keys(context.Context) ([]KeyMetadata, error)
@@ -232,8 +223,6 @@ func NewManagedLocalProvider(dir, bootstrapPath string) (*ManagedLocalProvider, 
 }
 
 func (p *ManagedLocalProvider) fileNameForKID(kid string) string {
-	// The filename is generated from a random UUID rather than a user supplied
-	// KID. Existing manifest entries are reused during normal operation.
 	if rec, ok := p.manifest.Keys[kid]; ok && rec.FileName != "" {
 		return rec.FileName
 	}

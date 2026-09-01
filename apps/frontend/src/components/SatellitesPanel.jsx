@@ -4,6 +4,7 @@ import CopyButton from './CopyButton.jsx'
 import TableScroll from './TableScroll.jsx'
 import { updateSatellite } from '../lib/api.js'
 import { useI18n } from '../lib/I18nContext.jsx'
+import { calculateSatelliteRisk } from '../lib/risk.js'
 
 const SORT_ACCESSORS = {
   name: (s) => s.name ?? '',
@@ -27,7 +28,6 @@ function sortSatellites(satellites, sortKey, sortDir) {
   return [...satellites].sort((a, b) => {
     const va = accessor(a)
     const vb = accessor(b)
-    // Missing values always sort last, independent of ascending/descending.
     if (va == null && vb == null) return 0
     if (va == null) return 1
     if (vb == null) return -1
@@ -67,11 +67,11 @@ function SatelliteEditRow({ satellite, onCancel, onSaved }) {
 
   return (
     <tr className="border-b border-lyra-borderSoft/60 bg-lyra-panel/20">
-      <td colSpan={6} className="py-4">
+      <td colSpan={7} className="py-4">
         <form onSubmit={submit} className="rounded border border-lyra-borderSoft bg-lyra-bgSoft/40 p-4">
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
-              <p className="text-xs uppercase tracking-wider text-lyra-mutedDim">{t('satelliteManagement.editEyebrow')}</p>
+              <p className="text-xs tracking-wider text-lyra-mutedDim">{t('satelliteManagement.editEyebrow')}</p>
               <h4 className="mt-1 text-sm font-medium text-lyra-text">{satellite.name}</h4>
             </div>
             <button type="button" onClick={onCancel} aria-label={t('common.cancel')} className="rounded p-1 text-lyra-muted hover:text-lyra-text">
@@ -147,12 +147,12 @@ function SortableHeader({ label, sortKey, activeKey, direction, onSort, t, align
   const ariaSort = active ? (direction === 'desc' ? 'descending' : 'ascending') : 'none'
   const Icon = active ? (direction === 'desc' ? ChevronDown : ChevronUp) : ChevronsUpDown
   return (
-    <th scope="col" aria-sort={ariaSort} className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+    <th scope="col" aria-sort={ariaSort} className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">
       <button
         type="button"
         onClick={() => onSort(sortKey)}
         aria-label={`${t('satelliteManagement.sortBy', { column: label })}${active ? `, ${t(`satelliteManagement.sort${direction === 'desc' ? 'Descending' : 'Ascending'}`)}` : ''}`}
-        className={`flex items-center gap-1 rounded uppercase tracking-wider text-lyra-mutedDim hover:text-lyra-text focus-visible:outline focus-visible:outline-1 focus-visible:outline-lyra-gold ${align === 'right' ? 'ml-auto' : ''}`}
+        className={`flex items-center gap-1 rounded tracking-wider text-lyra-mutedDim hover:text-lyra-text focus-visible:outline focus-visible:outline-1 focus-visible:outline-lyra-gold ${align === 'right' ? 'ml-auto' : ''}`}
       >
         <span>{label}</span>
         <Icon className={`h-3 w-3 ${active ? 'text-lyra-goldBright' : 'text-lyra-mutedDim/60'}`} aria-hidden="true" />
@@ -161,7 +161,7 @@ function SortableHeader({ label, sortKey, activeKey, direction, onSort, t, align
   )
 }
 
-export default function SatellitesPanel({ satellites, canManage = false, onChanged = async () => {}, onOpenProfile = () => {} }) {
+export default function SatellitesPanel({ satellites, incidents = null, anomalies = null, assetAlerts = null, access = {}, canManage = false, onChanged = async () => {}, onOpenProfile = () => {} }) {
   const { t } = useI18n()
   const [editingId, setEditingId] = useState(null)
   const [sortKey, setSortKey] = useState(null)
@@ -203,6 +203,7 @@ export default function SatellitesPanel({ satellites, canManage = false, onChang
             <SortableHeader label={t('satelliteManagement.longitude')} sortKey="longitude_deg" {...headerProps} />
             <SortableHeader label={t('satelliteManagement.altitude')} sortKey="altitude_km" {...headerProps} />
             <SortableHeader label={t('satelliteManagement.tleStatus')} sortKey="tle_status" {...headerProps} />
+            <th scope="col" className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">{t('satelliteManagement.risk')}</th>
           </tr>
         </thead>
         <tbody>
@@ -245,10 +246,21 @@ export default function SatellitesPanel({ satellites, canManage = false, onChang
                 <td className="py-3 font-mono text-lyra-text">{s.position ? `${s.position.longitude_deg.toFixed(2)}°` : '—'}</td>
                 <td className="py-3 font-mono text-lyra-text">{s.position ? `${s.position.altitude_km.toFixed(0)} km` : '—'}</td>
                 <td className="py-3">
-                  <span className="rounded border border-lyra-borderSoft px-2 py-1 font-mono text-[10px] uppercase tracking-wider text-lyra-muted">
+                  <span className="rounded border border-lyra-borderSoft px-2 py-1 font-mono text-[10px] tracking-wider text-lyra-muted">
                     {s.tle_status ?? 'unknown'}
                   </span>
                   <p className="mt-1 text-[10px] text-lyra-mutedDim">{s.orbital_confidence ?? '—'}</p>
+                </td>
+                <td className="py-3">
+                  {(() => {
+                    const satelliteIncidents = access.incidents ? (incidents?.items ?? []).filter((item) => item.satellite_id === s.id) : []
+                    const satelliteAnomalies = access.rf ? (anomalies ?? []).filter((item) => item.satellite_id === s.id) : []
+                    const identities = new Set([String(s.name || '').toLowerCase(), String(s.norad_id ?? '').toLowerCase()])
+                    const exposureAlerts = access.alerts ? (assetAlerts?.items ?? []).filter((item) => identities.has(String(item.asset_value || '').toLowerCase())) : []
+                    const risk = calculateSatelliteRisk({ satellite: s, incidents: satelliteIncidents, anomalies: satelliteAnomalies, exposureAlerts })
+                    const riskClass = risk.level === 'critical' ? 'border-lyra-bad/30 bg-lyra-bad/10 text-lyra-bad' : risk.level === 'elevated' ? 'border-lyra-warn/30 bg-lyra-warn/10 text-lyra-warn' : 'border-lyra-good/30 bg-lyra-good/10 text-lyra-good'
+                    return <span className={`rounded border px-2 py-1 font-mono text-[10px] ${riskClass}`}>{risk.score}/100</span>
+                  })()}
                 </td>
               </tr>
               {editingId === s.id && (

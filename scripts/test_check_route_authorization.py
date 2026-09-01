@@ -52,9 +52,6 @@ class RouteAuthorizationContractTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_checker_does_not_leak_sibling_route_guard(self):
-        # A guard on one route in an r.Route block must not cover a
-        # different, ungated route that also happens to sit inside that
-        # same block without its own .With(...) or the block's own r.Use.
         with tempfile.TemporaryDirectory() as td:
             fake = Path(td)
             p = fake / 'apps/backend/cmd/server/main.go'

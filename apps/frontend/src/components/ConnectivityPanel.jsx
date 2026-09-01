@@ -51,7 +51,7 @@ function DeviceCard({ device, detectedOn, t }) {
           <span className="font-display text-sm font-medium text-lyra-text">{device.name}</span>
         </div>
         <span
-          className={`shrink-0 rounded-full border px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-wider ${
+          className={`shrink-0 rounded-full border px-2.5 py-0.5 font-mono text-[10px] tracking-wider ${
             detected
               ? 'border-lyra-good/30 bg-lyra-good/10 text-lyra-good'
               : 'border-lyra-border text-lyra-mutedDim'
@@ -71,7 +71,7 @@ function DeviceCard({ device, detectedOn, t }) {
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="mt-3 flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wider text-lyra-muted outline-none transition-colors hover:text-lyra-goldBright focus-visible:text-lyra-goldBright"
+        className="mt-3 flex items-center gap-1.5 font-mono text-[11px] tracking-wider text-lyra-muted outline-none transition-colors hover:text-lyra-goldBright focus-visible:text-lyra-goldBright"
       >
         <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? 'rotate-180' : ''}`} strokeWidth={1.75} />
         {t('connectivity.installGuide')}
@@ -120,7 +120,7 @@ export default function ConnectivityPanel({ agentKeys, agentIdentities, satellit
       {canAccessAgents && agentIdentities !== null && agentKeys !== null && (
         <ConnectivityOperationsOverview agentIdentities={agentIdentities} agentKeys={agentKeys} />
       )}
-      <Panel eyebrow={t('panels.connectivity')} title={t('connectivity.supportedDevices')} uppercase>
+      <Panel eyebrow={t('panels.connectivity')} title={t('connectivity.supportedDevices')}>
         <p className="mb-5 text-sm text-lyra-muted">{t('connectivity.supportedDevicesHint')}</p>
         <div className="grid gap-4 sm:grid-cols-2">
           {SDR_DEVICES.map((device) => (
@@ -129,7 +129,7 @@ export default function ConnectivityPanel({ agentKeys, agentIdentities, satellit
         </div>
       </Panel>
 
-      <Panel eyebrow={t('panels.connectivity')} title={t('connectivity.edgeHardware')} uppercase>
+      <Panel eyebrow={t('panels.connectivity')} title={t('connectivity.edgeHardware')}>
         <div className="mb-4 flex items-center gap-2.5">
           <Cpu className="h-4 w-4 text-lyra-gold" strokeWidth={1.75} />
           <span className="font-display text-sm font-medium text-lyra-text">{t('connectivity.raspberryPi')}</span>
@@ -155,26 +155,26 @@ export default function ConnectivityPanel({ agentKeys, agentIdentities, satellit
       </Panel>
 
       {canAccessAgents && (
-        <Panel eyebrow={t('panels.connectivity')} title={t('connectivity.mtlsIdentities')} uppercase>
+        <Panel eyebrow={t('panels.connectivity')} title={t('connectivity.mtlsIdentities')}>
           {agentIdentities === null ? <Skeleton /> : <AgentIdentityPanel agents={agentIdentities} onChanged={onAgentIdentitiesChanged} canManage={canManageAgents} />}
         </Panel>
       )}
 
       {canAccessAgents && (
-        <Panel eyebrow={t('panels.connectivity')} title={t('connectivity.remoteConfiguration')} uppercase>
+        <Panel eyebrow={t('panels.connectivity')} title={t('connectivity.remoteConfiguration')}>
           {agentIdentities === null ? <Skeleton /> : <AgentRemoteConfigPanel agents={agentIdentities} satellites={satellites} canManage={canManageAgents} />}
         </Panel>
       )}
 
       {canAccessAgents && (
-        <Panel eyebrow={t('panels.connectivity')} title={t('connectivity.hardwareInventory')} uppercase>
+        <Panel eyebrow={t('panels.connectivity')} title={t('connectivity.hardwareInventory')}>
           <p className="mb-4 text-sm text-lyra-muted">{t('connectivity.hardwareInventoryHint')}</p>
           {agentIdentities === null || agentKeys === null ? <Skeleton /> : <AgentHardwarePanel agents={agentIdentities} legacyKeys={agentKeys} />}
         </Panel>
       )}
 
       {canAccessAgents && (
-        <Panel eyebrow={t('panels.connectivity')} title={t('connectivity.connectedAgents')} uppercase>
+        <Panel eyebrow={t('panels.connectivity')} title={t('connectivity.connectedAgents')}>
           <p className="mb-4 text-sm text-lyra-muted">{t('connectivity.connectedAgentsHint')}</p>
           {agentKeys === null ? <Skeleton /> : <AgentKeysWithDevices keys={agentKeys} onChanged={onAgentKeysChanged} t={t} canManage={canManageAgents} />}
         </Panel>

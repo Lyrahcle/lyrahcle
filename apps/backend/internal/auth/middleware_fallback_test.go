@@ -9,9 +9,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// RequireAnyRoleWithFallback must allow a request whose token role is one of
-// the explicitly allowed roles, even when that role is not the "minimum"
-// role used internally to authenticate the token itself.
 func TestRequireAnyRoleWithFallbackAllowsListedRole(t *testing.T) {
 	secret := []byte("secret")
 	token, _ := IssueToken(secret, uuid.New(), RoleAuditor, time.Hour)
@@ -28,8 +25,6 @@ func TestRequireAnyRoleWithFallbackAllowsListedRole(t *testing.T) {
 	}
 }
 
-// RequireAnyRoleWithFallback must reject a role that is not in the allowlist
-// even though it would otherwise satisfy the underlying RoleViewer minimum.
 func TestRequireAnyRoleWithFallbackRejectsUnlistedRole(t *testing.T) {
 	secret := []byte("secret")
 	token, _ := IssueToken(secret, uuid.New(), RoleViewer, time.Hour)
@@ -46,8 +41,6 @@ func TestRequireAnyRoleWithFallbackRejectsUnlistedRole(t *testing.T) {
 	}
 }
 
-// RequireAnyRoleWithFallback must reject requests with no bearer token at
-// all before it ever gets to evaluate the allowlist.
 func TestRequireAnyRoleWithFallbackRejectsMissingToken(t *testing.T) {
 	handler := RequireAnyRoleWithFallback([]byte("secret"), nil, []Role{RoleAdmin})(newTestHandler())
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -60,8 +53,6 @@ func TestRequireAnyRoleWithFallbackRejectsMissingToken(t *testing.T) {
 	}
 }
 
-// RequireAgentKeyOrRoleWithFallback must accept a valid X-Agent-Key without
-// ever consulting the JWT secret.
 func TestRequireAgentKeyOrRoleWithFallbackAcceptsAgentKey(t *testing.T) {
 	plainKey := "lyr_agent_testkey_fallback"
 	lookup := fakeLookup(map[string]string{HashAgentKey(plainKey): "sdr-agent-sevilla"})
@@ -78,9 +69,6 @@ func TestRequireAgentKeyOrRoleWithFallbackAcceptsAgentKey(t *testing.T) {
 	}
 }
 
-// RequireAgentKeyOrRoleWithFallback must fall back to validating the JWT
-// against the previous secret when the current secret does not verify it,
-// mirroring the zero-downtime signing-key rotation contract used elsewhere.
 func TestRequireAgentKeyOrRoleWithFallbackAcceptsPreviousSecret(t *testing.T) {
 	current := []byte("current-secret")
 	previous := []byte("previous-secret")
@@ -98,8 +86,6 @@ func TestRequireAgentKeyOrRoleWithFallbackAcceptsPreviousSecret(t *testing.T) {
 	}
 }
 
-// RequireAgentKeyOrRoleWithFallback must reject requests presenting neither
-// a valid agent key nor a valid bearer token under either secret.
 func TestRequireAgentKeyOrRoleWithFallbackRejectsInvalidToken(t *testing.T) {
 	handler := RequireAgentKeyOrRoleWithFallback([]byte("current"), []byte("previous"), RoleOperator, fakeLookup(nil))(newTestHandler())
 	req := httptest.NewRequest(http.MethodPost, "/", nil)

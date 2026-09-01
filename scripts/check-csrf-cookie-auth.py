@@ -21,10 +21,7 @@ import sys
 root = Path(sys.argv[1] if len(sys.argv) > 1 else '.')
 server_dir = root / 'apps/backend'
 
-# Handlers allowed to set a cookie, and why CSRF is still not a concern for
-# them. Empty on purpose: today nothing in the backend sets a cookie.
 ALLOWED_COOKIE_SETTERS = {
-    # 'apps/backend/cmd/server/example.go': 'reason CSRF does not apply here',
 }
 
 COOKIE_RE = re.compile(r'http\.SetCookie\(|http\.Cookie\{')

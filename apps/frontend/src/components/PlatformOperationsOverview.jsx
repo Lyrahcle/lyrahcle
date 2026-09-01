@@ -14,10 +14,10 @@ function Metric({ icon: Icon, label, value, status = 'neutral' }) {
   return (
     <div className="rounded-lg border border-lyra-border bg-lyra-panel/50 px-4 py-4">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-[10px] uppercase tracking-[0.15em] text-lyra-muted">{label}</p>
+        <p className="text-[10px] tracking-[0.15em] text-lyra-muted">{label}</p>
         <Icon aria-hidden="true" className="h-4 w-4 text-lyra-mutedDim" />
       </div>
-      <p className={`mt-2 inline-flex rounded border px-2 py-1 font-mono text-sm uppercase ${tone(status)}`}>{value}</p>
+      <p className={`mt-2 inline-flex rounded border px-2 py-1 font-mono text-sm ${tone(status)}`}>{value}</p>
     </div>
   )
 }
@@ -63,11 +63,11 @@ export default function PlatformOperationsOverview({ organizations = [], platfor
     <section aria-labelledby="platform-operations-heading" className="grid gap-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-[10px] uppercase tracking-[0.18em] text-lyra-mutedDim">{t('platformOperations.eyebrow')}</p>
+          <p className="text-[10px] tracking-[0.18em] text-lyra-mutedDim">{t('platformOperations.eyebrow')}</p>
           <h2 id="platform-operations-heading" className="mt-1 font-display text-xl font-medium text-lyra-text">{t('platformOperations.title')}</h2>
           <p className="mt-1 max-w-2xl text-sm text-lyra-muted">{t('platformOperations.description')}</p>
         </div>
-        <span className={`self-start rounded border px-2.5 py-1 font-mono text-xs uppercase sm:self-auto ${tone(overall)}`}>
+        <span className={`self-start rounded border px-2.5 py-1 font-mono text-xs sm:self-auto ${tone(overall)}`}>
           {t(`platformOperations.${overall}`)}
         </span>
       </div>

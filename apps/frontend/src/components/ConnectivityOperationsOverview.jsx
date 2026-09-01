@@ -67,7 +67,7 @@ export default function ConnectivityOperationsOverview({ agentIdentities = [], a
   return (
     <section className="grid gap-4" aria-labelledby="connectivity-operations-heading">
       <div>
-        <p className="text-[10px] uppercase tracking-[0.18em] text-lyra-mutedDim">{t('connectivity.opsEyebrow')}</p>
+        <p className="text-[10px] tracking-[0.18em] text-lyra-mutedDim">{t('connectivity.opsEyebrow')}</p>
         <h1 id="connectivity-operations-heading" className="mt-1 font-display text-2xl font-medium text-lyra-text">{t('connectivity.opsTitle')}</h1>
         <p className="mt-1 max-w-3xl text-sm text-lyra-muted">{t('connectivity.opsHint')}</p>
       </div>
@@ -81,7 +81,7 @@ export default function ConnectivityOperationsOverview({ agentIdentities = [], a
         ].map(([key, value, Icon]) => (
           <div key={key} className="rounded-lg border border-lyra-border bg-lyra-panel/50 px-4 py-3">
             <div className="flex items-center justify-between gap-2">
-              <p className="text-[10px] uppercase tracking-[0.15em] text-lyra-muted">{t(`connectivity.opsMetric.${key}`)}</p>
+              <p className="text-[10px] tracking-[0.15em] text-lyra-muted">{t(`connectivity.opsMetric.${key}`)}</p>
               <Icon className="h-3.5 w-3.5 text-lyra-mutedDim" aria-hidden="true" />
             </div>
             <p className="mt-2 font-mono text-2xl text-lyra-text">{value}</p>
@@ -130,7 +130,7 @@ export default function ConnectivityOperationsOverview({ agentIdentities = [], a
                     <p className="mt-1 text-[11px] text-lyra-mutedDim">{agent.source === 'legacy' ? t('connectivity.legacyAgentKey') : 'mTLS'}</p>
                   </div>
                   <div>
-                    <span className={`inline-flex rounded-full border px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider ${badgeClass(agent.posture)}`}>{t(`connectivity.opsState.${agent.posture}`)}</span>
+                    <span className={`inline-flex rounded-full border px-2 py-0.5 font-mono text-[10px] tracking-wider ${badgeClass(agent.posture)}`}>{t(`connectivity.opsState.${agent.posture}`)}</span>
                     <p className="mt-1 text-[11px] text-lyra-mutedDim">{lastSeen ? new Date(lastSeen).toLocaleString() : t('connectivity.opsNeverSeen')}</p>
                   </div>
                   <div className="flex items-start gap-2">

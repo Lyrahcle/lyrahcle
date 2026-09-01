@@ -102,10 +102,6 @@ func (s *AuditStore) InsertInOrganization(ctx context.Context, organizationID uu
 	return err
 }
 
-// InsertIdempotentInOrganization records a system side effect exactly once per
-// tenant/dedupe key. It is intended for at-least-once background processing,
-// where a retry must be able to repair a missing audit entry without creating
-// duplicates if the previous attempt already committed it.
 func (s *AuditStore) InsertIdempotentInOrganization(ctx context.Context, organizationID uuid.UUID, dedupeKey, actorType, actorID, action, ip string, details map[string]interface{}) (bool, error) {
 	if details == nil {
 		details = map[string]interface{}{}

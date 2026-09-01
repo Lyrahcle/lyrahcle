@@ -141,7 +141,6 @@ func TestRedisSharedLimiterSeparatesTenantsAndActors(t *testing.T) {
 		t.Fatalf("third=%+v err=%v want blocked", d, err)
 	}
 
-	// Same user UUID in another organization must receive an independent budget.
 	if d, err := second.AllowHuman(context.Background(), orgB, user, ClassRead); err != nil || !d.Allowed {
 		t.Fatalf("other tenant=%+v err=%v want allowed", d, err)
 	}

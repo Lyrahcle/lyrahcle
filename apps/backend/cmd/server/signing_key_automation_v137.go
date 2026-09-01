@@ -14,9 +14,6 @@ import (
 
 const agentConfigSigningDomain = "agent_config"
 
-// runSigningKeyRotationCheck is intentionally prepare-only. Activation remains
-// an explicit platform-admin action after the public key has been distributed
-// to SDR agents. Grace expiry remains automatic inside the provider.
 func runSigningKeyRotationCheck(ctx context.Context, provider keyprovider.Provider, auditLog *store.AuditStore, now time.Time) error {
 	lifecycle, ok := provider.(keyprovider.LifecycleProvider)
 	if !ok || lifecycle == nil {

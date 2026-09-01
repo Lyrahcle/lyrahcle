@@ -42,9 +42,6 @@ func OrganizationID(ctx context.Context) (uuid.UUID, bool) {
 	return organizationID, ok && organizationID != uuid.Nil
 }
 
-// Middleware marks HTTP-originated database work. Unauthenticated request
-// contexts are fail-closed by PostgreSQL RLS until authentication adds an
-// organization scope.
 func Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		next.ServeHTTP(w, r.WithContext(MarkRequest(r.Context())))

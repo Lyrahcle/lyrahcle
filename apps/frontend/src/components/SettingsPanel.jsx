@@ -168,7 +168,7 @@ export default function SettingsPanel({ admin, onNavigateToConnectivity, onSecur
 
         {admin && (
           <div className="mt-5">
-            <p className="mb-2 font-mono text-[11px] uppercase tracking-wider text-lyra-gold">
+            <p className="mb-2 font-mono text-[11px] tracking-wider text-lyra-gold">
               {t('panels.sdrAgents')}
             </p>
             <p className="mb-3 text-xs text-lyra-mutedDim">{t('settings.agentKeysHint')}</p>

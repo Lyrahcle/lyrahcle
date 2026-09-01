@@ -1,17 +1,4 @@
 #!/usr/bin/env bash
-# Detects drift between the Terraform/OpenTofu AWS root module and the real
-# infrastructure. Read-only: runs `plan -detailed-exitcode -lock=false`
-# against the configured remote state and never applies anything.
-#
-# Requires AWS credentials already in the environment (OIDC-assumed role in
-# CI, or `aws sso login` / aws-vault locally) and a real backend.hcl with
-# your state bucket/key/region (see backend.hcl.example — never commit the
-# real one with account-specific values).
-#
-# Exit codes (matches `terraform plan -detailed-exitcode`):
-#   0 - succeeded, no drift
-#   1 - error
-#   2 - succeeded, drift detected
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

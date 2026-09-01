@@ -39,7 +39,6 @@ func TestTenantNoisyNeighborIsolation(t *testing.T) {
 	userA2 := uuid.New()
 	userB := uuid.New()
 
-	// Exhaust tenant A's aggregate read budget using two actors.
 	for _, userID := range []uuid.UUID{userA1, userA1, userA2, userA2} {
 		decision, err := limiter.AllowHuman(ctx, orgA, userID, ClassRead)
 		if err != nil || !decision.Allowed {
@@ -54,7 +53,6 @@ func TestTenantNoisyNeighborIsolation(t *testing.T) {
 		t.Fatalf("tenant A should be aggregate-limited, got %+v", blocked)
 	}
 
-	// Tenant B must retain its independent budget even though A is exhausted.
 	allowed, err := limiter.AllowHuman(ctx, orgB, userB, ClassRead)
 	if err != nil {
 		t.Fatalf("tenant B request: %v", err)

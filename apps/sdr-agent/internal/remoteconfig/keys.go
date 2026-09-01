@@ -15,9 +15,6 @@ import (
 
 var errVerificationKeyNotFound = errors.New("remote config: verification key not found")
 
-// VerificationKeyProvider resolves public keys by stable KID. LegacyKey exists
-// only for envelopes created before KID support and can be removed once all
-// outstanding legacy configurations have expired.
 type VerificationKeyProvider interface {
 	VerificationKey(string) (ed25519.PublicKey, error)
 	LegacyKey() (ed25519.PublicKey, error)

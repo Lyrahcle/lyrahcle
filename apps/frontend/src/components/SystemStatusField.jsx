@@ -19,7 +19,7 @@ function Dot({ shortLabel, fullLabel, status }) {
   return (
     <span className="flex items-center gap-1.5" title={fullLabel}>
       <span className={`h-1.5 w-1.5 rounded-full ${TONES[tone]}`} />
-      <span className="font-mono text-[10px] uppercase tracking-wider text-lyra-mutedDim">{shortLabel}</span>
+      <span className="font-mono text-[10px] tracking-wider text-lyra-mutedDim">{shortLabel}</span>
     </span>
   )
 }

@@ -46,19 +46,19 @@ export default function AssetAlertsPanel({ page, onPrev, onNext, onChanged }) {
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b border-lyra-borderSoft">
-              <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+              <th scope="col" className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">
                 {t('assetAlerts.asset')}
               </th>
-              <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+              <th scope="col" className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">
                 CVE
               </th>
-              <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+              <th scope="col" className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">
                 {t('assetAlerts.severity')}
               </th>
-              <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+              <th scope="col" className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">
                 {t('assetAlerts.matchedVia')}
               </th>
-              <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+              <th scope="col" className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">
                 {t('assetAlerts.status')}
               </th>
               <th scope="col" className="pb-2" />
@@ -69,7 +69,7 @@ export default function AssetAlertsPanel({ page, onPrev, onNext, onChanged }) {
               <tr key={a.id} className="border-b border-lyra-borderSoft/60 last:border-0">
                 <td className="py-3 pr-4">
                   <span className="font-mono text-xs text-lyra-goldBright">{a.asset_value}</span>
-                  <span className="ml-2 rounded-full border border-lyra-border px-2 py-0.5 text-[10px] uppercase tracking-wider text-lyra-mutedDim">
+                  <span className="ml-2 rounded-full border border-lyra-border px-2 py-0.5 text-[10px] tracking-wider text-lyra-mutedDim">
                     {a.asset_kind}
                   </span>
                 </td>
@@ -87,11 +87,11 @@ export default function AssetAlertsPanel({ page, onPrev, onNext, onChanged }) {
                 <td className="py-3 pr-4 font-mono text-xs text-lyra-mutedDim">{a.matched_keyword}</td>
                 <td className="py-3 pr-4">
                   {a.acknowledged ? (
-                    <span className="font-mono text-[11px] uppercase tracking-wider text-lyra-good">
+                    <span className="font-mono text-[11px] tracking-wider text-lyra-good">
                       {t('assetAlerts.acknowledged')}
                     </span>
                   ) : (
-                    <span className="font-mono text-[11px] uppercase tracking-wider text-lyra-warn">
+                    <span className="font-mono text-[11px] tracking-wider text-lyra-warn">
                       {t('assetAlerts.new')}
                     </span>
                   )}
@@ -101,7 +101,7 @@ export default function AssetAlertsPanel({ page, onPrev, onNext, onChanged }) {
                     <button
                       onClick={() => handleAcknowledge(a.id)}
                       disabled={ackingId === a.id}
-                      className="font-mono text-[11px] uppercase tracking-wide text-lyra-gold outline-none hover:underline disabled:opacity-50"
+                      className="font-mono text-[11px] tracking-wide text-lyra-gold outline-none hover:underline disabled:opacity-50"
                     >
                       {ackingId === a.id ? t('common.saving') : t('assetAlerts.acknowledge')}
                     </button>

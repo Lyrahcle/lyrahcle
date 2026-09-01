@@ -115,9 +115,6 @@ func (s *AssetStore) ListByOrganization(ctx context.Context, organizationID uuid
 	return Page[Asset]{Items: items, Total: total, Limit: limit, Offset: offset}, rows.Err()
 }
 
-// UpsertInOrganization only accepts a program owned by the same organization.
-// This prevents a known program UUID from another tenant being used to create a
-// cross-tenant asset association.
 func (s *AssetStore) UpsertInOrganization(ctx context.Context, organizationID, programID uuid.UUID, kind, value string) error {
 	tag, err := s.pool.Exec(ctx, `
         INSERT INTO assets (organization_id, program_id, kind, value)

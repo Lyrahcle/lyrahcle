@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import Header from './Header.jsx'
+import NavigationMenu from './NavigationMenu.jsx'
 import Panel from './Panel.jsx'
 import Skeleton from './Skeleton.jsx'
 import WorldMap from './WorldMap.jsx'
@@ -49,6 +50,7 @@ const SatellitesPanel = lazyComponent(() => import('./SatellitesPanel.jsx'))
 const OrbitalOperationsPanel = lazyComponent(() => import('./OrbitalOperationsPanel.jsx'))
 const MissionSecurityOperationsDashboard = lazyComponent(() => import('./MissionSecurityOperationsDashboard.jsx'))
 const SatelliteSecurityProfile = lazyComponent(() => import('./SatelliteSecurityProfile.jsx'))
+const GroundStationOperations = lazyComponent(() => import('./GroundStationOperations.jsx'))
 const AssetAlertsPanel = lazyComponent(() => import('./AssetAlertsPanel.jsx'))
 const IncidentsPanel = lazyComponent(() => import('./IncidentsPanel.jsx'))
 const Decoder = lazyComponent(() => import('./Decoder.jsx'))
@@ -95,7 +97,17 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
   const [dbStatus, setDbStatus] = useState('checking')
   const [apiIssue, setApiIssue] = useState(null)
   const [retryNonce, setRetryNonce] = useState(0)
+  const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false)
+  const [navigationCollapsed, setNavigationCollapsed] = useState(() => localStorage.getItem('lyra_nav_collapsed') === '1')
   const rateLimitedUntilRef = useRef(0)
+
+  useEffect(() => {
+    localStorage.setItem('lyra_nav_collapsed', navigationCollapsed ? '1' : '0')
+  }, [navigationCollapsed])
+
+  useEffect(() => {
+    setMobileNavigationOpen(false)
+  }, [activeTab])
 
   const [assetsOffset, setAssetsOffset] = useState(0)
   const [cvesOffset, setCvesOffset] = useState(0)
@@ -167,18 +179,31 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
   const rbacManage = hasPermission('rbac.manage')
   const adminAccess = admin || usersRead || auditAccess || rbacRead || rbacManage
   const connectivityAccess = agentsRead || agentsManage
+  const orbitalAccess = hasPermission('orbital.read') || hasPermission('orbital.manage')
   const tabs = [
-    { id: 'orbital', label: t('tabs.orbital') },
-    { id: 'assets', label: t('tabs.assets') },
-    { id: 'signal', label: t('tabs.signal') },
-    { id: 'incidents', label: t('tabs.incidents') },
-    { id: 'intel', label: t('tabs.intel') },
-    { id: 'decoder', label: t('tabs.decoder') },
-    { id: 'connectivity', label: t('tabs.connectivity') },
-    ...(adminAccess ? [{ id: 'admin', label: t('tabs.admin') }] : []),
-    ...(platformAdmin ? [{ id: 'platform', label: t('tabs.platform') }] : []),
-    { id: 'settings', label: t('tabs.settings') },
+    { id: 'orbital', label: t('navigation.items.overview'), section: 'overview' },
+    ...(connectivityAccess ? [{ id: 'stations', label: t('tabs.stations'), section: 'mission' }] : []),
+    { id: 'assets', label: t('tabs.assets'), section: 'mission' },
+    { id: 'incidents', label: t('tabs.incidents'), section: 'security' },
+    { id: 'intel', label: t('tabs.intel'), section: 'security' },
+    { id: 'signal', label: t('navigation.items.rfDetection'), section: 'rf' },
+    { id: 'decoder', label: t('tabs.decoder'), section: 'rf' },
+    { id: 'connectivity', label: t('navigation.items.sdrFleet'), section: 'platform' },
+    ...(adminAccess ? [{ id: 'admin', label: t('navigation.items.accessControl'), section: 'platform' }] : []),
+    ...(platformAdmin ? [{ id: 'platform', label: t('tabs.platform'), section: 'platform' }] : []),
+    { id: 'settings', label: t('tabs.settings'), section: 'preferences' },
   ]
+  const activeNavigationItem = tabs.find((item) => item.id === activeTab) ?? tabs[0]
+
+  function handleCommandNavigate(tab, result) {
+    if (result?.type === 'satellites' && result.id) {
+      setSelectedSatelliteId(result.id)
+      onChangeTab('orbital')
+      return
+    }
+    setSelectedSatelliteId(null)
+    onChangeTab(tab)
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -268,6 +293,24 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
         return
       }
 
+      if (activeTab === 'stations' && connectivityAccess) {
+        const requests = [safeFetch(fetchAgentIdentities, setAgentIdentities)]
+        if (orbitalAccess) requests.push(safeFetch(fetchSatellites, setSatellites))
+        if (rfRead) {
+          requests.push(safeFetch(fetchRfReadings, setRfReadings))
+          requests.push(safeFetch(fetchRfAnomalies, setRfAnomalies))
+        }
+        if (incidentsRead) {
+          requests.push(safeFetch(
+            () => fetchIncidents(PAGE_LIMIT, 0, {}),
+            setIncidents,
+            { items: [], total: 0, limit: PAGE_LIMIT, offset: 0 },
+          ))
+        }
+        await Promise.all(requests)
+        return
+      }
+
       if (activeTab === 'signal') {
         await Promise.all([
           safeFetch(fetchRfReadings, setRfReadings),
@@ -346,7 +389,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
       cancelled = true
       clearInterval(id)
     }
-  }, [onSessionExpired, activeTab, admin, auditAccess, assetsOffset, cvesOffset, cveFilters, auditOffset, incidentsOffset, incidentFilters, platformAdmin, adminAccess, usersRead, rbacRead, programsAccess, incidentsRead, rfRead, alertsRead, connectivityAccess, retryNonce])
+  }, [onSessionExpired, activeTab, admin, auditAccess, assetsOffset, cvesOffset, cveFilters, auditOffset, incidentsOffset, incidentFilters, platformAdmin, adminAccess, usersRead, rbacRead, programsAccess, incidentsRead, rfRead, alertsRead, connectivityAccess, orbitalAccess, retryNonce])
 
   useEffect(() => {
     if (activeTab !== 'orbital') {
@@ -393,7 +436,6 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
       setAssets(assetData)
       setPrograms(programData ?? [])
     } catch {
-      // Polling will retry; mutation components already surface their own errors.
     }
   }
   function handleCveFiltersChange(next) {
@@ -446,28 +488,35 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
 
   return (
     <div className="min-h-screen bg-transparent text-lyra-text">
-      <Header
-        onLogout={onLogout}
-        onHome={() => onChangeTab('orbital')}
-        onOpenSettings={() => onChangeTab('settings')}
-        navigationItems={tabs}
-        activePage={activeTab}
-        onNavigate={onChangeTab}
-        backendStatus={backendStatus}
-        dbStatus={dbStatus}
-        sdrStatus={sdrStatus}
-        searchAssets={assets}
-        searchSatellites={satellites}
-        searchCves={spaceCVEs}
-        onSearchNavigate={onChangeTab}
+      <NavigationMenu
+        items={tabs}
+        active={activeTab}
+        onChange={onChangeTab}
+        collapsed={navigationCollapsed}
+        onToggleCollapse={() => setNavigationCollapsed((value) => !value)}
+        mobileOpen={mobileNavigationOpen}
+        onCloseMobile={() => setMobileNavigationOpen(false)}
       />
-      <ApiStatusBanner
-        issue={apiIssue}
-        onRetry={apiIssue?.retryable ? retryFailedRequests : undefined}
-        onDismiss={() => setApiIssue(null)}
-      />
+      <div className={`min-h-screen transition-[padding] duration-200 ${navigationCollapsed ? 'lg:pl-20' : 'lg:pl-64'}`}>
+        <Header
+          onLogout={onLogout}
+          onHome={() => onChangeTab('orbital')}
+          onOpenSettings={() => onChangeTab('settings')}
+          onOpenNavigation={() => setMobileNavigationOpen(true)}
+          activePageLabel={activeNavigationItem?.label ?? t('navigation.items.overview')}
+          backendStatus={backendStatus}
+          dbStatus={dbStatus}
+          sdrStatus={sdrStatus}
+          navigationItems={tabs}
+          onCommandNavigate={handleCommandNavigate}
+        />
+        <ApiStatusBanner
+          issue={apiIssue}
+          onRetry={apiIssue?.retryable ? retryFailedRequests : undefined}
+          onDismiss={() => setApiIssue(null)}
+        />
 
-      <main id="main-content" className="mx-auto max-w-7xl px-6 py-10 sm:px-8">
+        <main id="main-content" className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 xl:px-8">
         {activeTab === 'orbital' && (
           selectedSatellite ? (
             <SatelliteSecurityProfile
@@ -499,11 +548,10 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
             <Panel
               eyebrow={t('panels.groundTrack')}
               title={t('panels.liveOrbitalPositions')}
-              uppercase
               bleed
               titleExtra={
                 satellitesLive && (
-                  <span className="flex items-center gap-1.5 rounded-full border border-lyra-good/30 bg-lyra-good/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-lyra-good">
+                  <span className="flex items-center gap-1.5 rounded-full border border-lyra-good/30 bg-lyra-good/10 px-2 py-0.5 font-mono text-[10px] tracking-wider text-lyra-good">
                     <span className="h-1.5 w-1.5 rounded-full bg-lyra-good motion-safe:animate-pulse" />
                     {t('panels.live')}
                   </span>
@@ -525,9 +573,9 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
               {satellites === null ? <Skeleton /> : <OrbitalAltitudeChart satellites={satellites} />}
             </Panel>
             <div id="orbital-management">
-            <Panel eyebrow={t('panels.orbitalTracking')} title={t('panels.trackedSatellites')} uppercase>
+            <Panel eyebrow={t('panels.orbitalTracking')} title={t('panels.trackedSatellites')}>
               {hasPermission('orbital.manage') && <NewSatelliteForm onCreated={reloadSatellites} />}
-              {satellites === null ? <Skeleton /> : <SatellitesPanel satellites={satellites} canManage={hasPermission('orbital.manage')} onChanged={reloadSatellites} onOpenProfile={(satellite) => setSelectedSatelliteId(satellite.id)} />}
+              {satellites === null ? <Skeleton /> : <SatellitesPanel satellites={satellites} incidents={incidents} anomalies={rfAnomalies} assetAlerts={assetAlerts} access={{ incidents: incidentsRead, rf: rfRead, alerts: alertsRead }} canManage={hasPermission('orbital.manage')} onChanged={reloadSatellites} onOpenProfile={(satellite) => setSelectedSatelliteId(satellite.id)} />}
             </Panel>
             </div>
             {(hasPermission('orbital.read') || hasPermission('orbital.manage')) && (
@@ -538,6 +586,20 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
               </div>
             )}
           </div>
+          )
+        )}
+
+        {activeTab === 'stations' && connectivityAccess && (
+          agentIdentities === null ? <Skeleton rows={3} /> : (
+            <GroundStationOperations
+              agents={agentIdentities}
+              satellites={satellites ?? []}
+              readings={rfReadings ?? []}
+              anomalies={rfAnomalies ?? []}
+              incidents={incidents?.items ?? []}
+              access={{ orbital: orbitalAccess, rf: rfRead, incidents: incidentsRead }}
+              onNavigate={onChangeTab}
+            />
           )
         )}
 
@@ -687,19 +749,19 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
                 {activeTab === 'platform' && platformAdmin && (
           <div className="grid gap-6">
             <PlatformOperationsOverview organizations={organizations ?? []} platformUsers={platformUsers ?? []} />
-            <Panel eyebrow={t('platform.eyebrow')} title={t('platform.title')} uppercase>
+            <Panel eyebrow={t('platform.eyebrow')} title={t('platform.title')}>
               {organizations === null || platformUsers === null ? <Skeleton /> : <PlatformOrganizationsPanel organizations={organizations} platformUsers={platformUsers} onChanged={reloadOrganizations} onPlatformUsersChanged={reloadPlatformUsers} />}
             </Panel>
-            <Panel eyebrow={t('signingKeys.eyebrow')} title={t('signingKeys.title')} uppercase>
+            <Panel eyebrow={t('signingKeys.eyebrow')} title={t('signingKeys.title')}>
               <SigningKeysPanel />
             </Panel>
-            <Panel eyebrow="Secret Management" title="Secret Provider" uppercase>
+            <Panel eyebrow="Secret management" title="Secret provider">
               <SecretProviderPanel />
             </Panel>
-            <Panel eyebrow={t('rateLimits.eyebrow')} title={t('rateLimits.title')} uppercase>
+            <Panel eyebrow={t('rateLimits.eyebrow')} title={t('rateLimits.title')}>
               <RateLimitPolicyPanel />
             </Panel>
-            <Panel eyebrow="Security Operations" title="Incident Response" uppercase>
+            <Panel eyebrow="Security operations" title="Incident response">
               <IncidentResponsePanel />
             </Panel>
           </div>
@@ -742,9 +804,10 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
             <SettingsPanel admin={admin} onNavigateToConnectivity={() => onChangeTab('connectivity')} onSecurityChange={onLogout} />
           </Panel>
         )}
-      </main>
+        </main>
 
-      <Footer />
+        <Footer />
+      </div>
     </div>
   )
 }

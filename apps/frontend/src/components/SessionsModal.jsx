@@ -130,7 +130,7 @@ export default function SessionsModal({ onClose, onCurrentSessionRevoked }) {
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-xs text-lyra-text">{sessionLabel(session.user_agent)}</span>
                       {session.current && (
-                        <span className="rounded border border-lyra-good/50 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-lyra-good">
+                        <span className="rounded border border-lyra-good/50 px-1.5 py-0.5 text-[10px] tracking-wider text-lyra-good">
                           {t('sessionsModal.current')}
                         </span>
                       )}

@@ -91,22 +91,22 @@ export default function RBACPanel({ permissions, roles, users, onChanged }) {
       {canManage && (
         <form onSubmit={createRole} className="grid gap-4 rounded border border-lyra-borderSoft bg-lyra-bgSoft/30 p-4">
           <div className="grid gap-3 md:grid-cols-2">
-            <label className="grid gap-1 text-[11px] uppercase tracking-wider text-lyra-mutedDim">
+            <label className="grid gap-1 text-[11px] tracking-wider text-lyra-mutedDim">
               {t('rbac.roleName')}
               <input required maxLength={80} value={name} onChange={(e) => setName(e.target.value)} className="rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 text-sm normal-case text-lyra-text" />
             </label>
-            <label className="grid gap-1 text-[11px] uppercase tracking-wider text-lyra-mutedDim">
+            <label className="grid gap-1 text-[11px] tracking-wider text-lyra-mutedDim">
               {t('rbac.description')}
               <input maxLength={240} value={description} onChange={(e) => setDescription(e.target.value)} className="rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 text-sm normal-case text-lyra-text" />
             </label>
           </div>
 
           <div>
-            <p className="mb-2 font-mono text-[11px] uppercase tracking-wider text-lyra-mutedDim">{t('rbac.capabilities')}</p>
+            <p className="mb-2 font-mono text-[11px] tracking-wider text-lyra-mutedDim">{t('rbac.capabilities')}</p>
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {groupedPermissions.map(([domain, items]) => (
                 <fieldset key={domain} className="rounded border border-lyra-borderSoft p-3">
-                  <legend className="px-1 font-mono text-xs uppercase text-lyra-goldBright">{domain}</legend>
+                  <legend className="px-1 font-mono text-xs text-lyra-goldBright">{domain}</legend>
                   <div className="grid gap-2">
                     {items.map((permission) => (
                       <label key={permission.key} className="flex gap-2 text-xs text-lyra-muted">
@@ -127,13 +127,13 @@ export default function RBACPanel({ permissions, roles, users, onChanged }) {
       )}
 
       <div>
-        <h3 className="mb-3 font-mono text-xs uppercase tracking-wider text-lyra-gold">{t('rbac.roles')}</h3>
+        <h3 className="mb-3 font-mono text-xs tracking-wider text-lyra-gold">{t('rbac.roles')}</h3>
         <TableScroll>
           <table className="w-full text-left text-sm">
             <thead><tr className="border-b border-lyra-borderSoft">
-              <th className="pb-2 text-[11px] uppercase text-lyra-mutedDim">{t('rbac.role')}</th>
-              <th className="pb-2 text-[11px] uppercase text-lyra-mutedDim">{t('rbac.type')}</th>
-              <th className="pb-2 text-[11px] uppercase text-lyra-mutedDim">{t('rbac.capabilities')}</th>
+              <th className="pb-2 text-[11px] text-lyra-mutedDim">{t('rbac.role')}</th>
+              <th className="pb-2 text-[11px] text-lyra-mutedDim">{t('rbac.type')}</th>
+              <th className="pb-2 text-[11px] text-lyra-mutedDim">{t('rbac.capabilities')}</th>
             </tr></thead>
             <tbody>
               {(roles ?? []).map((role) => (
@@ -150,7 +150,7 @@ export default function RBACPanel({ permissions, roles, users, onChanged }) {
 
       {users?.length > 0 && (
         <div className="grid gap-3">
-          <label className="grid max-w-xl gap-1 text-[11px] uppercase tracking-wider text-lyra-mutedDim">
+          <label className="grid max-w-xl gap-1 text-[11px] tracking-wider text-lyra-mutedDim">
             {t('rbac.user')}
             <select value={selectedUser} onChange={(e) => setSelectedUser(e.target.value)} className="rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 text-sm normal-case text-lyra-text">
               <option value="">{t('rbac.selectUser')}</option>

@@ -7,9 +7,6 @@ import (
 	"strings"
 )
 
-// ResolveWithin returns an existing regular file confined to baseDir.
-// candidate must be a relative path. Symlinks are rejected so a capture tree
-// cannot redirect replay/list operations outside its configured root.
 func ResolveWithin(baseDir, candidate string) (string, error) {
 	if strings.TrimSpace(baseDir) == "" {
 		return "", fmt.Errorf("forensics: base directory is required")

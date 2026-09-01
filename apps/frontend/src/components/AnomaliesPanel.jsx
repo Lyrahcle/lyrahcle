@@ -35,22 +35,22 @@ export default function AnomaliesPanel({ anomalies }) {
       <table className="w-full text-left text-sm">
         <thead>
           <tr className="border-b border-lyra-borderSoft">
-            <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+            <th scope="col" className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">
               {t('anomalies.agent')}
             </th>
-            <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+            <th scope="col" className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">
               {t('anomalies.metric')}
             </th>
-            <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+            <th scope="col" className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">
               {t('anomalies.value')}
             </th>
-            <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+            <th scope="col" className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">
               {t('anomalies.baseline')}
             </th>
-            <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+            <th scope="col" className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">
               {t('anomalies.zscore')}
             </th>
-            <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+            <th scope="col" className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">
               {t('anomalies.detected')}
             </th>
           </tr>

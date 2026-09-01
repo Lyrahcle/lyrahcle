@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { I18nProvider } from '../lib/I18nContext.jsx'
 import NavigationMenu from './NavigationMenu.jsx'
@@ -11,31 +11,44 @@ function renderMenu(props) {
   )
 }
 
+const items = [
+  { id: 'orbital', label: 'Mission overview', section: 'overview' },
+  { id: 'assets', label: 'Assets', section: 'mission' },
+  { id: 'incidents', label: 'Incidents', section: 'security' },
+  { id: 'settings', label: 'Settings', section: 'preferences' },
+]
+
 describe('NavigationMenu', () => {
-  const items = [
-    { id: 'orbital', label: 'Orbital' },
-    { id: 'assets', label: 'Assets' },
-    { id: 'settings', label: 'Settings' },
-  ]
-
-  it('opens from the top-left control and navigates to a selected page', () => {
+  it('renders grouped desktop navigation and changes pages', () => {
     const onChange = vi.fn()
-    renderMenu({ items, active: 'orbital', onChange })
+    renderMenu({ items, active: 'assets', onChange, collapsed: false, onToggleCollapse: vi.fn(), mobileOpen: false, onCloseMobile: vi.fn() })
 
-    const trigger = screen.getByRole('button', { name: 'Open navigation' })
-    expect(trigger).toHaveAttribute('aria-expanded', 'false')
-    fireEvent.click(trigger)
-    expect(trigger).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByText('Default dashboard')).toBeInTheDocument()
+    expect(screen.getByText('Overview')).toBeInTheDocument()
+    expect(screen.getByText('Mission')).toBeInTheDocument()
+    expect(screen.getByText('Security')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Assets' })).toHaveAttribute('aria-current', 'page')
 
-    fireEvent.click(screen.getByRole('menuitem', { name: /Assets/i }))
-    expect(onChange).toHaveBeenCalledWith('assets')
-    expect(trigger).toHaveAttribute('aria-expanded', 'false')
+    fireEvent.click(screen.getByRole('button', { name: 'Incidents' }))
+    expect(onChange).toHaveBeenCalledWith('incidents')
   })
 
-  it('marks the active page', () => {
-    renderMenu({ items, active: 'assets', onChange: () => {} })
-    fireEvent.click(screen.getByRole('button', { name: 'Open navigation' }))
-    expect(screen.getByRole('menuitem', { name: /Assets/i })).toHaveAttribute('aria-current', 'page')
+  it('supports the compact desktop sidebar', () => {
+    const onToggleCollapse = vi.fn()
+    renderMenu({ items, active: 'orbital', onChange: vi.fn(), collapsed: true, onToggleCollapse, mobileOpen: false, onCloseMobile: vi.fn() })
+
+    expect(screen.getByRole('button', { name: 'Mission overview' })).toHaveAttribute('aria-current', 'page')
+    fireEvent.click(screen.getByRole('button', { name: 'Expand sidebar' }))
+    expect(onToggleCollapse).toHaveBeenCalledTimes(1)
+  })
+
+  it('opens an accessible mobile drawer and closes after navigation', () => {
+    const onChange = vi.fn()
+    const onCloseMobile = vi.fn()
+    renderMenu({ items, active: 'orbital', onChange, collapsed: false, onToggleCollapse: vi.fn(), mobileOpen: true, onCloseMobile })
+
+    const mobileAside = screen.getAllByRole('complementary')[1]
+    fireEvent.click(within(mobileAside).getByRole('button', { name: 'Assets' }))
+    expect(onChange).toHaveBeenCalledWith('assets')
+    expect(onCloseMobile).toHaveBeenCalledTimes(1)
   })
 })

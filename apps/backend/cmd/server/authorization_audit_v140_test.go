@@ -15,9 +15,6 @@ type sensitiveRouteAuthorization struct {
 	capability string
 }
 
-// sensitiveRouteAuthorizationMatrix is the release-gate inventory for tenant-sensitive
-// human routes. Adding or moving a sensitive route requires updating this table and the
-// endpoint matrix documentation in the same change.
 var sensitiveRouteAuthorizationMatrix = []sensitiveRouteAuthorization{
 	{"routes_assets_programs.go", `Get("/",`, `RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "assets.read"`, "assets.read"},
 	{"routes_assets_programs.go", `Post("/",`, `RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "assets.manage"`, "assets.manage"},
@@ -109,9 +106,6 @@ func TestNoSensitiveLegacyRoleGates(t *testing.T) {
 }
 
 func TestHTTPRouteCountRequiresAuthorizationReview(t *testing.T) {
-	// This deliberately counts every literal server route registration, including public
-	// health/docs endpoints. Any route addition/removal forces a conscious review of its
-	// authentication and authorization boundary instead of silently expanding the API.
 	routeRegistration := regexp.MustCompile(`(?m)^\s*r(?:\.With\([^\n]*\))?\.(?:Get|Post|Put|Patch|Delete|Handle)\("`)
 	files, err := os.ReadDir(".")
 	if err != nil {
@@ -135,10 +129,6 @@ func TestHTTPRouteCountRequiresAuthorizationReview(t *testing.T) {
 }
 
 func TestViewerOnlyAuthorizationBoundariesAreExplicitlyReviewed(t *testing.T) {
-	// Viewer-only middleware is intentionally limited to authentication/self-service,
-	// stateless decoders, search/system metadata, CVE reads, and control-plane wrappers
-	// that perform their own platform-admin check. This count is a tripwire: introducing
-	// another viewer-only boundary requires an explicit authorization review.
 	const token = "RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)"
 	got := strings.Count(readServerProductionSource(t), token)
 	const reviewedViewerBoundaries = 18

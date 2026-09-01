@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Activity, ArrowLeft, Clock3, Orbit, RadioTower, Satellite, ShieldAlert, ShieldCheck, TriangleAlert } from 'lucide-react'
 import { fetchIncidents, fetchOrbitalEvents } from '../lib/api.js'
 import { useI18n } from '../lib/I18nContext.jsx'
+import { calculateSatelliteRisk, riskSeverityRank } from '../lib/risk.js'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 const INACTIVE_INCIDENT_STATUSES = new Set(['resolved', 'false_positive'])
@@ -9,10 +10,6 @@ const INACTIVE_INCIDENT_STATUSES = new Set(['resolved', 'false_positive'])
 function parseTime(value) {
   const parsed = Date.parse(value ?? '')
   return Number.isFinite(parsed) ? parsed : 0
-}
-
-function severityRank(value) {
-  return ({ critical: 4, high: 3, medium: 2, low: 1, info: 0 }[String(value || '').toLowerCase()] ?? 0)
 }
 
 function tone(value) {
@@ -28,43 +25,15 @@ function metricLabel(metric) {
   return metric || 'RF'
 }
 
-function riskFor({ satellite, incidents, anomalies, orbitalEvents, exposureAlerts, now }) {
-  const factors = []
-  const tleStatus = String(satellite?.tle_status || '').toLowerCase()
-  if (tleStatus === 'unusable') factors.push({ key: 'tleUnusable', points: 30 })
-  else if (tleStatus === 'stale') factors.push({ key: 'tleStale', points: 20 })
-  else if (tleStatus === 'aging') factors.push({ key: 'tleAging', points: 10 })
-
-  const active = incidents.filter((item) => !INACTIVE_INCIDENT_STATUSES.has(item.status))
-  const criticalCount = active.filter((item) => item.severity === 'critical').length
-  const highCount = active.filter((item) => item.severity === 'high').length
-  if (criticalCount) factors.push({ key: 'criticalIncident', points: Math.min(30, criticalCount * 20) })
-  if (highCount) factors.push({ key: 'highIncident', points: Math.min(20, highCount * 10) })
-
-  const recentAnomalies = anomalies.filter((item) => now - parseTime(item.detected_at) <= DAY_MS)
-  const severeAnomalies = recentAnomalies.filter((item) => Math.abs(Number(item.z_score) || 0) >= 5).length
-  if (severeAnomalies) factors.push({ key: 'rfAnomaly', points: Math.min(20, severeAnomalies * 8) })
-
-  const highOrbital = orbitalEvents.filter((item) => severityRank(item.severity) >= severityRank('high')).length
-  if (highOrbital) factors.push({ key: 'orbitalEvent', points: Math.min(15, highOrbital * 5) })
-
-  const urgentExposure = exposureAlerts.filter((item) => !item.acknowledged && severityRank(item.severity) >= severityRank('high')).length
-  if (urgentExposure) factors.push({ key: 'exposure', points: Math.min(15, urgentExposure * 5) })
-
-  const score = Math.min(100, factors.reduce((sum, item) => sum + item.points, 0))
-  const level = score >= 70 ? 'critical' : score >= 35 ? 'elevated' : 'nominal'
-  return { score, level, factors }
-}
-
 function RiskGauge({ score, level, factors, t }) {
   return (
     <div className="rounded-lg border border-lyra-border bg-lyra-panel/50 p-5">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-[10px] uppercase tracking-[0.16em] text-lyra-mutedDim">{t('satelliteProfile.riskEyebrow')}</p>
+          <p className="text-[10px] tracking-[0.16em] text-lyra-mutedDim">{t('satelliteProfile.riskEyebrow')}</p>
           <p className="mt-2 font-mono text-4xl text-lyra-text">{score}<span className="text-base text-lyra-mutedDim">/100</span></p>
         </div>
-        <span className={`rounded-full border px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.14em] ${tone(level)}`}>{t(`satelliteProfile.risk.${level}`)}</span>
+        <span className={`rounded-full border px-2.5 py-1 font-mono text-[10px] tracking-[0.14em] ${tone(level)}`}>{t(`satelliteProfile.risk.${level}`)}</span>
       </div>
       <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-lyra-bgSoft" aria-label={t('satelliteProfile.riskScore', { score })}>
         <div className="h-full bg-lyra-goldBright" style={{ width: `${score}%` }} />
@@ -156,7 +125,7 @@ export default function SatelliteSecurityProfile({
     return (assetAlerts?.items ?? []).filter((item) => identities.has(String(item.asset_value || '').toLowerCase()))
   }, [access.alerts, assetAlerts, satellite.name, satellite.norad_id])
   const events = orbitalEvents ?? []
-  const risk = riskFor({ satellite, incidents: satelliteIncidents, anomalies: satelliteAnomalies, orbitalEvents: events, exposureAlerts, now })
+  const risk = calculateSatelliteRisk({ satellite, incidents: satelliteIncidents, anomalies: satelliteAnomalies, orbitalEvents: events, exposureAlerts, now })
   const openIncidents = satelliteIncidents.filter((item) => !INACTIVE_INCIDENT_STATUSES.has(item.status))
   const recentAnomalies = satelliteAnomalies.filter((item) => now - parseTime(item.detected_at) <= DAY_MS)
 
@@ -172,10 +141,10 @@ export default function SatelliteSecurityProfile({
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <button type="button" onClick={onBack} className="mb-3 inline-flex items-center gap-2 text-xs text-lyra-muted hover:text-lyra-goldBright"><ArrowLeft className="h-3.5 w-3.5" />{t('satelliteProfile.back')}</button>
-          <p className="text-[10px] uppercase tracking-[0.18em] text-lyra-mutedDim">{t('satelliteProfile.eyebrow')}</p>
+          <p className="text-[10px] tracking-[0.18em] text-lyra-mutedDim">{t('satelliteProfile.eyebrow')}</p>
           <div className="mt-1 flex flex-wrap items-center gap-3">
             <h1 id="satellite-security-profile-heading" className="font-display text-3xl font-medium text-lyra-text">{satellite.name}</h1>
-            <span className={`rounded-full border px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.14em] ${tone(satellite.tle_status)}`}>{satellite.tle_status || 'unknown'}</span>
+            <span className={`rounded-full border px-2.5 py-1 font-mono text-[10px] tracking-[0.14em] ${tone(satellite.tle_status)}`}>{satellite.tle_status || 'unknown'}</span>
           </div>
           <p className="mt-2 font-mono text-xs text-lyra-muted">NORAD {satellite.norad_id ?? '—'} · {t('satelliteProfile.updated')} {satellite.updated_at ? new Date(satellite.updated_at).toLocaleString() : '—'}</p>
         </div>
@@ -195,7 +164,7 @@ export default function SatelliteSecurityProfile({
             [Activity, t('satelliteProfile.relatedAgents'), access.agents ? relatedAgents.length : '—'],
           ].map(([Icon, label, value]) => (
             <div key={label} className="rounded-lg border border-lyra-border bg-lyra-panel/50 p-4">
-              <div className="flex items-center justify-between"><p className="text-[10px] uppercase tracking-[0.14em] text-lyra-mutedDim">{label}</p><Icon className="h-3.5 w-3.5 text-lyra-mutedDim" /></div>
+              <div className="flex items-center justify-between"><p className="text-[10px] tracking-[0.14em] text-lyra-mutedDim">{label}</p><Icon className="h-3.5 w-3.5 text-lyra-mutedDim" /></div>
               <p className="mt-2 font-mono text-2xl text-lyra-text">{value}</p>
             </div>
           ))}
@@ -204,7 +173,7 @@ export default function SatelliteSecurityProfile({
 
       <div className="grid gap-4 xl:grid-cols-3">
         <div className="rounded-lg border border-lyra-border bg-lyra-panel/40 p-5">
-          <p className="text-[10px] uppercase tracking-[0.16em] text-lyra-mutedDim">{t('satelliteProfile.orbitalEyebrow')}</p>
+          <p className="text-[10px] tracking-[0.16em] text-lyra-mutedDim">{t('satelliteProfile.orbitalEyebrow')}</p>
           <h2 className="mt-1 font-display text-lg text-lyra-text">{t('satelliteProfile.orbitalTitle')}</h2>
           <dl className="mt-4 grid gap-3 text-sm">
             <div className="flex justify-between gap-4"><dt className="text-lyra-muted">{t('satelliteProfile.latitude')}</dt><dd className="font-mono text-lyra-text">{satellite.position ? `${Number(satellite.position.latitude_deg).toFixed(2)}°` : '—'}</dd></div>
@@ -215,7 +184,7 @@ export default function SatelliteSecurityProfile({
         </div>
 
         <div className="rounded-lg border border-lyra-border bg-lyra-panel/40 p-5">
-          <p className="text-[10px] uppercase tracking-[0.16em] text-lyra-mutedDim">{t('satelliteProfile.securityEyebrow')}</p>
+          <p className="text-[10px] tracking-[0.16em] text-lyra-mutedDim">{t('satelliteProfile.securityEyebrow')}</p>
           <h2 className="mt-1 font-display text-lg text-lyra-text">{t('satelliteProfile.securityTitle')}</h2>
           <div className="mt-4 grid gap-3 text-sm">
             <div className="flex justify-between gap-4"><span className="text-lyra-muted">{t('satelliteProfile.incidents')}</span><span className="font-mono text-lyra-text">{access.incidents ? satelliteIncidents.length : '—'}</span></div>
@@ -228,7 +197,7 @@ export default function SatelliteSecurityProfile({
         </div>
 
         <div className="rounded-lg border border-lyra-border bg-lyra-panel/40 p-5">
-          <p className="text-[10px] uppercase tracking-[0.16em] text-lyra-mutedDim">{t('satelliteProfile.agentsEyebrow')}</p>
+          <p className="text-[10px] tracking-[0.16em] text-lyra-mutedDim">{t('satelliteProfile.agentsEyebrow')}</p>
           <h2 className="mt-1 font-display text-lg text-lyra-text">{t('satelliteProfile.agentsTitle')}</h2>
           <div className="mt-4 grid gap-2">
             {!access.agents ? <p className="text-xs text-lyra-mutedDim">{t('satelliteProfile.restricted')}</p> : relatedAgents.length ? relatedAgents.map((agent) => (
@@ -243,7 +212,7 @@ export default function SatelliteSecurityProfile({
 
       <div className="rounded-lg border border-lyra-border bg-lyra-panel/40 p-5">
         <div className="flex items-center justify-between gap-3">
-          <div><p className="text-[10px] uppercase tracking-[0.16em] text-lyra-mutedDim">{t('satelliteProfile.timelineEyebrow')}</p><h2 className="mt-1 font-display text-lg text-lyra-text">{t('satelliteProfile.timelineTitle')}</h2></div>
+          <div><p className="text-[10px] tracking-[0.16em] text-lyra-mutedDim">{t('satelliteProfile.timelineEyebrow')}</p><h2 className="mt-1 font-display text-lg text-lyra-text">{t('satelliteProfile.timelineTitle')}</h2></div>
           <Clock3 className="h-4 w-4 text-lyra-mutedDim" />
         </div>
         {timeline.length ? <ul className="mt-3">{timeline.map((item) => <TimelineItem key={item.id} {...item} />)}</ul> : (

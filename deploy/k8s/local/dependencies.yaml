@@ -1,5 +1,3 @@
-# Disposable PostgreSQL + Redis for local Kubernetes smoke testing only.
-# Production/staging environments should use external HA/managed data services.
 apiVersion: apps/v1
 kind: Deployment
 metadata:

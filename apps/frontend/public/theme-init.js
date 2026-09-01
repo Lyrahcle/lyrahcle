@@ -5,5 +5,4 @@ try {
     : (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
   if (theme === 'light') document.documentElement.classList.add('light')
 } catch {
-  // Theme initialization is non-critical.
 }

@@ -29,18 +29,10 @@ ENABLE_RLS_RE = re.compile(
     r"ALTER TABLE (?P<name>[a-z_]+) ENABLE ROW LEVEL SECURITY",
     re.IGNORECASE,
 )
-# RLS is also enabled dynamically for a batch of tables via
-# `FOREACH target_table IN ARRAY ARRAY[ 'a', 'b', ... ] LOOP ... EXECUTE
-# format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', target_table) ...`.
 DYNAMIC_RLS_MARKER = "ENABLE ROW LEVEL SECURITY', target_table"
 RLS_ARRAY_RE = re.compile(r"ARRAY\s*\[(?P<items>(?:\s*'[a-z_]+'\s*,?)+)\]", re.IGNORECASE)
 RLS_ARRAY_ENTRY_RE = re.compile(r"'([a-z_]+)'")
 
-# Tables that own an `organization_id` column but are deliberately protected
-# by application-level tenant scoping (see internal/store/tenant_scope.go
-# and the mTLS/JWT-bound query paths) rather than Postgres RLS. Each entry
-# must carry a one-line rationale; removing a table here without adding a
-# matching `ENABLE ROW LEVEL SECURITY` migration will fail this contract.
 APP_LEVEL_TENANT_EXCEPTIONS = {
     "users": "authenticated via JWT claims + org-scoped lookups, not the HTTP RLS session GUC",
     "agent_identities": "agent identity resolved from mTLS client cert, not the human RLS session context",
@@ -102,8 +94,6 @@ def main() -> int:
             f"in APP_LEVEL_TENANT_EXCEPTIONS with a documented rationale"
         )
 
-    # Catch the opposite drift too: an exception on record for a table that
-    # no longer exists, or that gained real RLS since the exception was written.
     stale_exceptions = [
         t for t in APP_LEVEL_TENANT_EXCEPTIONS if t not in owners or t in covered
     ]

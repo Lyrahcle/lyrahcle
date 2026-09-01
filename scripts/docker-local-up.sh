@@ -24,8 +24,6 @@ echo >&2
 echo "WARNING: Docker Hub registry/DNS resolution failed." >&2
 echo "Trying the last successfully built local Lyrahcle images without contacting a registry..." >&2
 
-# Migrate the default Compose image names used by older Lyrahcle checkouts so a
-# workstation that has already built the stack can recover without Docker Hub.
 for mapping in \
   "lyrahcle-main-backend:latest lyrahcle/backend:local" \
   "lyrahcle-main-frontend:latest lyrahcle/frontend:local" \

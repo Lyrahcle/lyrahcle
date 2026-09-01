@@ -39,7 +39,7 @@ function NewUserForm({ onCreated }) {
       className="mb-6 flex flex-wrap items-end gap-3 rounded border border-lyra-border bg-lyra-bgSoft/50 p-4"
     >
       <div className="flex-1 min-w-[10rem]">
-        <label htmlFor="new-user-email" className="mb-1.5 block text-[11px] uppercase tracking-wider text-lyra-mutedDim">
+        <label htmlFor="new-user-email" className="mb-1.5 block text-[11px] tracking-wider text-lyra-mutedDim">
           {t('common.email')}
         </label>
         <input
@@ -52,7 +52,7 @@ function NewUserForm({ onCreated }) {
         />
       </div>
       <div className="flex-1 min-w-[10rem]">
-        <label htmlFor="new-user-password" className="mb-1.5 block text-[11px] uppercase tracking-wider text-lyra-mutedDim">
+        <label htmlFor="new-user-password" className="mb-1.5 block text-[11px] tracking-wider text-lyra-mutedDim">
           {t('common.password')}
         </label>
         <input
@@ -68,7 +68,7 @@ function NewUserForm({ onCreated }) {
         />
       </div>
       <div>
-        <label htmlFor="new-user-role" className="mb-1.5 block text-[11px] uppercase tracking-wider text-lyra-mutedDim">
+        <label htmlFor="new-user-role" className="mb-1.5 block text-[11px] tracking-wider text-lyra-mutedDim">
           {t('users.role')}
         </label>
         <select
@@ -181,7 +181,7 @@ export default function UsersPanel({ users, onChanged }) {
             className="w-full bg-transparent text-sm text-lyra-text placeholder:text-lyra-mutedDim focus:outline-none"
           />
         </label>
-        <p className="font-mono text-[11px] uppercase tracking-wider text-lyra-mutedDim">
+        <p className="font-mono text-[11px] tracking-wider text-lyra-mutedDim">
           {t('users.count', { n: filtered.length, total: users.length })}
         </p>
       </div>
@@ -199,16 +199,16 @@ export default function UsersPanel({ users, onChanged }) {
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-lyra-borderSoft">
-                <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+                <th scope="col" className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">
                   {t('users.email')}
                 </th>
-                <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+                <th scope="col" className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">
                   {t('users.role')}
                 </th>
-                <th scope="col" className="pb-2 text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+                <th scope="col" className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">
                   {t('users.status')}
                 </th>
-                <th scope="col" className="pb-2 text-right text-[11px] font-normal uppercase tracking-wider text-lyra-mutedDim">
+                <th scope="col" className="pb-2 text-right text-[11px] font-normal tracking-wider text-lyra-mutedDim">
                   {t('users.actions')}
                 </th>
               </tr>
@@ -219,7 +219,7 @@ export default function UsersPanel({ users, onChanged }) {
                   <td className="py-2.5 font-mono text-xs text-lyra-goldBright">
                     {u.email}
                     {u.id === currentUserId && (
-                      <span className="ml-2 rounded-full border border-lyra-border px-2 py-0.5 text-[10px] uppercase tracking-wider text-lyra-mutedDim">
+                      <span className="ml-2 rounded-full border border-lyra-border px-2 py-0.5 text-[10px] tracking-wider text-lyra-mutedDim">
                         {t('common.you')}
                       </span>
                     )}
