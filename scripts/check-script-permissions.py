@@ -16,6 +16,7 @@ REQUIRED = (
     'scripts/generate-agent-ca.sh',
     'scripts/generate-agent-config-key.sh',
     'scripts/generate-dev-certs.sh',
+    'scripts/aws-drift-check.sh',
 )
 errors=[]
 for rel in REQUIRED:

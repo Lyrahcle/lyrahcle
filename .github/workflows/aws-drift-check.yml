@@ -1,0 +1,67 @@
+name: AWS Drift Check
+
+# Scheduled, read-only comparison of the Terraform AWS root module against
+# the real infrastructure. Never runs `apply` - only `plan`. Uses OIDC to
+# assume a read-only AWS role; no long-lived AWS keys are stored in GitHub.
+#
+# Setup required once per environment (not done by this file):
+#   1. Create an IAM role trusted for GitHub OIDC, scoped to this repo/branch,
+#      granted read-only (ReadOnlyAccess-equivalent) permissions.
+#   2. Set repo variables: AWS_DRIFT_ROLE_ARN, AWS_REGION,
+#      TF_STATE_BUCKET, TF_STATE_KEY.
+#   3. Enable this workflow (it is opt-in until those variables exist).
+
+on:
+  schedule:
+    - cron: '17 6 * * *' # daily, off the hour to avoid GitHub's cron thundering herd
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  id-token: write # required for OIDC AWS role assumption
+
+concurrency:
+  group: aws-drift-check
+  cancel-in-progress: false
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    if: ${{ vars.AWS_DRIFT_ROLE_ARN != '' }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.16.0'
+
+      - name: Configure AWS credentials (OIDC, read-only role)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DRIFT_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Write backend config
+        working-directory: deploy/terraform/aws
+        run: |
+          cat > backend.hcl <<EOF
+          bucket       = "${{ vars.TF_STATE_BUCKET }}"
+          key          = "${{ vars.TF_STATE_KEY }}"
+          region       = "${{ vars.AWS_REGION }}"
+          encrypt      = true
+          use_lockfile = true
+          EOF
+
+      - name: Drift check (plan only, no lock, no apply)
+        id: drift
+        run: ./scripts/aws-drift-check.sh
+        continue-on-error: true
+
+      - name: Report result
+        run: |
+          if [ "${{ steps.drift.outcome }}" = "success" ]; then
+            echo "No infrastructure drift detected."
+          else
+            echo "::warning::Terraform drift detected (or plan failed) for the AWS root module. Review the job log."
+            exit 1
+          fi
