@@ -3,9 +3,9 @@ import Pagination from './Pagination.jsx'
 import SeverityBadge from './SeverityBadge.jsx'
 import TableScroll from './TableScroll.jsx'
 import CorrelationEvidencePanel from './CorrelationEvidencePanel.jsx'
-import { addIncidentEvidence, addIncidentNote, createIncident, fetchIncident, updateIncident } from '../lib/api.js'
-import { hasPermission } from '../lib/permissions.js'
-import { useI18n } from '../lib/I18nContext.jsx'
+import { addIncidentEvidence, addIncidentNote, createIncident, fetchIncident, updateIncident } from '../lib/api'
+import { hasPermission } from '../lib/permissions'
+import { useI18n } from '../lib/I18nContext'
 
 const STATUSES = ['new', 'investigating', 'contained', 'resolved', 'false_positive']
 const SEVERITIES = ['critical', 'high', 'medium', 'low', 'info']

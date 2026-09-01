@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { fetchPlatformSecretStatus } from '../lib/api.js'
-import { useI18n } from '../lib/I18nContext.jsx'
+import { fetchPlatformSecretStatus } from '../lib/api'
+import { useI18n } from '../lib/I18nContext'
 
 export default function SecretProviderPanel() {
   const { t } = useI18n()

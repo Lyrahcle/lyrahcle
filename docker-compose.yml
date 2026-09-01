@@ -14,7 +14,7 @@ services:
     restart: unless-stopped
     environment:
       - DATABASE_URL=postgres://lyrahcle:lyrahcle@postgres:5432/lyrahcle?sslmode=disable
-      - REDIS_URL=redis:6379
+      - REDIS_URL=redis://redis:6379/0
       - CELESTRAK_GROUPS=stations
       - TLE_CORRELATION_MAX_AGE=24h
       - TLE_STALE_MAX_AGE=72h
@@ -92,7 +92,7 @@ services:
     restart: unless-stopped
     environment:
       - DATABASE_URL=postgres://lyrahcle:lyrahcle@postgres:5432/lyrahcle?sslmode=disable
-      - REDIS_ADDR=redis:6379
+      - REDIS_URL=redis://redis:6379/0
       - PROMETHEUS_PORT=9091
       - SYNC_INTERVAL_SEC=3600
       - NVD_RESULTS_PER_PAGE=100

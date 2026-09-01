@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -16,6 +17,8 @@ import (
 type Config struct {
 	DatabaseURL                       string
 	RedisURL                          string
+	RedisCACertFile                   string
+	RedisTLSServerName                string
 	Port                              string
 	CelestrakGroups                   []string
 	TLECorrelationMaxAge              time.Duration
@@ -110,7 +113,9 @@ func Load() Config {
 
 	cfg := Config{
 		DatabaseURL:                       getSecret(secretSource, "DATABASE_URL", "postgres://lyrahcle:lyrahcle@localhost:5432/lyrahcle?sslmode=disable"),
-		RedisURL:                          getSecret(secretSource, "REDIS_URL", "localhost:6379"),
+		RedisURL:                          getSecret(secretSource, "REDIS_URL", "redis://localhost:6379/0"),
+		RedisCACertFile:                   getEnv("REDIS_CA_CERT_FILE", ""),
+		RedisTLSServerName:                getEnv("REDIS_TLS_SERVER_NAME", ""),
 		Port:                              getEnv("PORT", "8080"),
 		CelestrakGroups:                   strings.Split(getEnv("CELESTRAK_GROUPS", "stations"), ","),
 		TLECorrelationMaxAge:              tLECorrelationMaxAge,
@@ -175,6 +180,11 @@ func Load() Config {
 	}
 
 	production = cfg.IsProduction()
+	if production {
+		if err := validateProductionRedisURL(cfg.RedisURL); err != nil {
+			log.Fatalf("FATAL: %v", err)
+		}
+	}
 	for _, origin := range cfg.CORSAllowedOrigins {
 		origin = strings.TrimSpace(origin)
 		if origin == "" {
@@ -288,6 +298,21 @@ func Load() Config {
 
 func (c Config) IsProduction() bool {
 	return strings.EqualFold(c.Environment, "production") || strings.EqualFold(c.Environment, "prod")
+}
+
+func validateProductionRedisURL(raw string) error {
+	parsed, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil || !strings.EqualFold(parsed.Scheme, "rediss") || parsed.Host == "" {
+		return errors.New("production REDIS_URL must be a valid rediss:// URL")
+	}
+	if parsed.User == nil {
+		return errors.New("production REDIS_URL must include Redis authentication")
+	}
+	password, ok := parsed.User.Password()
+	if !ok || strings.TrimSpace(password) == "" {
+		return errors.New("production REDIS_URL must include a non-empty Redis password or AUTH token")
+	}
+	return nil
 }
 
 func loadSecretProvider(production bool) secretprovider.Provider {

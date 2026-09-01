@@ -7,7 +7,7 @@ dashboard = (ROOT / 'apps/frontend/src/components/Dashboard.jsx').read_text()
 header = (ROOT / 'apps/frontend/src/components/Header.jsx').read_text()
 navigation = (ROOT / 'apps/frontend/src/components/NavigationMenu.jsx').read_text()
 translations = (ROOT / 'apps/frontend/src/lib/translations.js').read_text()
-routes = (ROOT / 'apps/frontend/src/lib/routeTabs.js').read_text()
+routes = (ROOT / 'apps/frontend/src/lib/routeTabs.ts').read_text()
 required = [
     ('render persistent sidebar', '<NavigationMenu' in dashboard and 'fixed inset-y-0 left-0' in navigation),
     ('support collapsed desktop width', "collapsed ? 'w-20' : 'w-64'" in navigation and "navigationCollapsed ? 'lg:pl-20' : 'lg:pl-64'" in dashboard),

@@ -1,10 +1,10 @@
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { I18nProvider } from '../lib/I18nContext.jsx'
+import { I18nProvider } from '../lib/I18nContext'
 import SecretProviderPanel from './SecretProviderPanel.jsx'
-import { fetchPlatformSecretStatus } from '../lib/api.js'
+import { fetchPlatformSecretStatus } from '../lib/api'
 
-vi.mock('../lib/api.js', () => ({ fetchPlatformSecretStatus: vi.fn() }))
+vi.mock('../lib/api', () => ({ fetchPlatformSecretStatus: vi.fn() }))
 
 describe('SecretProviderPanel', () => {
   beforeEach(() => vi.clearAllMocks())

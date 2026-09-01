@@ -20,6 +20,12 @@ application:
 secrets:
   existingSecret: lyrahcle-app-secrets
 
+redis:
+  tls:
+    caSecretName: ""
+    caSecretKey: ca.crt
+    serverName: ""
+
 backend:
   replicaCount: 1
   image:

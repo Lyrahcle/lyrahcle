@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { agentRolloutAction, createAgentRollout, fetchAgentRollout, fetchAgentRollouts } from '../lib/api.js'
+import { agentRolloutAction, createAgentRollout, fetchAgentRollout, fetchAgentRollouts } from '../lib/api'
 import ConfirmDialog from './ConfirmDialog.jsx'
 import TableScroll from './TableScroll.jsx'
 

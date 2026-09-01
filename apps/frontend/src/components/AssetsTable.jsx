@@ -4,9 +4,9 @@ import CopyButton from './CopyButton.jsx'
 import ConfirmDialog from './ConfirmDialog.jsx'
 import TableScroll from './TableScroll.jsx'
 import Pagination from './Pagination.jsx'
-import { deleteAsset, updateAsset } from '../lib/api.js'
-import { hasPermission } from '../lib/permissions.js'
-import { useI18n } from '../lib/I18nContext.jsx'
+import { deleteAsset, updateAsset } from '../lib/api'
+import { hasPermission } from '../lib/permissions'
+import { useI18n } from '../lib/I18nContext'
 
 const KINDS = ['domain', 'ip', 'satellite', 'ground_station', 'firmware']
 

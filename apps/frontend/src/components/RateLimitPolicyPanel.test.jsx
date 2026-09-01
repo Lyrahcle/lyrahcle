@@ -1,10 +1,10 @@
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import RateLimitPolicyPanel from './RateLimitPolicyPanel.jsx'
-import { I18nProvider } from '../lib/I18nContext.jsx'
+import { I18nProvider } from '../lib/I18nContext'
 
-vi.mock('../lib/api.js', () => ({ fetchPlatformRateLimits: vi.fn() }))
-import { fetchPlatformRateLimits } from '../lib/api.js'
+vi.mock('../lib/api', () => ({ fetchPlatformRateLimits: vi.fn() }))
+import { fetchPlatformRateLimits } from '../lib/api'
 
 describe('RateLimitPolicyPanel', () => {
   beforeEach(() => vi.clearAllMocks())

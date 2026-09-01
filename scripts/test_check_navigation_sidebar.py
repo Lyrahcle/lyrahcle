@@ -25,7 +25,7 @@ class NavigationSidebarContractTests(unittest.TestCase):
                 'apps/frontend/src/components/Header.jsx',
                 'apps/frontend/src/components/NavigationMenu.jsx',
                 'apps/frontend/src/lib/translations.js',
-                'apps/frontend/src/lib/routeTabs.js',
+                'apps/frontend/src/lib/routeTabs.ts',
             ]
             for rel in files:
                 target = clone / rel

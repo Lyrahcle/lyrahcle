@@ -1,8 +1,8 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { I18nProvider } from '../lib/I18nContext.jsx'
+import { I18nProvider } from '../lib/I18nContext'
 import AgentKeysPanel from './AgentKeysPanel.jsx'
-import * as api from '../lib/api.js'
+import * as api from '../lib/api'
 
 function renderPanel(props) {
   return render(
@@ -12,7 +12,7 @@ function renderPanel(props) {
   )
 }
 
-vi.mock('../lib/api.js', () => ({
+vi.mock('../lib/api', () => ({
   createAgentKey: vi.fn(),
   revokeAgentKey: vi.fn(),
 }))

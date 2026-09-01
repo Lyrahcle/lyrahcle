@@ -1,16 +1,53 @@
 const EARTH_RADIUS_KM = 6378.137
 const DAY_MS = 24 * 60 * 60 * 1000
 
-function radians(value) {
-  return Number(value) * Math.PI / 180
+export interface StationCoordinates {
+  latitude: number
+  longitude: number
+  altitude: number
 }
 
-function finite(value) {
+export interface SatellitePosition {
+  latitude_deg?: unknown
+  longitude_deg?: unknown
+  altitude_km?: unknown
+}
+
+export interface AgentStation {
+  station?: {
+    latitude_deg?: unknown
+    longitude_deg?: unknown
+    altitude_m?: unknown
+  }
+}
+
+export interface Satellite {
+  position?: SatellitePosition
+  [key: string]: unknown
+}
+
+export interface VisibleSatelliteEntry {
+  satellite: Satellite
+  elevation: number
+}
+
+export interface StationReading {
+  agent_id?: string
+  captured_at?: string
+  satellite_id?: string
+  [key: string]: unknown
+}
+
+function radians(value: unknown): number {
+  return (Number(value) * Math.PI) / 180
+}
+
+function finite(value: unknown): number | null {
   const number = Number(value)
   return Number.isFinite(number) ? number : null
 }
 
-function vectorFromGeodetic(latitudeDeg, longitudeDeg, altitudeKm) {
+function vectorFromGeodetic(latitudeDeg: number, longitudeDeg: number, altitudeKm: number) {
   const latitude = radians(latitudeDeg)
   const longitude = radians(longitudeDeg)
   const radius = EARTH_RADIUS_KM + altitudeKm
@@ -22,7 +59,7 @@ function vectorFromGeodetic(latitudeDeg, longitudeDeg, altitudeKm) {
   }
 }
 
-export function stationCoordinates(agent) {
+export function stationCoordinates(agent: AgentStation | null | undefined): StationCoordinates | null {
   const latitude = finite(agent?.station?.latitude_deg)
   const longitude = finite(agent?.station?.longitude_deg)
   const altitude = finite(agent?.station?.altitude_m)
@@ -31,7 +68,10 @@ export function stationCoordinates(agent) {
   return { latitude, longitude, altitude }
 }
 
-export function satelliteElevationDeg(station, position) {
+export function satelliteElevationDeg(
+  station: StationCoordinates | null | undefined,
+  position: SatellitePosition | null | undefined,
+): number | null {
   if (!station || !position) return null
   const latitude = finite(position.latitude_deg)
   const longitude = finite(position.longitude_deg)
@@ -46,19 +86,19 @@ export function satelliteElevationDeg(station, position) {
   const observerLength = Math.sqrt(observer.x * observer.x + observer.y * observer.y + observer.z * observer.z)
   if (!range || !observerLength) return null
   const dot = (dx * observer.x + dy * observer.y + dz * observer.z) / (range * observerLength)
-  return Math.asin(Math.max(-1, Math.min(1, dot))) * 180 / Math.PI
+  return (Math.asin(Math.max(-1, Math.min(1, dot))) * 180) / Math.PI
 }
 
-export function visibleSatellites(agent, satellites = []) {
+export function visibleSatellites(agent: AgentStation | null | undefined, satellites: Satellite[] = []): VisibleSatelliteEntry[] {
   const station = stationCoordinates(agent)
   if (!station) return []
   return satellites
     .map((satellite) => ({ satellite, elevation: satelliteElevationDeg(station, satellite.position) }))
-    .filter((item) => item.elevation !== null && item.elevation >= 0)
+    .filter((item): item is VisibleSatelliteEntry => item.elevation !== null && item.elevation >= 0)
     .sort((a, b) => b.elevation - a.elevation)
 }
 
-export function readingsForStation(readings = [], agentId, now = Date.now()) {
+export function readingsForStation(readings: StationReading[] = [], agentId: string, now: number = Date.now()): StationReading[] {
   return readings
     .filter((item) => item.agent_id === agentId)
     .filter((item) => {
@@ -68,6 +108,12 @@ export function readingsForStation(readings = [], agentId, now = Date.now()) {
     .sort((a, b) => Date.parse(b.captured_at ?? '') - Date.parse(a.captured_at ?? ''))
 }
 
-export function observedSatelliteIds(readings = [], agentId, now = Date.now()) {
-  return [...new Set(readingsForStation(readings, agentId, now).map((item) => item.satellite_id).filter(Boolean))]
+export function observedSatelliteIds(readings: StationReading[] = [], agentId: string, now: number = Date.now()): string[] {
+  return [
+    ...new Set(
+      readingsForStation(readings, agentId, now)
+        .map((item) => item.satellite_id)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ]
 }

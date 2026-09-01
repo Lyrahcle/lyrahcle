@@ -3,9 +3,9 @@ import { describe, expect, it, vi } from 'vitest'
 import ChangePasswordModal from './ChangePasswordModal.jsx'
 import TwoFactorModal from './TwoFactorModal.jsx'
 import SessionsModal from './SessionsModal.jsx'
-import { I18nProvider } from '../lib/I18nContext.jsx'
+import { I18nProvider } from '../lib/I18nContext'
 
-vi.mock('../lib/api.js', () => ({
+vi.mock('../lib/api', () => ({
   changePassword: vi.fn(),
   disableTotp: vi.fn(),
   enableTotp: vi.fn(),

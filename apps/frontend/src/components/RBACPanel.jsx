@@ -4,9 +4,9 @@ import {
   createRBACRole,
   fetchUserRBACRoles,
   removeUserRBACRole,
-} from '../lib/api.js'
-import { hasPermission } from '../lib/permissions.js'
-import { useI18n } from '../lib/I18nContext.jsx'
+} from '../lib/api'
+import { hasPermission } from '../lib/permissions'
+import { useI18n } from '../lib/I18nContext'
 import TableScroll from './TableScroll.jsx'
 
 export default function RBACPanel({ permissions, roles, users, onChanged }) {

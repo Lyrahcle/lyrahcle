@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { safeOtpauthUrl } from './safeUrl.js'
+import { safeOtpauthUrl } from './safeUrl'
 
 describe('safeOtpauthUrl', () => {
   test('accepts otpauth URLs', () => {

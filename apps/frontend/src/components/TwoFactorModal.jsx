@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { disableTotp, enableTotp, fetchMe, setupTotp } from '../lib/api.js'
-import { useI18n } from '../lib/I18nContext.jsx'
-import { useFocusTrap } from '../lib/useFocusTrap.js'
-import { safeOtpauthUrl } from '../lib/safeUrl.js'
+import { disableTotp, enableTotp, fetchMe, setupTotp } from '../lib/api'
+import { useI18n } from '../lib/I18nContext'
+import { useFocusTrap } from '../lib/useFocusTrap'
+import { safeOtpauthUrl } from '../lib/safeUrl'
 
 export default function TwoFactorModal({ onClose, onSecurityChange }) {
   const { t } = useI18n()

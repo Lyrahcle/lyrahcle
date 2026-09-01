@@ -24,9 +24,9 @@ class GroundStationOperationsContractTests(unittest.TestCase):
                 'apps/frontend/src/components/Dashboard.jsx',
                 'apps/frontend/src/components/GroundStationOperations.jsx',
                 'apps/frontend/src/components/WorldMap.jsx',
-                'apps/frontend/src/lib/risk.js',
-                'apps/frontend/src/lib/groundStations.js',
-                'apps/frontend/src/lib/routeTabs.js',
+                'apps/frontend/src/lib/risk.ts',
+                'apps/frontend/src/lib/groundStations.ts',
+                'apps/frontend/src/lib/routeTabs.ts',
                 'apps/frontend/src/lib/translations.js',
             ]
             for rel in files:

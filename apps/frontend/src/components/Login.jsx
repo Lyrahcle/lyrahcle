@@ -8,9 +8,9 @@ import {
   LoginRateLimitedError,
   TotpRequiredError,
   WebAuthnRequiredError,
-} from '../lib/auth.js'
-import { completePasswordReset, requestPasswordReset } from '../lib/api.js'
-import { useI18n } from '../lib/I18nContext.jsx'
+} from '../lib/auth'
+import { completePasswordReset, requestPasswordReset } from '../lib/api'
+import { useI18n } from '../lib/I18nContext'
 import pkg from '../../package.json'
 
 const REPO_URL = 'https://github.com/mlko01/lyrahcle'

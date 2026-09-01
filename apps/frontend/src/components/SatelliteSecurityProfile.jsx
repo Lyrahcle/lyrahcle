@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Activity, ArrowLeft, Clock3, Orbit, RadioTower, Satellite, ShieldAlert, ShieldCheck, TriangleAlert } from 'lucide-react'
-import { fetchIncidents, fetchOrbitalEvents } from '../lib/api.js'
-import { useI18n } from '../lib/I18nContext.jsx'
-import { calculateSatelliteRisk, riskSeverityRank } from '../lib/risk.js'
+import { fetchIncidents, fetchOrbitalEvents } from '../lib/api'
+import { useI18n } from '../lib/I18nContext'
+import { calculateSatelliteRisk, riskSeverityRank } from '../lib/risk'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 const INACTIVE_INCIDENT_STATUSES = new Set(['resolved', 'false_positive'])

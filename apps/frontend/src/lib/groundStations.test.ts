@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { observedSatelliteIds, satelliteElevationDeg, stationCoordinates, visibleSatellites } from './groundStations.js'
+import { observedSatelliteIds, satelliteElevationDeg, stationCoordinates, visibleSatellites } from './groundStations'
 
 describe('ground station operations helpers', () => {
   it('validates station coordinates', () => {

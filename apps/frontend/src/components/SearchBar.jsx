@@ -1,7 +1,7 @@
 import { Search, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { globalSearch } from '../lib/api.js'
-import { useI18n } from '../lib/I18nContext.jsx'
+import { globalSearch } from '../lib/api'
+import { useI18n } from '../lib/I18nContext'
 
 const TYPES = ['all', 'assets', 'satellites', 'cves', 'incidents']
 

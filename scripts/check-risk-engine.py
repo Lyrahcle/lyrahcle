@@ -3,7 +3,7 @@ from pathlib import Path
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
-risk = (ROOT / 'apps/frontend/src/lib/risk.js').read_text()
+risk = (ROOT / 'apps/frontend/src/lib/risk.ts').read_text()
 mission = (ROOT / 'apps/frontend/src/components/MissionSecurityOperationsDashboard.jsx').read_text()
 profile = (ROOT / 'apps/frontend/src/components/SatelliteSecurityProfile.jsx').read_text()
 satellites = (ROOT / 'apps/frontend/src/components/SatellitesPanel.jsx').read_text()

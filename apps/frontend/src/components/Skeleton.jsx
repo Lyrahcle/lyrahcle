@@ -1,4 +1,4 @@
-import { useI18n } from '../lib/I18nContext.jsx'
+import { useI18n } from '../lib/I18nContext'
 
 export default function Skeleton({ rows = 4 }) {
   const { t } = useI18n()

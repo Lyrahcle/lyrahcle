@@ -16,7 +16,7 @@ import {
   X,
 } from 'lucide-react'
 import LogoMark from './LogoMark.jsx'
-import { useI18n } from '../lib/I18nContext.jsx'
+import { useI18n } from '../lib/I18nContext'
 
 const ICONS = {
   orbital: Orbit,

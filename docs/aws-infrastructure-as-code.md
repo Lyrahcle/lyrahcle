@@ -16,7 +16,7 @@ Internet / agents
 backend frontend cve-sync
    |        |
    +-- RDS PostgreSQL
-   +-- ElastiCache/Valkey (after Redis TLS app support)
+   +-- ElastiCache/Valkey (TLS + AUTH ready)
 
 Images -> ECR
 Secrets -> Secrets Manager + KMS
@@ -49,8 +49,7 @@ mode so the Go backend validates client certificates.
 RDS is private, encrypted with the environment KMS key, uses a managed master
 password in Secrets Manager, and is forced Multi-AZ in production.
 
-ElastiCache is present as an opt-in resource with at-rest and in-transit
-encryption. It remains disabled by default until Lyrahcle has first-class Redis
+ElastiCache is present as an opt-in resource with at-rest encryption, required TLS in transit and production AUTH. It remains disabled by default so cost and secret population are explicit. Lyrahcle has first-class Redis
 TLS/auth support. The migration policy is to fix the client, not weaken the
 managed service.
 

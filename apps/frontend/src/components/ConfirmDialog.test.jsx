@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import ConfirmDialog from './ConfirmDialog.jsx'
-import { I18nProvider } from '../lib/I18nContext.jsx'
+import { I18nProvider } from '../lib/I18nContext'
 
 function renderDialog(props = {}) {
   const onConfirm = vi.fn()

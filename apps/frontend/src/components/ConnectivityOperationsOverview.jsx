@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Activity, Cpu, RadioTower, Search, ShieldAlert, ShieldCheck, WifiOff } from 'lucide-react'
-import { useI18n } from '../lib/I18nContext.jsx'
+import { useI18n } from '../lib/I18nContext'
 
 const ONLINE_WINDOW_MS = 5 * 60 * 1000
 

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { decodeFrame } from '../lib/api.js'
+import { decodeFrame } from '../lib/api'
 
 const PROTOCOLS = [
   { id: 'ax25', label: 'AX.25', placeholder: '82a0a4a64040609c60868298986f03f0...' },

@@ -1,6 +1,6 @@
 import TableScroll from './TableScroll.jsx'
 import Pagination from './Pagination.jsx'
-import { useI18n } from '../lib/I18nContext.jsx'
+import { useI18n } from '../lib/I18nContext'
 
 export default function AuditLogPanel({ page, onPrev, onNext }) {
   const { t } = useI18n()

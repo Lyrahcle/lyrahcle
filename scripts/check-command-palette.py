@@ -11,7 +11,7 @@ required = [
     ('mount command palette in header', "import CommandPalette from './CommandPalette.jsx'" in header and '<CommandPalette' in header),
     ('support Ctrl/Cmd+K', 'event.metaKey || event.ctrlKey' in palette and "event.key.toLocaleLowerCase() === 'k'" in palette),
     ('support keyboard result navigation', "event.key === 'ArrowDown'" in palette and "event.key === 'ArrowUp'" in palette and "event.key === 'Enter'" in palette),
-    ('reuse global search API', "import { globalSearch } from '../lib/api.js'" in palette and 'await globalSearch(value, controller.signal)' in palette),
+    ('reuse global search API', "import { globalSearch } from '../lib/api'" in palette and 'await globalSearch(value, controller.signal)' in palette),
     ('filter search results to allowed destinations', '.filter((result) => allowedTabs.has(result.tab))' in palette),
     ('open satellite profile directly', "result?.type === 'satellites'" in dashboard and 'setSelectedSatelliteId(result.id)' in dashboard),
     ('preserve permission-aware navigation source', 'navigationItems={tabs}' in dashboard),

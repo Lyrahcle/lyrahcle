@@ -2,7 +2,7 @@ import { describe, expect, test, vi } from 'vitest'
 import { render, screen, within, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { axe } from 'jest-axe'
-import { I18nProvider } from '../lib/I18nContext.jsx'
+import { I18nProvider } from '../lib/I18nContext'
 import NewAssetForm from './NewAssetForm.jsx'
 import NewSatelliteForm from './NewSatelliteForm.jsx'
 import ChangePasswordModal from './ChangePasswordModal.jsx'
@@ -17,7 +17,7 @@ const flushReactUpdates = async () => {
   })
 }
 
-vi.mock('../lib/api.js', () => ({
+vi.mock('../lib/api', () => ({
   fetchPrograms: vi.fn().mockResolvedValue([]),
   createProgram: vi.fn(),
   createAsset: vi.fn(),

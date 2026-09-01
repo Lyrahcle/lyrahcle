@@ -1,5 +1,5 @@
 import SeverityBadge from './SeverityBadge.jsx'
-import { useI18n } from '../lib/I18nContext.jsx'
+import { useI18n } from '../lib/I18nContext'
 
 function percent(value) {
   const numeric = Number(value)

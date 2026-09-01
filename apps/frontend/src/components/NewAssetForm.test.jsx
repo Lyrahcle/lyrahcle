@@ -1,9 +1,9 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import NewAssetForm from './NewAssetForm.jsx'
-import * as api from '../lib/api.js'
+import * as api from '../lib/api'
 
-vi.mock('../lib/api.js', () => ({
+vi.mock('../lib/api', () => ({
   createAsset: vi.fn(),
   createProgram: vi.fn(),
   fetchPrograms: vi.fn(),

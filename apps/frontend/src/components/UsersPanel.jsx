@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react'
 import { Search } from 'lucide-react'
-import { createUser, deleteUser, updateUserRole, updateUserStatus } from '../lib/api.js'
-import { decodeToken, getToken } from '../lib/auth.js'
-import { useI18n } from '../lib/I18nContext.jsx'
+import { createUser, deleteUser, updateUserRole, updateUserStatus } from '../lib/api'
+import { decodeToken, getToken } from '../lib/auth'
+import { useI18n } from '../lib/I18nContext'
 import ConfirmDialog from './ConfirmDialog.jsx'
 import TableScroll from './TableScroll.jsx'
 

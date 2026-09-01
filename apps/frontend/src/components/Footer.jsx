@@ -1,5 +1,5 @@
 import LogoMark from './LogoMark.jsx'
-import { useI18n } from '../lib/I18nContext.jsx'
+import { useI18n } from '../lib/I18nContext'
 import pkg from '../../package.json'
 
 const REPO_URL = 'https://github.com/mlko01/lyrahcle'

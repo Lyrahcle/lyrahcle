@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import ConfirmDialog from './ConfirmDialog.jsx'
-import { deleteProgram, updateProgram } from '../lib/api.js'
-import { hasPermission } from '../lib/permissions.js'
-import { useI18n } from '../lib/I18nContext.jsx'
+import { deleteProgram, updateProgram } from '../lib/api'
+import { hasPermission } from '../lib/permissions'
+import { useI18n } from '../lib/I18nContext'
 
 export default function ProgramManager({ programs = [], onChanged }) {
   const { t } = useI18n()

@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import CopyButton from './CopyButton.jsx'
-import { I18nProvider } from '../lib/I18nContext.jsx'
+import { I18nProvider } from '../lib/I18nContext'
 
 function renderButton(props = {}) {
   return render(<I18nProvider><CopyButton value="25544" label="NORAD ID" {...props} /></I18nProvider>)

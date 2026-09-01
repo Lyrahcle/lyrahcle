@@ -37,6 +37,7 @@ resource "aws_elasticache_replication_group" "redis" {
 
   at_rest_encryption_enabled = true
   transit_encryption_enabled = true
+  transit_encryption_mode    = "required"
   kms_key_id                 = aws_kms_key.data.arn
   auth_token                 = var.redis_auth_token
 
@@ -46,7 +47,7 @@ resource "aws_elasticache_replication_group" "redis" {
   lifecycle {
     precondition {
       condition     = var.environment != "production" || var.redis_auth_token != null
-      error_message = "Production ElastiCache requires redis_auth_token. Keep create_redis=false until Lyrahcle Redis TLS/auth support is ready."
+      error_message = "Production ElastiCache requires redis_auth_token for authenticated TLS connections."
     }
   }
 

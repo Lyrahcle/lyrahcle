@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import DottedMap from 'dotted-map/without-countries'
 import worldMapData from '../lib/world-map-data.json'
-import { stationCoordinates } from '../lib/groundStations.js'
+import { stationCoordinates } from '../lib/groundStations'
 
 export default function WorldMap({ satellites = [], stations = [], onStationSelect = () => {} }) {
   const map = useMemo(() => new DottedMap({ map: worldMapData }), [])

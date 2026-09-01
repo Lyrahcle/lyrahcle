@@ -28,7 +28,7 @@ CHECKS = {
         'DeleteInOrganization',
         'organization_id=$1',
     ],
-    ROOT / 'apps/frontend/src/lib/api.js': [
+    ROOT / 'apps/frontend/src/lib/api.ts': [
         'export async function updateAsset',
         'export async function deleteAsset',
         'export async function updateProgram',

@@ -1,10 +1,10 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { I18nProvider } from '../lib/I18nContext.jsx'
+import { I18nProvider } from '../lib/I18nContext'
 import AgentRemoteConfigPanel from './AgentRemoteConfigPanel.jsx'
-import * as api from '../lib/api.js'
+import * as api from '../lib/api'
 
-vi.mock('../lib/api.js', () => ({
+vi.mock('../lib/api', () => ({
   applyAgentConfig: vi.fn(),
   fetchAgentConfig: vi.fn(),
   fetchAgentConfigHistory: vi.fn(),

@@ -1,7 +1,7 @@
 import { Activity, Clock3, Orbit, RadioTower, ShieldAlert, ShieldCheck, TriangleAlert } from 'lucide-react'
 import StatCard from './StatCard.jsx'
-import { useI18n } from '../lib/I18nContext.jsx'
-import { calculateMissionRisk } from '../lib/risk.js'
+import { useI18n } from '../lib/I18nContext'
+import { calculateMissionRisk } from '../lib/risk'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 const AGENT_ONLINE_WINDOW_MS = 5 * 60 * 1000

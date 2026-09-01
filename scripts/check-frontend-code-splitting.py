@@ -6,12 +6,12 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 DASHBOARD = ROOT / "apps/frontend/src/components/Dashboard.jsx"
-HELPER = ROOT / "apps/frontend/src/lib/lazyComponent.jsx"
+HELPER = ROOT / "apps/frontend/src/lib/lazyComponent.tsx"
 
 MIN_LAZY_DECLARATIONS = 10
 
 LAZY_IMPORT_RE = re.compile(
-    r"""^import\s*\{\s*lazyComponent\s*\}\s*from\s*['"]\.\./lib/lazyComponent\.jsx['"]\s*;?\s*$""",
+    r"""^import\s*\{\s*lazyComponent\s*\}\s*from\s*['"]\.\./lib/lazyComponent['"]\s*;?\s*$""",
     re.MULTILINE,
 )
 
@@ -120,7 +120,7 @@ def main() -> int:
         )
 
     first_import = dashboard.find(
-        "import { lazyComponent } from '../lib/lazyComponent.jsx'"
+        "import { lazyComponent } from '../lib/lazyComponent'"
     )
     first_decl = dashboard.find("lazyComponent(() => import(")
 

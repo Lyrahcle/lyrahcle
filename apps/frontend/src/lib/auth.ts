@@ -1,20 +1,35 @@
+export type Role = 'viewer' | 'auditor' | 'analyst' | 'operator' | 'admin'
+
+export interface LoginResponse {
+  token: string
+  role: Role
+  password_change_required?: boolean
+  [key: string]: unknown
+}
+
+export interface TokenPayload {
+  exp?: number
+  password_change_required?: boolean
+  [key: string]: unknown
+}
+
 const TOKEN_KEY = 'lyra_token'
 const ROLE_KEY = 'lyra_role'
 
-function purgeLegacyPersistentAuth() {
+function purgeLegacyPersistentAuth(): void {
   localStorage.removeItem(TOKEN_KEY)
   localStorage.removeItem(ROLE_KEY)
 }
 
-export function getToken() {
+export function getToken(): string | null {
   return sessionStorage.getItem(TOKEN_KEY)
 }
 
-export function getRole() {
-  return sessionStorage.getItem(ROLE_KEY)
+export function getRole(): Role | null {
+  return sessionStorage.getItem(ROLE_KEY) as Role | null
 }
 
-export function isAuthenticated() {
+export function isAuthenticated(): boolean {
   const token = getToken()
   if (!token) return false
   const payload = decodeToken(token)
@@ -22,7 +37,7 @@ export function isAuthenticated() {
   return payload.exp * 1000 > Date.now()
 }
 
-export function decodeToken(token) {
+export function decodeToken(token: string): TokenPayload | null {
   try {
     const [, payload] = token.split('.')
     return JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')))
@@ -43,7 +58,13 @@ export class LoginRateLimitedError extends Error {
   }
 }
 
-export async function login(identifier, password, totpCode) {
+export class WebAuthnRequiredError extends Error {
+  constructor() {
+    super('webauthn_required')
+  }
+}
+
+export async function login(identifier: string, password: string, totpCode?: string): Promise<LoginResponse> {
   const res = await fetch('/api/v1/auth/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -59,14 +80,14 @@ export async function login(identifier, password, totpCode) {
     }
     throw new Error('Login failed')
   }
-  const data = await res.json()
+  const data: LoginResponse = await res.json()
   purgeLegacyPersistentAuth()
   sessionStorage.setItem(TOKEN_KEY, data.token)
   sessionStorage.setItem(ROLE_KEY, data.role)
   return data
 }
 
-export async function logout() {
+export async function logout(): Promise<void> {
   const token = getToken()
   purgeLegacyPersistentAuth()
   sessionStorage.removeItem(TOKEN_KEY)
@@ -78,79 +99,86 @@ export async function logout() {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       })
-    } catch {}
+    } catch {
+    }
   }
 }
 
-export function authHeaders() {
+export function authHeaders(): Record<string, string> {
   const token = getToken()
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
-const ROLE_RANK = { viewer: 0, auditor: 0, analyst: 1, operator: 2, admin: 3 }
+const ROLE_RANK: Record<Role, number> = { viewer: 0, auditor: 0, analyst: 1, operator: 2, admin: 3 }
 
-export function canWrite() {
-  return (ROLE_RANK[getRole()] ?? -1) >= ROLE_RANK.operator
+export function canWrite(): boolean {
+  const role = getRole()
+  return (role ? ROLE_RANK[role] : -1) >= ROLE_RANK.operator
 }
 
-export function canInvestigate() {
-  return ['analyst', 'operator', 'admin'].includes(getRole())
+export function canInvestigate(): boolean {
+  const role = getRole()
+  return role !== null && (['analyst', 'operator', 'admin'] as Role[]).includes(role)
 }
 
-export function canAudit() {
-  return ['auditor', 'admin'].includes(getRole())
+export function canAudit(): boolean {
+  const role = getRole()
+  return role !== null && (['auditor', 'admin'] as Role[]).includes(role)
 }
 
-export function isAdmin() {
+export function isAdmin(): boolean {
   return getRole() === 'admin'
 }
 
-export function passwordChangeRequired() {
-  return Boolean(decodeToken(getToken())?.password_change_required)
+export function passwordChangeRequired(): boolean {
+  const token = getToken()
+  return Boolean(token && decodeToken(token)?.password_change_required)
 }
 
-export class WebAuthnRequiredError extends Error {
-  constructor() {
-    super('webauthn_required')
-  }
-}
-
-function decodeBase64Url(value) {
+function decodeBase64Url(value: string): Uint8Array {
   const padding = '='.repeat((4 - (value.length % 4)) % 4)
   const base64 = (value + padding).replace(/-/g, '+').replace(/_/g, '/')
   const binary = atob(base64)
   return Uint8Array.from(binary, (char) => char.charCodeAt(0))
 }
 
-function encodeBase64Url(value) {
+function encodeBase64Url(value: ArrayBuffer): string {
   const bytes = new Uint8Array(value)
   let binary = ''
   for (const byte of bytes) binary += String.fromCharCode(byte)
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '')
 }
 
-export function prepareCreationOptions(payload) {
+type WebAuthnJSON = any
+
+export function prepareCreationOptions(payload: WebAuthnJSON): PublicKeyCredentialCreationOptions {
   const source = payload.publicKey ?? payload
   return {
     ...source,
     challenge: decodeBase64Url(source.challenge),
     user: { ...source.user, id: decodeBase64Url(source.user.id) },
-    excludeCredentials: (source.excludeCredentials ?? []).map((item) => ({ ...item, id: decodeBase64Url(item.id) })),
+    excludeCredentials: (source.excludeCredentials ?? []).map((item: WebAuthnJSON) => ({
+      ...item,
+      id: decodeBase64Url(item.id),
+    })),
   }
 }
 
-export function prepareRequestOptions(payload) {
+export function prepareRequestOptions(payload: WebAuthnJSON): PublicKeyCredentialRequestOptions {
   const source = payload.publicKey ?? payload
   return {
     ...source,
     challenge: decodeBase64Url(source.challenge),
-    allowCredentials: (source.allowCredentials ?? []).map((item) => ({ ...item, id: decodeBase64Url(item.id) })),
+    allowCredentials: (source.allowCredentials ?? []).map((item: WebAuthnJSON) => ({
+      ...item,
+      id: decodeBase64Url(item.id),
+    })),
   }
 }
 
-export function serializeCredential(credential) {
-  const response = credential.response
-  const serialized = {
+export function serializeCredential(credential: PublicKeyCredential): WebAuthnJSON {
+  const response = credential.response as AuthenticatorAttestationResponse & AuthenticatorAssertionResponse
+  const serialized: WebAuthnJSON = {
     id: credential.id,
     rawId: encodeBase64Url(credential.rawId),
     type: credential.type,
@@ -168,7 +196,7 @@ export function serializeCredential(credential) {
   return serialized
 }
 
-export async function loginWithSecurityKey(identifier, password) {
+export async function loginWithSecurityKey(identifier: string, password: string): Promise<LoginResponse> {
   if (!window.PublicKeyCredential || !navigator.credentials) throw new Error('Security keys are not supported by this browser')
   const start = await fetch('/api/v1/auth/webauthn/login/start', {
     method: 'POST',
@@ -180,7 +208,9 @@ export async function loginWithSecurityKey(identifier, password) {
     throw new Error('Unable to start security-key authentication')
   }
   const flow = await start.json()
-  const credential = await navigator.credentials.get({ publicKey: prepareRequestOptions(flow.options) })
+  const credential = (await navigator.credentials.get({
+    publicKey: prepareRequestOptions(flow.options),
+  })) as PublicKeyCredential | null
   if (!credential) throw new Error('Security-key authentication was cancelled')
   const finish = await fetch('/api/v1/auth/webauthn/login/finish', {
     method: 'POST',
@@ -188,7 +218,7 @@ export async function loginWithSecurityKey(identifier, password) {
     body: JSON.stringify({ flow_id: flow.flow_id, credential: serializeCredential(credential) }),
   })
   if (!finish.ok) throw new Error('Security-key verification failed')
-  const data = await finish.json()
+  const data: LoginResponse = await finish.json()
   purgeLegacyPersistentAuth()
   sessionStorage.setItem(TOKEN_KEY, data.token)
   sessionStorage.setItem(ROLE_KEY, data.role)

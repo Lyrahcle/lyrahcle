@@ -5,7 +5,9 @@
 | Variable | Default | Production guidance |
 |---|---|---|
 | `DATABASE_URL` | local Lyrahcle Postgres URL | Required; use protected credentials and TLS where applicable |
-| `REDIS_URL` | `localhost:6379` | Required in production for revocation, authorization-state checks, rate limiting, and caching |
+| `REDIS_URL` | `redis://localhost:6379/0` | Redis URI. Production requires authenticated `rediss://`; credentials are redacted from logs |
+| `REDIS_CA_CERT_FILE` | unset | Optional PEM CA bundle added to the system trust store for Redis TLS |
+| `REDIS_TLS_SERVER_NAME` | unset | Optional Redis certificate server-name override |
 | `PORT` | `8080` | API listen port |
 | `CELESTRAK_GROUPS` | `stations` | Comma-separated Celestrak groups |
 | `TLE_CORRELATION_MAX_AGE` | `24h` | Maximum TLE age allowed to influence automatic orbital severity |
@@ -38,6 +40,8 @@
 | `RATE_LIMIT_TENANT_AGENT_PER_MINUTE` | `12000` | Aggregate machine/API budget per tenant, isolated from human budgets |
 | `RATE_LIMIT_AGENT_PER_MINUTE` | `3000` | Per-agent machine/API budget within a tenant |
 
+
+Redis transport security uses URI semantics. `redis://` remains supported for local development, while production requires `rediss://` plus a non-empty password/AUTH token. TLS verification uses the system trust store with a minimum of TLS 1.2. `REDIS_CA_CERT_FILE` can add a private CA and `REDIS_TLS_SERVER_NAME` can override certificate hostname verification when required by a controlled deployment. Both the backend and CVE worker redact Redis credentials from startup logs and connection diagnostics. AUTH tokens containing URI-reserved characters must be percent-encoded inside `REDIS_URL`.
 
 Authenticated rate limiting is tenant-aware. Human traffic is checked against both an aggregate organization budget and a per-user budget, with independent read/write namespaces. Valid SDR-agent traffic uses a separate organization+agent namespace so high-rate ingest cannot consume the human API allowance. Redis keys contain hashes of tenant/actor subjects rather than raw UUIDs. The platform IP ceiling remains as a deliberately higher emergency guard, while login/recovery retain stricter pre-authentication abuse limits. If Redis becomes unavailable after startup, the tenant limiter falls back to an in-process fixed-window counter and emits `lyrahcle_rate_limit_backend_fallback_total`. Production still requires Redis for distributed enforcement across replicas.
 
@@ -75,7 +79,9 @@ For production, use the enrollment/mTLS variables below. Legacy agent keys can s
 | Variable | Default | Description |
 |---|---|---|
 | `DATABASE_URL` | local Lyrahcle Postgres URL | Shared application database |
-| `REDIS_ADDR` | `localhost:6379` | Dedup/event Redis connection |
+| `REDIS_URL` | `redis://localhost:6379/0` | CVE worker Redis URI. Production requires authenticated `rediss://` |
+| `REDIS_CA_CERT_FILE` | unset | Optional PEM CA bundle added to the system trust store for Redis TLS |
+| `REDIS_TLS_SERVER_NAME` | unset | Optional Redis certificate server-name override |
 | `PROMETHEUS_PORT` | `9091` | Worker metrics port |
 | `SYNC_INTERVAL_SEC` | `3600` | Time between sync cycles |
 | `NVD_RESULTS_PER_PAGE` | `100` | NVD page size |

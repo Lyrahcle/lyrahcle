@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
-import { createOrganization, grantPlatformAdministrator, revokePlatformAdministrator, updateOrganization } from '../lib/api.js'
-import { useI18n } from '../lib/I18nContext.jsx'
+import { createOrganization, grantPlatformAdministrator, revokePlatformAdministrator, updateOrganization } from '../lib/api'
+import { useI18n } from '../lib/I18nContext'
 import TableScroll from './TableScroll.jsx'
 
 export default function PlatformOrganizationsPanel({ organizations = [], platformUsers = [], onChanged, onPlatformUsersChanged }) {

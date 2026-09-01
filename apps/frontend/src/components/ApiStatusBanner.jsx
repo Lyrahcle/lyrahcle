@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useI18n } from '../lib/I18nContext.jsx'
+import { useI18n } from '../lib/I18nContext'
 
 function copyForKind(t, kind) {
   const known = ['forbidden', 'not_found', 'conflict', 'rate_limited', 'server', 'network']

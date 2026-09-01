@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Rocket } from 'lucide-react'
-import { createSatellite } from '../lib/api.js'
-import { useI18n } from '../lib/I18nContext.jsx'
+import { createSatellite } from '../lib/api'
+import { useI18n } from '../lib/I18nContext'
 
 export default function NewSatelliteForm({ onCreated }) {
   const { t } = useI18n()

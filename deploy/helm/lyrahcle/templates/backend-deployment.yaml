@@ -141,6 +141,14 @@ spec:
               value: {{ .Values.application.tleStaleMaxAge | quote }}
             - name: ORBITAL_AUTO_ESCALATION_ENABLED
               value: {{ .Values.application.orbitalAutoEscalationEnabled | quote }}
+            {{- if .Values.redis.tls.caSecretName }}
+            - name: REDIS_CA_CERT_FILE
+              value: /etc/lyrahcle/redis-ca/ca.crt
+            {{- end }}
+            {{- if .Values.redis.tls.serverName }}
+            - name: REDIS_TLS_SERVER_NAME
+              value: {{ .Values.redis.tls.serverName | quote }}
+            {{- end }}
             {{- if .Values.backend.tls.enabled }}
             - name: TLS_CERT_FILE
               value: /run/lyrahcle/tls/tls.crt
@@ -170,6 +178,11 @@ spec:
             - name: runtime
               mountPath: /run/lyrahcle
               readOnly: true
+            {{- if .Values.redis.tls.caSecretName }}
+            - name: redis-ca
+              mountPath: /etc/lyrahcle/redis-ca
+              readOnly: true
+            {{- end }}
           startupProbe:
             httpGet:
               path: /healthz
@@ -202,6 +215,15 @@ spec:
           emptyDir:
             medium: Memory
             sizeLimit: 4Mi
+        {{- if .Values.redis.tls.caSecretName }}
+        - name: redis-ca
+          secret:
+            secretName: {{ .Values.redis.tls.caSecretName }}
+            items:
+              - key: {{ .Values.redis.tls.caSecretKey }}
+                path: ca.crt
+            defaultMode: 0400
+        {{- end }}
         {{- if .Values.backend.tls.enabled }}
         - name: source-tls
           secret:

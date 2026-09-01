@@ -1,10 +1,10 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { I18nProvider } from '../lib/I18nContext.jsx'
+import { I18nProvider } from '../lib/I18nContext'
 import SigningKeysPanel from './SigningKeysPanel.jsx'
-import * as api from '../lib/api.js'
+import * as api from '../lib/api'
 
-vi.mock('../lib/api.js', () => ({
+vi.mock('../lib/api', () => ({
   fetchAgentConfigSigningKeys: vi.fn(),
   updateAgentConfigSigningRotationPolicy: vi.fn(),
   prepareAgentConfigSigningKeyRotation: vi.fn(),

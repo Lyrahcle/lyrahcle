@@ -9,7 +9,7 @@ Before exposing Lyrahcle outside a trusted development environment:
 - Set non-default `SEED_ADMIN_EMAIL` and a policy-compliant `SEED_ADMIN_PASSWORD` before first boot. The bootstrap admin is still forced to rotate that password on first login.
 - Enable TLS and keep private keys outside the repository.
 - Replace the default PostgreSQL credentials and do not expose PostgreSQL publicly.
-- Restrict Redis to trusted networks and authentication controls appropriate to your environment; production startup fails when Redis is unavailable because session revocation is security-critical.
+- Restrict Redis to trusted networks. Production requires authenticated `rediss://`, verifies certificates with TLS 1.2 or newer, and fails startup when Redis is unavailable because session revocation is security-critical.
 - Configure the SDR Agent CA and enroll long-running agents with mTLS. Keep legacy `AGENT_API_KEY` credentials only for controlled migration; do not use human JWTs for unattended agents.
 - Configure durable PostgreSQL backups, keep restore evidence, and exercise recovery against an isolated database. Before v1.0, also record production-like DR RPO/RTO.
 - Review CI/security scan results and the release SBOM before deploying a release.

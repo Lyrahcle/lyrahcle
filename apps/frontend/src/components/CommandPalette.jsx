@@ -9,9 +9,9 @@ import {
   ShieldAlert,
   X,
 } from 'lucide-react'
-import { globalSearch } from '../lib/api.js'
-import { useI18n } from '../lib/I18nContext.jsx'
-import { useFocusTrap } from '../lib/useFocusTrap.js'
+import { globalSearch } from '../lib/api'
+import { useI18n } from '../lib/I18nContext'
+import { useFocusTrap } from '../lib/useFocusTrap'
 
 const RESULT_ICONS = {
   assets: Boxes,

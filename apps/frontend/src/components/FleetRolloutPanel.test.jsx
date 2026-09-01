@@ -1,8 +1,8 @@
 import { fireEvent, render, screen, within, act } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import FleetRolloutPanel from './FleetRolloutPanel.jsx'
-import { I18nProvider } from '../lib/I18nContext.jsx'
-import { agentRolloutAction, createAgentRollout, fetchAgentRollout, fetchAgentRollouts } from '../lib/api.js'
+import { I18nProvider } from '../lib/I18nContext'
+import { agentRolloutAction, createAgentRollout, fetchAgentRollout, fetchAgentRollouts } from '../lib/api'
 
 const flushReactUpdates = async () => {
   await act(async () => {
@@ -11,7 +11,7 @@ const flushReactUpdates = async () => {
   })
 }
 
-vi.mock('../lib/api.js', () => ({
+vi.mock('../lib/api', () => ({
   fetchAgentRollouts: vi.fn(async () => []),
   fetchAgentRollout: vi.fn(),
   createAgentRollout: vi.fn(),

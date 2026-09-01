@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { createAgentKey, revokeAgentKey } from '../lib/api.js'
+import { createAgentKey, revokeAgentKey } from '../lib/api'
 import TableScroll from './TableScroll.jsx'
-import { useI18n } from '../lib/I18nContext.jsx'
+import { useI18n } from '../lib/I18nContext'
 
 export default function AgentKeysPanel({ keys, onChanged, canManage = true }) {
   const { t } = useI18n()

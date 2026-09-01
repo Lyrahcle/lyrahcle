@@ -1,6 +1,6 @@
 import SignalBar from './SignalBar.jsx'
 import TableScroll from './TableScroll.jsx'
-import { useI18n } from '../lib/I18nContext.jsx'
+import { useI18n } from '../lib/I18nContext'
 
 export default function RfPanel({ readings }) {
   const { t } = useI18n()

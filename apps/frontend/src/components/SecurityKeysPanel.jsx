@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { KeyRound, Plus, Trash2 } from 'lucide-react'
-import { fetchSecurityKeys, registerSecurityKey, removeSecurityKey } from '../lib/api.js'
-import { useI18n } from '../lib/I18nContext.jsx'
+import { fetchSecurityKeys, registerSecurityKey, removeSecurityKey } from '../lib/api'
+import { useI18n } from '../lib/I18nContext'
 
 export default function SecurityKeysPanel({ onSecurityChange }) {
   const { t } = useI18n()

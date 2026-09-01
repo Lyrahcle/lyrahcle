@@ -10,8 +10,8 @@ import NewSatelliteForm from './NewSatelliteForm.jsx'
 import Footer from './Footer.jsx'
 import ApiStatusBanner from './ApiStatusBanner.jsx'
 import { AnomalyTimelineChart, CVESeverityChart, CVETimelineChart, IncidentSeverityChart, IncidentTimelineChart, OrbitalAltitudeChart, RFPowerChart, RFSpectrumChart } from './TelemetryCharts.jsx'
-import { hasPermission } from '../lib/permissions.js'
-import { useI18n } from '../lib/I18nContext.jsx'
+import { hasPermission } from '../lib/permissions'
+import { useI18n } from '../lib/I18nContext'
 import {
 
 
@@ -39,8 +39,8 @@ import {
   UnauthorizedError,
   ApiError,
   API_ERROR_EVENT,
-} from '../lib/api.js'
-import { lazyComponent } from '../lib/lazyComponent.jsx'
+} from '../lib/api'
+import { lazyComponent } from '../lib/lazyComponent'
 
 const AssetsTable = lazyComponent(() => import('./AssetsTable.jsx'))
 const RfPanel = lazyComponent(() => import('./RfPanel.jsx'))

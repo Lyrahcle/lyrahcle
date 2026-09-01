@@ -2,14 +2,14 @@ import { render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import PlatformOperationsOverview from './PlatformOperationsOverview.jsx'
 
-vi.mock('../lib/api.js', () => ({
+vi.mock('../lib/api', () => ({
   fetchPlatformReadiness: vi.fn(),
   fetchPlatformSecretStatus: vi.fn(),
   fetchAgentConfigSigningKeys: vi.fn(),
 }))
-vi.mock('../lib/I18nContext.jsx', () => ({ useI18n: () => ({ t: (key) => key.split('.').pop() }) }))
+vi.mock('../lib/I18nContext', () => ({ useI18n: () => ({ t: (key) => key.split('.').pop() }) }))
 
-import { fetchAgentConfigSigningKeys, fetchPlatformReadiness, fetchPlatformSecretStatus } from '../lib/api.js'
+import { fetchAgentConfigSigningKeys, fetchPlatformReadiness, fetchPlatformSecretStatus } from '../lib/api'
 
 describe('PlatformOperationsOverview', () => {
   beforeEach(() => vi.clearAllMocks())

@@ -1,4 +1,5 @@
 # Changelog
+- Migrated the frontend shared library layer to TypeScript with local and CI type checking while preserving the existing UI casing conventions.
 
 ## Unreleased
 
@@ -394,3 +395,12 @@ Notable changes are tracked here until versioned release notes take over.
 - Shortened the root README and moved operational detail into focused documents.
 - Added architecture and documentation indexes.
 - Synchronized API/OpenAPI, deployment, configuration, security, and release documentation with current behavior.
+## Block 7 - Redis TLS and authentication
+
+- Added authenticated `rediss://` support to the backend and CVE worker with TLS 1.2 minimum, system CA verification, optional private CA loading and server-name override.
+- Production now rejects plaintext or unauthenticated Redis URLs.
+- Redis credentials are redacted from logs and connection diagnostics.
+- Helm supports optional Redis CA mounting for both workloads and the CVE worker now consumes `REDIS_URL` consistently.
+- AWS ElastiCache uses required transit encryption and validates AUTH-token shape while remaining opt-in.
+- Added Redis TLS/auth contracts and regression tests.
+

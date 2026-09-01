@@ -1,10 +1,10 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import NewSatelliteForm from './NewSatelliteForm.jsx'
-import { I18nProvider } from '../lib/I18nContext.jsx'
-import * as api from '../lib/api.js'
+import { I18nProvider } from '../lib/I18nContext'
+import * as api from '../lib/api'
 
-vi.mock('../lib/api.js', () => ({ createSatellite: vi.fn() }))
+vi.mock('../lib/api', () => ({ createSatellite: vi.fn() }))
 
 function renderForm(onCreated) {
   return render(<I18nProvider><NewSatelliteForm onCreated={onCreated} /></I18nProvider>)

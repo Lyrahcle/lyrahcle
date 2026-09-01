@@ -2,9 +2,9 @@ import { Fragment, useMemo, useState } from 'react'
 import { ChevronDown, ChevronUp, ChevronsUpDown, Pencil, Save, Shield, X } from 'lucide-react'
 import CopyButton from './CopyButton.jsx'
 import TableScroll from './TableScroll.jsx'
-import { updateSatellite } from '../lib/api.js'
-import { useI18n } from '../lib/I18nContext.jsx'
-import { calculateSatelliteRisk } from '../lib/risk.js'
+import { updateSatellite } from '../lib/api'
+import { useI18n } from '../lib/I18nContext'
+import { calculateSatelliteRisk } from '../lib/risk'
 
 const SORT_ACCESSORS = {
   name: (s) => s.name ?? '',

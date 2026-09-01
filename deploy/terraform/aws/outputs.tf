@@ -32,6 +32,10 @@ output "redis_primary_endpoint" {
   value = var.create_redis ? aws_elasticache_replication_group.redis[0].primary_endpoint_address : null
 }
 
+output "redis_tls_endpoint_url" {
+  value = var.create_redis ? "rediss://${aws_elasticache_replication_group.redis[0].primary_endpoint_address}:6379/0" : null
+}
+
 output "application_secret_arn" {
   value = aws_secretsmanager_secret.app.arn
 }

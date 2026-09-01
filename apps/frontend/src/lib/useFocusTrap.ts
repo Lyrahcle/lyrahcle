@@ -1,16 +1,10 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, type RefObject } from 'react'
 
 const FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
-
-
-
-
-
-
-export function useFocusTrap(active = true) {
-  const containerRef = useRef(null)
+export function useFocusTrap(active: boolean = true): RefObject<HTMLElement | null> {
+  const containerRef = useRef<HTMLElement | null>(null)
 
   useEffect(() => {
     if (!active) return
@@ -18,12 +12,12 @@ export function useFocusTrap(active = true) {
     if (!container) return
 
     const previouslyFocused = document.activeElement
-    const focusables = () => Array.from(container.querySelectorAll(FOCUSABLE_SELECTOR))
+    const focusables = (): HTMLElement[] => Array.from(container.querySelectorAll(FOCUSABLE_SELECTOR))
 
     const first = focusables()[0]
     ;(first ?? container).focus()
 
-    function handleKeyDown(e) {
+    function handleKeyDown(e: KeyboardEvent) {
       if (e.key !== 'Tab') return
       const elements = focusables()
       if (elements.length === 0) return

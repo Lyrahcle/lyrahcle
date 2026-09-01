@@ -6,8 +6,8 @@ import {
   prepareAgentConfigSigningKeyRotation,
   revokeAgentConfigSigningKey,
   updateAgentConfigSigningRotationPolicy,
-} from '../lib/api.js'
-import { useI18n } from '../lib/I18nContext.jsx'
+} from '../lib/api'
+import { useI18n } from '../lib/I18nContext'
 import ConfirmDialog from './ConfirmDialog.jsx'
 import TableScroll from './TableScroll.jsx'
 

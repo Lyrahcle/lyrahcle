@@ -38,7 +38,7 @@ require('apps/backend/internal/metrics/metrics.go', 'lyrahcle_rate_limit_decisio
 require('apps/backend/cmd/server/rate_limit_status_v138.go', '/platform/rate-limits', 'platform rate-limit status endpoint')
 require('apps/frontend/src/components/RateLimitPolicyPanel.jsx', 'fetchPlatformRateLimits', 'platform rate-limit UI')
 require('apps/frontend/src/components/Dashboard.jsx', '<RateLimitPolicyPanel />', 'platform UI integration')
-require('apps/frontend/src/lib/api.js', '/api/v1/platform/rate-limits', 'rate-limit API client')
+require('apps/frontend/src/lib/api.ts', '/api/v1/platform/rate-limits', 'rate-limit API client')
 require('apps/backend/cmd/server/rate_limit_v138_test.go', 'TestAuthenticatedTenantRateLimitIsolatesNoisyNeighbor', 'HTTP noisy-neighbor test')
 require('apps/backend/internal/ratelimit/tenant_test.go', 'TestHumanAndAgentBudgetsAreIndependent', 'human/agent isolation test')
 

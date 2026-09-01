@@ -2,12 +2,12 @@ import { useCallback, useEffect, useState } from 'react'
 import Login from './components/Login.jsx'
 import ChangePasswordModal from './components/ChangePasswordModal.jsx'
 import ApiStatusBanner from './components/ApiStatusBanner.jsx'
-import { isAuthenticated, logout, passwordChangeRequired } from './lib/auth.js'
-import { clearEffectivePermissions, loadEffectivePermissions } from './lib/permissions.js'
-import { UnauthorizedError } from './lib/api.js'
-import { useI18n } from './lib/I18nContext.jsx'
-import { DEFAULT_TAB, getTabFromLocation, setTabInLocation, subscribeTabChanges } from './lib/routeTabs.js'
-import { lazyComponent } from './lib/lazyComponent.jsx'
+import { isAuthenticated, logout, passwordChangeRequired } from './lib/auth'
+import { clearEffectivePermissions, loadEffectivePermissions } from './lib/permissions'
+import { UnauthorizedError } from './lib/api'
+import { useI18n } from './lib/I18nContext'
+import { DEFAULT_TAB, getTabFromLocation, setTabInLocation, subscribeTabChanges } from './lib/routeTabs'
+import { lazyComponent } from './lib/lazyComponent'
 
 const Dashboard = lazyComponent(() => import('./components/Dashboard.jsx'))
 

@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { useI18n } from '../lib/I18nContext.jsx'
-import { useFocusTrap } from '../lib/useFocusTrap.js'
+import { useI18n } from '../lib/I18nContext'
+import { useFocusTrap } from '../lib/useFocusTrap'
 
 export default function ConfirmDialog({
   title,

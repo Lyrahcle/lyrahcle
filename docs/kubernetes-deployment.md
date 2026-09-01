@@ -69,7 +69,7 @@ For a disposable development namespace you can create the Secret directly:
 ```bash
 kubectl -n lyrahcle create secret generic lyrahcle-app-secrets \
   --from-literal=DATABASE_URL='postgres://USER:PASSWORD@postgres.example:5432/lyrahcle?sslmode=require' \
-  --from-literal=REDIS_URL='redis.example:6379' \
+  --from-literal=REDIS_URL='rediss://:<AUTH_TOKEN>@redis.example:6379/0' \
   --from-literal=JWT_SECRET='replace-with-at-least-32-random-bytes' \
   --from-literal=SEED_ADMIN_PASSWORD='replace-with-a-strong-password'
 ```

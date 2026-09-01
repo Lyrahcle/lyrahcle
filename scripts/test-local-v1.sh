@@ -132,6 +132,7 @@ go test ./...
 
 section "Frontend tests and production build"
 cd "$ROOT/apps/frontend"
+npm run typecheck
 npm test
 npm run build
 

@@ -1,13 +1,13 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { I18nProvider } from '../lib/I18nContext.jsx'
+import { I18nProvider } from '../lib/I18nContext'
 import CommandPalette from './CommandPalette.jsx'
 
-vi.mock('../lib/api.js', () => ({
+vi.mock('../lib/api', () => ({
   globalSearch: vi.fn(),
 }))
 
-import { globalSearch } from '../lib/api.js'
+import { globalSearch } from '../lib/api'
 
 const navigationItems = [
   { id: 'orbital', label: 'Mission overview', section: 'overview' },

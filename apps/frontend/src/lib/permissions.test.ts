@@ -6,7 +6,7 @@ import {
   loadEffectivePermissions,
   permissionsLoaded,
   setEffectivePermissions,
-} from './permissions.js'
+} from './permissions'
 
 describe('effective permissions', () => {
   beforeEach(() => {

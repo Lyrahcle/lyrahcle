@@ -6,9 +6,9 @@ ROOT = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else Path(__file__).reso
 dashboard = (ROOT / 'apps/frontend/src/components/Dashboard.jsx').read_text()
 component = (ROOT / 'apps/frontend/src/components/GroundStationOperations.jsx').read_text()
 world_map = (ROOT / 'apps/frontend/src/components/WorldMap.jsx').read_text()
-risk = (ROOT / 'apps/frontend/src/lib/risk.js').read_text()
-helpers = (ROOT / 'apps/frontend/src/lib/groundStations.js').read_text()
-routes = (ROOT / 'apps/frontend/src/lib/routeTabs.js').read_text()
+risk = (ROOT / 'apps/frontend/src/lib/risk.ts').read_text()
+helpers = (ROOT / 'apps/frontend/src/lib/groundStations.ts').read_text()
+routes = (ROOT / 'apps/frontend/src/lib/routeTabs.ts').read_text()
 translations = (ROOT / 'apps/frontend/src/lib/translations.js').read_text()
 required = [
     ('expose stations route', "'stations'" in routes and "id: 'stations'" in dashboard),

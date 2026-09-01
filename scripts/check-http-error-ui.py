@@ -3,7 +3,7 @@ from pathlib import Path
 import sys
 
 root = Path(sys.argv[1] if len(sys.argv) > 1 else '.').resolve()
-api = (root / 'apps/frontend/src/lib/api.js').read_text()
+api = (root / 'apps/frontend/src/lib/api.ts').read_text()
 app = (root / 'apps/frontend/src/App.jsx').read_text()
 dash = (root / 'apps/frontend/src/components/Dashboard.jsx').read_text()
 banner = (root / 'apps/frontend/src/components/ApiStatusBanner.jsx').read_text()

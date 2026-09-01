@@ -1,5 +1,5 @@
 import TableScroll from './TableScroll.jsx'
-import { useI18n } from '../lib/I18nContext.jsx'
+import { useI18n } from '../lib/I18nContext'
 
 const METRIC_LABELS = {
   power_dbm: 'Signal power',

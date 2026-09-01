@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import ChangePasswordModal from './ChangePasswordModal.jsx'
 import TwoFactorModal from './TwoFactorModal.jsx'
 import SessionsModal from './SessionsModal.jsx'
-import { getRole } from '../lib/auth.js'
-import { useI18n } from '../lib/I18nContext.jsx'
+import { getRole } from '../lib/auth'
+import { useI18n } from '../lib/I18nContext'
 
 const ROLE_DOT_COLOR = {
   admin: 'bg-lyra-gold',

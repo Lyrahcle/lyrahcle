@@ -1,6 +1,6 @@
 import { Clock3, Orbit, RadioTower, TriangleAlert } from 'lucide-react'
 import StatCard from './StatCard.jsx'
-import { useI18n } from '../lib/I18nContext.jsx'
+import { useI18n } from '../lib/I18nContext'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 

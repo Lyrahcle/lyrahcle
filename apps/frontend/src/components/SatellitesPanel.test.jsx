@@ -1,10 +1,10 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import SatellitesPanel from './SatellitesPanel.jsx'
-import { I18nProvider } from '../lib/I18nContext.jsx'
-import * as api from '../lib/api.js'
+import { I18nProvider } from '../lib/I18nContext'
+import * as api from '../lib/api'
 
-vi.mock('../lib/api.js', () => ({ updateSatellite: vi.fn() }))
+vi.mock('../lib/api', () => ({ updateSatellite: vi.fn() }))
 
 const satellite = {
   id: 'sat-1',

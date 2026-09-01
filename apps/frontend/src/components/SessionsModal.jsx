@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { fetchSessions, revokeAllSessions, revokeSession } from '../lib/api.js'
-import { useI18n } from '../lib/I18nContext.jsx'
-import { useFocusTrap } from '../lib/useFocusTrap.js'
+import { fetchSessions, revokeAllSessions, revokeSession } from '../lib/api'
+import { useI18n } from '../lib/I18nContext'
+import { useFocusTrap } from '../lib/useFocusTrap'
 
 function formatDate(value) {
   if (!value) return '—'

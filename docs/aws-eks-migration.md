@@ -61,56 +61,15 @@ Move data services independently from the application:
 2. Restore a Lyrahcle backup into the managed database.
 3. Point `DATABASE_URL` at the managed endpoint.
 4. Provision Redis/Valkey with the availability mode required by the workload.
-5. Point `REDIS_URL` at the managed endpoint.
+5. Populate `REDIS_URL` with the authenticated `rediss://` URI for the managed endpoint.
 6. Run the full local/CI integration suite against a staging copy before cutover.
 
 The backend migration advisory lock allows multiple EKS replicas to start at the
 same time while still serializing schema migration execution.
 
-### Redis TLS gap to close before an Internet-production AWS cutover
+### Redis TLS/auth readiness
 
-The current Redis client configuration is address-based and does not yet expose a
-first-class TLS configuration knob. If the future ElastiCache deployment requires
-in-transit encryption, add Redis TLS support before production cutover rather
-than weakening the managed service security policy. This is an explicit future
-AWS migration blocker, not a reason to disable encryption.
-
-## Secrets
-
-Keep the chart contract as an `existingSecret`. On AWS, populate that Secret via
-a secret-management controller/CSI integration backed by Secrets Manager. This
-keeps the app portable and prevents AWS SDK credentials or vendor-specific
-secret APIs from becoming application requirements.
-
-Where AWS API access is needed by the secret integration or another controller,
-prefer workload identity/Pod Identity over static AWS access keys.
-
-## Metrics and alerting
-
-The v14.6.7 chart exposes portable metrics Services plus optional
-`ServiceMonitor` and `PrometheusRule` resources. On EKS, keep AWS-specific
-collector IAM, remote-write credentials and any Amazon Managed Service for
-Prometheus workspace in the future infrastructure-as-code layer. The
-application chart should not embed AWS credentials or workspace identifiers.
-
-When backend TLS is enabled, configure the ServiceMonitor with the backend CA
-Secret rather than weakening certificate verification.
-
-## Availability
-
-The AWS example enables:
-
-- minimum two backend replicas;
-- minimum two frontend replicas;
-- HPA;
-- PodDisruptionBudgets;
-- zone and hostname topology spread.
-
-EKS nodes should span multiple availability zones. RDS and Redis availability
-must be designed independently; application replica count does not make the data
-layer highly available.
-
-## Suggested migration phases
+Lyrahcle now supports authenticated `rediss://` connections in both the backend and CVE worker. Production startup rejects plaintext Redis URLs and unauthenticated Redis URLs. The client verifies certificates, enforces TLS 1.2 or newer, supports an optional custom CA and redacts credentials from logs and errors. The Terraform ElastiCache replication group can therefore remain encrypted in transit with TLS required rather than weakening the managed service configuration.
 
 ### Phase 1 — Kubernetes portability
 

@@ -24,7 +24,7 @@ CHECKS = {
         'UPDATE satellites',
         'RETURNING id, norad_id, name, tle_line1, tle_line2, tle_epoch, updated_at',
     ],
-    ROOT / 'apps/frontend/src/lib/api.js': [
+    ROOT / 'apps/frontend/src/lib/api.ts': [
         'export async function updateSatellite',
         '/api/v1/satellites/${encodeURIComponent(satelliteId)}',
         "method: 'PUT'",

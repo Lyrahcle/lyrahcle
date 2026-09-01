@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import DottedMap from 'dotted-map/without-countries'
 import worldMapData from '../lib/world-map-data.json'
 import WorldMap from './WorldMap.jsx'
-import { useI18n } from '../lib/I18nContext.jsx'
+import { useI18n } from '../lib/I18nContext'
 
 const POWER_FLOOR_DBM = -120
 const POWER_CEILING_DBM = -30

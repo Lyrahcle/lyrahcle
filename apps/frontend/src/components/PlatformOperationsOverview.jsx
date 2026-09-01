@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Activity, Building2, KeyRound, ShieldCheck, Users } from 'lucide-react'
-import { fetchAgentConfigSigningKeys, fetchPlatformReadiness, fetchPlatformSecretStatus } from '../lib/api.js'
-import { useI18n } from '../lib/I18nContext.jsx'
+import { fetchAgentConfigSigningKeys, fetchPlatformReadiness, fetchPlatformSecretStatus } from '../lib/api'
+import { useI18n } from '../lib/I18nContext'
 
 function tone(status) {
   if (status === 'healthy') return 'border-lyra-ok/40 text-lyra-ok'

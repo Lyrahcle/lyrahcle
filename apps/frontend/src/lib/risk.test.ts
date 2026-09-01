@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { calculateGroundStationRisk, calculateMissionRisk, calculateSatelliteRisk, riskLevel } from './risk.js'
+import { calculateGroundStationRisk, calculateMissionRisk, calculateSatelliteRisk, riskLevel } from './risk'
 
 describe('risk engine', () => {
   it('keeps score thresholds deterministic', () => {

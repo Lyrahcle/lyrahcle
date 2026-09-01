@@ -1,11 +1,11 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { I18nProvider } from '../lib/I18nContext.jsx'
-import { clearEffectivePermissions, setEffectivePermissions } from '../lib/permissions.js'
+import { I18nProvider } from '../lib/I18nContext'
+import { clearEffectivePermissions, setEffectivePermissions } from '../lib/permissions'
 import DetectionRulesPanel from './DetectionRulesPanel.jsx'
-import * as api from '../lib/api.js'
+import * as api from '../lib/api'
 
-vi.mock('../lib/api.js', () => ({
+vi.mock('../lib/api', () => ({
   createDetectionRule: vi.fn(),
   updateDetectionRule: vi.fn(),
 }))

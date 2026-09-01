@@ -95,14 +95,14 @@ func main() {
 		log.Printf("seed admin: %v", err)
 	}
 
-	redisClient, err := redisclient.Connect(cfg.RedisURL, 5*time.Second)
+	redisClient, err := redisclient.Connect(cfg.RedisURL, cfg.RedisCACertFile, cfg.RedisTLSServerName, 5*time.Second)
 	if err != nil {
 		if cfg.IsProduction() {
 			log.Fatalf("redis connect: %v", err)
 		}
-		log.Printf("WARNING: Redis not available at %s (%v). Rate limiting will use an in-memory counter, and token revocation and response caching will be disabled.", cfg.RedisURL, err)
+		log.Printf("WARNING: Redis not available at %s (%v). Rate limiting will use an in-memory counter, and token revocation and response caching will be disabled.", redisclient.SafeTarget(cfg.RedisURL), err)
 	} else {
-		log.Printf("connected to Redis at %s", cfg.RedisURL)
+		log.Printf("connected to Redis at %s", redisclient.SafeTarget(cfg.RedisURL))
 		defer redisClient.Close()
 	}
 

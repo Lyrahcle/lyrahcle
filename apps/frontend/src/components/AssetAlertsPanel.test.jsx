@@ -1,11 +1,11 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { I18nProvider } from '../lib/I18nContext.jsx'
-import { clearEffectivePermissions, setEffectivePermissions } from '../lib/permissions.js'
+import { I18nProvider } from '../lib/I18nContext'
+import { clearEffectivePermissions, setEffectivePermissions } from '../lib/permissions'
 import AssetAlertsPanel from './AssetAlertsPanel.jsx'
-import * as api from '../lib/api.js'
+import * as api from '../lib/api'
 
-vi.mock('../lib/api.js', () => ({ acknowledgeAssetAlert: vi.fn() }))
+vi.mock('../lib/api', () => ({ acknowledgeAssetAlert: vi.fn() }))
 
 const page = {
   items: [{

@@ -1,4 +1,4 @@
-import { useI18n } from '../lib/I18nContext.jsx'
+import { useI18n } from '../lib/I18nContext'
 
 const TONES = {
   good: 'bg-lyra-good',

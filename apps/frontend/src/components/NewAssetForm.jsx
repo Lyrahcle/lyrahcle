@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { createAsset, createProgram, fetchPrograms } from '../lib/api.js'
+import { createAsset, createProgram, fetchPrograms } from '../lib/api'
 
 const KINDS = ['domain', 'ip', 'satellite', 'ground_station', 'firmware']
 

@@ -4,8 +4,8 @@ import SeverityBadge from './SeverityBadge.jsx'
 import TableScroll from './TableScroll.jsx'
 import Pagination from './Pagination.jsx'
 import Skeleton from './Skeleton.jsx'
-import { fetchSpaceCVEKeywords } from '../lib/api.js'
-import { useI18n } from '../lib/I18nContext.jsx'
+import { fetchSpaceCVEKeywords } from '../lib/api'
+import { useI18n } from '../lib/I18nContext'
 
 const SEVERITIES = ['low', 'medium', 'high', 'critical']
 const SORT_FIELDS = ['published', 'severity', 'score', 'cve_id']

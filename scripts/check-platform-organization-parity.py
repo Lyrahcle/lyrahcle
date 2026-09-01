@@ -21,7 +21,7 @@ CHECKS = {
         'ActionOrganizationUpdated',
         'organization.updated',
     ],
-    ROOT / 'apps/frontend/src/lib/api.js': [
+    ROOT / 'apps/frontend/src/lib/api.ts': [
         'export async function updateOrganization',
         '/api/v1/organizations/${encodeURIComponent(organizationId)}',
     ],

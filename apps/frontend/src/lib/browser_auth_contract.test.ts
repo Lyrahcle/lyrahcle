@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import authSource from './auth.js?raw'
-import apiSource from './api.js?raw'
+import authSource from './auth.ts?raw'
+import apiSource from './api.ts?raw'
 
 describe('browser auth security contract', () => {
   it('keeps JWT auth out of persistent localStorage', () => {

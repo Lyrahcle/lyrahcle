@@ -1,10 +1,40 @@
-import { authHeaders, logout } from './auth.js'
-import * as authModule from './auth.js'
+import { authHeaders, logout } from './auth'
+import * as authModule from './auth'
 
 export const API_ERROR_EVENT = 'lyrahcle:api-error'
 
+export type ApiErrorKind =
+  | 'unknown'
+  | 'forbidden'
+  | 'not_found'
+  | 'conflict'
+  | 'rate_limited'
+  | 'server'
+  | 'client'
+  | 'network'
+  | 'unauthorized'
+
+export interface ApiErrorDetails {
+  status?: number
+  kind?: ApiErrorKind
+  retryAfterSeconds?: number
+  requestId?: string
+  endpoint?: string
+  cause?: unknown
+}
+
 export class ApiError extends Error {
-  constructor(message, { status = 0, kind = 'unknown', retryAfterSeconds = 0, requestId = '', endpoint = '', cause } = {}) {
+  status: number
+  kind: ApiErrorKind
+  retryAfterSeconds: number
+  requestId: string
+  endpoint: string
+  retryable: boolean
+
+  constructor(
+    message: string,
+    { status = 0, kind = 'unknown', retryAfterSeconds = 0, requestId = '', endpoint = '', cause }: ApiErrorDetails = {},
+  ) {
     super(message, cause ? { cause } : undefined)
     this.name = 'ApiError'
     this.status = status
@@ -17,14 +47,14 @@ export class ApiError extends Error {
 }
 
 export class UnauthorizedError extends ApiError {
-  constructor(message = 'session expired', details = {}) {
+  constructor(message = 'session expired', details: ApiErrorDetails = {}) {
     super(message, { ...details, status: 401, kind: 'unauthorized' })
     this.name = 'UnauthorizedError'
     this.retryable = false
   }
 }
 
-function classifyStatus(status) {
+function classifyStatus(status: number): ApiErrorKind {
   if (status === 403) return 'forbidden'
   if (status === 404) return 'not_found'
   if (status === 409) return 'conflict'
@@ -34,7 +64,7 @@ function classifyStatus(status) {
   return 'unknown'
 }
 
-function retryAfterSeconds(res) {
+function retryAfterSeconds(res: Response): number {
   const raw = res?.headers?.get?.('Retry-After')
   if (!raw) return 0
   const seconds = Number(raw)
@@ -43,23 +73,23 @@ function retryAfterSeconds(res) {
   return Number.isNaN(at) ? 0 : Math.max(0, Math.ceil((at - Date.now()) / 1000))
 }
 
-function requestIdFrom(res) {
+function requestIdFrom(res: Response): string {
   return res?.headers?.get?.('X-Request-ID') || ''
 }
 
-function publishApiError(error) {
+function publishApiError(error: unknown): void {
   if (!(error instanceof ApiError) || error instanceof UnauthorizedError) return
-  if (!['forbidden', 'not_found', 'conflict', 'rate_limited', 'server', 'network'].includes(error.kind)) return
+  if (!(['forbidden', 'not_found', 'conflict', 'rate_limited', 'server', 'network'] as ApiErrorKind[]).includes(error.kind)) return
   if (typeof window === 'undefined' || typeof window.dispatchEvent !== 'function') return
   window.dispatchEvent(new CustomEvent(API_ERROR_EVENT, { detail: error }))
 }
 
-async function readErrorText(res, fallback) {
+async function readErrorText(res: Response, fallback: string): Promise<string> {
   const message = await res.text().catch(() => fallback)
   return message.trim() || fallback
 }
 
-async function apiErrorFromResponse(res, fallback, endpoint = '') {
+async function apiErrorFromResponse(res: Response, fallback: string, endpoint = ''): Promise<ApiError> {
   const message = await readErrorText(res, fallback)
   const error = new ApiError(message, {
     status: res.status,
@@ -72,18 +102,18 @@ async function apiErrorFromResponse(res, fallback, endpoint = '') {
   return error
 }
 
-async function trackedFetch(url, options = {}) {
+async function trackedFetch(url: RequestInfo | URL, options: RequestInit = {}): Promise<Response> {
   try {
     return await fetch(url, options)
   } catch (cause) {
-    if (cause?.name === 'AbortError') throw cause
+    if ((cause as { name?: string })?.name === 'AbortError') throw cause
     const error = new ApiError('backend unavailable', { kind: 'network', endpoint: String(url), cause })
     publishApiError(error)
     throw error
   }
 }
 
-async function authedFetch(url, options = {}) {
+async function authedFetch(url: RequestInfo | URL, options: RequestInit = {}): Promise<Response> {
   const res = await trackedFetch(url, { ...options, headers: { ...authHeaders(), ...(options.headers ?? {}) } })
   if (res.status === 401) {
     const message = await readErrorText(res, 'session expired')
@@ -93,7 +123,7 @@ async function authedFetch(url, options = {}) {
   return res
 }
 
-function parseServerSentEvent(chunk) {
+function parseServerSentEvent(chunk: string): unknown {
   const data = chunk
     .split('\n')
     .filter((line) => line.startsWith('data:'))
@@ -108,15 +138,20 @@ function parseServerSentEvent(chunk) {
   }
 }
 
-function subscribeJSONStream(url, { onData, onError }, errorPrefix = 'stream failed') {
+export interface JSONStreamCallbacks {
+  onData?: (payload: unknown) => void
+  onError?: (error: unknown) => void
+}
+
+function subscribeJSONStream(url: string, { onData, onError }: JSONStreamCallbacks, errorPrefix = 'stream failed'): () => void {
   const controller = new AbortController()
 
   async function run() {
-    let res
+    let res: Response
     try {
       res = await authedFetch(url, { signal: controller.signal })
     } catch (err) {
-      if (err?.name !== 'AbortError') onError?.(err)
+      if ((err as { name?: string })?.name !== 'AbortError') onError?.(err)
       return
     }
 
@@ -155,7 +190,7 @@ function subscribeJSONStream(url, { onData, onError }, errorPrefix = 'stream fai
       buffer += decoder.decode()
       consumeEvents(true)
     } catch (err) {
-      if (err?.name !== 'AbortError') onError?.(err)
+      if ((err as { name?: string })?.name !== 'AbortError') onError?.(err)
     } finally {
       reader.releaseLock?.()
     }
@@ -389,8 +424,17 @@ export async function updateSatellite(satelliteId, { noradId, name, tleLine1, tl
   return res.json()
 }
 
-export async function fetchSpaceCVEs(limit = 50, offset = 0, filters = {}) {
-  const params = new URLSearchParams({ limit, offset })
+export interface SpaceCVEFilters {
+  severity?: string
+  keyword?: string
+  publishedFrom?: string
+  publishedTo?: string
+  sort?: string
+  order?: string
+}
+
+export async function fetchSpaceCVEs(limit = 50, offset = 0, filters: SpaceCVEFilters = {}) {
+  const params = new URLSearchParams({ limit: String(limit), offset: String(offset) })
   if (filters.severity) params.set('severity', filters.severity)
   if (filters.keyword) params.set('keyword', filters.keyword)
   if (filters.publishedFrom) params.set('published_from', filters.publishedFrom)
@@ -507,8 +551,16 @@ export async function decodeFrame(protocol, hex) {
 }
 
 
-export async function fetchIncidents(limit = 50, offset = 0, filters = {}) {
-  const params = new URLSearchParams({ limit, offset })
+export interface IncidentFilters {
+  status?: string
+  severity?: string
+  agentId?: string
+  satelliteId?: string
+  assignedTo?: string
+}
+
+export async function fetchIncidents(limit = 50, offset = 0, filters: IncidentFilters = {}) {
+  const params = new URLSearchParams({ limit: String(limit), offset: String(offset) })
   if (filters.status) params.set('status', filters.status)
   if (filters.severity) params.set('severity', filters.severity)
   if (filters.agentId) params.set('agent_id', filters.agentId)
@@ -519,13 +571,22 @@ export async function fetchIncidents(limit = 50, offset = 0, filters = {}) {
   return res.json()
 }
 
-export async function fetchIncident(incidentId) {
+export async function fetchIncident(incidentId: string) {
   const res = await authedFetch(`/api/v1/incidents/${encodeURIComponent(incidentId)}`)
   if (!res.ok) throw await apiErrorFromResponse(res, 'failed to fetch incident')
   return res.json()
 }
 
-export async function createIncident({ title, description, severity, satelliteId, agentId, assignedTo }) {
+export interface CreateIncidentInput {
+  title: string
+  description?: string
+  severity: string
+  satelliteId?: string
+  agentId?: string
+  assignedTo?: string
+}
+
+export async function createIncident({ title, description, severity, satelliteId, agentId, assignedTo }: CreateIncidentInput) {
   const res = await authedFetch('/api/v1/incidents/', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Idempotency-Key': crypto.randomUUID() },
@@ -542,8 +603,14 @@ export async function createIncident({ title, description, severity, satelliteId
   return res.json()
 }
 
-export async function updateIncident(incidentId, fields) {
-  const body = {}
+export interface UpdateIncidentInput {
+  status?: string
+  severity?: string
+  assignedTo?: string
+}
+
+export async function updateIncident(incidentId: string, fields: UpdateIncidentInput) {
+  const body: Record<string, string> = {}
   if (fields.status !== undefined) body.status = fields.status
   if (fields.severity !== undefined) body.severity = fields.severity
   if (fields.assignedTo !== undefined) body.assigned_to = fields.assignedTo
@@ -641,7 +708,9 @@ export async function registerSecurityKey(label, password) {
   if (!start.ok) throw new Error(await readErrorText(start, 'failed to start security-key registration'))
   const flow = await start.json()
   const { prepareCreationOptions, serializeCredential } = authModule
-  const credential = await navigator.credentials.create({ publicKey: prepareCreationOptions(flow.options) })
+  const credential = (await navigator.credentials.create({
+    publicKey: prepareCreationOptions(flow.options),
+  })) as PublicKeyCredential | null
   if (!credential) throw new Error('Security-key registration was cancelled')
   const finish = await authedFetch('/api/v1/auth/webauthn/credentials/register/finish', {
     method: 'POST',

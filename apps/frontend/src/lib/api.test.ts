@@ -51,7 +51,7 @@ import {
   acknowledgeAssetAlert,
   subscribeSatellites,
   subscribeIncidents,
-} from './api.js'
+} from './api'
 
 function mockFetchOnce(ok, body, status = ok ? 200 : 500, headers = {}) {
   global.fetch = vi.fn().mockResolvedValue({
@@ -100,7 +100,7 @@ describe('api client', () => {
   })
 
   it('preserves HTTP status metadata and publishes actionable API errors', async () => {
-    const seen = []
+    const seen: unknown[] = []
     const listener = (event) => seen.push(event.detail)
     window.addEventListener(API_ERROR_EVENT, listener)
     mockFetchOnce(false, 'forbidden', 403, { 'X-Request-ID': 'req-403' })
@@ -229,7 +229,7 @@ describe('api client', () => {
     mockFetchOnce(true, { message: 'pong from lyrahcle' })
     const data = await fetchPing()
     expect(fetch).toHaveBeenCalledWith('/api/v1/ping', {})
-    expect(fetch.mock.calls[0][1]?.headers).toBeUndefined()
+    expect(vi.mocked(fetch).mock.calls[0][1]?.headers).toBeUndefined()
     expect(data.message).toBe('pong from lyrahcle')
   })
 
@@ -484,8 +484,8 @@ describe('api client', () => {
 
     expect(satellite).toEqual({ id: 'sat-1', name: 'ISS' })
     expect(incident).toEqual({ id: 'incident-1', severity: 'high' })
-    expect(fetch.mock.calls[0][0]).toBe('/api/v1/satellites/stream')
-    expect(fetch.mock.calls[1][0]).toBe('/api/v1/incidents/stream')
+    expect(vi.mocked(fetch).mock.calls[0][0]).toBe('/api/v1/satellites/stream')
+    expect(vi.mocked(fetch).mock.calls[1][0]).toBe('/api/v1/incidents/stream')
   })
 
 })

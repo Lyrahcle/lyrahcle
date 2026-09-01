@@ -1,5 +1,4 @@
-
-export const DEFAULT_TAB = 'orbital'
+export const DEFAULT_TAB = 'orbital' as const
 
 const VALID_TABS = [
   'orbital',
@@ -13,20 +12,22 @@ const VALID_TABS = [
   'admin',
   'platform',
   'settings',
-]
+] as const
 
-function parseHash(hash) {
+export type RouteTab = (typeof VALID_TABS)[number]
+
+function parseHash(hash: string): RouteTab | null {
   const raw = hash.replace(/^#\/?/, '').split('?')[0].trim()
-  return VALID_TABS.includes(raw) ? raw : null
+  return (VALID_TABS as readonly string[]).includes(raw) ? (raw as RouteTab) : null
 }
 
-export function getTabFromLocation(fallback = DEFAULT_TAB) {
+export function getTabFromLocation(fallback: RouteTab = DEFAULT_TAB): RouteTab {
   if (typeof window === 'undefined') return fallback
   return parseHash(window.location.hash) ?? fallback
 }
 
-export function setTabInLocation(tab, { replace = false } = {}) {
-  if (typeof window === 'undefined' || !VALID_TABS.includes(tab)) return
+export function setTabInLocation(tab: RouteTab, { replace = false }: { replace?: boolean } = {}): void {
+  if (typeof window === 'undefined' || !(VALID_TABS as readonly string[]).includes(tab)) return
   const next = `#/${tab}`
   if (window.location.hash === next) return
   if (replace && window.history?.replaceState) {
@@ -37,7 +38,7 @@ export function setTabInLocation(tab, { replace = false } = {}) {
   }
 }
 
-export function subscribeTabChanges(onChange) {
+export function subscribeTabChanges(onChange: (tab: RouteTab) => void): () => void {
   if (typeof window === 'undefined') return () => {}
   function handler() {
     const tab = parseHash(window.location.hash)

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { fetchPlatformRateLimits } from '../lib/api.js'
-import { useI18n } from '../lib/I18nContext.jsx'
+import { fetchPlatformRateLimits } from '../lib/api'
+import { useI18n } from '../lib/I18nContext'
 
 function BudgetCard({ label, tenant, actor, suffix }) {
   return (

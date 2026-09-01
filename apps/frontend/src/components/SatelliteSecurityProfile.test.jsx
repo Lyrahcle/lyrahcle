@@ -1,10 +1,10 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import SatelliteSecurityProfile from './SatelliteSecurityProfile.jsx'
-import { I18nProvider } from '../lib/I18nContext.jsx'
-import * as api from '../lib/api.js'
+import { I18nProvider } from '../lib/I18nContext'
+import * as api from '../lib/api'
 
-vi.mock('../lib/api.js', () => ({ fetchOrbitalEvents: vi.fn(), fetchIncidents: vi.fn() }))
+vi.mock('../lib/api', () => ({ fetchOrbitalEvents: vi.fn(), fetchIncidents: vi.fn() }))
 
 const satellite = {
   id: 'sat-1', norad_id: 25544, name: 'ISS', tle_status: 'aging', orbital_confidence: 'high',

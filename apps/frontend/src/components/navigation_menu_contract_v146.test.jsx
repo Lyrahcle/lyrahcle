@@ -20,7 +20,7 @@ describe('navigation shell contract v1.46', () => {
   it('keeps orbital as the home route and settings in page navigation', () => {
     const app = source('App.jsx')
     const dashboard = source('components/Dashboard.jsx')
-    const routeTabs = source('lib/routeTabs.js')
+    const routeTabs = source('lib/routeTabs.ts')
     expect(routeTabs).toContain("export const DEFAULT_TAB = 'orbital'")
     expect(app).toContain('getTabFromLocation(DEFAULT_TAB)')
     expect(dashboard).toContain("onHome={() => onChangeTab('orbital')}")

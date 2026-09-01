@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import SeverityBadge from './SeverityBadge.jsx'
 import TableScroll from './TableScroll.jsx'
-import { createDetectionRule, updateDetectionRule } from '../lib/api.js'
-import { hasPermission } from '../lib/permissions.js'
-import { useI18n } from '../lib/I18nContext.jsx'
+import { createDetectionRule, updateDetectionRule } from '../lib/api'
+import { hasPermission } from '../lib/permissions'
+import { useI18n } from '../lib/I18nContext'
 
 const METRICS = ['any', 'power_dbm', 'frequency_hz', 'power_dbm_trend', 'frequency_hz_trend']
 const OPERATORS = ['abs_z_gte', 'z_gte', 'z_lte']

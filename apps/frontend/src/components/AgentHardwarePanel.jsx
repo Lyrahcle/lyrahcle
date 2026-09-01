@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { Cpu, Radio, Satellite, ShieldCheck, Thermometer, TimerReset } from 'lucide-react'
-import { useI18n } from '../lib/I18nContext.jsx'
+import { useI18n } from '../lib/I18nContext'
 import TableScroll from './TableScroll.jsx'
 
 function formatHz(value) {

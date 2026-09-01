@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import { createOrbitalEvent, fetchOrbitalEvents, fetchSatellitePasses } from '../lib/api.js'
-import { hasPermission } from '../lib/permissions.js'
-import { useI18n } from '../lib/I18nContext.jsx'
+import { createOrbitalEvent, fetchOrbitalEvents, fetchSatellitePasses } from '../lib/api'
+import { hasPermission } from '../lib/permissions'
+import { useI18n } from '../lib/I18nContext'
 import SeverityBadge from './SeverityBadge.jsx'
 import TableScroll from './TableScroll.jsx'
 

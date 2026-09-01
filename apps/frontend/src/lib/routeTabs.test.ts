@@ -1,5 +1,5 @@
 import { describe, expect, it, afterEach } from 'vitest'
-import { DEFAULT_TAB, getTabFromLocation, setTabInLocation, subscribeTabChanges } from './routeTabs.js'
+import { DEFAULT_TAB, getTabFromLocation, setTabInLocation, subscribeTabChanges } from './routeTabs'
 
 afterEach(() => {
   window.location.hash = ''
@@ -28,13 +28,13 @@ describe('routeTabs', () => {
 
   it('ignores unknown tab ids when writing', () => {
     window.location.hash = '#/orbital'
-    setTabInLocation('not-a-real-tab')
+    setTabInLocation('not-a-real-tab' as never)
     expect(window.location.hash).toBe('#/orbital')
   })
 
   it('notifies subscribers on hash change', () => {
     window.location.hash = '#/orbital'
-    let seen = null
+    let seen: string | null = null
     const unsubscribe = subscribeTabChanges((tab) => {
       seen = tab
     })

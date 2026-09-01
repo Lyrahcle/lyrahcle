@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { getToken, login, logout } from './auth.js'
+import { getToken, login, logout } from './auth'
 
 describe('browser auth storage hardening', () => {
   beforeEach(() => {

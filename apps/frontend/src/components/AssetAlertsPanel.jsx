@@ -2,9 +2,9 @@ import { useState } from 'react'
 import SeverityBadge from './SeverityBadge.jsx'
 import TableScroll from './TableScroll.jsx'
 import Pagination from './Pagination.jsx'
-import { acknowledgeAssetAlert } from '../lib/api.js'
-import { hasPermission } from '../lib/permissions.js'
-import { useI18n } from '../lib/I18nContext.jsx'
+import { acknowledgeAssetAlert } from '../lib/api'
+import { hasPermission } from '../lib/permissions'
+import { useI18n } from '../lib/I18nContext'
 
 export default function AssetAlertsPanel({ page, onPrev, onNext, onChanged }) {
   const { t } = useI18n()

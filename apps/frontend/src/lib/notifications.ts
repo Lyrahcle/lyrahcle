@@ -1,14 +1,14 @@
 const STORAGE_KEY = 'lyra_notifications_enabled'
 
-export function getNotificationsEnabled() {
+export function getNotificationsEnabled(): boolean {
   return localStorage.getItem(STORAGE_KEY) === 'true'
 }
 
-export function isNotificationSupported() {
+export function isNotificationSupported(): boolean {
   return typeof window !== 'undefined' && 'Notification' in window
 }
 
-export async function setNotificationsEnabled(enabled) {
+export async function setNotificationsEnabled(enabled: boolean): Promise<boolean> {
   if (!enabled) {
     localStorage.setItem(STORAGE_KEY, 'false')
     return true

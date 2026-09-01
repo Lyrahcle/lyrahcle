@@ -10,7 +10,7 @@ It creates:
 - immutable ECR repositories for backend, frontend and CVE sync;
 - encrypted private RDS PostgreSQL with AWS-managed master-password rotation;
 - an encrypted Secrets Manager container for Lyrahcle application secrets;
-- optional encrypted ElastiCache/Valkey, disabled until application Redis TLS is ready.
+- optional encrypted ElastiCache/Valkey with TLS 1.2+ compatible client support and AUTH.
 
 It deliberately does **not** create DNS, ACM certificates, the AWS Load Balancer
 Controller, Prometheus, or the Lyrahcle Helm release. Those are cluster/add-on
@@ -59,7 +59,6 @@ production environment.
 
 ## ElastiCache is intentionally opt-in
 
-The AWS resource is configured with KMS at-rest encryption and TLS in transit.
-Lyrahcle's current Redis wiring remains address-based, so `create_redis=false`
-is the safe default. Do not disable ElastiCache TLS to work around that gap.
-Implement and test application Redis TLS/auth first, then enable this resource.
+The AWS resource is configured with KMS at-rest encryption, required TLS in transit and optional AUTH. Lyrahcle accepts `rediss://` URLs, verifies certificates with TLS 1.2 or newer and supports Redis usernames/passwords or ElastiCache AUTH tokens encoded in `REDIS_URL`. `create_redis=false` remains the default so infrastructure cost and secret population stay explicit. Production requires `redis_auth_token` when ElastiCache is enabled.
+
+After apply, populate the application secret out-of-band with a URL such as `rediss://:<AUTH_TOKEN>@<PRIMARY_ENDPOINT>:6379/0`. The token must never be committed to Terraform examples, Helm values or source control. System trust roots are used by default; configure `REDIS_CA_CERT_FILE` only when a private CA is required.

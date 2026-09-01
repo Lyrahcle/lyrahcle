@@ -25,7 +25,7 @@ class TenantRateLimitingContractTests(unittest.TestCase):
                 'apps/backend/cmd/server/rate_limit_status_v138.go',
                 'apps/frontend/src/components/RateLimitPolicyPanel.jsx',
                 'apps/frontend/src/components/Dashboard.jsx',
-                'apps/frontend/src/lib/api.js',
+                'apps/frontend/src/lib/api.ts',
                 'apps/backend/cmd/server/rate_limit_v138_test.go',
                 'apps/backend/internal/ratelimit/tenant_test.go',
             ]:

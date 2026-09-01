@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import Pagination from './Pagination.jsx'
-import { I18nProvider } from '../lib/I18nContext.jsx'
+import { I18nProvider } from '../lib/I18nContext'
 
 function renderPagination(props) {
   return render(<I18nProvider><Pagination {...props} /></I18nProvider>)

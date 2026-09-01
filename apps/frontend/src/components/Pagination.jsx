@@ -1,4 +1,4 @@
-import { useI18n } from '../lib/I18nContext.jsx'
+import { useI18n } from '../lib/I18nContext'
 
 export default function Pagination({ total, limit, offset, onPrev, onNext }) {
   const { t } = useI18n()

@@ -118,7 +118,7 @@ variable "postgres_deletion_protection" {
 }
 
 variable "create_redis" {
-  description = "Create encrypted ElastiCache. Keep false until Lyrahcle Redis TLS support is enabled in the application."
+  description = "Create encrypted ElastiCache/Valkey for Lyrahcle distributed state."
   type        = bool
   default     = false
 }
@@ -144,6 +144,15 @@ variable "redis_auth_token" {
   type        = string
   sensitive   = true
   default     = null
+
+  validation {
+    condition = var.redis_auth_token == null || (
+      length(var.redis_auth_token) >= 16 &&
+      length(var.redis_auth_token) <= 128 &&
+      can(regex("^[A-Za-z0-9!&#$^<>-]+$", var.redis_auth_token))
+    )
+    error_message = "redis_auth_token must be 16-128 characters using AWS ElastiCache AUTH-compatible characters."
+  }
 }
 
 variable "tags" {

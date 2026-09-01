@@ -1,11 +1,11 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { I18nProvider } from '../lib/I18nContext.jsx'
-import { clearEffectivePermissions, setEffectivePermissions } from '../lib/permissions.js'
+import { I18nProvider } from '../lib/I18nContext'
+import { clearEffectivePermissions, setEffectivePermissions } from '../lib/permissions'
 import ProgramManager from './ProgramManager.jsx'
-import * as api from '../lib/api.js'
+import * as api from '../lib/api'
 
-vi.mock('../lib/api.js', () => ({
+vi.mock('../lib/api', () => ({
   updateProgram: vi.fn(),
   deleteProgram: vi.fn(),
 }))

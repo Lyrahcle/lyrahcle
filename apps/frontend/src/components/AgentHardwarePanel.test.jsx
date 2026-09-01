@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import AgentHardwarePanel from './AgentHardwarePanel.jsx'
-import { I18nProvider } from '../lib/I18nContext.jsx'
+import { I18nProvider } from '../lib/I18nContext'
 
 const agent = {
   agent_id: 'edge-madrid-01', status: 'active',

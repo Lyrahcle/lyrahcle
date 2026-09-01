@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { applyAgentConfig, fetchAgentConfig, fetchAgentConfigHistory, rollbackAgentConfig } from '../lib/api.js'
-import { useI18n } from '../lib/I18nContext.jsx'
+import { applyAgentConfig, fetchAgentConfig, fetchAgentConfigHistory, rollbackAgentConfig } from '../lib/api'
+import { useI18n } from '../lib/I18nContext'
 import TableScroll from './TableScroll.jsx'
 import FleetRolloutPanel from './FleetRolloutPanel.jsx'
 

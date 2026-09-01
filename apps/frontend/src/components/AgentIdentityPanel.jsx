@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { createAgentEnrollmentToken, updateAgentIdentityStatus, updateAgentStation } from '../lib/api.js'
+import { createAgentEnrollmentToken, updateAgentIdentityStatus, updateAgentStation } from '../lib/api'
 import TableScroll from './TableScroll.jsx'
-import { useI18n } from '../lib/I18nContext.jsx'
+import { useI18n } from '../lib/I18nContext'
 
 export default function AgentIdentityPanel({ agents, onChanged, canManage = true }) {
   const { t } = useI18n()
