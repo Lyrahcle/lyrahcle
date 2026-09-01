@@ -29,7 +29,9 @@ describe('CopyButton', () => {
     fireEvent.click(screen.getByRole('button', { name: /copy norad id/i }))
     expect(await screen.findByRole('button', { name: /^copied$/i })).toBeInTheDocument()
 
-    vi.advanceTimersByTime(1600)
+    act(() => {
+      vi.advanceTimersByTime(1600)
+    })
     await act(async () => {})
     expect(await screen.findByRole('button', { name: /copy norad id/i })).toBeInTheDocument()
   })

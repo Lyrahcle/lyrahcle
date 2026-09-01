@@ -1,4 +1,5 @@
 import { authHeaders, logout } from './auth.js'
+import * as authModule from './auth.js'
 
 export const API_ERROR_EVENT = 'lyrahcle:api-error'
 
@@ -639,7 +640,7 @@ export async function registerSecurityKey(label, password) {
   })
   if (!start.ok) throw new Error(await readErrorText(start, 'failed to start security-key registration'))
   const flow = await start.json()
-  const { prepareCreationOptions, serializeCredential } = await import('./auth.js')
+  const { prepareCreationOptions, serializeCredential } = authModule
   const credential = await navigator.credentials.create({ publicKey: prepareCreationOptions(flow.options) })
   if (!credential) throw new Error('Security-key registration was cancelled')
   const finish = await authedFetch('/api/v1/auth/webauthn/credentials/register/finish', {

@@ -2,39 +2,18 @@ import { useEffect, useRef, useState } from 'react'
 import Header from './Header.jsx'
 import Panel from './Panel.jsx'
 import Skeleton from './Skeleton.jsx'
-import AssetsTable from './AssetsTable.jsx'
-import RfPanel from './RfPanel.jsx'
-import AnomaliesPanel from './AnomaliesPanel.jsx'
-import DetectionRulesPanel from './DetectionRulesPanel.jsx'
-import SatellitesPanel from './SatellitesPanel.jsx'
-import OrbitalOperationsPanel from './OrbitalOperationsPanel.jsx'
-import OrbitalDashboardOverview from './OrbitalDashboardOverview.jsx'
 import WorldMap from './WorldMap.jsx'
 import ThreatIntelPanel from './ThreatIntelPanel.jsx'
-import AssetAlertsPanel from './AssetAlertsPanel.jsx'
-import IncidentsPanel from './IncidentsPanel.jsx'
-import Decoder from './Decoder.jsx'
 import NewAssetForm from './NewAssetForm.jsx'
-import ProgramManager from './ProgramManager.jsx'
 import NewSatelliteForm from './NewSatelliteForm.jsx'
-import ConnectivityPanel from './ConnectivityPanel.jsx'
-import AuditLogPanel from './AuditLogPanel.jsx'
-import UsersPanel from './UsersPanel.jsx'
-import SettingsPanel from './SettingsPanel.jsx'
-import PlatformOrganizationsPanel from './PlatformOrganizationsPanel.jsx'
-import PlatformOperationsOverview from './PlatformOperationsOverview.jsx'
-import SigningKeysPanel from './SigningKeysPanel.jsx'
-import RateLimitPolicyPanel from './RateLimitPolicyPanel.jsx'
-import SecretProviderPanel from './SecretProviderPanel.jsx'
-import IncidentResponsePanel from './IncidentResponsePanel.jsx'
-import RBACPanel from './RBACPanel.jsx'
 import Footer from './Footer.jsx'
 import ApiStatusBanner from './ApiStatusBanner.jsx'
 import { AnomalyTimelineChart, CVESeverityChart, CVETimelineChart, IncidentSeverityChart, IncidentTimelineChart, OrbitalAltitudeChart, RFPowerChart, RFSpectrumChart } from './TelemetryCharts.jsx'
-import RFHeatMap from './RFHeatMap.jsx'
 import { hasPermission } from '../lib/permissions.js'
 import { useI18n } from '../lib/I18nContext.jsx'
 import {
+
+
   fetchAgentKeys,
   fetchAgentIdentities,
   fetchIncidents,
@@ -60,6 +39,31 @@ import {
   ApiError,
   API_ERROR_EVENT,
 } from '../lib/api.js'
+import { lazyComponent } from '../lib/lazyComponent.jsx'
+
+const AssetsTable = lazyComponent(() => import('./AssetsTable.jsx'))
+const RfPanel = lazyComponent(() => import('./RfPanel.jsx'))
+const AnomaliesPanel = lazyComponent(() => import('./AnomaliesPanel.jsx'))
+const DetectionRulesPanel = lazyComponent(() => import('./DetectionRulesPanel.jsx'))
+const SatellitesPanel = lazyComponent(() => import('./SatellitesPanel.jsx'))
+const OrbitalOperationsPanel = lazyComponent(() => import('./OrbitalOperationsPanel.jsx'))
+const OrbitalDashboardOverview = lazyComponent(() => import('./OrbitalDashboardOverview.jsx'))
+const AssetAlertsPanel = lazyComponent(() => import('./AssetAlertsPanel.jsx'))
+const IncidentsPanel = lazyComponent(() => import('./IncidentsPanel.jsx'))
+const Decoder = lazyComponent(() => import('./Decoder.jsx'))
+const ProgramManager = lazyComponent(() => import('./ProgramManager.jsx'))
+const ConnectivityPanel = lazyComponent(() => import('./ConnectivityPanel.jsx'))
+const AuditLogPanel = lazyComponent(() => import('./AuditLogPanel.jsx'))
+const UsersPanel = lazyComponent(() => import('./UsersPanel.jsx'))
+const SettingsPanel = lazyComponent(() => import('./SettingsPanel.jsx'))
+const PlatformOrganizationsPanel = lazyComponent(() => import('./PlatformOrganizationsPanel.jsx'))
+const PlatformOperationsOverview = lazyComponent(() => import('./PlatformOperationsOverview.jsx'))
+const SigningKeysPanel = lazyComponent(() => import('./SigningKeysPanel.jsx'))
+const RateLimitPolicyPanel = lazyComponent(() => import('./RateLimitPolicyPanel.jsx'))
+const SecretProviderPanel = lazyComponent(() => import('./SecretProviderPanel.jsx'))
+const IncidentResponsePanel = lazyComponent(() => import('./IncidentResponsePanel.jsx'))
+const RBACPanel = lazyComponent(() => import('./RBACPanel.jsx'))
+const RFHeatMap = lazyComponent(() => import('./RFHeatMap.jsx'))
 
 const REFRESH_MS = 8000
 const PAGE_LIMIT = 50

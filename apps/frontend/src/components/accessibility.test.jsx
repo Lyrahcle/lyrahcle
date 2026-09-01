@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, within, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { axe } from 'jest-axe'
 import { I18nProvider } from '../lib/I18nContext.jsx'
@@ -9,6 +9,13 @@ import ChangePasswordModal from './ChangePasswordModal.jsx'
 import SettingsPanel from './SettingsPanel.jsx'
 import Login from './Login.jsx'
 import IncidentsPanel from './IncidentsPanel.jsx'
+
+const flushReactUpdates = async () => {
+  await act(async () => {
+    await Promise.resolve()
+    await Promise.resolve()
+  })
+}
 
 vi.mock('../lib/api.js', () => ({
   fetchPrograms: vi.fn().mockResolvedValue([]),
@@ -101,18 +108,20 @@ describe('ChangePasswordModal dialog semantics', () => {
 })
 
 describe('SettingsPanel', () => {
-  test('theme and language options are grouped with accessible names', () => {
+  test('theme and language options are grouped with accessible names', async () => {
     render(withI18n(<SettingsPanel />))
     expect(screen.getByRole('group', { name: 'Appearance' })).toBeInTheDocument()
     expect(screen.getByRole('group', { name: 'Language' })).toBeInTheDocument()
-  })
+  
+    await flushReactUpdates()})
 
-  test('selected option is marked aria-pressed', () => {
+  test('selected option is marked aria-pressed', async () => {
     render(withI18n(<SettingsPanel />))
     const darkButton = screen.getByRole('button', { name: /dark/i })
     const lightButton = screen.getByRole('button', { name: /light/i })
     expect([darkButton.getAttribute('aria-pressed'), lightButton.getAttribute('aria-pressed')]).toContain('true')
-  })
+  
+    await flushReactUpdates()})
 })
 
 describe('automated accessibility audit (axe)', () => {
@@ -126,7 +135,8 @@ describe('automated accessibility audit (axe)', () => {
     const { container } = render(withI18n(<SettingsPanel />))
     const results = await axe(container)
     expect(results).toHaveNoViolations()
-  })
+  
+    await flushReactUpdates()})
 
   test('IncidentsPanel empty state has no detectable WCAG violations', async () => {
     const { container } = render(withI18n(

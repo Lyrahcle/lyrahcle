@@ -266,4 +266,8 @@ section "Scheduler and singleton-job HA coverage"
   fi
 )
 
+echo
+echo "==> Frontend strict bundle budget"
+python3 "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/check-frontend-bundle.py" --require-build "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/apps/frontend/dist"
+
 section "Local v1 test gate passed"

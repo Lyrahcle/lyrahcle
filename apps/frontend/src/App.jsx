@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
 import Login from './components/Login.jsx'
-import Dashboard from './components/Dashboard.jsx'
 import ChangePasswordModal from './components/ChangePasswordModal.jsx'
 import ApiStatusBanner from './components/ApiStatusBanner.jsx'
 import { isAuthenticated, logout, passwordChangeRequired } from './lib/auth.js'
@@ -8,6 +7,10 @@ import { clearEffectivePermissions, loadEffectivePermissions } from './lib/permi
 import { UnauthorizedError } from './lib/api.js'
 import { useI18n } from './lib/I18nContext.jsx'
 import { DEFAULT_TAB, getTabFromLocation, setTabInLocation, subscribeTabChanges } from './lib/routeTabs.js'
+import { lazyComponent } from './lib/lazyComponent.jsx'
+
+const Dashboard = lazyComponent(() => import('./components/Dashboard.jsx'))
+
 
 function App() {
   const { t } = useI18n()

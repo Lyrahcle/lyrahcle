@@ -1,8 +1,15 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within, act } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import FleetRolloutPanel from './FleetRolloutPanel.jsx'
 import { I18nProvider } from '../lib/I18nContext.jsx'
 import { agentRolloutAction, createAgentRollout, fetchAgentRollout, fetchAgentRollouts } from '../lib/api.js'
+
+const flushReactUpdates = async () => {
+  await act(async () => {
+    await Promise.resolve()
+    await Promise.resolve()
+  })
+}
 
 vi.mock('../lib/api.js', () => ({
   fetchAgentRollouts: vi.fn(async () => []),
@@ -76,7 +83,8 @@ describe('FleetRolloutPanel', () => {
       agent_ids: ['station-good'],
       ack_timeout_seconds: 900,
     })))
-  })
+  
+    await flushReactUpdates()})
 
   it('shows cohort progress and blocks promotion while the active batch is unacknowledged', async () => {
     fetchAgentRollouts.mockResolvedValue([{ id: 'rollout-1', name: 'Canary alpha', status: 'running' }])
@@ -130,7 +138,9 @@ describe('FleetRolloutPanel', () => {
     await vi.waitFor(() => expect(agentRolloutAction).toHaveBeenCalledWith('rollout-1', 'advance'))
     expect(await screen.findByText('rollout acknowledgement timeout exceeded')).toBeInTheDocument()
     await vi.waitFor(() => expect(screen.getByText('failed')).toBeInTheDocument())
-  })
+  
+    await flushReactUpdates()
+})
 
   it('requires confirmation before rollback', async () => {
     fetchAgentRollouts.mockResolvedValue([{ id: 'rollout-1', name: 'Canary alpha', status: 'running' }])
@@ -160,5 +170,7 @@ describe('FleetRolloutPanel', () => {
 
     await vi.waitFor(() => expect(agentRolloutAction).toHaveBeenCalledWith('rollout-1', 'rollback'))
     await vi.waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
-  })
+  
+    await flushReactUpdates()
+})
 })
