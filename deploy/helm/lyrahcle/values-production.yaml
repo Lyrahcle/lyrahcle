@@ -16,7 +16,7 @@ secrets:
 backend:
   replicaCount: 2
   image:
-    tag: 14.6.7
+    tag: 14.6.8
   tls:
     enabled: true
     existingSecret: lyrahcle-backend-tls
@@ -33,7 +33,7 @@ backend:
 frontend:
   replicaCount: 2
   image:
-    tag: 14.6.7
+    tag: 14.6.8
   backendTls:
     verify: true
     # Must match the DNS SAN of the backend serving certificate.
@@ -52,7 +52,7 @@ frontend:
 
 cveSync:
   image:
-    tag: 14.6.7
+    tag: 14.6.8
 
 ingress:
   enabled: true

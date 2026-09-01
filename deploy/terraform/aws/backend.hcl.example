@@ -1,0 +1,7 @@
+# Configure an encrypted, versioned S3 bucket for remote state before production.
+# Do not commit a real backend.hcl if it contains account-specific data.
+bucket       = "replace-me-lyrahcle-terraform-state"
+key          = "lyrahcle/staging/aws.tfstate"
+region       = "eu-west-1"
+encrypt      = true
+use_lockfile = true

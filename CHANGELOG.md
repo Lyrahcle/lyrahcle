@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+## v14.6.8 — AWS infrastructure-as-code foundation
+
+- Fixed the non-root frontend container startup on Docker Compose and Kubernetes by making `/run` writable to nginx UID 101 and mounting the Kubernetes runtime `emptyDir` directly at `/run`; added a regression contract so `/var/run` symlink ownership cannot reintroduce the CI failure.
+- Added a Terraform/OpenTofu AWS root module for a future Lyrahcle migration with a multi-AZ VPC, private EKS managed node groups, ECR, encrypted RDS PostgreSQL, KMS and Secrets Manager.
+- Added production guardrails for three-AZ topology, restricted EKS public API CIDRs, minimum two-node capacity, one NAT per AZ, RDS Multi-AZ/deletion protection/final snapshots and longer backups.
+- Added immutable scan-on-push ECR repositories for backend, frontend and CVE-sync images.
+- Added optional ElastiCache/Valkey infrastructure with KMS at-rest encryption, TLS in transit, Multi-AZ failover and production AUTH enforcement; it stays disabled by default until first-class Lyrahcle Redis TLS/auth support ships.
+- Added Terraform/OpenTofu local planning tooling, static IaC contracts and a dedicated GitHub Actions Terraform format/init/validate workflow.
+- Bumped the Helm chart to 0.3.0 / appVersion 14.6.8 and kept AWS load balancers in the Kubernetes reconciliation layer rather than provisioning ALB/NLB directly in Terraform.
+- Removed hardcoded release numbers from Kubernetes static contracts; they now validate semantic `appVersion` and production image-tag coherence so normal chart version bumps do not break unrelated deployment gates.
+- Added AWS infrastructure documentation and remote-state guidance; application secret values remain out of Terraform state by creating Secrets Manager metadata only.
+- No database schema changes and no new application runtime dependencies.
+
 ## v14.6.7 — Kubernetes staging and observability
 
 - Added a portable two-replica staging Helm overlay plus a three-node kind topology and disposable PostgreSQL/Redis manifests for local Kubernetes lifecycle testing.

@@ -1,0 +1,40 @@
+name: AWS IaC
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'deploy/terraform/aws/**'
+      - 'scripts/check-aws-infrastructure.py'
+      - 'scripts/test_check_aws_infrastructure.py'
+      - '.github/workflows/aws-iac.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'deploy/terraform/aws/**'
+      - 'scripts/check-aws-infrastructure.py'
+      - 'scripts/test_check_aws_infrastructure.py'
+      - '.github/workflows/aws-iac.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.16.0'
+      - name: Static AWS infrastructure contract
+        run: python3 scripts/check-aws-infrastructure.py .
+      - name: Terraform format
+        working-directory: deploy/terraform/aws
+        run: terraform fmt -check -recursive
+      - name: Terraform init
+        working-directory: deploy/terraform/aws
+        run: terraform init -backend=false
+      - name: Terraform validate
+        working-directory: deploy/terraform/aws
+        run: terraform validate

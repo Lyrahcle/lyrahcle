@@ -156,6 +156,16 @@ if command -v docker >/dev/null 2>&1; then
   docker compose --profile observability config -q
 fi
 
+section "AWS infrastructure-as-code contract"
+python3 "$ROOT/scripts/check-aws-infrastructure.py" "$ROOT"
+if command -v tofu >/dev/null 2>&1; then
+  (cd "$ROOT/deploy/terraform/aws" && tofu fmt -check -recursive)
+elif command -v terraform >/dev/null 2>&1; then
+  (cd "$ROOT/deploy/terraform/aws" && terraform fmt -check -recursive)
+else
+  printf 'Terraform/OpenTofu is not installed; static AWS IaC contract passed, HCL formatter check is skipped locally.\n'
+fi
+
 section "Kubernetes deployment contract"
 python3 "$ROOT/scripts/check-kubernetes-deployment.py" "$ROOT"
 if command -v helm >/dev/null 2>&1; then

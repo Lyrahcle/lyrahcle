@@ -84,7 +84,7 @@ spec:
             - name: nginx-cache
               mountPath: /var/cache/nginx
             - name: nginx-run
-              mountPath: /var/run
+              mountPath: /run
             {{- if .Values.frontend.backendTls.caSecretName }}
             - name: backend-ca
               mountPath: /etc/nginx/backend-ca

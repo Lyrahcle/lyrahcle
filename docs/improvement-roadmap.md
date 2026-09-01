@@ -97,7 +97,7 @@ Status values: **Shipped**, **Partial**, **Next**, and **Later**.
 | Automated staging/production CD | Later | v9 |
 | Cloud-neutral Kubernetes/Helm deployment foundation | Shipped | v14.6.6 |
 | Kubernetes staging/kind smoke path and Prometheus Operator integration | Shipped | v14.6.7 |
-| AWS EKS infrastructure-as-code and managed-service cutover | Next | v14.6.8+ (`infra/aws`); base mapping documented in v14.6.6-v14.6.7 |
+| AWS EKS infrastructure-as-code and managed-service cutover | Partial | v14.6.8 ships VPC/EKS/ECR/RDS/KMS/Secrets + secure opt-in ElastiCache; Redis TLS, LBC/add-on automation and cutover drills remain |
 | Container image scanning | Shipped | Current |
 | Signed remote SDR configuration | Shipped | v9.1 |
 | IQ forensic capture and playback | Partial | v9 |
@@ -142,7 +142,7 @@ Note: multi-tenancy moved from "Enterprise architecture / Later" to the core Ide
 
 1. Validate orbital-aware Doppler/visibility correlation with representative physical SDR captures before enabling automatic orbital escalation (currently disabled).
 2. Reach and hold >80% coverage on security-critical code paths, including security-focused end-to-end coverage.
-3. Exercise the v14.6.7 multi-replica staging/smoke baseline, then add AWS infrastructure-as-code (EKS/ECR/RDS/ElastiCache/ALB/NLB/secrets), DR/RPO/RTO evidence, and continue signing-key custody hardening.
+3. Exercise the v14.6.7 multi-replica staging baseline and v14.6.8 AWS IaC plan; then close Redis TLS/auth, automate AWS cluster add-ons/secrets, and collect DR/RPO/RTO evidence before cutover.
 4. Complete the agent hardware-capability physical lab-validation gate (RTL-SDR/HackRF) — `compatible` currently reflects self-reported software capability only.
 5. Finish remaining operator-facing user guides and accessibility cleanup.
 

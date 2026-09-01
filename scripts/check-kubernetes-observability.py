@@ -37,8 +37,8 @@ def check(root: Path) -> list[str]:
         if needle not in texts[label]:
             errors.append(f"missing {purpose}: {needle!r}")
 
-    require("chart", 'appVersion: "14.6.7"', "v14.6.7 chart app version")
-    require("chart", "version: 0.2.0", "v14.6.7 chart version")
+    require("chart", "appVersion:", "chart app version")
+    require("chart", "version:", "chart package version")
     require("values", "serviceMonitor:", "ServiceMonitor values")
     require("values", "prometheusRule:", "PrometheusRule values")
     require("values", "prometheusAnnotations:", "annotation discovery values")

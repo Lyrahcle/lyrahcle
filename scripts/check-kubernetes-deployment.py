@@ -2,6 +2,7 @@
 """Static contract for the cloud-neutral Kubernetes deployment foundation."""
 from __future__ import annotations
 
+import re
 import shutil
 import subprocess
 import sys
@@ -39,9 +40,12 @@ def check(root: Path) -> list[str]:
     service_accounts = texts["templates/serviceaccount.yaml"]
     validation = texts["templates/validate.yaml"]
     db_path = root / "apps/backend/internal/db/db.go"
-    if not db_path.is_file():
-        return [f"missing {db_path}"]
+    frontend_docker_path = root / "deploy/docker/Dockerfile.frontend"
+    missing_runtime_files = [path for path in (db_path, frontend_docker_path) if not path.is_file()]
+    if missing_runtime_files:
+        return [f"missing {path}" for path in missing_runtime_files]
     db_go = db_path.read_text()
+    frontend_docker = frontend_docker_path.read_text()
 
     def require(text: str, needle: str, label: str) -> None:
         if needle not in text:
@@ -52,7 +56,12 @@ def check(root: Path) -> list[str]:
             errors.append(f"forbidden {label}: {needle!r}")
 
     require(chart_yaml, "apiVersion: v2", "Helm v3 chart API")
-    require(chart_yaml, 'appVersion: "14.6.7"', "chart app version")
+    app_version_match = re.search(r'^appVersion:\s*"?([0-9]+\.[0-9]+\.[0-9]+)"?\s*$', chart_yaml, re.MULTILINE)
+    if not app_version_match:
+        errors.append("missing or invalid semantic chart appVersion")
+        app_version = ""
+    else:
+        app_version = app_version_match.group(1)
     require(values, "existingSecret: lyrahcle-app-secrets", "external application Secret")
 
     for name, text in (("backend", backend), ("frontend", frontend), ("cve-sync", cve)):
@@ -63,6 +72,10 @@ def check(root: Path) -> list[str]:
     require(frontend, "runAsNonRoot: true", "frontend non-root runtime")
     require(frontend, "readOnlyRootFilesystem: true", "frontend read-only root filesystem")
     require(frontend, 'drop: ["ALL"]', "frontend capability drop")
+    require(frontend, "mountPath: /run", "frontend writable nginx runtime mount")
+    reject(frontend, "mountPath: /var/run", "frontend legacy nginx runtime mount")
+    require(frontend_docker, "mkdir -p /etc/nginx/backend-ca /var/cache/nginx /run", "frontend /run creation")
+    require(frontend_docker, "/var/cache/nginx /run /usr/share/nginx/html", "frontend /run ownership")
 
     for probe in ("startupProbe:", "readinessProbe:", "livenessProbe:"):
         require(backend, probe, f"backend {probe[:-1]}")
@@ -80,6 +93,8 @@ def check(root: Path) -> list[str]:
 
     require(production, "replicaCount: 2", "production replicas")
     reject(production, "tag: latest", "mutable production image tag")
+    if app_version and production.count(f"tag: {app_version}") < 3:
+        errors.append(f"production image tags must match chart appVersion {app_version}")
     require(validation, "production must pin", "production image validation")
     require(validation, "agentService.enabled requires backend.agentMtls.enabled=true", "agent mTLS validation")
 

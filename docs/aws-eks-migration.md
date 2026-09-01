@@ -1,4 +1,4 @@
-# Future AWS EKS migration
+# AWS EKS migration
 
 The Kubernetes chart is intentionally cloud-neutral. AWS should be introduced
 as an infrastructure overlay rather than through AWS-specific code inside the
@@ -137,7 +137,14 @@ security/E2E gates are green.
 
 ## Infrastructure-as-code boundary
 
-This block does not create AWS accounts, VPCs, EKS, RDS, ElastiCache, IAM or load
-balancer controllers. Those belong in a later `infra/aws` Terraform/OpenTofu
-layer. Keeping that layer separate preserves the ability to deploy Lyrahcle to a
-different Kubernetes provider.
+v14.6.8 adds the AWS infrastructure root under `deploy/terraform/aws`. It now
+creates the VPC, EKS managed-node foundation, ECR, RDS, KMS, Secrets Manager and
+an optional encrypted ElastiCache replication group. It still does **not**
+provision ALB/NLB resources directly; those remain reconciled from the same
+cloud-neutral Helm Ingress/Service objects by the AWS Load Balancer Controller.
+
+The ElastiCache resource remains disabled by default until the application Redis
+client exposes and verifies TLS/auth. Do not weaken ElastiCache in-transit
+encryption to bypass that application gap.
+
+See `docs/aws-infrastructure-as-code.md` for plan/apply boundaries and guardrails.
