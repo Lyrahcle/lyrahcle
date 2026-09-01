@@ -47,7 +47,8 @@ const AnomaliesPanel = lazyComponent(() => import('./AnomaliesPanel.jsx'))
 const DetectionRulesPanel = lazyComponent(() => import('./DetectionRulesPanel.jsx'))
 const SatellitesPanel = lazyComponent(() => import('./SatellitesPanel.jsx'))
 const OrbitalOperationsPanel = lazyComponent(() => import('./OrbitalOperationsPanel.jsx'))
-const OrbitalDashboardOverview = lazyComponent(() => import('./OrbitalDashboardOverview.jsx'))
+const MissionSecurityOperationsDashboard = lazyComponent(() => import('./MissionSecurityOperationsDashboard.jsx'))
+const SatelliteSecurityProfile = lazyComponent(() => import('./SatelliteSecurityProfile.jsx'))
 const AssetAlertsPanel = lazyComponent(() => import('./AssetAlertsPanel.jsx'))
 const IncidentsPanel = lazyComponent(() => import('./IncidentsPanel.jsx'))
 const Decoder = lazyComponent(() => import('./Decoder.jsx'))
@@ -77,6 +78,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
   const [detectionRules, setDetectionRules] = useState(null)
   const [satellites, setSatellites] = useState(null)
   const [satellitesLive, setSatellitesLive] = useState(false)
+  const [selectedSatelliteId, setSelectedSatelliteId] = useState(null)
   const [spaceCVEs, setSpaceCVEs] = useState(null)
   const [assetAlerts, setAssetAlerts] = useState(null)
   const [incidents, setIncidents] = useState(null)
@@ -154,7 +156,10 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
   const admin = hasPermission('users.manage')
   const programsAccess = hasPermission('programs.read') || hasPermission('programs.manage')
   const usersRead = hasPermission('users.read')
+  const incidentsRead = hasPermission('incidents.read')
   const incidentsManage = hasPermission('incidents.manage')
+  const rfRead = hasPermission('rf.read')
+  const alertsRead = hasPermission('alerts.read')
   const agentsRead = hasPermission('agents.read')
   const agentsManage = hasPermission('agents.manage')
   const auditAccess = hasPermission('audit.read')
@@ -217,7 +222,24 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
       }
 
       if (activeTab === 'orbital') {
-        await safeFetch(fetchSatellites, setSatellites)
+        const requests = [safeFetch(fetchSatellites, setSatellites)]
+        if (incidentsRead) {
+          requests.push(safeFetch(
+            () => fetchIncidents(PAGE_LIMIT, 0, {}),
+            setIncidents,
+            { items: [], total: 0, limit: PAGE_LIMIT, offset: 0 },
+          ))
+        }
+        if (rfRead) requests.push(safeFetch(fetchRfAnomalies, setRfAnomalies))
+        if (connectivityAccess) requests.push(safeFetch(fetchAgentIdentities, setAgentIdentities))
+        if (alertsRead) {
+          requests.push(safeFetch(
+            () => fetchAssetAlerts(PAGE_LIMIT, 0),
+            setAssetAlerts,
+            { items: [], total: 0, limit: PAGE_LIMIT, offset: 0 },
+          ))
+        }
+        await Promise.all(requests)
         return
       }
 
@@ -324,11 +346,12 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
       cancelled = true
       clearInterval(id)
     }
-  }, [onSessionExpired, activeTab, admin, auditAccess, assetsOffset, cvesOffset, cveFilters, auditOffset, incidentsOffset, incidentFilters, platformAdmin, adminAccess, usersRead, rbacRead, programsAccess, retryNonce])
+  }, [onSessionExpired, activeTab, admin, auditAccess, assetsOffset, cvesOffset, cveFilters, auditOffset, incidentsOffset, incidentFilters, platformAdmin, adminAccess, usersRead, rbacRead, programsAccess, incidentsRead, rfRead, alertsRead, connectivityAccess, retryNonce])
 
   useEffect(() => {
     if (activeTab !== 'orbital') {
       setSatellitesLive(false)
+      setSelectedSatelliteId(null)
       return undefined
     }
     const unsubscribe = subscribeSatellites({
@@ -417,6 +440,10 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
     setIncidentFilters(next)
   }
 
+  const selectedSatellite = selectedSatelliteId
+    ? (satellites ?? []).find((satellite) => satellite.id === selectedSatelliteId) ?? null
+    : null
+
   return (
     <div className="min-h-screen bg-transparent text-lyra-text">
       <Header
@@ -442,8 +469,32 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
 
       <main id="main-content" className="mx-auto max-w-7xl px-6 py-10 sm:px-8">
         {activeTab === 'orbital' && (
+          selectedSatellite ? (
+            <SatelliteSecurityProfile
+              satellite={selectedSatellite}
+              incidents={incidents}
+              anomalies={rfAnomalies}
+              agentIdentities={agentIdentities}
+              assetAlerts={assetAlerts}
+              access={{ incidents: incidentsRead, rf: rfRead, agents: connectivityAccess, alerts: alertsRead }}
+              onBack={() => setSelectedSatelliteId(null)}
+              onNavigate={(tab) => { setSelectedSatelliteId(null); onChangeTab(tab) }}
+            />
+          ) : (
           <div className="grid gap-6">
-            {satellites === null ? <Skeleton rows={2} /> : <OrbitalDashboardOverview satellites={satellites} live={satellitesLive} />}
+            {satellites === null ? <Skeleton rows={2} /> : (
+              <MissionSecurityOperationsDashboard
+                satellites={satellites}
+                incidents={incidents}
+                anomalies={rfAnomalies}
+                agentIdentities={agentIdentities}
+                assetAlerts={assetAlerts}
+                live={satellitesLive}
+                backendStatus={backendStatus}
+                access={{ incidents: incidentsRead, rf: rfRead, agents: connectivityAccess, alerts: alertsRead }}
+                onNavigate={onChangeTab}
+              />
+            )}
             <div id="orbital-ground-track">
             <Panel
               eyebrow={t('panels.groundTrack')}
@@ -476,7 +527,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
             <div id="orbital-management">
             <Panel eyebrow={t('panels.orbitalTracking')} title={t('panels.trackedSatellites')} uppercase>
               {hasPermission('orbital.manage') && <NewSatelliteForm onCreated={reloadSatellites} />}
-              {satellites === null ? <Skeleton /> : <SatellitesPanel satellites={satellites} canManage={hasPermission('orbital.manage')} onChanged={reloadSatellites} />}
+              {satellites === null ? <Skeleton /> : <SatellitesPanel satellites={satellites} canManage={hasPermission('orbital.manage')} onChanged={reloadSatellites} onOpenProfile={(satellite) => setSelectedSatelliteId(satellite.id)} />}
             </Panel>
             </div>
             {(hasPermission('orbital.read') || hasPermission('orbital.manage')) && (
@@ -487,6 +538,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
               </div>
             )}
           </div>
+          )
         )}
 
         {activeTab === 'assets' && (

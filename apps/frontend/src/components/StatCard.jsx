@@ -1,6 +1,8 @@
 const accents = {
   gold: 'from-lyra-gold to-transparent',
   good: 'from-lyra-good to-transparent',
+  warn: 'from-lyra-warn to-transparent',
+  bad: 'from-lyra-bad to-transparent',
   neutral: 'from-lyra-muted to-transparent',
 }
 

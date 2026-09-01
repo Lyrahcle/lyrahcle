@@ -1,5 +1,5 @@
 import { Fragment, useMemo, useState } from 'react'
-import { ChevronDown, ChevronUp, ChevronsUpDown, Pencil, Save, X } from 'lucide-react'
+import { ChevronDown, ChevronUp, ChevronsUpDown, Pencil, Save, Shield, X } from 'lucide-react'
 import CopyButton from './CopyButton.jsx'
 import TableScroll from './TableScroll.jsx'
 import { updateSatellite } from '../lib/api.js'
@@ -161,7 +161,7 @@ function SortableHeader({ label, sortKey, activeKey, direction, onSort, t, align
   )
 }
 
-export default function SatellitesPanel({ satellites, canManage = false, onChanged = async () => {} }) {
+export default function SatellitesPanel({ satellites, canManage = false, onChanged = async () => {}, onOpenProfile = () => {} }) {
   const { t } = useI18n()
   const [editingId, setEditingId] = useState(null)
   const [sortKey, setSortKey] = useState(null)
@@ -212,6 +212,14 @@ export default function SatellitesPanel({ satellites, canManage = false, onChang
                 <td className="py-3 text-lyra-goldBright">
                   <div className="flex items-center gap-2">
                     <span>{s.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => onOpenProfile(s)}
+                      aria-label={t('satelliteProfile.openProfile', { name: s.name })}
+                      className="rounded p-1 text-lyra-mutedDim hover:bg-lyra-panel hover:text-lyra-goldBright"
+                    >
+                      <Shield className="h-3.5 w-3.5" />
+                    </button>
                     {canManage && (
                       <button
                         type="button"

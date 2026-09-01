@@ -7,7 +7,7 @@ Requirements: Docker, Docker Compose, Go 1.26.7 for Go-module development, and N
 ```bash
 git clone https://github.com/Lyrahcle/lyrahcle.git
 cd lyrahcle
-docker compose up --build
+./scripts/docker-local-up.sh
 ```
 
 For focused development:

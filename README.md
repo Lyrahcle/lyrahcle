@@ -35,7 +35,7 @@ Teams operating satellites and ground infrastructure often lack the RF and orbit
 ```bash
 git clone https://github.com/Lyrahcle/lyrahcle.git
 cd lyrahcle
-docker compose up --build
+./scripts/docker-local-up.sh
 ```
 
 Open `http://localhost:5173`. Unless overridden, local development starts with `admin` / `admin`; that account is restricted until its password is changed.
@@ -43,8 +43,8 @@ Open `http://localhost:5173`. Unless overridden, local development starts with `
 Observability and the mock SDR agent are opt-in profiles:
 
 ```bash
-docker compose --profile observability up --build
-docker compose --profile sdr up --build
+./scripts/docker-local-up.sh --profile observability
+./scripts/docker-local-up.sh --profile sdr
 ```
 
 **Contributions are welcome.** Start with [`CONTRIBUTING.md`](./CONTRIBUTING.md), then check the [development plan](./PLAN.md) and [improvement roadmap](./docs/improvement-roadmap.md).

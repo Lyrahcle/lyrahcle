@@ -1,5 +1,6 @@
 services:
   backend:
+    image: lyrahcle/backend:local
     build:
       context: .
       dockerfile: deploy/docker/Dockerfile.backend
@@ -47,6 +48,7 @@ services:
     #   - ./certs:/certs:ro
 
   frontend:
+    image: lyrahcle/frontend:local
     build:
       context: .
       dockerfile: deploy/docker/Dockerfile.frontend
@@ -92,6 +94,7 @@ services:
       start_period: 5s
 
   cve-sync:
+    image: lyrahcle/cve-sync:local
     build:
       context: .
       dockerfile: deploy/docker/Dockerfile.cve-sync
@@ -158,6 +161,7 @@ services:
       - observability
 
   sdr-agent:
+    image: lyrahcle/sdr-agent:local
     build:
       context: .
       dockerfile: deploy/docker/Dockerfile.sdr-agent

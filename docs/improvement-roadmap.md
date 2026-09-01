@@ -45,6 +45,7 @@ Status values: **Shipped**, **Partial**, **Next**, and **Later**.
 | Explainable cross-domain correlation | Shipped | v9.4 |
 | Correlation-driven severity policy after production validation | Later | Before v1.0 |
 | RF heat map | Shipped | v14.6.2 |
+| Satellite security profile with explainable mission risk and unified evidence | Shipped | Unreleased |
 | Telemetry, RF, CVE, and operations charts | Next | v8.3-v9 |
 | Orbital-aware RF detection and TLE freshness gating | Shipped | v9.2/v9.2.2 |
 | Physical SDR validation of Doppler/visibility correlation | Next | Before auto-escalation/v1.0 |

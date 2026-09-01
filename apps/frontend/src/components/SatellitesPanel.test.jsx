@@ -63,6 +63,13 @@ describe('SatellitesPanel management', () => {
     expect(screen.queryByRole('button', { name: /edit ISS/i })).not.toBeInTheDocument()
   })
 
+  it('opens the satellite security profile without requiring manage permission', () => {
+    const onOpenProfile = vi.fn()
+    renderPanel({ canManage: false, onOpenProfile })
+    fireEvent.click(screen.getByRole('button', { name: /open security profile for ISS/i }))
+    expect(onOpenProfile).toHaveBeenCalledWith(satellite)
+  })
+
   it('edits name, NORAD and TLE from the UI for orbital.manage', async () => {
     api.updateSatellite.mockResolvedValue({ ...satellite, name: 'ISS (ZARYA)' })
     const onChanged = vi.fn().mockResolvedValue()
