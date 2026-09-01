@@ -115,4 +115,4 @@ Production SDR agents should use the v9.0 enrollment flow instead of static API 
 
 Do not forward client-certificate identity through an untrusted HTTP header. If TLS is terminated before the Go backend, preserve end-to-end mTLS or deploy a separately authenticated proxy integration rather than trusting arbitrary forwarded certificate metadata.
 
-See [`agent-enrollment.md`](./agent-enrollment.md).
+See [`04-sdr-agent-guide.md`](./04-sdr-agent-guide.md).

@@ -15,7 +15,6 @@ This directory contains the technical documentation for Lyrahcle. The root `READ
 | [AWS EKS migration](./aws-eks-migration.md) | EKS mapping for ECR/RDS/Redis, ALB/NLB, Secrets Manager and Pod Identity |
 | [AWS infrastructure as code](./aws-infrastructure-as-code.md) | Terraform/OpenTofu foundation for VPC, EKS, ECR, RDS, KMS, Secrets Manager and optional encrypted ElastiCache |
 | [Improvement roadmap](./improvement-roadmap.md) | Canonical shipped/partial/next/later product backlog |
-| [Documentation maintenance](./documentation-maintenance.md) | Source-of-truth hierarchy and consistency rules |
 
 ## Identity, access, and RBAC
 
@@ -23,10 +22,8 @@ This directory contains the technical documentation for Lyrahcle. The root `READ
 |---|---|
 | [User administration](./user-administration.md) | Roles, bootstrap admin, account lifecycle, TOTP, WebAuthn, recovery |
 | [Security keys and recovery](./security-keys-and-recovery.md) | WebAuthn and password-recovery trust model |
-| [Browser authentication security](./browser-auth-security.md) | Bearer-token model and CSRF assessment for browser API requests |
-| [Granular RBAC](./rbac.md) | v11.x organization-scoped permissions, custom roles, and capability enforcement |
-| [RBAC endpoint matrix](./rbac-endpoint-matrix.md) | Per-domain read/manage capability mapping to representative routes |
-| [v11.7 detection and operational RBAC completion](./detection-rbac-v117.md) | Tenant-local detection-rule policy and remaining capability migrations |
+| [Browser security guide](./01-browser-security-guide.md) | Bearer-token model, CSRF assessment, CSP, and CORS for browser API requests |
+| [Authorization and RBAC guide](./02-rbac-guide.md) | Organization-scoped capabilities, endpoint matrix, and detection-rule/operational RBAC |
 | [Platform administrator boundary](./platform-admin-boundary.md) | Control-plane organization management vs. tenant-local admin authority |
 | [Administrative audit coverage](./admin-audit-coverage.md) | Which security-sensitive admin mutations are audited, and where |
 | [Sensitive endpoint audit](./sensitive-endpoint-audit.md) | Security-sensitive endpoint inventory and audit expectations |
@@ -37,18 +34,13 @@ This directory contains the technical documentation for Lyrahcle. The root `READ
 
 | Document | Canonical purpose |
 |---|---|
-| [Organizations and multi-tenancy](./multi-tenancy.md) | v10.x tenant-scoping rollout across operational domains |
-| [PostgreSQL row-level security](./postgres-row-level-security.md) | v14.2 database-enforced tenant isolation via `dbscope` and RLS |
-| [Tenant isolation audit](./tenant-isolation-audit.md) | v10.6 release gate: tenant-owned domains and cross-tenant guarantees |
-| [Tenant runtime integrity](./tenant-runtime-integrity.md) | Preserving `organization_id` end-to-end into incidents and audit records |
+| [Multi-tenancy and organization isolation guide](./03-multi-tenancy-guide.md) | v10.x tenant-scoping rollout, PostgreSQL row-level security, and tenant-boundary/runtime-integrity guarantees |
 
 ## SDR fleet, edge, and orbital operations
 
 | Document | Canonical purpose |
 |---|---|
-| [SDR agent enrollment and mTLS](./agent-enrollment.md) | Enrollment, certificate rotation, quarantine, revocation, legacy-key migration |
-| [Signed remote agent configuration](./agent-remote-configuration.md) | v9.1 immutable signed configuration and rollback |
-| [Agent hardware capabilities](./agent-hardware-capabilities.md) | v13.10 SDR hardware/firmware inventory reporting and compatibility labels |
+| [SDR agent guide](./04-sdr-agent-guide.md) | Enrollment, mTLS, certificate rotation, signed remote configuration, and hardware-capability reporting |
 | [Edge node integrity / tamper detection](./edge-integrity.md) | Deterministic file-manifest baselining and healthy/changed classification |
 | [Orbital-aware security correlation](./orbital-security-correlation.md) | v9.2/v9.2.2 orbital/RF evidence, severity gating, operator workflow |
 | [Orbital operations context](./orbital-operations-context.md) | v9.5 maneuver/conjunction persistence, trust model, and candidate-only correlation |
@@ -64,7 +56,6 @@ This directory contains the technical documentation for Lyrahcle. The root `READ
 |---|---|
 | [Input/output security contracts](./input-output-security.md) | SQL parameterization and browser-XSS regression contracts kept in CI |
 | [Runtime command-execution security contract](./command-execution-security.md) | Prohibition on runtime OS command execution outside dedicated review |
-| [Browser, CSP, and CORS security](./browser-and-cors-security.md) | Same-origin default, CSP, and exact-allowlist CORS for split origins |
 | [UI HTTP error handling contract](./ui-http-errors.md) | Typed frontend handling of 401/403/404/409 instead of generic errors |
 | [Background job reliability](./background-job-reliability.md) | At-least-once delivery with idempotent durable effects for async work |
 | [STRIDE threat model](./ieee3536-threat-model.md) | Assets, trust boundaries, STRIDE threats, mitigations, residual risk |

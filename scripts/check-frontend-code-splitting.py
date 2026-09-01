@@ -1,34 +1,138 @@
 #!/usr/bin/env python3
+
 from pathlib import Path
-import importlib.util
+import re
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 DASHBOARD = ROOT / "apps/frontend/src/components/Dashboard.jsx"
-REPAIR = Path(__file__).with_name("repair-frontend-code-splitting-finalize-v1.py")
+HELPER = ROOT / "apps/frontend/src/lib/lazyComponent.jsx"
 
-spec = importlib.util.spec_from_file_location("frontend_split_finalize", REPAIR)
-mod = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(mod)
+MIN_LAZY_DECLARATIONS = 10
+
+LAZY_IMPORT_RE = re.compile(
+    r"""^import\s*\{\s*lazyComponent\s*\}\s*from\s*['"]\.\./lib/lazyComponent\.jsx['"]\s*;?\s*$""",
+    re.MULTILINE,
+)
+
+LAZY_DECL_RE = re.compile(
+    r"""^\s*const\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*lazyComponent\(\s*\(\s*\)\s*=>\s*import\(\s*['"]([^'"]+)['"]\s*\)\s*\)\s*;?\s*$""",
+    re.MULTILINE,
+)
 
 
-def main():
-    if not DASHBOARD.exists():
-        print(f"frontend code-splitting contract: ERROR: missing {DASHBOARD}", file=sys.stderr)
-        return 2
-    text = DASHBOARD.read_text(encoding="utf-8")
-    try:
-        count = mod.validate_repaired_text(text)
-    except ValueError as exc:
-        print(f"frontend code-splitting contract: ERROR: {exc}", file=sys.stderr)
-        return 1
-    if count < 10:
-        print(
-            f"frontend code-splitting contract: ERROR: only {count} lazy declarations; expected a meaningful split",
-            file=sys.stderr,
+def fail(message: str) -> int:
+    print(f"frontend code-splitting contract: ERROR: {message}", file=sys.stderr)
+    return 1
+
+
+def validate_no_lazy_const_inside_import(text: str) -> str | None:
+    in_multiline_import = False
+
+    for lineno, line in enumerate(text.splitlines(), start=1):
+        stripped = line.strip()
+
+        if not in_multiline_import and stripped.startswith("import "):
+            if "{" in stripped and "} from " not in stripped:
+                in_multiline_import = True
+
+        elif in_multiline_import:
+            if stripped.startswith("const "):
+                return (
+                    f"lazy declaration found inside import block "
+                    f"at Dashboard.jsx:{lineno}"
+                )
+
+            if "} from " in stripped:
+                in_multiline_import = False
+
+    if in_multiline_import:
+        return "unterminated multiline import in Dashboard.jsx"
+
+    return None
+
+
+def main() -> int:
+    if not DASHBOARD.is_file():
+        return fail(f"missing {DASHBOARD.relative_to(ROOT)}")
+
+    if not HELPER.is_file():
+        return fail(f"missing {HELPER.relative_to(ROOT)}")
+
+    dashboard = DASHBOARD.read_text(encoding="utf-8")
+    helper = HELPER.read_text(encoding="utf-8")
+
+    if "lazyComponent" not in helper:
+        return fail("lazyComponent helper does not define lazyComponent")
+
+    imports = LAZY_IMPORT_RE.findall(dashboard)
+    if len(imports) != 1:
+        return fail(
+            "Dashboard.jsx must import lazyComponent exactly once "
+            f"(found {len(imports)})"
         )
-        return 1
-    print(f"frontend code-splitting contract: OK ({count} lazy declarations)")
+
+    structural_error = validate_no_lazy_const_inside_import(dashboard)
+    if structural_error:
+        return fail(structural_error)
+
+    declarations = LAZY_DECL_RE.findall(dashboard)
+
+    if len(declarations) < MIN_LAZY_DECLARATIONS:
+        return fail(
+            f"expected at least {MIN_LAZY_DECLARATIONS} lazy declarations, "
+            f"found {len(declarations)}"
+        )
+
+    names = [name for name, _ in declarations]
+
+    duplicates = sorted(
+        name for name in set(names)
+        if names.count(name) > 1
+    )
+    if duplicates:
+        return fail(
+            "duplicate lazy declarations: " + ", ".join(duplicates)
+        )
+
+    dashboard_dir = DASHBOARD.parent
+
+    missing_modules = []
+    for name, module_path in declarations:
+        if not module_path.startswith("."):
+            continue
+
+        target = (dashboard_dir / module_path).resolve()
+
+        try:
+            target.relative_to(ROOT)
+        except ValueError:
+            return fail(
+                f"{name} lazy import escapes repository: {module_path}"
+            )
+
+        if not target.is_file():
+            missing_modules.append(f"{name} -> {module_path}")
+
+    if missing_modules:
+        return fail(
+            "missing lazy-import modules: " + ", ".join(missing_modules)
+        )
+
+    first_import = dashboard.find(
+        "import { lazyComponent } from '../lib/lazyComponent.jsx'"
+    )
+    first_decl = dashboard.find("lazyComponent(() => import(")
+
+    if first_import < 0 or first_decl < 0 or first_import > first_decl:
+        return fail(
+            "lazyComponent import must appear before lazy declarations"
+        )
+
+    print(
+        "frontend code-splitting contract: OK "
+        f"({len(declarations)} lazy declarations)"
+    )
     return 0
 
 

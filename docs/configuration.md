@@ -131,4 +131,4 @@ Rotation scheduling is configured from **Platform → Remote Config Signing Keys
 | `AGENT_CONFIG_VERIFY_KEY_DIR` | SDR agent directory of trusted Ed25519 public-key PEM files resolved by KID | disabled |
 | `AGENT_CONFIG_POLL_INTERVAL` | SDR agent desired-config polling interval | `30s` |
 
-See `docs/agent-enrollment.md` for certificate identity and `docs/agent-remote-configuration.md` for signed remote configuration.
+See `docs/04-sdr-agent-guide.md` for certificate identity and signed remote configuration.

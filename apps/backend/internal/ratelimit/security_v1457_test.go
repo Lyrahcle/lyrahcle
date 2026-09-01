@@ -89,6 +89,9 @@ func TestRedisFailureFallsBackToBoundedLocalLimiter(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	fixedNow := time.Unix(1700000000, 0).UTC()
+	l.now = func() time.Time { return fixedNow }
+
 	org, user := uuid.New(), uuid.New()
 	for i := 0; i < 2; i++ {
 		d, err := l.AllowHuman(context.Background(), org, user, ClassRead)

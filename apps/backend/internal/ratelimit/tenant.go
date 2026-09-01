@@ -131,7 +131,8 @@ func (l *Limiter) AllowHuman(ctx context.Context, organizationID, userID uuid.UU
 		return Decision{}, fmt.Errorf("ratelimit: unsupported human class %q", class)
 	}
 
-	tenantDecision, err := l.allow(ctx, "tenant", class, organizationID.String(), tenantLimit)
+	now := l.now().UTC()
+	tenantDecision, err := l.allowAt(ctx, "tenant", class, organizationID.String(), tenantLimit, now)
 	if err != nil {
 		return Decision{}, err
 	}
@@ -140,7 +141,7 @@ func (l *Limiter) AllowHuman(ctx context.Context, organizationID, userID uuid.UU
 		return tenantDecision, nil
 	}
 	actorSubject := organizationID.String() + ":" + userID.String()
-	actorDecision, err := l.allow(ctx, "actor", class, actorSubject, actorLimit)
+	actorDecision, err := l.allowAt(ctx, "actor", class, actorSubject, actorLimit, now)
 	if err != nil {
 		return Decision{}, err
 	}
@@ -156,7 +157,8 @@ func (l *Limiter) AllowAgent(ctx context.Context, organizationID uuid.UUID, agen
 	if organizationID == uuid.Nil || agentID == "" {
 		return Decision{}, errors.New("ratelimit: organization and agent are required")
 	}
-	tenantDecision, err := l.allow(ctx, "tenant_agent", ClassAgent, organizationID.String(), l.policy.TenantAgentLimit)
+	now := l.now().UTC()
+	tenantDecision, err := l.allowAt(ctx, "tenant_agent", ClassAgent, organizationID.String(), l.policy.TenantAgentLimit, now)
 	if err != nil {
 		return Decision{}, err
 	}
@@ -164,7 +166,7 @@ func (l *Limiter) AllowAgent(ctx context.Context, organizationID uuid.UUID, agen
 		metrics.RateLimitDecisions.WithLabelValues("tenant_agent", ClassAgent, "blocked").Inc()
 		return tenantDecision, nil
 	}
-	agentDecision, err := l.allow(ctx, "agent", ClassAgent, organizationID.String()+":"+agentID, l.policy.AgentLimit)
+	agentDecision, err := l.allowAt(ctx, "agent", ClassAgent, organizationID.String()+":"+agentID, l.policy.AgentLimit, now)
 	if err != nil {
 		return Decision{}, err
 	}
@@ -177,7 +179,10 @@ func (l *Limiter) AllowAgent(ctx context.Context, organizationID uuid.UUID, agen
 }
 
 func (l *Limiter) allow(ctx context.Context, scope, class, subject string, limit int) (Decision, error) {
-	now := l.now().UTC()
+	return l.allowAt(ctx, scope, class, subject, limit, l.now().UTC())
+}
+
+func (l *Limiter) allowAt(ctx context.Context, scope, class, subject string, limit int, now time.Time) (Decision, error) {
 	windowStart := now.Truncate(l.policy.Window)
 	windowEnd := windowStart.Add(l.policy.Window)
 	key := tenantBucketKey(scope, class, subject, windowStart)

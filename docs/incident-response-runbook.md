@@ -2,7 +2,7 @@
 
 This runbook covers security incidents affecting Lyrahcle itself: compromised credentials or sessions, signing-key compromise, SDR-agent compromise/tamper, suspected tenant-data exposure, and backend/infrastructure compromise.
 
-It complements `SECURITY.md` (vulnerability reporting), `docs/forensics.md` (IQ evidence handling), `docs/key-management.md`, `docs/agent-enrollment.md`, and `docs/backup-and-restore.md`.
+It complements `SECURITY.md` (vulnerability reporting), `docs/forensics.md` (IQ evidence handling), `docs/key-management.md`, `docs/04-sdr-agent-guide.md`, and `docs/backup-and-restore.md`.
 
 ## Operating principles
 

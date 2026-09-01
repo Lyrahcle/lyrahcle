@@ -45,7 +45,7 @@ Legacy `X-Agent-Key` credentials remain available only for migration. When a cli
 
 `POST /api/v1/agents/me/device` and `POST /api/v1/rf/ingest` derive the agent identity from the validated client certificate or legacy agent key. A request cannot select a different authenticated agent.
 
-See `docs/agent-enrollment.md` for certificate setup, rotation, quarantine, and revocation.
+See `docs/04-sdr-agent-guide.md` for certificate setup, rotation, quarantine, and revocation.
 
 The embedded OpenAPI document is OpenAPI 3.0.3. It documents mTLS requirements in endpoint descriptions; the actual client-certificate authentication is enforced by the Go TLS/authentication layer rather than represented as an OpenAPI 3.0 security scheme.
 

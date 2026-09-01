@@ -64,7 +64,7 @@ See [`docs/architecture.md`](./docs/architecture.md) for trust boundaries and da
 
 The backend enforces authorization; frontend visibility is never treated as a security boundary. SDR agents use individual mTLS identities, remote configuration is signed independently with Ed25519, and CI gates include tests, race detection, vulnerability checks, fuzzing, critical-package coverage, image scanning, SBOM generation, and release signing.
 
-Start at [`docs/README.md`](./docs/README.md). Useful entry points include the [API reference](./docs/api-reference.md), [deployment guide](./docs/deployment.md), [STRIDE threat model](./docs/ieee3536-threat-model.md), [SDR enrollment guide](./docs/agent-enrollment.md), and [orbital security correlation](./docs/orbital-security-correlation.md).
+Start at [`docs/README.md`](./docs/README.md). Useful entry points include the [API reference](./docs/api-reference.md), [deployment guide](./docs/deployment.md), [STRIDE threat model](./docs/ieee3536-threat-model.md), [SDR agent guide](./docs/04-sdr-agent-guide.md), and [orbital security correlation](./docs/orbital-security-correlation.md).
 
 Interactive API documentation is available at `http://localhost:8080/docs` while the backend is running.
 
