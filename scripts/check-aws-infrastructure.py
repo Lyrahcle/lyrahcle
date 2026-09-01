@@ -6,7 +6,7 @@ root = Path(sys.argv[1] if len(sys.argv) > 1 else ".").resolve()
 infra = root / "deploy" / "terraform" / "aws"
 required = [
     "versions.tf", "variables.tf", "locals.tf", "networking.tf", "eks.tf",
-    "kms.tf", "ecr.tf", "rds.tf", "redis.tf", "secrets.tf", "outputs.tf",
+    "kms.tf", "ecr.tf", "rds.tf", "redis.tf", "secrets.tf", "certificate-dns.tf", "external-dns.tf", "aws-load-balancer-controller.tf", "outputs.tf",
     "guardrails.tf", "terraform.tfvars.example", "backend.hcl.example", "README.md",
 ]
 missing = [name for name in required if not (infra / name).is_file()]
@@ -18,6 +18,8 @@ checks = {
     "VPC module pin": 'terraform-aws-modules/vpc/aws' in text and 'version = "6.7.0"' in text,
     "EKS module pin": 'terraform-aws-modules/eks/aws' in text and 'version = "21.25.0"' in text,
     "Pod Identity agent": 'eks-pod-identity-agent' in text,
+    "AWS Load Balancer Controller": 'helm_release" "aws_load_balancer_controller' in text,
+    "controller Pod Identity": 'aws_eks_pod_identity_association" "aws_load_balancer_controller' in text,
     "private RDS": 'publicly_accessible    = false' in text,
     "RDS encryption": 'storage_encrypted     = true' in text and 'manage_master_user_password' in text,
     "Redis TLS": 'transit_encryption_enabled = true' in text,
@@ -26,6 +28,8 @@ checks = {
     "ECR immutability": 'image_tag_mutability = "IMMUTABLE"' in text,
     "ECR scan": 'scan_on_push = true' in text,
     "Secrets Manager": 'aws_secretsmanager_secret' in text,
+    "ACM DNS validation": 'aws_acm_certificate_validation' in text and 'aws_route53_record' in text,
+    "ExternalDNS": 'helm_release" "external_dns' in text and 'aws_eks_pod_identity_association" "external_dns' in text,
     "KMS rotation": 'enable_key_rotation     = true' in text,
     "production AZ guardrail": 'Production must span at least three availability zones.' in text,
     "production EKS CIDR guardrail": 'Production EKS API access must not allow 0.0.0.0/0.' in text,
@@ -37,7 +41,7 @@ if failed:
 
 example = (infra / "terraform.tfvars.example").read_text()
 if 'create_redis = false' not in example:
-    raise SystemExit("AWS IaC contract: example must keep encrypted Redis opt-in until client TLS ships")
+    raise SystemExit("AWS IaC contract: example must keep encrypted Redis opt-in so cost and secret population remain explicit")
 if '0.0.0.0/0' in example:
     raise SystemExit("AWS IaC contract: tfvars example must not expose EKS API to the world")
 

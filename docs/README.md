@@ -14,6 +14,7 @@ This directory contains the technical documentation for Lyrahcle. The root `READ
 | [Kubernetes staging and observability](./kubernetes-observability.md) | kind smoke environment, ServiceMonitor/PrometheusRule integration, metrics NetworkPolicy path |
 | [AWS EKS migration](./aws-eks-migration.md) | EKS mapping for ECR/RDS/Redis, ALB/NLB, Secrets Manager and Pod Identity |
 | [AWS infrastructure as code](./aws-infrastructure-as-code.md) | Terraform/OpenTofu foundation for VPC, EKS, ECR, RDS, KMS, Secrets Manager and optional encrypted ElastiCache |
+| [AWS production readiness](./aws-production-readiness.md) | Route53/ACM, ExternalDNS, immutable ECR image digests and release handoff |
 | [Improvement roadmap](./improvement-roadmap.md) | Canonical shipped/partial/next/later product backlog |
 
 ## Identity, access, and RBAC

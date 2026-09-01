@@ -33,12 +33,17 @@ spec:
     spec:
       serviceAccountName: {{ include "lyrahcle.backendServiceAccountName" . }}
       automountServiceAccountToken: false
+      enableServiceLinks: false
+      hostNetwork: false
+      hostPID: false
+      hostIPC: false
       terminationGracePeriodSeconds: 30
       securityContext:
         runAsNonRoot: true
         runAsUser: {{ .Values.podSecurity.backend.runAsUser }}
         runAsGroup: {{ .Values.podSecurity.backend.runAsGroup }}
         fsGroup: {{ .Values.podSecurity.backend.fsGroup }}
+        fsGroupChangePolicy: OnRootMismatch
         seccompProfile:
           type: RuntimeDefault
       {{- with .Values.imagePullSecrets }}
@@ -53,20 +58,17 @@ spec:
           args:
             - |
               mkdir -p /runtime/secrets
-              chown {{ .Values.podSecurity.backend.runAsUser }}:{{ .Values.podSecurity.backend.runAsGroup }} /runtime/secrets
               chmod 0700 /runtime/secrets
               for source in /source-secrets/*; do
                 [ -f "$source" ] || continue
                 name="$(basename "$source")"
                 cp "$source" "/runtime/secrets/$name"
-                chown {{ .Values.podSecurity.backend.runAsUser }}:{{ .Values.podSecurity.backend.runAsGroup }} "/runtime/secrets/$name"
                 chmod 0400 "/runtime/secrets/$name"
               done
               {{- if .Values.backend.tls.enabled }}
               mkdir -p /runtime/tls
               cp /source-tls/tls.crt /runtime/tls/tls.crt
               cp /source-tls/tls.key /runtime/tls/tls.key
-              chown -R {{ .Values.podSecurity.backend.runAsUser }}:{{ .Values.podSecurity.backend.runAsGroup }} /runtime/tls
               chmod 0700 /runtime/tls
               chmod 0400 /runtime/tls/tls.crt /runtime/tls/tls.key
               {{- end }}
@@ -74,13 +76,16 @@ spec:
               mkdir -p /runtime/agent-ca
               cp /source-agent-ca/ca.crt /runtime/agent-ca/ca.crt
               cp /source-agent-ca/ca.key /runtime/agent-ca/ca.key
-              chown -R {{ .Values.podSecurity.backend.runAsUser }}:{{ .Values.podSecurity.backend.runAsGroup }} /runtime/agent-ca
               chmod 0700 /runtime/agent-ca
               chmod 0400 /runtime/agent-ca/ca.crt /runtime/agent-ca/ca.key
               {{- end }}
           securityContext:
+            runAsNonRoot: true
+            privileged: false
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
             seccompProfile:
               type: RuntimeDefault
           volumeMounts:
@@ -104,6 +109,8 @@ spec:
           image: {{ include "lyrahcle.image" (dict "image" .Values.backend.image) | quote }}
           imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
           securityContext:
+            runAsNonRoot: true
+            privileged: false
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
             capabilities:

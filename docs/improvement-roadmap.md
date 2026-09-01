@@ -98,6 +98,7 @@ Status values: **Shipped**, **Partial**, **Next**, and **Later**.
 | Automated staging/production CD | Later | v9 |
 | Cloud-neutral Kubernetes/Helm deployment foundation | Shipped | v14.6.6 |
 | Kubernetes staging/kind smoke path and Prometheus Operator integration | Shipped | v14.6.7 |
+| Kubernetes restricted Pod Security and default-deny network isolation | Shipped | Block 8 |
 | AWS EKS infrastructure-as-code and managed-service cutover | Partial | v14.6.8 ships VPC/EKS/ECR/RDS/KMS/Secrets + secure opt-in ElastiCache; LBC/add-on automation, external secret delivery and cutover drills remain |
 | Container image scanning | Shipped | Current |
 | Signed remote SDR configuration | Shipped | v9.1 |

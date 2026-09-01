@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- Added AWS production-readiness wiring with optional Route53-validated ACM certificates, ExternalDNS on a dedicated Route53-scoped EKS Pod Identity role, immutable ECR build/push tooling that resolves image digests, dynamic non-secret Helm release-value rendering, and a read-only AWS readiness check. The AWS root still does not create hosted zones, secret values or the Lyrahcle application Helm release automatically.
+- Automated AWS Load Balancer Controller installation for EKS with a dedicated least-privilege IAM policy, EKS Pod Identity association, pinned Helm provider/chart versions, two-replica production guardrail, ALB ACM/HTTPS example annotations and static regression contracts. ALB/NLB lifecycle remains Kubernetes-reconciled from Lyrahcle Ingress/Service resources; no application runtime or database schema changes.
 - Added a permission-aware command palette opened with Ctrl/Cmd+K, combining fast section navigation with debounced global search across satellites, assets, CVEs and incidents. Keyboard navigation supports arrows, Enter and Escape, backend results are filtered to destinations available in the current UI, and satellite search results open the selected Satellite Security Profile directly. Added EN/ES/FR/DE copy, focused frontend tests and a command-palette regression contract. No database schema changes and no new runtime dependencies.
 - Replaced the top-left dropdown navigation with a permission-aware application sidebar grouped into Overview, Mission, Security, RF operations, Platform and Preferences. The sidebar is persistent and collapsible on desktop, becomes an accessible mobile drawer, preserves hash deep links and permission-gated destinations, and moves the active workspace context into the header. Added EN/ES/FR/DE copy, focused frontend tests and a navigation-shell regression contract. No database schema changes and no new runtime dependencies.
 - Added Ground Station Operations as a permission-aware ground-segment workspace for configured SDR station endpoints, with station mapping, online/attention/offline posture, explainable station risk, current satellite visibility from propagated positions, 24-hour observed-satellite/RF context, correlated incidents and RF anomalies, and direct navigation to RF, incidents and fleet management. Added shared geometry/risk helpers, EN/ES/FR/DE copy, frontend tests and a station-isolation contract. No database schema changes and no new runtime dependencies.
@@ -168,6 +170,8 @@ Notable changes are tracked here until versioned release notes take over.
 
 ## Unreleased
 
+- Added AWS production-readiness wiring with optional Route53-validated ACM certificates, ExternalDNS on a dedicated Route53-scoped EKS Pod Identity role, immutable ECR build/push tooling that resolves image digests, dynamic non-secret Helm release-value rendering, and a read-only AWS readiness check. The AWS root still does not create hosted zones, secret values or the Lyrahcle application Helm release automatically.
+- Automated AWS Load Balancer Controller installation for EKS with a dedicated least-privilege IAM policy, EKS Pod Identity association, pinned Helm provider/chart versions, two-replica production guardrail, ALB ACM/HTTPS example annotations and static regression contracts. ALB/NLB lifecycle remains Kubernetes-reconciled from Lyrahcle Ingress/Service resources; no application runtime or database schema changes.
 - Added Ground Station Operations as a permission-aware ground-segment workspace for configured SDR station endpoints, with station mapping, online/attention/offline posture, explainable station risk, current satellite visibility from propagated positions, 24-hour observed-satellite/RF context, correlated incidents and RF anomalies, and direct navigation to RF, incidents and fleet management. Added shared geometry/risk helpers, EN/ES/FR/DE copy, frontend tests and a station-isolation contract. No database schema changes and no new runtime dependencies.
 - Added a shared, explainable 0–100 risk engine used by mission operations, satellite security profiles and the satellite inventory; risk factors are bounded and grouped by operational domain. Standardized UI copy to sentence case while preserving technical acronyms, removed forced all-uppercase presentation, and cleaned ordinary source/configuration comments with regression contracts to keep the codebase visually clean. No database schema changes and no new runtime dependencies.
 - Added a Platform health overview with backend dependency readiness, secret-provider health, signing-custody posture, organization count, and platform-admin count. The overview reuses `/readyz` plus existing protected platform security endpoints and does not expose secret material.
@@ -404,3 +408,22 @@ Notable changes are tracked here until versioned release notes take over.
 - AWS ElastiCache uses required transit encryption and validates AUTH-token shape while remaining opt-in.
 - Added Redis TLS/auth contracts and regression tests.
 
+
+## Block 8 - Kubernetes security hardening
+
+- Completed Pod Security Standards restricted-compatible security contexts for backend, frontend, CVE sync and the backend secret-preparation init container.
+- Disabled service-link injection and explicit host network, PID and IPC sharing for application Pods.
+- Added namespace Pod Security Admission enforcement material for production and warn/audit labels for the local kind workflow.
+- Reworked NetworkPolicy into default-deny ingress and egress isolation with explicit DNS, frontend-to-backend, PostgreSQL, Redis, HTTPS, ingress-controller, monitoring and SDR-agent paths.
+- Production and AWS overlays now enable NetworkPolicy by default; the AWS example scopes ALB and managed-datastore traffic to the VPC CIDR.
+- Added Helm fail-closed validation for production NetworkPolicy, datastore CIDRs and direct SDR-agent ingress CIDRs.
+- Added Kubernetes security-hardening contracts and regression tests.
+
+## Block 10 - AWS Secrets Manager and External Secrets
+
+- Added External Secrets Operator installation through Terraform with a pinned Helm chart, dedicated namespace and EKS Pod Identity.
+- Restricted the operator IAM policy to read-only access to the Lyrahcle application secret and KMS decryption.
+- Added Helm `SecretStore` and `ExternalSecret` resources that preserve the existing `lyrahcle-app-secrets` application contract.
+- Kept Terraform free of secret values; application secret material remains populated out-of-band in AWS Secrets Manager.
+- Added fail-closed Helm validation, contracts and operational documentation for external secret synchronization.
+- Updated the root README dashboard screenshot to the current Mission Security Operations interface.

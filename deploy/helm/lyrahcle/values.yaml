@@ -20,6 +20,14 @@ application:
 secrets:
   existingSecret: lyrahcle-app-secrets
 
+externalSecrets:
+  enabled: false
+  storeName: lyrahcle-aws-secrets-manager
+  region: ""
+  remoteSecretKey: ""
+  refreshInterval: 1h
+  targetSecretName: lyrahcle-app-secrets
+
 redis:
   tls:
     caSecretName: ""
@@ -168,6 +176,28 @@ agentService:
 
 networkPolicy:
   enabled: false
+  defaultDeny: true
+  dns:
+    namespaceLabels:
+      kubernetes.io/metadata.name: kube-system
+    podLabels:
+      k8s-app: kube-dns
+  ingressController:
+    enabled: false
+    namespaceLabels: {}
+    podLabels: {}
+  frontendIngressCidrs: []
+  agentIngressCidrs: []
+  localDatastores:
+    enabled: true
+  externalDatastoreCidrs: []
+  httpsEgress:
+    enabled: true
+    cidrs:
+      - 0.0.0.0/0
+  backendExtraEgress: []
+  frontendExtraEgress: []
+  cveSyncExtraEgress: []
   monitoring:
     enabled: false
     namespaceLabels:

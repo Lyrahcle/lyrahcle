@@ -18,8 +18,9 @@ as a ready-to-run production configuration.
 | Browser ingress | Ingress | AWS Load Balancer Controller + ALB |
 | Agent mTLS ingress | LoadBalancer Service | NLB with IP targets/TLS passthrough |
 | Public TLS | Ingress/LB configuration | ACM certificate |
-| Application secrets | Existing Kubernetes Secret | Secrets Manager integration |
+| Application secrets | ExternalSecret-generated Secret | AWS Secrets Manager + External Secrets Operator |
 | Pod AWS permissions | ServiceAccount | EKS Pod Identity |
+| Load-balancer reconciliation | Controller ServiceAccount | AWS Load Balancer Controller + EKS Pod Identity |
 | Metrics/traces | OpenTelemetry/Prometheus | Managed or self-hosted observability |
 
 ## Why the chart uses separate ServiceAccounts
@@ -32,6 +33,20 @@ logic to the application.
 
 The initial migration should keep IAM permissions minimal. The frontend should
 normally need no AWS API permissions at all.
+
+## External Secrets Operator
+
+The AWS infrastructure root installs External Secrets Operator in a dedicated namespace and associates only its controller ServiceAccount with a read-only EKS Pod Identity role. The role can read the Lyrahcle application secret and decrypt it with the data KMS key. Backend, frontend and CVE sync pods do not receive Secrets Manager permissions.
+
+The AWS Helm overlay creates a namespaced `SecretStore` and `ExternalSecret`. The generated Secret keeps the existing `lyrahcle-app-secrets` name, so application workloads do not need AWS-specific secret retrieval logic. Terraform creates only the Secrets Manager container; populate its JSON value out-of-band before deploying the application chart. See `docs/aws-secrets-manager.md`.
+
+## AWS Load Balancer Controller
+
+The AWS infrastructure root module installs the controller in `kube-system` with a dedicated IAM role and EKS Pod Identity association. The controller chart is pinned and upgrades are explicit. Terraform configures the controller with the EKS cluster name, AWS region and VPC ID, so it does not depend on node IMDS discovery.
+
+The Terraform runner must have AWS CLI access and network reachability to the EKS API endpoint because the Helm provider authenticates with `aws eks get-token`. The controller role is not attached to the worker node role.
+
+The AWS root can optionally create and Route53-validate the public ACM certificate and install ExternalDNS with its own EKS Pod Identity role. The AWS values example keeps placeholders so it remains repository-safe; `scripts/aws-render-release-values.py` replaces the dynamic domain and certificate values from Terraform outputs before a real release.
 
 ## Ingress model
 
@@ -78,9 +93,8 @@ replicas, migration serialization, probes and graceful termination.
 
 ### Phase 2 — AWS staging
 
-Create EKS, ECR, RDS, Redis/Valkey, ALB/NLB integration, DNS, ACM and external
-secret management. Deploy the same application chart using the AWS values
-overlay.
+Create EKS, ECR, RDS, Redis/Valkey, ALB/NLB integration, Route53/ACM and external
+secret management. Build immutable ECR images, resolve their digests, render the dynamic AWS release overlay and deploy the same application chart.
 
 ### Phase 3 — resilience
 
@@ -97,13 +111,11 @@ security/E2E gates are green.
 ## Infrastructure-as-code boundary
 
 v14.6.8 adds the AWS infrastructure root under `deploy/terraform/aws`. It now
-creates the VPC, EKS managed-node foundation, ECR, RDS, KMS, Secrets Manager and
-an optional encrypted ElastiCache replication group. It still does **not**
+creates the VPC, EKS managed-node foundation, ECR, RDS, KMS, Secrets Manager,
+External Secrets Operator, optional Route53-validated ACM certificate, ExternalDNS and an optional encrypted ElastiCache replication group. It still does **not**
 provision ALB/NLB resources directly; those remain reconciled from the same
 cloud-neutral Helm Ingress/Service objects by the AWS Load Balancer Controller.
 
-The ElastiCache resource remains disabled by default until the application Redis
-client exposes and verifies TLS/auth. Do not weaken ElastiCache in-transit
-encryption to bypass that application gap.
+ElastiCache remains opt-in so cost and secret population are explicit. Lyrahcle already supports authenticated `rediss://` with certificate verification; do not weaken ElastiCache in-transit encryption.
 
-See `docs/aws-infrastructure-as-code.md` for plan/apply boundaries and guardrails.
+See `docs/aws-production-readiness.md` for the ACM/Route53, ExternalDNS and immutable image release workflow, and `docs/aws-infrastructure-as-code.md` for plan/apply boundaries and guardrails.

@@ -20,3 +20,25 @@
 {{- if and .Values.monitoring.serviceMonitor.enabled .Values.backend.tls.enabled (not .Values.monitoring.serviceMonitor.backend.tls.caSecretName) (not .Values.monitoring.serviceMonitor.backend.tls.insecureSkipVerify) -}}
 {{ fail "backend TLS ServiceMonitor requires a CA secret or an explicit insecureSkipVerify override" }}
 {{- end -}}
+{{- if and $production (not .Values.networkPolicy.enabled) -}}
+{{ fail "production requires networkPolicy.enabled=true" }}
+{{- end -}}
+{{- if and .Values.networkPolicy.enabled .Values.ingress.enabled (not .Values.networkPolicy.ingressController.enabled) (eq (len .Values.networkPolicy.frontendIngressCidrs) 0) -}}
+{{ fail "networkPolicy requires an ingress controller selector or frontend ingress CIDR when ingress is enabled" }}
+{{- end -}}
+{{- if and .Values.networkPolicy.enabled (not .Values.networkPolicy.localDatastores.enabled) (eq (len .Values.networkPolicy.externalDatastoreCidrs) 0) -}}
+{{ fail "networkPolicy requires external datastore CIDRs when local datastores are disabled" }}
+{{- end -}}
+{{- if and .Values.networkPolicy.enabled .Values.agentService.enabled (eq (len .Values.networkPolicy.agentIngressCidrs) 0) -}}
+{{ fail "networkPolicy requires agent ingress CIDRs when agentService is enabled" }}
+{{- end -}}
+
+{{- if and .Values.externalSecrets.enabled (not .Values.externalSecrets.region) -}}
+{{ fail "externalSecrets.region is required when External Secrets is enabled" }}
+{{- end -}}
+{{- if and .Values.externalSecrets.enabled (not .Values.externalSecrets.remoteSecretKey) -}}
+{{ fail "externalSecrets.remoteSecretKey is required when External Secrets is enabled" }}
+{{- end -}}
+{{- if and .Values.externalSecrets.enabled (ne .Values.externalSecrets.targetSecretName .Values.secrets.existingSecret) -}}
+{{ fail "externalSecrets.targetSecretName must match secrets.existingSecret" }}
+{{- end -}}

@@ -9,7 +9,7 @@ chart.
 ```text
 Internet / agents
        |
-  ALB / NLB (Kubernetes-managed later)
+  ALB / NLB (AWS Load Balancer Controller)
        |
    Amazon EKS
    /    |    \
@@ -36,13 +36,7 @@ workloads can receive IAM without static AWS credentials.
 ## Load balancers
 
 The application chart already maps browser ingress to ALB and the optional
-agent mTLS endpoint to NLB. The Terraform layer intentionally does not create
-those LBs directly: the Kubernetes AWS Load Balancer Controller should reconcile
-them from Ingress/Service objects.
-
-Install the controller only after the EKS cluster exists, using its own
-ServiceAccount and Pod Identity/IRSA role. Keep agent traffic in TLS passthrough
-mode so the Go backend validates client certificates.
+agent mTLS endpoint to NLB. Terraform installs the AWS Load Balancer Controller as an EKS platform add-on. It creates a dedicated IAM policy and role, creates the controller ServiceAccount, associates its dedicated role through EKS Pod Identity, and installs the pinned chart in `kube-system`. The controller then reconciles ALB/NLB resources from Lyrahcle Ingress and Service objects instead of Terraform managing individual load balancers. Keep agent traffic in TLS passthrough mode so the Go backend validates client certificates.
 
 ## Data services
 

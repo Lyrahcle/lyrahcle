@@ -25,6 +25,12 @@ fi
 
 kubectl --context "$CONTEXT" create namespace "$NAMESPACE" --dry-run=client -o yaml | \
   kubectl --context "$CONTEXT" apply -f - >/dev/null
+kubectl --context "$CONTEXT" label namespace "$NAMESPACE" \
+  pod-security.kubernetes.io/audit=restricted \
+  pod-security.kubernetes.io/audit-version=latest \
+  pod-security.kubernetes.io/warn=restricted \
+  pod-security.kubernetes.io/warn-version=latest \
+  --overwrite >/dev/null
 
 if ! kubectl --context "$CONTEXT" -n "$NAMESPACE" get secret lyrahcle-local-datastore >/dev/null 2>&1; then
   kubectl --context "$CONTEXT" -n "$NAMESPACE" create secret generic lyrahcle-local-datastore \

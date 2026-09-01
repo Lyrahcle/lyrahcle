@@ -43,3 +43,52 @@ output "application_secret_arn" {
 output "kubectl_config_command" {
   value = "aws eks update-kubeconfig --region ${var.aws_region} --name ${module.eks.cluster_name}"
 }
+
+output "aws_load_balancer_controller_role_arn" {
+  value = var.enable_aws_load_balancer_controller ? aws_iam_role.aws_load_balancer_controller[0].arn : null
+}
+
+output "aws_load_balancer_controller_service_account" {
+  value = var.enable_aws_load_balancer_controller ? var.aws_load_balancer_controller_service_account : null
+}
+
+output "aws_load_balancer_controller_chart_version" {
+  value = var.enable_aws_load_balancer_controller ? var.aws_load_balancer_controller_chart_version : null
+}
+
+output "external_secrets_role_arn" {
+  value = try(aws_iam_role.external_secrets[0].arn, null)
+}
+
+output "external_secrets_service_account" {
+  value = var.enable_external_secrets_operator ? "${var.external_secrets_namespace}/${var.external_secrets_service_account}" : null
+}
+
+
+output "aws_region" {
+  value = var.aws_region
+}
+
+output "vpc_cidr" {
+  value = var.vpc_cidr
+}
+
+output "application_secret_name" {
+  value = aws_secretsmanager_secret.app.name
+}
+
+output "public_domain_name" {
+  value = var.public_domain_name
+}
+
+output "public_certificate_arn" {
+  value = var.create_public_certificate ? aws_acm_certificate_validation.public[0].certificate_arn : null
+}
+
+output "external_dns_role_arn" {
+  value = var.enable_external_dns ? aws_iam_role.external_dns[0].arn : null
+}
+
+output "external_dns_service_account" {
+  value = var.enable_external_dns ? "${var.external_dns_namespace}/${var.external_dns_service_account}" : null
+}

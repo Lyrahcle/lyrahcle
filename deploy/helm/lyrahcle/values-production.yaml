@@ -59,6 +59,20 @@ ingress:
     enabled: true
     secretName: lyrahcle-public-tls
 
+networkPolicy:
+  enabled: true
+  defaultDeny: true
+  ingressController:
+    enabled: true
+    namespaceLabels:
+      kubernetes.io/metadata.name: ingress-nginx
+    podLabels:
+      app.kubernetes.io/name: ingress-nginx
+  localDatastores:
+    enabled: false
+  externalDatastoreCidrs:
+    - 10.42.0.0/16
+
 monitoring:
   prometheusAnnotations:
     enabled: false

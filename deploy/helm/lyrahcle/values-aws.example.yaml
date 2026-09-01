@@ -11,11 +11,19 @@ application:
 secrets:
   existingSecret: lyrahcle-app-secrets
 
+externalSecrets:
+  enabled: true
+  storeName: lyrahcle-aws-secrets-manager
+  region: eu-west-1
+  remoteSecretKey: lyrahcle-production/app
+  refreshInterval: 15m
+  targetSecretName: lyrahcle-app-secrets
+
 backend:
   replicaCount: 2
   image:
     repository: 123456789012.dkr.ecr.eu-west-1.amazonaws.com/lyrahcle-backend
-    tag: 14.6.8
+    tag: replace-with-immutable-tag
   tls:
     enabled: true
     existingSecret: lyrahcle-backend-tls
@@ -32,7 +40,7 @@ frontend:
   replicaCount: 2
   image:
     repository: 123456789012.dkr.ecr.eu-west-1.amazonaws.com/lyrahcle-frontend
-    tag: 14.6.8
+    tag: replace-with-immutable-tag
   backendTls:
     verify: true
     serverName: lyrahcle-backend
@@ -49,7 +57,7 @@ frontend:
 cveSync:
   image:
     repository: 123456789012.dkr.ecr.eu-west-1.amazonaws.com/lyrahcle-cve-sync
-    tag: 14.6.8
+    tag: replace-with-immutable-tag
 
 ingress:
   enabled: true
@@ -60,6 +68,9 @@ ingress:
     alb.ingress.kubernetes.io/backend-protocol: HTTP
     alb.ingress.kubernetes.io/healthcheck-path: /healthz
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+    alb.ingress.kubernetes.io/certificate-arn: 'replace-with-terraform-output-public-certificate-arn'
+    external-dns.alpha.kubernetes.io/hostname: 'lyrahcle.example.com'
+    alb.ingress.kubernetes.io/ssl-redirect: '443'
   tls:
     enabled: false
 
@@ -69,6 +80,16 @@ agentService:
   annotations:
     service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: ip
     service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
+
+networkPolicy:
+  enabled: true
+  defaultDeny: true
+  frontendIngressCidrs:
+    - 10.42.0.0/16
+  localDatastores:
+    enabled: false
+  externalDatastoreCidrs:
+    - 10.42.0.0/16
 
 monitoring:
   prometheusAnnotations:

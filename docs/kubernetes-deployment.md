@@ -18,7 +18,7 @@ managed Kubernetes or EKS.
   API token automount disabled.
 - Optional Ingress for the browser UI.
 - Optional direct `LoadBalancer` Service for SDR-agent mTLS traffic.
-- Optional NetworkPolicy for the frontend-to-backend path.
+- Default-deny capable NetworkPolicy with explicit ingress and egress paths for frontend, backend, CVE sync, DNS, datastores, monitoring and external HTTPS.
 - File-based application secret custody. Kubernetes Secret projections are
   copied into an in-memory `emptyDir` with mode `0400` because Lyrahcle's file
   secret provider deliberately rejects symlinks and loose permissions.
@@ -140,9 +140,7 @@ helm upgrade --install lyrahcle deploy/helm/lyrahcle \
   -f values-site.yaml
 ```
 
-The production overlay enables two replicas, HPA, PDB, topology spread and
-internal backend TLS. Replace the example hostname and image repositories in a
-site-specific values file.
+The production overlay enables two replicas, HPA, PDB, topology spread, internal backend TLS and default-deny NetworkPolicy. Replace the example hostname, image repositories, ingress-controller selectors and datastore CIDRs in a site-specific values file.
 
 ### Backend TLS
 
@@ -190,21 +188,29 @@ or an explicit insecure override.
 See `docs/kubernetes-observability.md` for values, NetworkPolicy interaction and
 the local smoke workflow.
 
+## Pod Security Admission
+
+The application workloads are compatible with the Kubernetes `restricted` Pod Security Standard: they run as non-root, use the runtime-default seccomp profile, drop all Linux capabilities, disable privilege escalation, use read-only root filesystems and do not share host network, PID or IPC namespaces. The backend secret-preparation init container follows the same policy.
+
+The local kind workflow labels the namespace with `warn` and `audit` at the restricted level because the disposable PostgreSQL and Redis development images are outside the application chart. Production namespaces should enforce the policy after their managed datastores are external:
+
+```bash
+./scripts/k8s-enforce-restricted.sh
+```
+
+`deploy/k8s/security/namespace-restricted.yaml` contains the equivalent namespace labels for the standard `lyrahcle` namespace.
+
 ## NetworkPolicy
 
-`networkPolicy.enabled` is deliberately false by default because ingress
-controller and load-balancer traffic semantics vary by CNI. Enable it only
-after adding the ingress sources required by your cluster. The built-in policy
-shows the intended frontend-to-backend isolation baseline, not a complete
-cluster egress policy.
+`networkPolicy.enabled` stays false in base values so development clusters remain portable, but production and AWS overlays enable it. When enabled, Lyrahcle applies default-deny ingress and egress to its own Pods and adds only the required paths: DNS, frontend to backend, backend/CVE sync to PostgreSQL and Redis, outbound HTTPS, monitoring, configured ingress sources and optional direct SDR-agent mTLS sources.
+
+For AWS, `values-aws.example.yaml` scopes ALB-to-frontend and RDS/ElastiCache egress to the example `10.42.0.0/16` VPC. Change those CIDRs if `vpc_cidr` changes. Enabling the direct agent LoadBalancer while NetworkPolicy is active requires explicit `networkPolicy.agentIngressCidrs`; Helm rejects an empty allowlist. Extra egress rules remain explicit through the component-specific `*ExtraEgress` values.
 
 ## Local validation
 
 The normal project gate validates the Kubernetes contracts:
 
 ```bash
-export TEST_DATABASE_URL='postgres://lyrahcle:lyrahcle@127.0.0.1:5432/lyrahcle_test?sslmode=disable'
-export TEST_REDIS_ADDR='127.0.0.1:6379'
 ./scripts/test-local-v1.sh
 ```
 

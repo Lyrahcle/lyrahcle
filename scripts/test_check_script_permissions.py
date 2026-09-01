@@ -9,7 +9,8 @@ REQUIRED = [
     'test-local-v1.sh', 'smoke-test.sh', 'generate-sbom.sh', 'backup-db.sh',
     'restore-db.sh', 'verify-backup.sh', 'load-test.sh', 'generate-agent-ca.sh',
     'generate-agent-config-key.sh', 'generate-dev-certs.sh',
-    'aws-drift-check.sh',
+    'aws-drift-check.sh', 'k8s-enforce-restricted.sh', 'aws-build-push-images.sh',
+    'aws-production-readiness.sh',
 ]
 
 class ScriptPermissionContractTests(unittest.TestCase):

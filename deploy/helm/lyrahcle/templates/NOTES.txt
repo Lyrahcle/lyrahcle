@@ -1,7 +1,11 @@
 Lyrahcle has been rendered for {{ .Values.application.environment }}.
 
-The chart deliberately does not create PostgreSQL, Redis or application secret
-material. Supply {{ .Values.secrets.existingSecret }} before starting workloads.
+The chart deliberately does not create PostgreSQL or Redis.
+{{- if .Values.externalSecrets.enabled }}
+Application secret material is synchronized into {{ .Values.externalSecrets.targetSecretName }} by External Secrets Operator.
+{{- else }}
+Supply {{ .Values.secrets.existingSecret }} before starting workloads.
+{{- end }}
 
 {{- if .Values.ingress.enabled }}
 UI: {{ ternary "https" "http" .Values.ingress.tls.enabled }}://{{ .Values.application.host }}

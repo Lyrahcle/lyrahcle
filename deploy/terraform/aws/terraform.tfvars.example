@@ -8,10 +8,20 @@ cluster_endpoint_public_access_cidrs = ["203.0.113.10/32"]
 
 single_nat_gateway = true
 
+public_domain_name       = "lyrahcle.example.com"
+route53_zone_id          = "Z0123456789EXAMPLE"
+create_public_certificate = true
+enable_external_dns       = true
+external_dns_chart_version = "1.21.1"
+
 node_instance_types = ["m6i.large", "m6a.large", "m5.large"]
 node_min_size       = 2
 node_desired_size   = 2
 node_max_size       = 6
+
+enable_aws_load_balancer_controller       = true
+aws_load_balancer_controller_chart_version = "1.14.0"
+aws_load_balancer_controller_replica_count = 2
 
 postgres_instance_class            = "db.t4g.medium"
 postgres_allocated_storage_gib     = 40
@@ -23,3 +33,6 @@ tags = {
   Owner      = "platform"
   CostCenter = "lyrahcle"
 }
+
+enable_external_secrets_operator = true
+external_secrets_chart_version    = "2.10.0"
