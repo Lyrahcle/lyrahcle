@@ -66,3 +66,19 @@ func TestAssessRejectsFarFutureEpoch(t *testing.T) {
 		t.Fatalf("future assessment = %+v", assessment)
 	}
 }
+
+
+func TestAssessFailsClosedForInvalidPolicy(t *testing.T) {
+	now := time.Date(2026, time.August, 30, 0, 0, 0, 0, time.UTC)
+	epoch := now.Add(-time.Hour)
+	for _, policy := range []Policy{
+		{},
+		{CorrelationMaxAge: 24 * time.Hour, StaleMaxAge: 24 * time.Hour},
+		{CorrelationMaxAge: -time.Hour, StaleMaxAge: 72 * time.Hour},
+	} {
+		assessment := Assess(&epoch, now, policy)
+		if assessment.Status != StatusUnusable || assessment.EscalationAllowed {
+			t.Fatalf("invalid policy assessment = %+v, want unusable/fail-closed", assessment)
+		}
+	}
+}

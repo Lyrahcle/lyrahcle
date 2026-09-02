@@ -26,10 +26,24 @@ func TestMatches(t *testing.T) {
 }
 
 func TestHigherSeverity(t *testing.T) {
-	if got := HigherSeverity("high", "critical"); got != "critical" {
-		t.Fatalf("HigherSeverity() = %q, want critical", got)
+	tests := []struct { a, b, want string }{
+		{"high", "critical", "critical"},
+		{"medium", "low", "medium"},
+		{"low", "info", "low"},
+		{"", "medium", "medium"},
+		{"unknown", "info", "info"},
+		{"critical", "unknown", "critical"},
 	}
-	if got := HigherSeverity("medium", "low"); got != "medium" {
-		t.Fatalf("HigherSeverity() = %q, want medium", got)
+	for _, tc := range tests {
+		if got := HigherSeverity(tc.a, tc.b); got != tc.want {
+			t.Fatalf("HigherSeverity(%q, %q) = %q, want %q", tc.a, tc.b, got, tc.want)
+		}
+	}
+}
+
+func TestMatchesRejectsUnsupportedOperator(t *testing.T) {
+	rule := Rule{Enabled: true, Metric: "any", Operator: "shell", Threshold: 1}
+	if Matches(rule, Signal{Metric: "power_dbm", ZScore: 99}) {
+		t.Fatal("unsupported operator must fail closed")
 	}
 }

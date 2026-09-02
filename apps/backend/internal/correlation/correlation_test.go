@@ -105,3 +105,69 @@ func TestHigherSeverityAndUniqueHelpers(t *testing.T) {
 		t.Fatalf("unique = %#v", got)
 	}
 }
+
+
+func TestEvaluateAssetAlertsNeverRaiseSeverityOrConfidence(t *testing.T) {
+	baseline := Evaluate(Input{DetectionRuleCount: 1})
+	withAlerts := Evaluate(Input{DetectionRuleCount: 1, ContextAssetAlerts: 50})
+	if withAlerts.Confidence != baseline.Confidence {
+		t.Fatalf("context-only CVE alerts changed confidence: baseline %.2f, with alerts %.2f", baseline.Confidence, withAlerts.Confidence)
+	}
+	if withAlerts.CandidateSeverity != baseline.CandidateSeverity {
+		t.Fatalf("context-only CVE alerts changed candidate severity: baseline %q, with alerts %q", baseline.CandidateSeverity, withAlerts.CandidateSeverity)
+	}
+	if len(withAlerts.ContextOnlyDomains) != 1 || withAlerts.ContextOnlyDomains[0] != "asset_alerts" {
+		t.Fatalf("context-only domains = %#v, want asset_alerts", withAlerts.ContextOnlyDomains)
+	}
+}
+
+func TestEvaluateActiveAgentDoesNotCreatePostureFinding(t *testing.T) {
+	got := Evaluate(Input{DetectionRuleCount: 1, AgentStatus: "active"})
+	if got.CandidateSeverity != "" {
+		t.Fatalf("active agent candidate severity = %q, want empty", got.CandidateSeverity)
+	}
+	for _, domain := range got.CorroboratingDomains {
+		if domain == "agent_posture" {
+			t.Fatalf("active agent must not add agent_posture: %#v", got.CorroboratingDomains)
+		}
+	}
+}
+
+func TestEvaluateNonActiveAgentPostureIsExplainableCandidate(t *testing.T) {
+	for _, status := range []string{"quarantined", "revoked"} {
+		t.Run(status, func(t *testing.T) {
+			got := Evaluate(Input{DetectionRuleCount: 1, AgentStatus: status})
+			if got.CandidateSeverity != "critical" {
+				t.Fatalf("candidate severity = %q, want critical", got.CandidateSeverity)
+			}
+			foundDomain := false
+			foundReason := false
+			for _, domain := range got.CorroboratingDomains {
+				if domain == "agent_posture" {
+					foundDomain = true
+				}
+			}
+			for _, reason := range got.Reasons {
+				if reason == "agent identity posture is not active" {
+					foundReason = true
+				}
+			}
+			if !foundDomain || !foundReason {
+				t.Fatalf("posture finding is not explainable: domains=%#v reasons=%#v", got.CorroboratingDomains, got.Reasons)
+			}
+		})
+	}
+}
+
+func TestEvaluateZeroRuleInputRemainsBounded(t *testing.T) {
+	got := Evaluate(Input{})
+	if got.Confidence != 0.35 {
+		t.Fatalf("confidence = %.2f, want 0.35", got.Confidence)
+	}
+	if got.CandidateSeverity != "" {
+		t.Fatalf("candidate severity = %q, want empty", got.CandidateSeverity)
+	}
+	if len(got.CorroboratingDomains) != 1 || got.CorroboratingDomains[0] != "rf" {
+		t.Fatalf("domains = %#v, want rf baseline", got.CorroboratingDomains)
+	}
+}
