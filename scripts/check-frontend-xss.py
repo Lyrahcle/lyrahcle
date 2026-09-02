@@ -9,7 +9,6 @@ ROOT = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else ".").resolve()
 FRONTEND = ROOT / "apps" / "frontend" / "src"
 EXTS = {".js", ".jsx", ".ts", ".tsx"}
 
-RAW_HTML_ALLOWLIST = {"components/WorldMap.jsx"}
 
 errors: list[str] = []
 for path in FRONTEND.rglob("*"):
@@ -27,10 +26,7 @@ for path in FRONTEND.rglob("*"):
             errors.append(f"{rel}: forbidden {label}")
 
     if "dangerouslySetInnerHTML" in text:
-        if rel not in RAW_HTML_ALLOWLIST:
-            errors.append(f"{rel}: unreviewed dangerouslySetInnerHTML")
-        elif "dangerouslySetInnerHTML={{ __html: baseSvg }}" not in text or "world-map-data.json" not in text:
-            errors.append(f"{rel}: reviewed WorldMap raw HTML contract changed")
+        errors.append(f"{rel}: forbidden dangerouslySetInnerHTML")
 
     for match in re.finditer(r"<a\b[^>]*target=[\"']_blank[\"'][^>]*>", text, re.S):
         tag = match.group(0)

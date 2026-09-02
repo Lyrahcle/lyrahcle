@@ -38,7 +38,7 @@
 - [ ] Validate real SDR hardware integrations such as RTL-SDR/HackRF
 - [x] Add agent credential rotation and enrollment lifecycle
 - [x] Deploy certificate-backed mTLS for long-running SDR agents
-- [ ] Complete browser token-storage and CSRF design review
+- [x] Complete browser token-storage, CSRF, and frontend XSS design review
 - [x] Generate CycloneDX SBOMs in CI and attach them to tagged releases
 - [x] Sign tagged container images with keyless Cosign and publish GitHub build provenance attestations
 - [x] Document backup/restore procedures and exercise the guarded full-stack restore drill

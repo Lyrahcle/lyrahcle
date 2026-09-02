@@ -6,16 +6,15 @@ import { stationCoordinates } from '../lib/groundStations'
 export default function WorldMap({ satellites = [], stations = [], onStationSelect = () => {} }) {
   const map = useMemo(() => new DottedMap({ map: worldMapData }), [])
 
-  const baseSvg = useMemo(
-    () =>
-      map.getSVG({
-        radius: 0.24,
-        color: '#2c2c30',
-        shape: 'circle',
-        backgroundColor: 'transparent',
-      }),
-    [map]
-  )
+  const baseMapImage = useMemo(() => {
+    const svg = map.getSVG({
+      radius: 0.24,
+      color: '#2c2c30',
+      shape: 'circle',
+      backgroundColor: 'transparent',
+    })
+    return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
+  }, [map])
 
   const markers = useMemo(
     () =>
@@ -60,10 +59,12 @@ export default function WorldMap({ satellites = [], stations = [], onStationSele
 
   return (
     <div className="relative w-full">
-      <div
+      <img
         aria-hidden="true"
-        className="w-full [&_svg]:h-auto [&_svg]:w-full"
-        dangerouslySetInnerHTML={{ __html: baseSvg }}
+        alt=""
+        src={baseMapImage}
+        className="block h-auto w-full select-none"
+        draggable="false"
       />
 
 

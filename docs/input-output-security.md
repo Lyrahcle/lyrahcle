@@ -10,7 +10,7 @@ Store values must be passed to PostgreSQL through pgx parameters. Dynamic SQL id
 
 ## Browser XSS
 
-React text interpolation is the default rendering path. Direct DOM HTML assignment (`innerHTML`, `outerHTML`, `document.write`) is forbidden in application source. `dangerouslySetInnerHTML` is allowlisted only for `WorldMap.jsx`, where `baseSvg` is generated locally by `dotted-map` from bundled static map data; API/user-controlled satellite fields are rendered separately by React and never enter the SVG HTML string.
+React text interpolation is the default rendering path. Direct DOM HTML assignment (`innerHTML`, `outerHTML`, `document.write`) and `dangerouslySetInnerHTML` are forbidden in application source. The world map SVG is generated locally from bundled static data, URI-encoded, and rendered through an `<img>` source instead of being parsed into the application DOM as raw HTML.
 
 Every `target="_blank"` anchor must contain both `noopener` and `noreferrer`. TOTP setup links are rendered only when their URL scheme is exactly `otpauth:`; HTTP(S), `javascript:`, `data:`, protocol-relative, malformed, and empty values are rejected.
 
