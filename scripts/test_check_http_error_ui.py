@@ -18,6 +18,7 @@ class HttpErrorUiContractTests(unittest.TestCase):
             for rel in [
                 'apps/frontend/src/lib/api.ts', 'apps/frontend/src/App.tsx',
                 'apps/frontend/src/components/Dashboard.tsx', 'apps/frontend/src/components/ApiStatusBanner.jsx',
+                'apps/frontend/src/hooks/useDashboardApiIssue.ts',
                 'apps/frontend/src/components/Login.jsx', 'apps/frontend/src/lib/translations.js',
                 'scripts/test-local-v1.sh',
             ]:

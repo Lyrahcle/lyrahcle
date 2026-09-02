@@ -33,18 +33,16 @@ import {
   fetchSatellites,
   fetchSpaceCVEs,
   fetchUsers,
-  fetchPlatformAccess,
   fetchOrganizations,
   fetchPlatformUsers,
   fetchRBACPermissions,
   fetchRBACRoles,
-  subscribeSatellites,
-  subscribeIncidents,
   UnauthorizedError,
-  ApiError,
-  API_ERROR_EVENT,
 } from '../lib/api'
 import { lazyComponent } from '../lib/lazyComponent'
+import { useDashboardApiIssue } from '../hooks/useDashboardApiIssue'
+import { useDashboardSubscriptions } from '../hooks/useDashboardSubscriptions'
+import { usePlatformAccess } from '../hooks/usePlatformAccess'
 
 const AssetsTable = lazyComponent<any>(() => import('./AssetsTable.jsx'))
 const RfPanel = lazyComponent<any>(() => import('./RfPanel.jsx'))
@@ -136,18 +134,16 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
   const [agentIdentities, setAgentIdentities] = useState<DashboardEntity[] | null>(null)
   const [auditEntries, setAuditEntries] = useState<DashboardPage | null>(null)
   const [users, setUsers] = useState<RBACUser[] | null>(null)
-  const [platformAdmin, setPlatformAdmin] = useState(false)
+  const platformAdmin = usePlatformAccess(onSessionExpired)
   const [organizations, setOrganizations] = useState<DashboardEntity[] | null>(null)
   const [platformUsers, setPlatformUsers] = useState<DashboardEntity[] | null>(null)
   const [rbacPermissions, setRbacPermissions] = useState<RBACPermission[] | null>(null)
   const [rbacRoles, setRbacRoles] = useState<RBACRole[] | null>(null)
   const [backendStatus, setBackendStatus] = useState<Status>('checking')
   const [dbStatus, setDbStatus] = useState<Status>('checking')
-  const [apiIssue, setApiIssue] = useState<ApiError | null>(null)
-  const [retryNonce, setRetryNonce] = useState(0)
+  const { apiIssue, setApiIssue, retryNonce, rateLimitedUntilRef, retryFailedRequests } = useDashboardApiIssue()
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false)
   const [navigationCollapsed, setNavigationCollapsed] = useState(() => localStorage.getItem('lyra_nav_collapsed') === '1')
-  const rateLimitedUntilRef = useRef(0)
 
   useEffect(() => {
     localStorage.setItem('lyra_nav_collapsed', navigationCollapsed ? '1' : '0')
@@ -194,25 +190,6 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
   }, [incidentFilters])
 
 
-  useEffect(() => {
-    function handleApiError(event) {
-      const issue = event.detail
-      if (!(issue instanceof ApiError)) return
-      if (issue.kind === 'rate_limited' && issue.retryAfterSeconds > 0) {
-        rateLimitedUntilRef.current = Date.now() + issue.retryAfterSeconds * 1000
-      }
-      setApiIssue(issue)
-    }
-    window.addEventListener(API_ERROR_EVENT, handleApiError)
-    return () => window.removeEventListener(API_ERROR_EVENT, handleApiError)
-  }, [])
-
-  function retryFailedRequests() {
-    if (Date.now() < rateLimitedUntilRef.current) return
-    setApiIssue(null)
-    setRetryNonce((value) => value + 1)
-  }
-
   const admin = hasPermission('users.manage')
   const programsAccess = hasPermission('programs.read') || hasPermission('programs.manage')
   const assetsAccess = hasPermission('assets.read') || hasPermission('assets.manage')
@@ -245,19 +222,6 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
     setSelectedSatelliteId(null)
     onChangeTab(tab)
   }
-
-  useEffect(() => {
-    let cancelled = false
-    fetchPlatformAccess()
-      .then((result) => {
-        if (!cancelled) setPlatformAdmin(Boolean(result?.platform_admin))
-      })
-      .catch((err) => {
-        if (err instanceof UnauthorizedError) onSessionExpired()
-        else if (!cancelled) setPlatformAdmin(false)
-      })
-    return () => { cancelled = true }
-  }, [onSessionExpired])
 
   useEffect(() => {
     let cancelled = false
@@ -474,39 +438,16 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
     }
   }, [onSessionExpired, activeTab, admin, auditAccess, assetsOffset, cvesOffset, cveFilters, auditOffset, incidentsOffset, incidentFilters, platformAdmin, adminAccess, usersRead, rbacRead, programsAccess, assetsAccess, incidentsRead, rfRead, alertsRead, connectivityAccess, orbitalAccess, retryNonce])
 
-  useEffect(() => {
-    if (activeTab !== 'orbital') {
-      setSatellitesLive(false)
-      setSelectedSatelliteId(null)
-      return undefined
-    }
-    const unsubscribe = subscribeSatellites({
-      onData: (data) => {
-        setSatellites(data)
-        setSatellitesLive(true)
-      },
-      onError: (err) => {
-        setSatellitesLive(false)
-        if (err instanceof UnauthorizedError) onSessionExpired()
-      },
-    })
-    return unsubscribe
-  }, [activeTab])
-
-  useEffect(() => {
-    if (activeTab !== 'incidents') return undefined
-    const unsubscribe = subscribeIncidents({
-      onData: (data) => {
-        if (incidentsOffsetRef.current === 0 && !incidentFiltersRef.current.status && !incidentFiltersRef.current.severity && !incidentFiltersRef.current.agentId && !incidentFiltersRef.current.satelliteId) {
-          setIncidents(data)
-        }
-      },
-      onError: (err) => {
-        if (err instanceof UnauthorizedError) onSessionExpired()
-      },
-    })
-    return unsubscribe
-  }, [activeTab])
+  useDashboardSubscriptions({
+    activeTab,
+    onSessionExpired,
+    setSatellites,
+    setSatellitesLive,
+    setSelectedSatelliteId,
+    setIncidents,
+    incidentsOffsetRef,
+    incidentFiltersRef,
+  })
 
   const lastRf = rfReadings?.[0]
   const sdrStatus =

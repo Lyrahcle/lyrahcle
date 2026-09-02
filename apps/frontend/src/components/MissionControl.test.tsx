@@ -4,7 +4,7 @@ import { I18nProvider } from '../lib/I18nContext'
 import MissionControl from './MissionControl'
 
 vi.mock('../lib/api', () => ({
-  fetchSatellitePasses: vi.fn().mockResolvedValue([{ aos_at: '2026-09-02T10:00:00Z', los_at: '2026-09-02T10:10:00Z' }]),
+  fetchSatellitePasses: vi.fn().mockResolvedValue({ passes: [{ aos: '2026-09-02T10:00:00Z', los: '2026-09-02T10:10:00Z', peak_at: '2026-09-02T10:05:00Z', max_elevation_deg: 35, duration_seconds: 600 }] }),
   fetchOrbitalEvents: vi.fn().mockResolvedValue([]),
 }))
 
@@ -23,12 +23,13 @@ function renderControl(props: Record<string, unknown> = {}) {
 }
 
 describe('MissionControl', () => {
-  it('renders a satellite-centric mission workspace without inventing missing station data', () => {
+  it('renders a satellite-centric mission workspace without inventing missing station data', async () => {
     renderControl()
     expect(screen.getByRole('heading', { name: /mission control/i })).toBeInTheDocument()
     expect(screen.getByRole('combobox', { name: /satellite/i })).toHaveValue('sat-1')
     expect(screen.getByText('12345')).toBeInTheDocument()
     expect(screen.getAllByText('—').length).toBeGreaterThan(0)
+    await waitFor(() => expect(screen.queryByText('…')).not.toBeInTheDocument())
   })
 
   it('correlates RF evidence and the related ground station', async () => {
@@ -46,16 +47,17 @@ describe('MissionControl', () => {
 
   it('surfaces candidate orbital evidence without presenting it as a confirmed attack', async () => {
     const api = await import('../lib/api')
-    vi.mocked(api.fetchOrbitalEvents).mockResolvedValueOnce([{ id: 'oe-1', event_type: 'maneuver', event_time: '2026-09-02T09:27:00Z', source: 'automatic-screening', confidence: 0.82, severity: 'medium', metadata: { candidate_only: true } }])
+    vi.mocked(api.fetchOrbitalEvents).mockResolvedValueOnce([{ id: 'oe-1', satellite_id: 'sat-1', event_type: 'maneuver', event_time: '2026-09-02T09:27:00Z', source: 'automatic-screening', confidence: 0.82, severity: 'medium', metadata: { candidate_only: true }, created_at: '2026-09-02T09:27:00Z' }])
     renderControl()
     expect((await screen.findAllByText(/maneuver candidate/i)).length).toBeGreaterThan(0)
     expect(screen.getByText(/automatic-screening · 82%/i)).toBeInTheDocument()
   })
 
-  it('opens existing operational workspaces from Mission Control', () => {
+  it('opens existing operational workspaces from Mission Control', async () => {
     const onNavigate = vi.fn()
     renderControl({ onNavigate })
     fireEvent.click(screen.getByRole('button', { name: /open rf workspace/i }))
     expect(onNavigate).toHaveBeenCalledWith('signal')
+    await waitFor(() => expect(screen.queryByText('…')).not.toBeInTheDocument())
   })
 })

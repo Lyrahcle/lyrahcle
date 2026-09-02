@@ -15,7 +15,7 @@
 Teams operating satellites and ground infrastructure often lack the RF and orbital security visibility that terrestrial SOC teams take for granted. Lyrahcle brings RF telemetry, orbital context, threat intelligence, incident response, and hardened SDR-agent operations into one operator-focused platform.
 
 <p align="center">
-  <img src="./docs/screenshots/dashboard.png" alt="Lyrahcle mission security operations dashboard" width="100%" />
+  <img src="./docs/screenshots/dashboard-overview.png" alt="Lyrahcle dashboard overview: Mission Overview, Mission Control, Correlation Constellation, Incidents, RF Detection, and Assets" width="100%" />
 </p>
 
 ## What it includes

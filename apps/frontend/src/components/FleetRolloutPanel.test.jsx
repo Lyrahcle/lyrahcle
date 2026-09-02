@@ -133,7 +133,13 @@ describe('FleetRolloutPanel', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Canary alpha' }))
     const failButton = await screen.findByRole('button', { name: 'Fail overdue batch' })
     expect(screen.getByText('Expired · fail closed')).toBeInTheDocument()
-    fireEvent.click(failButton)
+    await act(async () => {
+      fireEvent.click(failButton)
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
 
     await vi.waitFor(() => expect(agentRolloutAction).toHaveBeenCalledWith('rollout-1', 'advance'))
     expect(await screen.findByText('rollout acknowledgement timeout exceeded')).toBeInTheDocument()
@@ -166,7 +172,13 @@ describe('FleetRolloutPanel', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Rollback' }))
 
     const dialog = await screen.findByRole('alertdialog')
-    fireEvent.click(within(dialog).getByRole('button', { name: /^rollback$/i }))
+    await act(async () => {
+      fireEvent.click(within(dialog).getByRole('button', { name: /^rollback$/i }))
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
 
     await vi.waitFor(() => expect(agentRolloutAction).toHaveBeenCalledWith('rollout-1', 'rollback'))
     await vi.waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())

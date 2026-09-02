@@ -6,6 +6,8 @@ root = Path(sys.argv[1] if len(sys.argv) > 1 else '.').resolve()
 api = (root / 'apps/frontend/src/lib/api.ts').read_text()
 app = (root / 'apps/frontend/src/App.tsx').read_text()
 dash = (root / 'apps/frontend/src/components/Dashboard.tsx').read_text()
+api_issue_hook_path = root / 'apps/frontend/src/hooks/useDashboardApiIssue.ts'
+api_issue_hook = api_issue_hook_path.read_text() if api_issue_hook_path.is_file() else ''
 banner = (root / 'apps/frontend/src/components/ApiStatusBanner.jsx').read_text()
 login = (root / 'apps/frontend/src/components/Login.jsx').read_text()
 translations = (root / 'apps/frontend/src/lib/translations.js').read_text()
@@ -21,9 +23,9 @@ checks = {
     '5xx mapping': "status >= 500" in api and "'server'" in api,
     'network mapping': "kind: 'network'" in api and 'trackedFetch' in api,
     'global event': 'API_ERROR_EVENT' in api and 'dispatchEvent' in api,
-    'banner mounted': '<ApiStatusBanner' in dash and 'API_ERROR_EVENT' in dash,
-    'manual retry': 'retryFailedRequests' in dash and 'retryNonce' in dash,
-    '429 polling cooldown': 'rateLimitedUntilRef' in dash,
+    'banner mounted': '<ApiStatusBanner' in dash and ('API_ERROR_EVENT' in dash or 'API_ERROR_EVENT' in api_issue_hook),
+    'manual retry': 'retryFailedRequests' in dash and ('retryNonce' in dash or 'retryNonce' in api_issue_hook),
+    '429 polling cooldown': 'rateLimitedUntilRef' in dash or 'rateLimitedUntilRef' in api_issue_hook,
     'startup not blank': 'if (!permissionsReady)' in app and 'return null' not in app,
     'startup retry': 'permissionsRetry' in app and '<ApiStatusBanner' in app,
     'session notice': "notice === 'session_expired'" in login and 'sessionExpired' in translations,

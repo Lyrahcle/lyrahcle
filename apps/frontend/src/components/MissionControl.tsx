@@ -2,15 +2,97 @@ import { useEffect, useMemo, useState } from 'react'
 import type { ComponentType } from 'react'
 import { Activity, Clock3, Orbit, RadioTower, Satellite, ShieldAlert, TriangleAlert } from 'lucide-react'
 import WorldMap from './WorldMap.jsx'
-import { fetchOrbitalEvents, fetchSatellitePasses } from '../lib/api'
 import { calculateSatelliteRisk } from '../lib/risk'
 import { satelliteElevationDeg, stationCoordinates } from '../lib/groundStations'
+import type { SatellitePosition } from '../lib/groundStations'
+import { useMissionOrbitalContext } from '../hooks/useMissionOrbitalContext'
 import { useI18n } from '../lib/I18nContext'
 import CrossDomainAttackChain from './CrossDomainAttackChain'
 import IncidentEvidenceCase from './IncidentEvidenceCase'
 
-type Entity = Record<string, any>
-type Page = { items?: Entity[] } | null
+type Entity = Record<string, unknown>
+
+interface SatelliteEntity extends Entity {
+  id: string
+  name?: string
+  norad_id?: string | number
+  updated_at?: string
+  tle_status?: string
+  position?: SatellitePosition
+}
+
+interface ReadingEntity extends Entity {
+  satellite_id?: string
+  agent_id?: string
+  frequency_hz?: unknown
+  power_dbm?: unknown
+  captured_at?: string
+}
+
+interface AnomalyEntity extends Entity {
+  id?: string
+  satellite_id?: string
+  agent_id?: string
+  z_score?: unknown
+  detected_at?: string
+}
+
+interface IncidentEntity extends Entity {
+  id?: string
+  satellite_id?: string
+  agent_id?: string
+  title?: string
+  reference?: string
+  status?: string
+  severity?: string
+  created_at?: string
+  updated_at?: string
+}
+
+interface AgentEntity extends Entity {
+  agent_id?: string
+  station?: { latitude_deg?: unknown; longitude_deg?: unknown; altitude_m?: unknown }
+}
+
+interface AlertEntity extends Entity {
+  asset_value?: string
+  acknowledged?: boolean
+  severity?: string
+}
+
+interface OrbitalEventEntity extends Entity {
+  id?: string
+  event_type?: string
+  event_time?: string
+  source?: string
+  confidence?: unknown
+  severity?: string
+}
+
+type Page<T extends Entity> = { items?: T[] } | null
+type NavigationTarget = string
+
+interface TMTCAnalysis {
+  issues?: Array<{ kind?: string; detail?: string; replay_candidate?: boolean }>
+  replay_candidates?: number
+  sequence_gaps?: number
+  out_of_order?: number
+  collisions?: number
+}
+
+interface MissionControlProps {
+  satellites?: SatelliteEntity[]
+  readings?: ReadingEntity[]
+  anomalies?: AnomalyEntity[]
+  incidents?: Page<IncidentEntity>
+  agents?: AgentEntity[]
+  assetAlerts?: Page<AlertEntity>
+  access?: Record<string, boolean>
+  onNavigate?: (tab: NavigationTarget) => void
+  now?: number
+  tmtcAnalysis?: TMTCAnalysis | null
+  onIncidentCreated?: (incident: unknown) => void
+}
 
 const MissionWorldMap = WorldMap as ComponentType<{
   satellites?: Entity[]
@@ -26,7 +108,7 @@ function finite(value: unknown): number | null {
   const number = Number(value)
   return Number.isFinite(number) ? number : null
 }
-function rangeKm(station: ReturnType<typeof stationCoordinates>, position: any): number | null {
+function rangeKm(station: ReturnType<typeof stationCoordinates>, position: SatellitePosition | null | undefined): number | null {
   if (!station || !position) return null
   const satLat = finite(position.latitude_deg)
   const satLon = finite(position.longitude_deg)
@@ -67,14 +149,9 @@ function Metric({ label, value, detail }: { label: string; value: string | numbe
 export default function MissionControl({
   satellites = [], readings = [], anomalies = [], incidents = null, agents = [], assetAlerts = null,
   access = {}, onNavigate = () => {}, now = Date.now(), tmtcAnalysis = null, onIncidentCreated = () => {},
-}: {
-  satellites?: Entity[]; readings?: Entity[]; anomalies?: Entity[]; incidents?: Page; agents?: Entity[]; assetAlerts?: Page;
-  access?: Record<string, boolean>; onNavigate?: (tab: any) => void; now?: number; tmtcAnalysis?: any; onIncidentCreated?: (incident: any) => void;
-}) {
+}: MissionControlProps) {
   const { t } = useI18n()
   const [selectedId, setSelectedId] = useState<string>('')
-  const [passes, setPasses] = useState<Entity[] | null>(null)
-  const [orbitalEvents, setOrbitalEvents] = useState<Entity[] | null>(null)
 
   useEffect(() => {
     if (!satellites.length) { setSelectedId(''); return }
@@ -100,41 +177,23 @@ export default function MissionControl({
   const elevation = satellite ? satelliteElevationDeg(coordinates, satellite.position) : null
   const slantRange = satellite ? rangeKm(coordinates, satellite.position) : null
 
-  useEffect(() => {
-    let cancelled = false
-    if (!satellite || !access.orbital) { setOrbitalEvents([]); return undefined }
-    setOrbitalEvents(null)
-    fetchOrbitalEvents(satellite.id, 168, 50)
-      .then((data) => { if (!cancelled) setOrbitalEvents(Array.isArray(data) ? data : []) })
-      .catch(() => { if (!cancelled) setOrbitalEvents([]) })
-    return () => { cancelled = true }
-  }, [satellite?.id, access.orbital])
-
-  useEffect(() => {
-    let cancelled = false
-    if (!satellite || !coordinates || !access.orbital) { setPasses([]); return undefined }
-    setPasses(null)
-    fetchSatellitePasses(satellite.id, { latitudeDeg: coordinates.latitude, longitudeDeg: coordinates.longitude, altitudeM: coordinates.altitude, hours: 24, minElevationDeg: 0, limit: 3 })
-      .then((data) => { if (!cancelled) setPasses(Array.isArray(data) ? data : []) })
-      .catch(() => { if (!cancelled) setPasses([]) })
-    return () => { cancelled = true }
-  }, [satellite?.id, coordinates?.latitude, coordinates?.longitude, coordinates?.altitude, access.orbital])
+  const { orbitalEvents, passes } = useMissionOrbitalContext(satellite?.id, coordinates, Boolean(access.orbital))
 
   if (!satellites.length) return <section className="rounded-xl border border-lyra-border bg-lyra-panel/40 p-8 text-center"><Satellite className="mx-auto h-7 w-7 text-lyra-mutedDim" /><h1 className="mt-4 font-display text-2xl text-lyra-text">{t('missionControl.title')}</h1><p className="mt-2 text-sm text-lyra-muted">{t('missionControl.empty')}</p></section>
   if (!satellite) return null
 
-  const risk = calculateSatelliteRisk({ satellite, incidents: satelliteIncidents, anomalies: satelliteAnomalies, orbitalEvents: orbitalEvents ?? [], exposureAlerts, now })
-  const openIncidents = satelliteIncidents.filter((item) => !INACTIVE_INCIDENT_STATUSES.has(item.status)).length
+  const risk = calculateSatelliteRisk({ satellite, incidents: satelliteIncidents, anomalies: satelliteAnomalies, orbitalEvents: (orbitalEvents ?? []).map((item) => ({ ...item })), exposureAlerts, now })
+  const openIncidents = satelliteIncidents.filter((item) => !INACTIVE_INCIDENT_STATUSES.has(item.status ?? '')).length
   const latestRf = satelliteReadings[0] ?? null
-  const nextPass = passes?.find((item) => timeValue(item.los_at || item.los || item.end_time) >= now) ?? passes?.[0] ?? null
-  const aos = nextPass?.aos_at || nextPass?.aos || nextPass?.start_time
-  const los = nextPass?.los_at || nextPass?.los || nextPass?.end_time
+  const nextPass = passes?.find((item) => timeValue(item.los) >= now) ?? passes?.[0] ?? null
+  const aos = nextPass?.aos
+  const los = nextPass?.los
   const inContact = elevation !== null && elevation >= 0 && Boolean(latestRf && now - timeValue(latestRf.captured_at) <= 5 * 60 * 1000)
   const threat = risk.level === 'critical' ? 'critical' : risk.level === 'elevated' ? 'elevated' : 'nominal'
   const timeline = [
     ...satelliteIncidents.map((item) => ({ id: `i-${item.id}`, icon: ShieldAlert, label: item.title || item.reference || t('missionControl.incident'), detail: [item.reference, item.status].filter(Boolean).join(' · '), time: item.updated_at || item.created_at, severity: item.severity || 'medium' })),
     ...satelliteAnomalies.map((item) => ({ id: `a-${item.id}`, icon: RadioTower, label: t('missionControl.rfAnomaly'), detail: <><span>{item.agent_id || '—'}</span><span aria-hidden="true"> · </span><span>{(Number(item.z_score) || 0).toFixed(1)}σ</span></>, time: item.detected_at, severity: Math.abs(Number(item.z_score) || 0) >= 5 ? 'high' : 'medium' })),
-    ...(orbitalEvents ?? []).map((item) => ({ id: `o-${item.id}`, icon: Orbit, label: item.event_type === 'conjunction' ? t('missionControl.conjunctionCandidate') : t('missionControl.maneuverCandidate'), detail: [item.source, item.confidence != null ? `${Math.round(Number(item.confidence) * 100)}%` : null].filter(Boolean).join(' · '), time: item.event_time, severity: item.severity || 'medium' })),
+    ...((orbitalEvents as OrbitalEventEntity[] | null) ?? []).map((item) => ({ id: `o-${item.id}`, icon: Orbit, label: item.event_type === 'conjunction' ? t('missionControl.conjunctionCandidate') : t('missionControl.maneuverCandidate'), detail: [item.source, item.confidence != null ? `${Math.round(Number(item.confidence) * 100)}%` : null].filter(Boolean).join(' · '), time: item.event_time, severity: item.severity || 'medium' })),
   ].sort((a, b) => timeValue(b.time) - timeValue(a.time)).slice(0, 8)
 
   return <section aria-labelledby="mission-control-heading" className="grid gap-6">
@@ -169,7 +228,7 @@ export default function MissionControl({
 
     <div className="grid gap-6 lg:grid-cols-2">
       <div className="rounded-xl border border-lyra-border bg-lyra-panel/40 p-5"><div className="flex items-center justify-between gap-4"><div><p className="text-[10px] tracking-[0.16em] text-lyra-mutedDim">{t('missionControl.securityEyebrow')}</p><h2 className="mt-1 font-display text-xl text-lyra-text">{t('missionControl.securityEvents')}</h2></div><ShieldAlert className="h-5 w-5 text-lyra-gold" /></div>{timeline.length ? <ul className="mt-4 divide-y divide-lyra-borderSoft">{timeline.map(({ id, icon: Icon, label, detail, time, severity }) => <li key={id} className="flex gap-3 py-3"><span className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border ${tone(severity)}`}><Icon className="h-3.5 w-3.5" /></span><div className="min-w-0 flex-1"><p className="text-sm text-lyra-text">{label}</p><p className="mt-1 text-xs text-lyra-muted">{detail || '—'}</p><time className="mt-1 block font-mono text-[10px] text-lyra-mutedDim">{fmtDate(time)}</time></div></li>)}</ul> : <p className="mt-4 text-sm text-lyra-muted">{t('missionControl.noEvents')}</p>}</div>
-      <div className="rounded-xl border border-lyra-border bg-lyra-panel/40 p-5"><div className="flex items-center justify-between gap-4"><div><p className="text-[10px] tracking-[0.16em] text-lyra-mutedDim">{t('missionControl.telemetryEyebrow')}</p><h2 className="mt-1 font-display text-xl text-lyra-text">{t('missionControl.liveContext')}</h2></div><Activity className="h-5 w-5 text-lyra-gold" /></div><dl className="mt-4 grid gap-3">{[[Orbit, 'NORAD', satellite.norad_id ?? '—'], [Clock3, t('missionControl.orbitUpdated'), fmtDate(satellite.updated_at)], [RadioTower, t('missionControl.lastCapture'), access.rf ? fmtDate(latestRf?.captured_at) : t('missionControl.restricted')], [TriangleAlert, t('missionControl.exposureAlerts'), access.alerts ? exposureAlerts.length : '—']].map(([Icon, label, value]: any[]) => <div key={String(label)} className="flex items-center justify-between gap-4 rounded border border-lyra-borderSoft bg-lyra-bg/25 px-3 py-3"><dt className="flex items-center gap-2 text-xs text-lyra-muted"><Icon className="h-3.5 w-3.5" />{label}</dt><dd className="font-mono text-xs text-lyra-text">{value}</dd></div>)}</dl><div className="mt-4 flex flex-wrap gap-2">{access.rf && <button type="button" onClick={() => onNavigate('signal')} className="rounded border border-lyra-border px-3 py-2 text-xs text-lyra-muted hover:text-lyra-goldBright">{t('missionControl.openRf')}</button>}{access.incidents && <button type="button" onClick={() => onNavigate('incidents')} className="rounded border border-lyra-border px-3 py-2 text-xs text-lyra-muted hover:text-lyra-goldBright">{t('missionControl.openIncidentWorkspace')}</button>}{access.agents && <button type="button" onClick={() => onNavigate('stations')} className="rounded border border-lyra-border px-3 py-2 text-xs text-lyra-muted hover:text-lyra-goldBright">{t('missionControl.openStations')}</button>}</div></div>
+      <div className="rounded-xl border border-lyra-border bg-lyra-panel/40 p-5"><div className="flex items-center justify-between gap-4"><div><p className="text-[10px] tracking-[0.16em] text-lyra-mutedDim">{t('missionControl.telemetryEyebrow')}</p><h2 className="mt-1 font-display text-xl text-lyra-text">{t('missionControl.liveContext')}</h2></div><Activity className="h-5 w-5 text-lyra-gold" /></div><dl className="mt-4 grid gap-3">{([{ Icon: Orbit, label: 'NORAD', value: satellite.norad_id ?? '—' }, { Icon: Clock3, label: t('missionControl.orbitUpdated'), value: fmtDate(satellite.updated_at) }, { Icon: RadioTower, label: t('missionControl.lastCapture'), value: access.rf ? fmtDate(latestRf?.captured_at) : t('missionControl.restricted') }, { Icon: TriangleAlert, label: t('missionControl.exposureAlerts'), value: access.alerts ? exposureAlerts.length : '—' }]).map(({ Icon, label, value }) => <div key={String(label)} className="flex items-center justify-between gap-4 rounded border border-lyra-borderSoft bg-lyra-bg/25 px-3 py-3"><dt className="flex items-center gap-2 text-xs text-lyra-muted"><Icon className="h-3.5 w-3.5" />{label}</dt><dd className="font-mono text-xs text-lyra-text">{value}</dd></div>)}</dl><div className="mt-4 flex flex-wrap gap-2">{access.rf && <button type="button" onClick={() => onNavigate('signal')} className="rounded border border-lyra-border px-3 py-2 text-xs text-lyra-muted hover:text-lyra-goldBright">{t('missionControl.openRf')}</button>}{access.incidents && <button type="button" onClick={() => onNavigate('incidents')} className="rounded border border-lyra-border px-3 py-2 text-xs text-lyra-muted hover:text-lyra-goldBright">{t('missionControl.openIncidentWorkspace')}</button>}{access.agents && <button type="button" onClick={() => onNavigate('stations')} className="rounded border border-lyra-border px-3 py-2 text-xs text-lyra-muted hover:text-lyra-goldBright">{t('missionControl.openStations')}</button>}</div></div>
     </div>
   </section>
 }

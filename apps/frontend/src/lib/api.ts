@@ -1,5 +1,14 @@
 import { authHeaders, logout } from './auth'
 import * as authModule from './auth'
+import type {
+  CreateOrbitalEventInput,
+  OrbitalEvent,
+  SatelliteMutationInput,
+  SatellitePassPredictionResponse,
+  SatellitePassQuery,
+  SatelliteRecord,
+  SatelliteWithPosition,
+} from './apiTypes'
 
 export const API_ERROR_EVENT = 'lyrahcle:api-error'
 
@@ -351,7 +360,7 @@ export async function fetchRfAnomalies() {
   return res.json()
 }
 
-export async function fetchSatellites() {
+export async function fetchSatellites(): Promise<SatelliteWithPosition[]> {
   const res = await authedFetch('/api/v1/satellites/')
   if (!res.ok) throw await apiErrorFromResponse(res, 'failed to fetch satellites')
   return res.json()
@@ -363,11 +372,14 @@ export async function fetchSatellites() {
 
 
 
-export function subscribeSatellites(callbacks) {
+export function subscribeSatellites(callbacks: JSONStreamCallbacks): () => void {
   return subscribeJSONStream('/api/v1/satellites/stream', callbacks)
 }
 
-export async function fetchSatellitePasses(satelliteId, { latitudeDeg, longitudeDeg, altitudeM = 0, hours = 24, minElevationDeg = 0, limit = 10 }) {
+export async function fetchSatellitePasses(
+  satelliteId: string,
+  { latitudeDeg, longitudeDeg, altitudeM = 0, hours = 24, minElevationDeg = 0, limit = 10 }: SatellitePassQuery,
+): Promise<SatellitePassPredictionResponse> {
   const params = new URLSearchParams({
     latitude_deg: String(latitudeDeg),
     longitude_deg: String(longitudeDeg),
@@ -381,14 +393,17 @@ export async function fetchSatellitePasses(satelliteId, { latitudeDeg, longitude
   return res.json()
 }
 
-export async function fetchOrbitalEvents(satelliteId, hours = 168, limit = 50) {
+export async function fetchOrbitalEvents(satelliteId: string, hours = 168, limit = 50): Promise<OrbitalEvent[]> {
   const params = new URLSearchParams({ hours: String(hours), limit: String(limit) })
   const res = await authedFetch(`/api/v1/satellites/${encodeURIComponent(satelliteId)}/orbital-events?${params.toString()}`)
   if (!res.ok) throw await apiErrorFromResponse(res, 'failed to fetch orbital events')
   return res.json()
 }
 
-export async function createOrbitalEvent(satelliteId, { eventType, eventTime, source, confidence, severity, metadata = {} }) {
+export async function createOrbitalEvent(
+  satelliteId: string,
+  { eventType, eventTime, source, confidence, severity, metadata = {} }: CreateOrbitalEventInput,
+): Promise<OrbitalEvent> {
   const res = await authedFetch(`/api/v1/satellites/${encodeURIComponent(satelliteId)}/orbital-events`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -405,7 +420,7 @@ export async function createOrbitalEvent(satelliteId, { eventType, eventTime, so
   return res.json()
 }
 
-export async function createSatellite({ noradId, name, tleLine1, tleLine2 }) {
+export async function createSatellite({ noradId, name, tleLine1, tleLine2 }: SatelliteMutationInput): Promise<void> {
   const res = await authedFetch('/api/v1/satellites/', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -414,7 +429,10 @@ export async function createSatellite({ noradId, name, tleLine1, tleLine2 }) {
   if (!res.ok) throw await apiErrorFromResponse(res, 'failed to create satellite')
 }
 
-export async function updateSatellite(satelliteId, { noradId, name, tleLine1, tleLine2 }) {
+export async function updateSatellite(
+  satelliteId: string,
+  { noradId, name, tleLine1, tleLine2 }: SatelliteMutationInput,
+): Promise<SatelliteRecord> {
   const res = await authedFetch(`/api/v1/satellites/${encodeURIComponent(satelliteId)}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },

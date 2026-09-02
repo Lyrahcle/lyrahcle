@@ -133,6 +133,7 @@ describe('automated accessibility audit (axe)', () => {
 
   test('SettingsPanel has no detectable WCAG violations', async () => {
     const { container } = render(withI18n(<SettingsPanel />))
+    expect(await screen.findByText('stations')).toBeInTheDocument()
     const results = await axe(container)
     expect(results).toHaveNoViolations()
   

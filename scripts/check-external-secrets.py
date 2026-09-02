@@ -13,7 +13,11 @@ aws_values = root / "deploy" / "helm" / "lyrahcle" / "values-aws.example.yaml"
 template = root / "deploy" / "helm" / "lyrahcle" / "templates" / "external-secret.yaml"
 validate = root / "deploy" / "helm" / "lyrahcle" / "templates" / "validate.yaml"
 readme = root / "README.md"
-screenshot = root / "docs" / "screenshots" / "dashboard.png"
+screenshot_candidates = [
+    root / "docs" / "screenshots" / "dashboard-overview.png",
+    root / "docs" / "screenshots" / "dashboard.png",
+]
+screenshot = next((path for path in screenshot_candidates if path.is_file()), screenshot_candidates[0])
 required = [tf, variables, outputs, secrets, values, aws_values, template, validate, readme, screenshot]
 missing = [str(path.relative_to(root)) for path in required if not path.is_file()]
 if missing:
@@ -50,7 +54,10 @@ checks = {
     "fail closed region": 'externalSecrets.region is required when External Secrets is enabled' in validate_text,
     "fail closed key": 'externalSecrets.remoteSecretKey is required when External Secrets is enabled' in validate_text,
     "operator output": 'output "external_secrets_role_arn"' in output_text,
-    "README screenshot": './docs/screenshots/dashboard.png' in readme_text and screenshot.stat().st_size > 10000,
+    "README screenshot": any(
+        f'./docs/screenshots/{candidate.name}' in readme_text and candidate.is_file() and candidate.stat().st_size > 10000
+        for candidate in screenshot_candidates
+    ),
 }
 failed = [name for name, ok in checks.items() if not ok]
 if failed:
