@@ -141,3 +141,98 @@ body::before {
     animation: none;
   }
 }
+
+.lyra-node-index {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.lyra-node-index__title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8px;
+  letter-spacing: 0.14em;
+  color: rgb(var(--lyra-muted-dim));
+  padding: 0 0.25rem 0.25rem;
+}
+
+@media (min-width: 1280px) {
+  .lyra-node-index {
+    position: absolute;
+    left: 1rem;
+    top: 60px;
+    bottom: 4rem;
+    z-index: 20;
+    display: grid;
+    align-content: start;
+    gap: 0.125rem;
+    width: 170px;
+    height: auto;
+    margin: 0;
+    padding: 0.5rem;
+    overflow-y: auto;
+    clip: auto;
+    white-space: normal;
+    border: 1px solid rgb(var(--lyra-border-soft) / 0.7);
+    border-radius: 1rem;
+    background: rgb(var(--lyra-bg) / 0.82);
+    backdrop-filter: blur(12px);
+  }
+}
+
+.lyra-scene-label {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: rgb(var(--lyra-bg) / 0.72);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  backdrop-filter: blur(6px);
+  transition: opacity 0.18s ease;
+}
+
+.lyra-correlation-canvas canvas {
+  outline: none;
+}
+
+.lyra-cluster-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  background: rgb(var(--lyra-bg) / 0.66);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  opacity: 0.55;
+  backdrop-filter: blur(4px);
+}
+
+.lyra-cluster-label__count {
+  color: rgb(var(--lyra-muted-dim));
+}
+
+.lyra-route-hop {
+  display: inline-block;
+  min-width: 18px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  background: rgb(var(--lyra-bg) / 0.86);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  text-align: center;
+  white-space: nowrap;
+}
