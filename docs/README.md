@@ -9,6 +9,7 @@ This directory contains the technical documentation for Lyrahcle. The root `READ
 | [Architecture](./architecture.md) | Components, trust boundaries, data flows, and storage ownership |
 | [Backend bootstrap architecture](./backend-bootstrap-architecture.md) | Composition root, dependency builders and incremental server-domain refactor boundary |
 | [Frontend TypeScript migration](./frontend-typescript-migration.md) | Gradual TS/TSX migration boundary, typed routing/navigation and next component candidates |
+| [Frontend UX foundation](./frontend-ux-foundation.md) | Shared UI primitives for transient feedback, async state, and keyboard navigation |
 | [API reference](./api-reference.md) | Human/agent authentication, roles, endpoint behavior, SSE, request IDs |
 | [Configuration](./configuration.md) | Environment variables and runtime configuration for every service |
 | [Deployment](./deployment.md) | Production checklist, TLS, backups, monitoring, updates, WebAuthn, agent mTLS |
@@ -17,6 +18,7 @@ This directory contains the technical documentation for Lyrahcle. The root `READ
 | [AWS EKS migration](./aws-eks-migration.md) | EKS mapping for ECR/RDS/Redis, ALB/NLB, Secrets Manager and Pod Identity |
 | [AWS infrastructure as code](./aws-infrastructure-as-code.md) | Terraform/OpenTofu foundation for VPC, EKS, ECR, RDS, KMS, Secrets Manager and optional encrypted ElastiCache |
 | [AWS production readiness](./aws-production-readiness.md) | Route53/ACM, ExternalDNS, immutable ECR image digests and release handoff |
+| [AWS Secrets Manager](./aws-secrets-manager.md) | Synchronizing application secrets from AWS Secrets Manager into Kubernetes |
 | [Improvement roadmap](./improvement-roadmap.md) | Canonical shipped/partial/next/later product backlog |
 
 ## Identity, access, and RBAC
@@ -53,6 +55,8 @@ This directory contains the technical documentation for Lyrahcle. The root `READ
 | [TLE data quality](./tle-data-quality.md) | Fresh/aging/stale/unusable policy and safe orbital-escalation defaults |
 | [IQ forensics](./forensics.md) | Recording, replaying, and handling SDR IQ captures |
 | [Core telemetry visualizations](./telemetry-visualizations.md) | RF power/spectrum/coverage and anomaly-intensity UI panels |
+| [Ground station operations](./ground-station-operations.md) | Ground-segment view over SDR agents with trusted station coordinates |
+| [Risk scoring](./risk-scoring.md) | Deterministic mission/satellite/ground-station risk scores and inputs |
 
 ## Application security contracts
 
@@ -71,6 +75,7 @@ This directory contains the technical documentation for Lyrahcle. The root `READ
 | Document | Canonical purpose |
 |---|---|
 | [Observability](./observability.md) | Prometheus, Grafana, request IDs, alerts, and optional OpenTelemetry tracing |
+| [Backend reliability](./backend-reliability.md) | Error-chain conventions and reliability practices in the Go backend |
 | [Performance testing](./performance-testing.md) | Current performance controls and production-like validation work |
 | [Backup and restore](./backup-and-restore.md) | Backup verification, guarded restore, and recovery recommendations |
 | [Resilience and disaster recovery](./resilience-disaster-recovery.md) | Local kind chaos drills, restore evidence, RTO/RPO targets and AWS DR boundaries |

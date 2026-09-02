@@ -47,7 +47,7 @@ Status values: **Shipped**, **Partial**, **Next**, and **Later**.
 | Correlation-driven severity policy after production validation | Later | Before v1.0 |
 | RF heat map | Shipped | v14.6.2 |
 | Satellite security profile with explainable mission risk and unified evidence | Shipped | Unreleased |
-| Telemetry, RF, CVE, and operations charts | Next | v8.3-v9 |
+| Telemetry, RF, CVE, and operations charts | Partial | RF power/spectrum, anomaly timeline, incident severity/timeline, CVE severity/timeline, and orbital altitude charts are shipped; Doppler expected-vs-observed, RF z-score, and fleet agent-status charts remain open |
 | Orbital-aware RF detection and TLE freshness gating | Shipped | v9.2/v9.2.2 |
 | Physical SDR validation of Doppler/visibility correlation | In progress — RTL-SDR evidence harness delivered; representative lab captures still required | Before auto-escalation/v1.0 |
 | Pass prediction and AOS/LOS scheduling | Shipped | v9.3 |
@@ -68,6 +68,7 @@ Status values: **Shipped**, **Partial**, **Next**, and **Later**.
 | Index review for all filtered searches | Partial | v14.6.4 adds tenant-aware RF/audit/incident hot-path indexes; remaining query families stay under review |
 | SQL query optimization | Partial | v14.6.4 removes fleet target N+1 inserts and collapses tenant snapshots to one DB round trip; broader load-driven tuning remains |
 | Load-test tooling | Shipped | v8.4 |
+| Per-route performance budgets with query-count/rows-examined/cache-hit-miss instrumentation | Next | Prometheus request-duration histogram (p50/p95/p99 via `histogram_quantile`) is shipped; query-count, rows-examined, and cache hit/miss metrics plus documented budgets for critical routes remain open |
 | Station federation | Later | v9+ |
 | Multi-tenant architecture | Shipped | v10.x (see Identity, authentication, and authorization) |
 
@@ -81,6 +82,8 @@ Status values: **Shipped**, **Partial**, **Next**, and **Later**.
 | Audit error wrapping for `errors.Is`/`errors.As` continuity | Shipped | Block 13 |
 | Verify `context.Context` propagation across all stores | Shipped | Block 13 |
 | Complete frontend TypeScript migration | Partial | Block 14 onward |
+| Frontend CI warning gate covering `console.error`/`console.warn`/unhandled promises | Partial | `check-frontend-test-warnings.py` currently detects only `act(...)` warnings and is not wired into `ci.yml`; needs broader patterns and a CI step that captures Vitest output |
+| Product-journey end-to-end tests (Playwright) | Next | Existing E2E coverage (`security_e2e_http_v1463_test.go`) is HTTP-level security only; no browser-driven operator-journey suite (login → incident close) exists yet |
 
 ## Platform security and supply chain
 
@@ -162,5 +165,8 @@ Note: multi-tenancy moved from "Enterprise architecture / Later" to the core Ide
 3. Exercise multi-replica/AWS resilience and collect DR/RPO/RTO evidence before cutover; backend error-chain and PostgreSQL context-propagation guardrails are now shipped.
 4. Complete the agent hardware-capability physical lab-validation gate (RTL-SDR/HackRF) — `compatible` currently reflects self-reported software capability only.
 5. Finish remaining operator-facing user guides and accessibility cleanup.
+6. Wire the frontend warning gate into CI and widen it beyond `act(...)` to `console.error`/`console.warn`/unhandled promises.
+7. Stand up a small Playwright suite (5-8 journeys) covering the core detection-to-incident-closure operator workflow.
+8. Instrument per-route query-count/rows-examined/cache-hit-miss metrics and document performance budgets for the critical read paths.
 
 Per-release delivery detail (what shipped in v9.1, v10.x, v11.x, and later) lives in `CHANGELOG.md`, not here, to avoid a second history that can drift out of sync with this backlog.
