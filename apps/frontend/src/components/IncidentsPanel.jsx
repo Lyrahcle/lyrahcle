@@ -7,6 +7,7 @@ import { addIncidentEvidence, addIncidentNote, createIncident, fetchIncident, up
 import { hasPermission } from '../lib/permissions'
 import { useI18n } from '../lib/I18nContext'
 import StatusState from './StatusState.tsx'
+import IncidentInvestigationChain from './IncidentInvestigationChain.tsx'
 
 const STATUSES = ['new', 'investigating', 'contained', 'resolved', 'false_positive']
 const SEVERITIES = ['critical', 'high', 'medium', 'low', 'info']
@@ -288,6 +289,7 @@ export default function IncidentsPanel({ page, filters, onFiltersChange, onPrev,
           )}
 
           <CorrelationEvidencePanel evidence={detail.evidence || []} />
+          <IncidentInvestigationChain detail={detail} />
 
           <div>
             <h4 className="mb-2 font-mono text-xs tracking-wider text-lyra-muted">{t('incidents.timeline')}</h4>

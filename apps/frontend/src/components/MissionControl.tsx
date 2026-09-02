@@ -2,10 +2,12 @@ import { useEffect, useMemo, useState } from 'react'
 import type { ComponentType } from 'react'
 import { Activity, Clock3, Orbit, RadioTower, Satellite, ShieldAlert, TriangleAlert } from 'lucide-react'
 import WorldMap from './WorldMap.jsx'
-import { fetchSatellitePasses } from '../lib/api'
+import { fetchOrbitalEvents, fetchSatellitePasses } from '../lib/api'
 import { calculateSatelliteRisk } from '../lib/risk'
 import { satelliteElevationDeg, stationCoordinates } from '../lib/groundStations'
 import { useI18n } from '../lib/I18nContext'
+import CrossDomainAttackChain from './CrossDomainAttackChain'
+import IncidentEvidenceCase from './IncidentEvidenceCase'
 
 type Entity = Record<string, any>
 type Page = { items?: Entity[] } | null
@@ -64,14 +66,15 @@ function Metric({ label, value, detail }: { label: string; value: string | numbe
 
 export default function MissionControl({
   satellites = [], readings = [], anomalies = [], incidents = null, agents = [], assetAlerts = null,
-  access = {}, onNavigate = () => {}, now = Date.now(),
+  access = {}, onNavigate = () => {}, now = Date.now(), tmtcAnalysis = null, onIncidentCreated = () => {},
 }: {
   satellites?: Entity[]; readings?: Entity[]; anomalies?: Entity[]; incidents?: Page; agents?: Entity[]; assetAlerts?: Page;
-  access?: Record<string, boolean>; onNavigate?: (tab: any) => void; now?: number;
+  access?: Record<string, boolean>; onNavigate?: (tab: any) => void; now?: number; tmtcAnalysis?: any; onIncidentCreated?: (incident: any) => void;
 }) {
   const { t } = useI18n()
   const [selectedId, setSelectedId] = useState<string>('')
   const [passes, setPasses] = useState<Entity[] | null>(null)
+  const [orbitalEvents, setOrbitalEvents] = useState<Entity[] | null>(null)
 
   useEffect(() => {
     if (!satellites.length) { setSelectedId(''); return }
@@ -99,6 +102,16 @@ export default function MissionControl({
 
   useEffect(() => {
     let cancelled = false
+    if (!satellite || !access.orbital) { setOrbitalEvents([]); return undefined }
+    setOrbitalEvents(null)
+    fetchOrbitalEvents(satellite.id, 168, 50)
+      .then((data) => { if (!cancelled) setOrbitalEvents(Array.isArray(data) ? data : []) })
+      .catch(() => { if (!cancelled) setOrbitalEvents([]) })
+    return () => { cancelled = true }
+  }, [satellite?.id, access.orbital])
+
+  useEffect(() => {
+    let cancelled = false
     if (!satellite || !coordinates || !access.orbital) { setPasses([]); return undefined }
     setPasses(null)
     fetchSatellitePasses(satellite.id, { latitudeDeg: coordinates.latitude, longitudeDeg: coordinates.longitude, altitudeM: coordinates.altitude, hours: 24, minElevationDeg: 0, limit: 3 })
@@ -110,7 +123,7 @@ export default function MissionControl({
   if (!satellites.length) return <section className="rounded-xl border border-lyra-border bg-lyra-panel/40 p-8 text-center"><Satellite className="mx-auto h-7 w-7 text-lyra-mutedDim" /><h1 className="mt-4 font-display text-2xl text-lyra-text">{t('missionControl.title')}</h1><p className="mt-2 text-sm text-lyra-muted">{t('missionControl.empty')}</p></section>
   if (!satellite) return null
 
-  const risk = calculateSatelliteRisk({ satellite, incidents: satelliteIncidents, anomalies: satelliteAnomalies, exposureAlerts, now })
+  const risk = calculateSatelliteRisk({ satellite, incidents: satelliteIncidents, anomalies: satelliteAnomalies, orbitalEvents: orbitalEvents ?? [], exposureAlerts, now })
   const openIncidents = satelliteIncidents.filter((item) => !INACTIVE_INCIDENT_STATUSES.has(item.status)).length
   const latestRf = satelliteReadings[0] ?? null
   const nextPass = passes?.find((item) => timeValue(item.los_at || item.los || item.end_time) >= now) ?? passes?.[0] ?? null
@@ -121,6 +134,7 @@ export default function MissionControl({
   const timeline = [
     ...satelliteIncidents.map((item) => ({ id: `i-${item.id}`, icon: ShieldAlert, label: item.title || item.reference || t('missionControl.incident'), detail: [item.reference, item.status].filter(Boolean).join(' · '), time: item.updated_at || item.created_at, severity: item.severity || 'medium' })),
     ...satelliteAnomalies.map((item) => ({ id: `a-${item.id}`, icon: RadioTower, label: t('missionControl.rfAnomaly'), detail: <><span>{item.agent_id || '—'}</span><span aria-hidden="true"> · </span><span>{(Number(item.z_score) || 0).toFixed(1)}σ</span></>, time: item.detected_at, severity: Math.abs(Number(item.z_score) || 0) >= 5 ? 'high' : 'medium' })),
+    ...(orbitalEvents ?? []).map((item) => ({ id: `o-${item.id}`, icon: Orbit, label: item.event_type === 'conjunction' ? t('missionControl.conjunctionCandidate') : t('missionControl.maneuverCandidate'), detail: [item.source, item.confidence != null ? `${Math.round(Number(item.confidence) * 100)}%` : null].filter(Boolean).join(' · '), time: item.event_time, severity: item.severity || 'medium' })),
   ].sort((a, b) => timeValue(b.time) - timeValue(a.time)).slice(0, 8)
 
   return <section aria-labelledby="mission-control-heading" className="grid gap-6">
@@ -148,6 +162,10 @@ export default function MissionControl({
         <Metric label={t('missionControl.signalPower')} value={access.rf && finite(latestRf?.power_dbm) !== null ? `${Number(latestRf.power_dbm).toFixed(1)} dBm` : '—'} />
       </div>
     </div>
+
+    <CrossDomainAttackChain anomalies={satelliteAnomalies} incidents={satelliteIncidents} orbitalEvents={orbitalEvents ?? []} tmtcAnalysis={tmtcAnalysis} />
+
+    <IncidentEvidenceCase satellite={satellite} anomalies={satelliteAnomalies} incidents={satelliteIncidents} orbitalEvents={orbitalEvents ?? []} tmtcAnalysis={tmtcAnalysis} canManage={Boolean(access.incidentsManage)} agentId={agent?.agent_id || ''} onCreated={onIncidentCreated} />
 
     <div className="grid gap-6 lg:grid-cols-2">
       <div className="rounded-xl border border-lyra-border bg-lyra-panel/40 p-5"><div className="flex items-center justify-between gap-4"><div><p className="text-[10px] tracking-[0.16em] text-lyra-mutedDim">{t('missionControl.securityEyebrow')}</p><h2 className="mt-1 font-display text-xl text-lyra-text">{t('missionControl.securityEvents')}</h2></div><ShieldAlert className="h-5 w-5 text-lyra-gold" /></div>{timeline.length ? <ul className="mt-4 divide-y divide-lyra-borderSoft">{timeline.map(({ id, icon: Icon, label, detail, time, severity }) => <li key={id} className="flex gap-3 py-3"><span className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border ${tone(severity)}`}><Icon className="h-3.5 w-3.5" /></span><div className="min-w-0 flex-1"><p className="text-sm text-lyra-text">{label}</p><p className="mt-1 text-xs text-lyra-muted">{detail || '—'}</p><time className="mt-1 block font-mono text-[10px] text-lyra-mutedDim">{fmtDate(time)}</time></div></li>)}</ul> : <p className="mt-4 text-sm text-lyra-muted">{t('missionControl.noEvents')}</p>}</div>

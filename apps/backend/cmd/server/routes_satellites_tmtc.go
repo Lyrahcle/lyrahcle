@@ -201,6 +201,33 @@ func (a *apiRoutes) registerSatelliteTMTCRoutes(r chi.Router) {
 			json.NewEncoder(w).Encode(decoded)
 		})
 
+		r.Post("/analyze/ccsds-sequence", func(w http.ResponseWriter, r *http.Request) {
+			var body struct {
+				PacketHexes []string `json:"packet_hexes"`
+			}
+			if err := decodeStrictJSON(r, &body); err != nil {
+				http.Error(w, "invalid JSON body", http.StatusBadRequest)
+				return
+			}
+			if len(body.PacketHexes) == 0 || len(body.PacketHexes) > 256 {
+				http.Error(w, "packet_hexes must contain between 1 and 256 packets", http.StatusBadRequest)
+				return
+			}
+			for _, packetHex := range body.PacketHexes {
+				if err := validate.CCSDSPacketHex(packetHex); err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+			}
+			analysis, err := tmtc.AnalyzeCCSDSSequence(body.PacketHexes)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(analysis)
+		})
+
 		r.Post("/decode/csp", func(w http.ResponseWriter, r *http.Request) {
 			var body struct {
 				PacketHex string `json:"packet_hex"`

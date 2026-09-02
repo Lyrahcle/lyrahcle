@@ -49,7 +49,7 @@ Status values: **Shipped**, **Partial**, **Next**, and **Later**.
 | Satellite security profile with explainable mission risk and unified evidence | Shipped | Unreleased |
 | Telemetry, RF, CVE, and operations charts | Next | v8.3-v9 |
 | Orbital-aware RF detection and TLE freshness gating | Shipped | v9.2/v9.2.2 |
-| Physical SDR validation of Doppler/visibility correlation | Next | Before auto-escalation/v1.0 |
+| Physical SDR validation of Doppler/visibility correlation | In progress — RTL-SDR evidence harness delivered; representative lab captures still required | Before auto-escalation/v1.0 |
 | Pass prediction and AOS/LOS scheduling | Shipped | v9.3 |
 | Maneuver/conjunction context persistence and candidate-only correlation | Shipped | v9.5 |
 | Automatic maneuver inference and trusted conjunction screening feeds | Next | v9.x |
@@ -157,7 +157,7 @@ Note: multi-tenancy moved from "Enterprise architecture / Later" to the core Ide
 
 ## Current pre-v1 priorities
 
-1. Validate orbital-aware Doppler/visibility correlation with representative physical SDR captures before enabling automatic orbital escalation (currently disabled).
+1. Validate orbital-aware Doppler/visibility correlation with representative physical SDR captures before enabling automatic orbital escalation (currently disabled). The RTL-SDR evidence harness is delivered; the physical capture campaign and false-positive analysis remain open.
 2. Reach and hold >80% coverage on security-critical code paths, including security-focused end-to-end coverage.
 3. Exercise multi-replica/AWS resilience and collect DR/RPO/RTO evidence before cutover; backend error-chain and PostgreSQL context-propagation guardrails are now shipped.
 4. Complete the agent hardware-capability physical lab-validation gate (RTL-SDR/HackRF) — `compatible` currently reflects self-reported software capability only.

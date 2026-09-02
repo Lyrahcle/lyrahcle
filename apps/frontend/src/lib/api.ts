@@ -990,3 +990,13 @@ export async function fetchPlatformSecretStatus() {
   if (!res.ok) throw await apiErrorFromResponse(res, 'failed to fetch secret provider status')
   return res.json()
 }
+
+export async function analyzeCCSDSSequence(packetHexes: string[]) {
+  const res = await authedFetch('/api/v1/tmtc/analyze/ccsds-sequence', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ packet_hexes: packetHexes }),
+  })
+  if (!res.ok) throw await apiErrorFromResponse(res, 'CCSDS sequence analysis failed')
+  return res.json()
+}

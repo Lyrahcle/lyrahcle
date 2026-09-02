@@ -54,11 +54,13 @@ const SatellitesPanel = lazyComponent<any>(() => import('./SatellitesPanel.jsx')
 const OrbitalOperationsPanel = lazyComponent<any>(() => import('./OrbitalOperationsPanel.jsx'))
 const MissionSecurityOperationsDashboard = lazyComponent<any>(() => import('./MissionSecurityOperationsDashboard.jsx'))
 const MissionControl = lazyComponent<any>(() => import('./MissionControl.tsx'))
+const MissionSecurityScore = lazyComponent<any>(() => import('./MissionSecurityScore.tsx'))
 const SatelliteSecurityProfile = lazyComponent<any>(() => import('./SatelliteSecurityProfile.jsx'))
 const GroundStationOperations = lazyComponent<any>(() => import('./GroundStationOperations.jsx'))
 const AssetAlertsPanel = lazyComponent<any>(() => import('./AssetAlertsPanel.jsx'))
 const IncidentsPanel = lazyComponent<any>(() => import('./IncidentsPanel.jsx'))
 const Decoder = lazyComponent<any>(() => import('./Decoder.jsx'))
+const TMTCSequenceAnalyzer = lazyComponent<any>(() => import('./TMTCSequenceAnalyzer.tsx'))
 const ProgramManager = lazyComponent<any>(() => import('./ProgramManager.jsx'))
 const ConnectivityPanel = lazyComponent<any>(() => import('./ConnectivityPanel.jsx'))
 const AuditLogPanel = lazyComponent<any>(() => import('./AuditLogPanel.jsx'))
@@ -126,6 +128,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
   const [satellites, setSatellites] = useState<DashboardEntity[] | null>(null)
   const [satellitesLive, setSatellitesLive] = useState(false)
   const [selectedSatelliteId, setSelectedSatelliteId] = useState<string | null>(null)
+  const [tmtcAnalysis, setTmtcAnalysis] = useState<any | null>(null)
   const [spaceCVEs, setSpaceCVEs] = useState<DashboardPage | null>(null)
   const [assetAlerts, setAssetAlerts] = useState<DashboardPage | null>(null)
   const [incidents, setIncidents] = useState<DashboardPage | null>(null)
@@ -672,6 +675,16 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
 
         {activeTab === 'mission' && (
           satellites === null ? <Skeleton rows={4} /> : (
+            <div className="grid gap-6">
+            <MissionSecurityScore
+              satellites={satellites}
+              incidents={incidents?.items ?? []}
+              anomalies={rfAnomalies ?? []}
+              agents={agentIdentities ?? []}
+              alerts={assetAlerts?.items ?? []}
+              backendStatus={backendStatus}
+              access={{ incidents: incidentsRead, rf: rfRead, agents: connectivityAccess, alerts: alertsRead }}
+            />
             <MissionControl
               satellites={satellites}
               readings={rfReadings ?? []}
@@ -679,9 +692,12 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
               incidents={incidents}
               agents={agentIdentities ?? []}
               assetAlerts={assetAlerts}
-              access={{ orbital: orbitalAccess, rf: rfRead, incidents: incidentsRead, agents: connectivityAccess, alerts: alertsRead }}
+              access={{ orbital: orbitalAccess, rf: rfRead, incidents: incidentsRead, incidentsManage, agents: connectivityAccess, alerts: alertsRead }}
               onNavigate={onChangeTab}
+              tmtcAnalysis={tmtcAnalysis}
+              onIncidentCreated={reloadIncidents}
             />
+            </div>
           )
         )}
 
@@ -858,9 +874,14 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
         )}
 
         {activeTab === 'decoder' && (
-          <Panel eyebrow={t('panels.tmtc')} title={t('panels.protocolDecoder')}>
-            <Decoder />
-          </Panel>
+          <div className="grid gap-6">
+            <Panel eyebrow={t('panels.tmtc')} title={t('panels.protocolDecoder')}>
+              <Decoder />
+            </Panel>
+            <Panel eyebrow={t('panels.tmtc')} title="CCSDS sequence security">
+              <TMTCSequenceAnalyzer onAnalysis={setTmtcAnalysis} />
+            </Panel>
+          </div>
         )}
 
         {activeTab === 'connectivity' && (

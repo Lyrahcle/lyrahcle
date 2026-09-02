@@ -122,7 +122,7 @@ func TestHTTPRouteCountRequiresAuthorizationReview(t *testing.T) {
 		}
 		got += len(routeRegistration.FindAll(data, -1))
 	}
-	const reviewedRouteRegistrations = 115
+	const reviewedRouteRegistrations = 116
 	if got != reviewedRouteRegistrations {
 		t.Fatalf("HTTP route inventory changed: got %d registrations, reviewed %d; classify every added/removed route before updating this gate", got, reviewedRouteRegistrations)
 	}

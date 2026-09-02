@@ -266,6 +266,24 @@ Hardware capability validation is a **separate gate** before v1.0:
 
 This validation is **not yet complete** for all claimed capabilities.
 
+#### RTL-SDR lab evidence harness
+
+Block 6 adds an operator-side harness that can probe an attached RTL-SDR with `rtl_test`, collect a bounded `rtl_power` sweep, and write a SHA-256-addressed JSON evidence report. The harness is deliberately under `scripts/`; the SDR agent runtime continues to avoid spawning operating-system commands.
+
+Run a short physical sweep from the repository root:
+
+```bash
+python3 scripts/validate-rtl-sdr-physical.py --output artifacts/rtl-sdr-validation.json --start-hz 430000000 --stop-hz 440000000 --bin-hz 25000 --duration-seconds 30 --interval-seconds 5
+```
+
+An existing `rtl_power` CSV can be analysed without hardware, which is useful for validating the evidence pipeline but **does not count as physical validation**:
+
+```bash
+python3 scripts/validate-rtl-sdr-physical.py --input captures/rtl-power.csv --output artifacts/rtl-sdr-validation.json
+```
+
+Reports intentionally contain `gate_complete: false`. A single successful capture is evidence for the lab campaign, not permission to enable orbital auto-escalation. Preserve the report and raw capture together when measuring Doppler/visibility false-positive rates.
+
 ## Fleet Staged Rollouts (v14.6.1+)
 
 ### Overview

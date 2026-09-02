@@ -5,6 +5,7 @@ import MissionControl from './MissionControl'
 
 vi.mock('../lib/api', () => ({
   fetchSatellitePasses: vi.fn().mockResolvedValue([{ aos_at: '2026-09-02T10:00:00Z', los_at: '2026-09-02T10:10:00Z' }]),
+  fetchOrbitalEvents: vi.fn().mockResolvedValue([]),
 }))
 
 function renderControl(props: Record<string, unknown> = {}) {
@@ -41,6 +42,14 @@ describe('MissionControl', () => {
     expect(screen.getByText('-71.2 dBm')).toBeInTheDocument()
     expect(screen.getByText('6.1σ')).toBeInTheDocument()
     await waitFor(() => expect(screen.queryByText('…')).not.toBeInTheDocument())
+  })
+
+  it('surfaces candidate orbital evidence without presenting it as a confirmed attack', async () => {
+    const api = await import('../lib/api')
+    vi.mocked(api.fetchOrbitalEvents).mockResolvedValueOnce([{ id: 'oe-1', event_type: 'maneuver', event_time: '2026-09-02T09:27:00Z', source: 'automatic-screening', confidence: 0.82, severity: 'medium', metadata: { candidate_only: true } }])
+    renderControl()
+    expect((await screen.findAllByText(/maneuver candidate/i)).length).toBeGreaterThan(0)
+    expect(screen.getByText(/automatic-screening · 82%/i)).toBeInTheDocument()
   })
 
   it('opens existing operational workspaces from Mission Control', () => {
