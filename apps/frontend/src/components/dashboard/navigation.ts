@@ -18,6 +18,7 @@ export interface DashboardNavigationAccess {
 export function buildDashboardNavigation(t: Translate, access: DashboardNavigationAccess): DashboardNavigationItem[] {
   return [
     { id: 'orbital', label: t('navigation.items.overview'), section: 'overview' },
+    { id: 'mission', label: t('navigation.items.missionControl'), section: 'overview' },
     { id: 'graph', label: t('navigation.items.correlationGraph'), section: 'overview' },
     ...(access.connectivity ? [{ id: 'stations' as const, label: t('tabs.stations'), section: 'mission' as const }] : []),
     { id: 'assets', label: t('tabs.assets'), section: 'mission' },

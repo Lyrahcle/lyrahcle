@@ -53,6 +53,7 @@ const DetectionRulesPanel = lazyComponent<any>(() => import('./DetectionRulesPan
 const SatellitesPanel = lazyComponent<any>(() => import('./SatellitesPanel.jsx'))
 const OrbitalOperationsPanel = lazyComponent<any>(() => import('./OrbitalOperationsPanel.jsx'))
 const MissionSecurityOperationsDashboard = lazyComponent<any>(() => import('./MissionSecurityOperationsDashboard.jsx'))
+const MissionControl = lazyComponent<any>(() => import('./MissionControl.tsx'))
 const SatelliteSecurityProfile = lazyComponent<any>(() => import('./SatelliteSecurityProfile.jsx'))
 const GroundStationOperations = lazyComponent<any>(() => import('./GroundStationOperations.jsx'))
 const AssetAlertsPanel = lazyComponent<any>(() => import('./AssetAlertsPanel.jsx'))
@@ -71,6 +72,10 @@ const SecretProviderPanel = lazyComponent(() => import('./SecretProviderPanel.ts
 const IncidentResponsePanel = lazyComponent(() => import('./IncidentResponsePanel.tsx'))
 const RBACPanel = lazyComponent(() => import('./RBACPanel.tsx'))
 const RFHeatMap = lazyComponent<any>(() => import('./RFHeatMap.jsx'))
+const RFSpectrumWaterfall = lazyComponent<any>(() => import('./RFSpectrumWaterfall.tsx'))
+const RFAttackTriage = lazyComponent<any>(() => import('./RFAttackTriage.tsx'))
+const AttackTimeline = lazyComponent<any>(() => import('./AttackTimeline.tsx'))
+const SpaceThreatMatrix = lazyComponent<any>(() => import('./SpaceThreatMatrix.tsx'))
 const CorrelationGraph = lazyComponent(() => import('./CorrelationGraph.tsx'))
 
 const UntypedWorldMap = WorldMap as ComponentType<any>
@@ -277,6 +282,19 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
         }
       } catch {
         if (!cancelled) setBackendStatus('offline')
+      }
+
+      if (activeTab === 'mission') {
+        const requests = [safeFetch(fetchSatellites, setSatellites)]
+        if (rfRead) {
+          requests.push(safeFetch(fetchRfReadings, setRfReadings))
+          requests.push(safeFetch(fetchRfAnomalies, setRfAnomalies))
+        }
+        if (incidentsRead) requests.push(safeFetch(() => fetchIncidents(PAGE_LIMIT, 0, {}), setIncidents, { items: [], total: 0, limit: PAGE_LIMIT, offset: 0 }))
+        if (connectivityAccess) requests.push(safeFetch(fetchAgentIdentities, setAgentIdentities))
+        if (alertsRead) requests.push(safeFetch(() => fetchAssetAlerts(PAGE_LIMIT, 0), setAssetAlerts, { items: [], total: 0, limit: PAGE_LIMIT, offset: 0 }))
+        await Promise.all(requests)
+        return
       }
 
       if (activeTab === 'orbital') {
@@ -652,6 +670,21 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
           )
         )}
 
+        {activeTab === 'mission' && (
+          satellites === null ? <Skeleton rows={4} /> : (
+            <MissionControl
+              satellites={satellites}
+              readings={rfReadings ?? []}
+              anomalies={rfAnomalies ?? []}
+              incidents={incidents}
+              agents={agentIdentities ?? []}
+              assetAlerts={assetAlerts}
+              access={{ orbital: orbitalAccess, rf: rfRead, incidents: incidentsRead, agents: connectivityAccess, alerts: alertsRead }}
+              onNavigate={onChangeTab}
+            />
+          )
+        )}
+
         {activeTab === 'graph' && (
           <CorrelationGraph
             satellites={satellites}
@@ -723,6 +756,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
                     <RFPowerChart readings={rfReadings} />
                     <RFSpectrumChart readings={rfReadings} />
                   </div>
+                  <RFSpectrumWaterfall readings={rfReadings} />
                   <RfPanel readings={rfReadings} />
                 </div>
               )}
@@ -730,6 +764,19 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
             <Panel eyebrow={t('panels.signalIntelligence')} title={t('rfHeatMap.panelTitle')}>
               {rfReadings === null || agentIdentities === null ? <Skeleton /> : (
                 <RFHeatMap agents={agentIdentities} readings={rfReadings} />
+              )}
+            </Panel>
+            <Panel eyebrow={t('panels.anomalyDetection')} title={t('rfAttackTriage.panelTitle')}>
+              {rfAnomalies === null ? <Skeleton /> : <RFAttackTriage anomalies={rfAnomalies} />}
+            </Panel>
+            <Panel eyebrow={t('panels.anomalyDetection')} title={t('attackTimeline.panelTitle')}>
+              {rfReadings === null || rfAnomalies === null || (incidentsRead && incidents === null) ? <Skeleton /> : (
+                <AttackTimeline readings={rfReadings ?? []} anomalies={rfAnomalies ?? []} incidents={incidents?.items ?? []} />
+              )}
+            </Panel>
+            <Panel eyebrow={t('panels.anomalyDetection')} title={t('spaceThreatMatrix.panelTitle')}>
+              {rfAnomalies === null || (incidentsRead && incidents === null) ? <Skeleton /> : (
+                <SpaceThreatMatrix anomalies={rfAnomalies ?? []} incidents={incidents?.items ?? []} />
               )}
             </Panel>
             <Panel eyebrow={t('panels.anomalyDetection')} title={t('panels.flaggedAnomalies')}>
