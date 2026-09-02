@@ -1,19 +1,27 @@
-import { useState } from 'react'
+import { useState, type FormEvent } from 'react'
 import { Rocket } from 'lucide-react'
 import { createSatellite } from '../lib/api'
 import { useI18n } from '../lib/I18nContext'
 
-export default function NewSatelliteForm({ onCreated }) {
+interface NewSatelliteFormProps {
+  onCreated: () => void | Promise<void>
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
+
+export default function NewSatelliteForm({ onCreated }: NewSatelliteFormProps) {
   const { t } = useI18n()
   const [open, setOpen] = useState(false)
   const [noradId, setNoradId] = useState('')
   const [name, setName] = useState('')
   const [line1, setLine1] = useState('')
   const [line2, setLine2] = useState('')
-  const [error, setError] = useState(null)
+  const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
-  async function handleSubmit(e) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setError(null)
     setLoading(true)
@@ -29,9 +37,9 @@ export default function NewSatelliteForm({ onCreated }) {
       setLine1('')
       setLine2('')
       setOpen(false)
-      onCreated()
+      await onCreated()
     } catch (err) {
-      setError(err.message)
+      setError(errorMessage(err))
     } finally {
       setLoading(false)
     }

@@ -24,7 +24,7 @@ required = {
     'apps/frontend/src/components/RBACPanel.tsx': ['useToast()', "kind=\"empty\"", "kind=\"forbidden\"", 'canReadUsers?: boolean', "t('ux.notifications.roleCreated')"],
     'apps/frontend/src/components/RateLimitPolicyPanel.tsx': ['<StatusState', "kind={offline ? 'offline' : 'error'}", "actionLabel={t('ux.states.retry')}"],
     'apps/frontend/src/components/AssetAlertsPanel.jsx': ['<StatusState kind="empty"', 'useToast()'],
-    'apps/frontend/src/components/IncidentsPanel.jsx': ['<StatusState kind="empty"'],
+    'apps/frontend/src/components/IncidentsPanel.tsx': ['<StatusState kind="empty"'],
     'apps/frontend/src/components/ThreatIntelPanel.jsx': ['<StatusState kind="empty"'],
     'apps/frontend/src/index.css': [':focus-visible', 'outline: 2px solid rgb(var(--lyra-gold-bright))'],
 }

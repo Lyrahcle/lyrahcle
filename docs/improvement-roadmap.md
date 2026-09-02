@@ -26,7 +26,7 @@ Status values: **Shipped**, **Partial**, **Next**, and **Later**.
 | Explicit permission matrix | Shipped | Current |
 | Disable and soft-delete users | Shipped | Current |
 | Complete sensitive-endpoint authorization review | Shipped | Current (`check-route-authorization.py` audits every route in `cmd/server/*.go` in local v1 validation and GitHub Actions, failing the build if a new route lacks a recognizable role/permission/mTLS/token gate) |
-| Complete administrative audit-coverage review | Partial | Before v1.0 |
+| Complete administrative audit-coverage review | Complete | Before v1.0 |
 | Multi-tenant organizations with tenant-scoped RBAC | Shipped | v10.0-v10.6 |
 | Database-enforced tenant isolation (PostgreSQL row-level security) | Shipped | v14.2 |
 | Platform-administrator control-plane boundary | Shipped | v10.x |
@@ -68,7 +68,7 @@ Status values: **Shipped**, **Partial**, **Next**, and **Later**.
 | Index review for all filtered searches | Partial | v14.6.4 adds tenant-aware RF/audit/incident hot-path indexes; remaining query families stay under review |
 | SQL query optimization | Partial | v14.6.4 removes fleet target N+1 inserts and collapses tenant snapshots to one DB round trip; broader load-driven tuning remains |
 | Load-test tooling | Shipped | v8.4 |
-| Per-route performance budgets with query-count/rows-examined/cache-hit-miss instrumentation | Next | Prometheus request-duration histogram (p50/p95/p99 via `histogram_quantile`) is shipped; query-count, rows-examined, and cache hit/miss metrics plus documented budgets for critical routes remain open |
+| Per-route performance budgets with DB/cache instrumentation | Complete | HTTP and PostgreSQL latency, per-route query counts, rows returned/affected, and cache hit/miss/error/bypass metrics are exported with bounded-cardinality labels; initial alert budgets are documented. True rows examined remain an EXPLAIN/ANALYZE diagnostic rather than a misleading runtime counter. |
 | Station federation | Later | v9+ |
 | Multi-tenant architecture | Shipped | v10.x (see Identity, authentication, and authorization) |
 
@@ -128,7 +128,7 @@ Status values: **Shipped**, **Partial**, **Next**, and **Later**.
 | Light/dark mode | Shipped | Current |
 | Shared toast/snackbar feedback | Shipped | Block 15 |
 | Unified empty/loading/error/offline states | Shipped | Block 15 |
-| Accessibility work | Partial | Block 15 adds skip navigation, focus visibility and shared live-region semantics; broader WCAG 2.2 AA review remains before v1.0 |
+| Accessibility baseline | Shipped | Skip navigation, focus visibility, live regions, modal focus trapping/return, Escape semantics, accessible dialog naming and portal-aware axe coverage are enforced; manual assistive-technology validation remains a release gate |
 | Header search | Shipped | v8.4 |
 | Search across satellites/assets/CVEs/incidents | Shipped | v8.4 |
 | OpenAPI and Swagger | Shipped | Current |
@@ -164,9 +164,9 @@ Note: multi-tenancy moved from "Enterprise architecture / Later" to the core Ide
 2. Reach and hold >80% coverage on security-critical code paths, including security-focused end-to-end coverage.
 3. Exercise multi-replica/AWS resilience and collect DR/RPO/RTO evidence before cutover; backend error-chain and PostgreSQL context-propagation guardrails are now shipped.
 4. Complete the agent hardware-capability physical lab-validation gate (RTL-SDR/HackRF) — `compatible` currently reflects self-reported software capability only.
-5. Finish remaining operator-facing user guides and accessibility cleanup.
+5. Finish remaining operator-facing user guides and perform the final manual assistive-technology/keyboard accessibility validation on the release candidate.
 6. Wire the frontend warning gate into CI and widen it beyond `act(...)` to `console.error`/`console.warn`/unhandled promises.
 7. Stand up a small Playwright suite (5-8 journeys) covering the core detection-to-incident-closure operator workflow.
-8. Instrument per-route query-count/rows-examined/cache-hit-miss metrics and document performance budgets for the critical read paths.
+8. ✅ Instrument per-route DB query count/latency/rows returned-or-affected and cache hit/miss metrics; document initial performance budgets and retain EXPLAIN/ANALYZE for true rows-examined analysis.
 
 Per-release delivery detail (what shipped in v9.1, v10.x, v11.x, and later) lives in `CHANGELOG.md`, not here, to avoid a second history that can drift out of sync with this backlog.

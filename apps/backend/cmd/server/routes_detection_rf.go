@@ -9,9 +9,12 @@ import (
 	"github.com/mlko01/lyrahcle/apps/backend/internal/auth"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/dbscope"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/detection"
+	"github.com/mlko01/lyrahcle/apps/backend/internal/orbitalcontext"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/store"
+	"github.com/mlko01/lyrahcle/apps/backend/internal/tlequality"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/validate"
 	"log"
+	"math"
 	"net/http"
 	"strings"
 	"time"
@@ -345,6 +348,28 @@ func (a *apiRoutes) registerDetectionRFRoutes(r chi.Router) {
 			json.NewEncoder(w).Encode(list)
 		})
 
+		r.With(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "rf.read", isTokenRevoked)).Get("/doppler", func(w http.ResponseWriter, r *http.Request) {
+			orgID, ok := requestOrganizationID(w, r)
+			if !ok {
+				return
+			}
+			list, err := rfAnomalies.RecentByOrganization(r.Context(), orgID, 100)
+			if err != nil {
+				http.Error(w, "failed to fetch rf anomalies", http.StatusInternalServerError)
+				return
+			}
+
+			comparisons := make([]rfDopplerComparison, 0, len(list))
+			for _, anomalyRecord := range list {
+				comparison, ok := buildRFDopplerComparison(r.Context(), satellites, agentIdentities, tlePolicy(cfg), anomalyRecord)
+				if ok {
+					comparisons = append(comparisons, comparison)
+				}
+			}
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(comparisons)
+		})
+
 		r.With(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "rf.read", isTokenRevoked)).Get("/anomalies", func(w http.ResponseWriter, r *http.Request) {
 			orgID, ok := requestOrganizationID(w, r)
 			if !ok {
@@ -367,4 +392,62 @@ func (a *apiRoutes) registerDetectionRFRoutes(r chi.Router) {
 			json.NewEncoder(w).Encode(list)
 		})
 	})
+}
+
+type rfDopplerComparison struct {
+	AnomalyID         uuid.UUID `json:"anomaly_id"`
+	ReadingID         uuid.UUID `json:"reading_id"`
+	AgentID           string    `json:"agent_id"`
+	SatelliteID       uuid.UUID `json:"satellite_id"`
+	SatelliteName     string    `json:"satellite_name"`
+	ObservedFrequency float64   `json:"observed_frequency_hz"`
+	BaselineFrequency float64   `json:"baseline_frequency_hz"`
+	ExpectedDopplerHz float64   `json:"expected_doppler_hz"`
+	ExpectedFrequency float64   `json:"expected_frequency_hz"`
+	ResidualHz        float64   `json:"residual_hz"`
+	ToleranceHz       float64   `json:"tolerance_hz"`
+	RangeRateMPS      float64   `json:"range_rate_mps"`
+	ElevationDeg      float64   `json:"elevation_deg"`
+	Visible           bool      `json:"visible"`
+	TLEStatus         string    `json:"tle_status"`
+	DetectedAt        time.Time `json:"detected_at"`
+}
+
+func buildRFDopplerComparison(ctx context.Context, satellites *store.SatelliteStore, identities *store.AgentIdentityStore, policy tlequality.Policy, anomalyRecord store.RFAnomaly) (rfDopplerComparison, bool) {
+	if anomalyRecord.SatelliteID == nil || (anomalyRecord.Metric != "frequency_hz" && anomalyRecord.Metric != "frequency_hz_trend") {
+		return rfDopplerComparison{}, false
+	}
+	satellite, err := satellites.Get(ctx, *anomalyRecord.SatelliteID)
+	if err != nil {
+		return rfDopplerComparison{}, false
+	}
+	station, err := identities.Station(ctx, anomalyRecord.AgentID)
+	if err != nil {
+		return rfDopplerComparison{}, false
+	}
+	assessment := tlequality.Assess(satellite.TLEEpoch, anomalyRecord.DetectedAt, policy)
+	if assessment.Status != tlequality.StatusFresh && assessment.Status != tlequality.StatusAging {
+		return rfDopplerComparison{}, false
+	}
+	result, err := orbitalcontext.Evaluate(
+		orbitalcontext.Station{LatitudeDeg: station.LatitudeDeg, LongitudeDeg: station.LongitudeDeg, AltitudeM: station.AltitudeM},
+		satellite.TLELine1,
+		satellite.TLELine2,
+		anomalyRecord.DetectedAt,
+		anomalyRecord.Value,
+	)
+	if err != nil {
+		return rfDopplerComparison{}, false
+	}
+	expected := anomalyRecord.BaselineMean + result.ExpectedDopplerHz
+	residual := anomalyRecord.Value - expected
+	tolerance := math.Max(2500, 3*math.Abs(anomalyRecord.BaselineStddev))
+	return rfDopplerComparison{
+		AnomalyID: anomalyRecord.ID, ReadingID: anomalyRecord.ReadingID, AgentID: anomalyRecord.AgentID,
+		SatelliteID: *anomalyRecord.SatelliteID, SatelliteName: satellite.Name,
+		ObservedFrequency: anomalyRecord.Value, BaselineFrequency: anomalyRecord.BaselineMean,
+		ExpectedDopplerHz: result.ExpectedDopplerHz, ExpectedFrequency: expected, ResidualHz: residual, ToleranceHz: tolerance,
+		RangeRateMPS: result.RangeRateMPS, ElevationDeg: result.ElevationDeg, Visible: result.Visible,
+		TLEStatus: string(assessment.Status), DetectedAt: anomalyRecord.DetectedAt,
+	}, true
 }

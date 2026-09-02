@@ -15,6 +15,20 @@ groups:
           severity: warning
         annotations:
           summary: Lyrahcle backend p95 latency is above one second
+      - alert: LyrahcleHighDatabaseP95Latency
+        expr: histogram_quantile(0.95, sum by (le) (rate(lyrahcle_db_query_duration_seconds_bucket[5m]))) > 0.25
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Lyrahcle PostgreSQL query p95 latency is above 250 ms
+      - alert: LyrahcleLowResponseCacheHitRatio
+        expr: sum(rate(lyrahcle_response_cache_requests_total{result="hit"}[10m])) / clamp_min(sum(rate(lyrahcle_response_cache_requests_total{result=~"hit|miss"}[10m])), 0.001) < 0.70
+        for: 15m
+        labels:
+          severity: info
+        annotations:
+          summary: Lyrahcle response-cache hit ratio is below 70 percent
       - alert: LyrahcleAuthenticationFailures
         expr: sum(rate(lyrahcle_auth_logins_total{result!="success"}[5m])) > 0.2
         for: 5m

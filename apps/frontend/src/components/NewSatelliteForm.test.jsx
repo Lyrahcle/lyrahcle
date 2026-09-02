@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import NewSatelliteForm from './NewSatelliteForm.jsx'
+import NewSatelliteForm from './NewSatelliteForm.tsx'
 import { I18nProvider } from '../lib/I18nContext'
 import * as api from '../lib/api'
 

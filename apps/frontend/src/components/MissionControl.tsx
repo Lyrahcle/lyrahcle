@@ -9,6 +9,7 @@ import { useMissionOrbitalContext } from '../hooks/useMissionOrbitalContext'
 import { useI18n } from '../lib/I18nContext'
 import CrossDomainAttackChain from './CrossDomainAttackChain'
 import IncidentEvidenceCase from './IncidentEvidenceCase'
+import UpcomingPassesPanel from './UpcomingPassesPanel'
 
 type Entity = Record<string, unknown>
 
@@ -51,6 +52,9 @@ interface IncidentEntity extends Entity {
 
 interface AgentEntity extends Entity {
   agent_id?: string
+  status?: string
+  last_seen_at?: string
+  device?: { reported_at?: string }
   station?: { latitude_deg?: unknown; longitude_deg?: unknown; altitude_m?: unknown }
 }
 
@@ -151,7 +155,7 @@ export default function MissionControl({
   access = {}, onNavigate = () => {}, now = Date.now(), tmtcAnalysis = null, onIncidentCreated = () => {},
 }: MissionControlProps) {
   const { t } = useI18n()
-  const [selectedId, setSelectedId] = useState<string>('')
+  const [selectedId, setSelectedId] = useState<string>(() => satellites[0]?.id ?? '')
 
   useEffect(() => {
     if (!satellites.length) { setSelectedId(''); return }
@@ -221,6 +225,8 @@ export default function MissionControl({
         <Metric label={t('missionControl.signalPower')} value={access.rf && finite(latestRf?.power_dbm) !== null ? `${Number(latestRf.power_dbm).toFixed(1)} dBm` : '—'} />
       </div>
     </div>
+
+    <UpcomingPassesPanel passes={passes} stationId={agent?.agent_id || ''} agentStatus={agent?.status} agentLastSeenAt={agent?.last_seen_at || agent?.device?.reported_at} activeIncidentCount={openIncidents} anomalyTimes={satelliteAnomalies.map((item) => item.detected_at || '').filter(Boolean)} now={now} access={access} onNavigate={onNavigate} />
 
     <CrossDomainAttackChain anomalies={satelliteAnomalies} incidents={satelliteIncidents} orbitalEvents={orbitalEvents ?? []} tmtcAnalysis={tmtcAnalysis} />
 

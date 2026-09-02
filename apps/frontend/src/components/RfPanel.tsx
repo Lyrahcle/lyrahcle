@@ -1,8 +1,9 @@
 import SignalBar from './SignalBar.jsx'
 import TableScroll from './TableScroll.jsx'
 import { useI18n } from '../lib/I18nContext'
+import type { RFReading } from '../lib/apiTypes'
 
-export default function RfPanel({ readings }) {
+export default function RfPanel({ readings }: { readings: RFReading[] }) {
   const { t } = useI18n()
 
   if (!readings.length) {

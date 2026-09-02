@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/dbscope"
+	"github.com/mlko01/lyrahcle/apps/backend/internal/metrics"
 )
 
 func Connect(ctx context.Context, dsn string) (*pgxpool.Pool, error) {
@@ -17,6 +18,7 @@ func Connect(ctx context.Context, dsn string) (*pgxpool.Pool, error) {
 	if err != nil {
 		return nil, fmt.Errorf("db: parse config: %w", err)
 	}
+	cfg.ConnConfig.Tracer = metrics.DBQueryTracer{}
 	cfg.BeforeAcquire = func(acquireCtx context.Context, conn *pgx.Conn) bool {
 		request := dbscope.IsRequest(acquireCtx) && !dbscope.IsPlatformControlPlane(acquireCtx)
 		organizationID, hasOrganization := dbscope.OrganizationID(acquireCtx)

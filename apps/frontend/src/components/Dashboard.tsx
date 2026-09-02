@@ -10,7 +10,7 @@ import Skeleton from './Skeleton.jsx'
 import WorldMap from './WorldMap.jsx'
 import ThreatIntelPanel from './ThreatIntelPanel.jsx'
 import NewAssetForm from './NewAssetForm.jsx'
-import NewSatelliteForm from './NewSatelliteForm.jsx'
+import NewSatelliteForm from './NewSatelliteForm.tsx'
 import Footer from './Footer.jsx'
 import ApiStatusBanner from './ApiStatusBanner.jsx'
 import { AnomalyTimelineChart, CVESeverityChart, CVETimelineChart, IncidentSeverityChart, IncidentTimelineChart, OrbitalAltitudeChart, RFPowerChart, RFSpectrumChart } from './TelemetryCharts.jsx'
@@ -28,6 +28,7 @@ import {
   fetchAuditLog,
   fetchPing,
   fetchRfAnomalies,
+  fetchRfDoppler,
   fetchRfReadings,
   fetchDetectionRules,
   fetchSatellites,
@@ -45,18 +46,18 @@ import { useDashboardSubscriptions } from '../hooks/useDashboardSubscriptions'
 import { usePlatformAccess } from '../hooks/usePlatformAccess'
 
 const AssetsTable = lazyComponent<any>(() => import('./AssetsTable.jsx'))
-const RfPanel = lazyComponent<any>(() => import('./RfPanel.jsx'))
+const RfPanel = lazyComponent<any>(() => import('./RfPanel.tsx'))
 const AnomaliesPanel = lazyComponent<any>(() => import('./AnomaliesPanel.jsx'))
 const DetectionRulesPanel = lazyComponent<any>(() => import('./DetectionRulesPanel.jsx'))
 const SatellitesPanel = lazyComponent<any>(() => import('./SatellitesPanel.jsx'))
-const OrbitalOperationsPanel = lazyComponent<any>(() => import('./OrbitalOperationsPanel.jsx'))
+const OrbitalOperationsPanel = lazyComponent<any>(() => import('./OrbitalOperationsPanel.tsx'))
 const MissionSecurityOperationsDashboard = lazyComponent<any>(() => import('./MissionSecurityOperationsDashboard.jsx'))
 const MissionControl = lazyComponent<any>(() => import('./MissionControl.tsx'))
 const MissionSecurityScore = lazyComponent<any>(() => import('./MissionSecurityScore.tsx'))
 const SatelliteSecurityProfile = lazyComponent<any>(() => import('./SatelliteSecurityProfile.jsx'))
 const GroundStationOperations = lazyComponent<any>(() => import('./GroundStationOperations.jsx'))
 const AssetAlertsPanel = lazyComponent<any>(() => import('./AssetAlertsPanel.jsx'))
-const IncidentsPanel = lazyComponent<any>(() => import('./IncidentsPanel.jsx'))
+const IncidentsPanel = lazyComponent<any>(() => import('./IncidentsPanel.tsx'))
 const Decoder = lazyComponent<any>(() => import('./Decoder.jsx'))
 const TMTCSequenceAnalyzer = lazyComponent<any>(() => import('./TMTCSequenceAnalyzer.tsx'))
 const ProgramManager = lazyComponent<any>(() => import('./ProgramManager.jsx'))
@@ -73,6 +74,8 @@ const IncidentResponsePanel = lazyComponent(() => import('./IncidentResponsePane
 const RBACPanel = lazyComponent(() => import('./RBACPanel.tsx'))
 const RFHeatMap = lazyComponent<any>(() => import('./RFHeatMap.jsx'))
 const RFSpectrumWaterfall = lazyComponent<any>(() => import('./RFSpectrumWaterfall.tsx'))
+const RFDopplerPanel = lazyComponent<any>(() => import('./RFDopplerPanel.tsx'))
+const RFZScorePanel = lazyComponent<any>(() => import('./RFZScorePanel.tsx'))
 const RFAttackTriage = lazyComponent<any>(() => import('./RFAttackTriage.tsx'))
 const AttackTimeline = lazyComponent<any>(() => import('./AttackTimeline.tsx'))
 const SpaceThreatMatrix = lazyComponent<any>(() => import('./SpaceThreatMatrix.tsx'))
@@ -122,6 +125,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
   const [programs, setPrograms] = useState<DashboardEntity[] | null>(null)
   const [rfReadings, setRfReadings] = useState<DashboardEntity[] | null>(null)
   const [rfAnomalies, setRfAnomalies] = useState<DashboardEntity[] | null>(null)
+  const [rfDoppler, setRfDoppler] = useState<DashboardEntity[] | null>(null)
   const [detectionRules, setDetectionRules] = useState<DashboardPage | null>(null)
   const [satellites, setSatellites] = useState<DashboardEntity[] | null>(null)
   const [satellitesLive, setSatellitesLive] = useState(false)
@@ -362,6 +366,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
         await Promise.all([
           safeFetch(fetchRfReadings, setRfReadings),
           safeFetch(fetchRfAnomalies, setRfAnomalies),
+          safeFetch(fetchRfDoppler, setRfDoppler),
           safeFetch(fetchAgentIdentities, setAgentIdentities),
           safeFetch(() => fetchDetectionRules(PAGE_LIMIT, 0), setDetectionRules, { items: [], total: 0, limit: PAGE_LIMIT, offset: 0 }),
         ])
@@ -715,6 +720,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
                   </div>
                   <RFSpectrumWaterfall readings={rfReadings} />
                   <RfPanel readings={rfReadings} />
+                  {rfDoppler === null ? <Skeleton /> : <RFDopplerPanel comparisons={rfDoppler} />}
                 </div>
               )}
             </Panel>
@@ -722,6 +728,9 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
               {rfReadings === null || agentIdentities === null ? <Skeleton /> : (
                 <RFHeatMap agents={agentIdentities} readings={rfReadings} />
               )}
+            </Panel>
+            <Panel eyebrow={t('panels.anomalyDetection')} title={t('rfZScore.panelTitle')}>
+              {rfAnomalies === null ? <Skeleton /> : <RFZScorePanel anomalies={rfAnomalies} />}
             </Panel>
             <Panel eyebrow={t('panels.anomalyDetection')} title={t('rfAttackTriage.panelTitle')}>
               {rfAnomalies === null ? <Skeleton /> : <RFAttackTriage anomalies={rfAnomalies} />}

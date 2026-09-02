@@ -3,12 +3,16 @@
 Security-sensitive administrative mutations are audited in the organization they
 modify.
 
-Covered control-plane and RBAC actions:
+Covered control-plane, identity and RBAC actions:
 
 - organization creation -> `organization.created`
 - organization update -> `organization.updated`
 - platform-admin grant -> `platform_admin.granted`
 - platform-admin revoke -> `platform_admin.revoked`
+- user creation -> `user.created`
+- user role change -> `user.role_changed`
+- user enable/disable -> `user.status_changed`
+- user soft-delete -> `user.deleted`
 - custom role creation -> `rbac.role_created`
 - role assignment -> `rbac.role_assigned`
 - role removal -> `rbac.role_removed`
@@ -29,10 +33,13 @@ Covered control-plane and RBAC actions:
 - signing-key activate -> `signing_key.activated`
 - signing-key revoke -> `signing_key.revoked`
 
-Each RBAC event records the actor, target organization, affected role, and affected
-user where applicable. Organization creation is written explicitly into the newly
-created organization's audit stream and also records the actor's source organization
-as `actor_organization_id`.
+Each administrative audit event records actor identity and source IP in the audit row.
+The shared audit helpers also enrich event details with `organization_id`,
+`result=success`, and the HTTP `request_id` when one is present, so privileged changes
+can be correlated with request logs without relying on every route to add those fields
+manually. RBAC events additionally record affected role and user where applicable.
+Organization creation is written explicitly into the newly created organization's audit
+stream and also records the actor's source organization as `actor_organization_id`.
 
 RBAC read operations (`/rbac/permissions` and `/rbac/roles`) use `rbac.read`; writes
 continue to require `rbac.manage`. Fleet rollout write operations require

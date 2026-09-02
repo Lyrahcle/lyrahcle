@@ -4,11 +4,12 @@ import userEvent from '@testing-library/user-event'
 import { axe } from 'jest-axe'
 import { I18nProvider } from '../lib/I18nContext'
 import NewAssetForm from './NewAssetForm.jsx'
-import NewSatelliteForm from './NewSatelliteForm.jsx'
+import NewSatelliteForm from './NewSatelliteForm.tsx'
 import ChangePasswordModal from './ChangePasswordModal.jsx'
+import ConfirmDialog from './ConfirmDialog.jsx'
 import SettingsPanel from './SettingsPanel.jsx'
 import Login from './Login.jsx'
-import IncidentsPanel from './IncidentsPanel.jsx'
+import IncidentsPanel from './IncidentsPanel.tsx'
 
 const flushReactUpdates = async () => {
   await act(async () => {
@@ -93,6 +94,13 @@ describe('ChangePasswordModal dialog semantics', () => {
     expect(onClose).toHaveBeenCalled()
   })
 
+  test('required password change cannot be dismissed with Escape', async () => {
+    const onClose = vi.fn()
+    render(withI18n(<ChangePasswordModal onClose={onClose} required />))
+    await userEvent.keyboard('{Escape}')
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
   test('returns focus to the previously focused element on close', () => {
     const trigger = document.createElement('button')
     document.body.appendChild(trigger)
@@ -104,6 +112,43 @@ describe('ChangePasswordModal dialog semantics', () => {
     unmount()
     expect(document.activeElement).toBe(trigger)
     document.body.removeChild(trigger)
+  })
+})
+
+
+describe('ConfirmDialog keyboard contract', () => {
+  test('uses alertdialog semantics and keeps keyboard focus inside', async () => {
+    render(withI18n(
+      <ConfirmDialog
+        title="Delete satellite"
+        message="This action cannot be undone."
+        onConfirm={() => {}}
+        onCancel={() => {}}
+      />,
+    ))
+
+    const dialog = screen.getByRole('alertdialog', { name: 'Delete satellite' })
+    expect(dialog).toHaveAttribute('aria-modal', 'true')
+    expect(dialog).toHaveAccessibleDescription('This action cannot be undone.')
+
+    for (let i = 0; i < 5; i += 1) await userEvent.tab()
+    expect(dialog.contains(document.activeElement)).toBe(true)
+  })
+
+  test('Escape cancels unless the action is busy', async () => {
+    const onCancel = vi.fn()
+    const { rerender } = render(withI18n(
+      <ConfirmDialog title="Confirm" message="Proceed?" onConfirm={() => {}} onCancel={onCancel} />,
+    ))
+
+    await userEvent.keyboard('{Escape}')
+    expect(onCancel).toHaveBeenCalledTimes(1)
+
+    rerender(withI18n(
+      <ConfirmDialog title="Confirm" message="Proceed?" busy onConfirm={() => {}} onCancel={onCancel} />,
+    ))
+    await userEvent.keyboard('{Escape}')
+    expect(onCancel).toHaveBeenCalledTimes(1)
   })
 })
 
@@ -155,8 +200,16 @@ describe('automated accessibility audit (axe)', () => {
   })
 
   test('an open ChangePasswordModal has no detectable WCAG violations', async () => {
-    const { container } = render(withI18n(<ChangePasswordModal onClose={() => {}} />))
-    const results = await axe(container)
+    const { baseElement } = render(withI18n(<ChangePasswordModal onClose={() => {}} />))
+    const results = await axe(baseElement)
+    expect(results).toHaveNoViolations()
+  })
+
+  test('ConfirmDialog portal has no detectable WCAG violations', async () => {
+    const { baseElement } = render(withI18n(
+      <ConfirmDialog title="Confirm action" message="Proceed with this action?" onConfirm={() => {}} onCancel={() => {}} />,
+    ))
+    const results = await axe(baseElement)
     expect(results).toHaveNoViolations()
   })
 })

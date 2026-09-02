@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import Pagination from './Pagination.jsx'
 import SeverityBadge from './SeverityBadge.jsx'
 import TableScroll from './TableScroll.jsx'
@@ -8,11 +8,12 @@ import { hasPermission } from '../lib/permissions'
 import { useI18n } from '../lib/I18nContext'
 import StatusState from './StatusState.tsx'
 import IncidentInvestigationChain from './IncidentInvestigationChain.tsx'
+import type { IncidentDetail, IncidentEvidenceType, IncidentPage, IncidentStatus, SatelliteRecord, SecuritySeverity, UserSummary } from '../lib/apiTypes'
 
-const STATUSES = ['new', 'investigating', 'contained', 'resolved', 'false_positive']
-const SEVERITIES = ['critical', 'high', 'medium', 'low', 'info']
-const EVIDENCE_TYPES = ['rf_anomaly', 'request', 'cve', 'agent', 'satellite', 'external']
-const NEXT_STATUSES = {
+const STATUSES: IncidentStatus[] = ['new', 'investigating', 'contained', 'resolved', 'false_positive']
+const SEVERITIES: SecuritySeverity[] = ['critical', 'high', 'medium', 'low', 'info']
+const EVIDENCE_TYPES: IncidentEvidenceType[] = ['rf_anomaly', 'request', 'cve', 'agent', 'satellite', 'external']
+const NEXT_STATUSES: Record<IncidentStatus, IncidentStatus[]> = {
   new: ['new', 'investigating', 'false_positive'],
   investigating: ['investigating', 'contained', 'resolved', 'false_positive'],
   contained: ['contained', 'investigating', 'resolved'],
@@ -20,15 +21,53 @@ const NEXT_STATUSES = {
   false_positive: ['false_positive'],
 }
 
-export default function IncidentsPanel({ page, filters, onFiltersChange, onPrev, onNext, onChanged, satellites = [], users = [] }) {
+interface IncidentFilters {
+  status: string
+  severity: string
+  agentId: string
+  satelliteId: string
+  assignedTo?: string
+}
+
+interface IncidentsPanelProps {
+  page?: IncidentPage | null
+  filters: IncidentFilters
+  onFiltersChange: (filters: IncidentFilters) => void
+  onPrev: () => void
+  onNext: () => void
+  onChanged: () => void
+  satellites?: SatelliteRecord[]
+  users?: UserSummary[]
+}
+
+interface IncidentFormState {
+  title: string
+  description: string
+  severity: SecuritySeverity
+  satelliteId: string
+  agentId: string
+  assignedTo: string
+}
+
+interface EvidenceFormState {
+  type: IncidentEvidenceType
+  reference: string
+  label: string
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
+
+export default function IncidentsPanel({ page, filters, onFiltersChange, onPrev, onNext, onChanged, satellites = [], users = [] }: IncidentsPanelProps) {
   const { t } = useI18n()
-  const [selectedId, setSelectedId] = useState(null)
-  const [detail, setDetail] = useState(null)
-  const [error, setError] = useState(null)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [detail, setDetail] = useState<IncidentDetail | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [note, setNote] = useState('')
-  const [evidence, setEvidence] = useState({ type: 'request', reference: '', label: '' })
-  const [form, setForm] = useState({ title: '', description: '', severity: 'medium', satelliteId: '', agentId: '', assignedTo: '' })
+  const [evidence, setEvidence] = useState<EvidenceFormState>({ type: 'request', reference: '', label: '' })
+  const [form, setForm] = useState<IncidentFormState>({ title: '', description: '', severity: 'medium', satelliteId: '', agentId: '', assignedTo: '' })
   const incidents = page?.items ?? []
   const canManage = hasPermission('incidents.manage')
   const canAssign = canManage && hasPermission('users.read')
@@ -44,7 +83,7 @@ export default function IncidentsPanel({ page, filters, onFiltersChange, onPrev,
         if (!cancelled) setDetail(data)
       })
       .catch((err) => {
-        if (!cancelled) setError(err.message)
+        if (!cancelled) setError(errorMessage(err))
       })
     return () => {
       cancelled = true
@@ -57,11 +96,11 @@ export default function IncidentsPanel({ page, filters, onFiltersChange, onPrev,
   const visibleUrgent = incidents.filter((incident) => ['critical', 'high'].includes(incident.severity)).length
   const visibleUnassigned = incidents.filter((incident) => !incident.assigned_to).length
 
-  function applyQuickFilter(next) {
+  function applyQuickFilter(next: Partial<IncidentFilters>) {
     onFiltersChange({ ...filters, ...next })
   }
 
-  async function handleCreate(event) {
+  async function handleCreate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError(null)
     setSaving(true)
@@ -77,13 +116,13 @@ export default function IncidentsPanel({ page, filters, onFiltersChange, onPrev,
       setForm({ title: '', description: '', severity: 'medium', satelliteId: '', agentId: '', assignedTo: '' })
       onChanged()
     } catch (err) {
-      setError(err.message)
+      setError(errorMessage(err))
     } finally {
       setSaving(false)
     }
   }
 
-  async function applyUpdate(fields) {
+  async function applyUpdate(fields: { status?: IncidentStatus; severity?: SecuritySeverity; assignedTo?: string }) {
     if (!selected) return
     setError(null)
     setSaving(true)
@@ -93,13 +132,13 @@ export default function IncidentsPanel({ page, filters, onFiltersChange, onPrev,
       setDetail(next)
       onChanged()
     } catch (err) {
-      setError(err.message)
+      setError(errorMessage(err))
     } finally {
       setSaving(false)
     }
   }
 
-  async function handleNote(event) {
+  async function handleNote(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!selected || !note.trim()) return
     setError(null)
@@ -111,13 +150,13 @@ export default function IncidentsPanel({ page, filters, onFiltersChange, onPrev,
       setDetail(next)
       onChanged()
     } catch (err) {
-      setError(err.message)
+      setError(errorMessage(err))
     } finally {
       setSaving(false)
     }
   }
 
-  async function handleEvidence(event) {
+  async function handleEvidence(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!selected || !evidence.reference.trim()) return
     setError(null)
@@ -129,7 +168,7 @@ export default function IncidentsPanel({ page, filters, onFiltersChange, onPrev,
       setDetail(next)
       onChanged()
     } catch (err) {
-      setError(err.message)
+      setError(errorMessage(err))
     } finally {
       setSaving(false)
     }
@@ -173,14 +212,14 @@ export default function IncidentsPanel({ page, filters, onFiltersChange, onPrev,
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <label className="grid gap-1 text-xs text-lyra-muted">
           {t('incidents.status')}
-          <select value={filters.status} onChange={(e) => onFiltersChange({ ...filters, status: e.target.value })} className="rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 text-sm text-lyra-text">
+          <select value={filters.status} onChange={(e) => onFiltersChange({ ...filters, status: e.target.value as IncidentStatus })} className="rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 text-sm text-lyra-text">
             <option value="">{t('incidents.allStatuses')}</option>
             {STATUSES.map((status) => <option key={status} value={status}>{t(`incidents.statuses.${status}`)}</option>)}
           </select>
         </label>
         <label className="grid gap-1 text-xs text-lyra-muted">
           {t('incidents.severity')}
-          <select value={filters.severity} onChange={(e) => onFiltersChange({ ...filters, severity: e.target.value })} className="rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 text-sm text-lyra-text">
+          <select value={filters.severity} onChange={(e) => onFiltersChange({ ...filters, severity: e.target.value as SecuritySeverity })} className="rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 text-sm text-lyra-text">
             <option value="">{t('incidents.allSeverities')}</option>
             {SEVERITIES.map((severity) => <option key={severity} value={severity}>{severity}</option>)}
           </select>
@@ -202,7 +241,7 @@ export default function IncidentsPanel({ page, filters, onFiltersChange, onPrev,
         <form onSubmit={handleCreate} className="grid gap-3 rounded border border-lyra-borderSoft bg-lyra-bgSoft/40 p-4">
           <div className="grid gap-3 md:grid-cols-3">
             <input aria-label={t('incidents.title')} required maxLength={160} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder={t('incidents.titlePlaceholder')} className="rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 text-sm text-lyra-text md:col-span-2" />
-            <select aria-label={t('incidents.severity')} value={form.severity} onChange={(e) => setForm({ ...form, severity: e.target.value })} className="rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 text-sm text-lyra-text">
+            <select aria-label={t('incidents.severity')} value={form.severity} onChange={(e) => setForm({ ...form, severity: e.target.value as SecuritySeverity })} className="rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 text-sm text-lyra-text">
               {SEVERITIES.map((severity) => <option key={severity} value={severity}>{severity}</option>)}
             </select>
           </div>
@@ -249,7 +288,7 @@ export default function IncidentsPanel({ page, filters, onFiltersChange, onPrev,
               </tbody>
             </table>
           </TableScroll>
-          <Pagination total={page.total} limit={page.limit} offset={page.offset} onPrev={onPrev} onNext={onNext} />
+          <Pagination total={page?.total ?? 0} limit={page?.limit ?? 25} offset={page?.offset ?? 0} onPrev={onPrev} onNext={onNext} />
         </>
       )}
 
@@ -273,10 +312,10 @@ export default function IncidentsPanel({ page, filters, onFiltersChange, onPrev,
 
           {canManage && (
             <div className="grid gap-3 sm:grid-cols-3">
-              <select aria-label={t('incidents.status')} value={selected.status} disabled={saving} onChange={(e) => applyUpdate({ status: e.target.value })} className="rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 text-sm text-lyra-text">
+              <select aria-label={t('incidents.status')} value={selected.status} disabled={saving} onChange={(e) => applyUpdate({ status: e.target.value as IncidentStatus })} className="rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 text-sm text-lyra-text">
                 {(NEXT_STATUSES[selected.status] || [selected.status]).map((status) => <option key={status} value={status}>{t(`incidents.statuses.${status}`)}</option>)}
               </select>
-              <select aria-label={t('incidents.severity')} value={selected.severity} disabled={saving} onChange={(e) => applyUpdate({ severity: e.target.value })} className="rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 text-sm text-lyra-text">
+              <select aria-label={t('incidents.severity')} value={selected.severity} disabled={saving} onChange={(e) => applyUpdate({ severity: e.target.value as SecuritySeverity })} className="rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 text-sm text-lyra-text">
                 {SEVERITIES.map((severity) => <option key={severity} value={severity}>{severity}</option>)}
               </select>
               {canAssign && (
@@ -325,7 +364,7 @@ export default function IncidentsPanel({ page, filters, onFiltersChange, onPrev,
 
           {canManage && (
             <form onSubmit={handleEvidence} className="grid gap-2 sm:grid-cols-[160px_1fr_1fr_auto]">
-              <select value={evidence.type} onChange={(e) => setEvidence({ ...evidence, type: e.target.value })} className="rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 text-sm text-lyra-text">
+              <select value={evidence.type} onChange={(e) => setEvidence({ ...evidence, type: e.target.value as IncidentEvidenceType })} className="rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 text-sm text-lyra-text">
                 {EVIDENCE_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
               </select>
               <input required maxLength={256} value={evidence.reference} onChange={(e) => setEvidence({ ...evidence, reference: e.target.value })} placeholder={t('incidents.evidenceReference')} className="rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 text-sm text-lyra-text" />

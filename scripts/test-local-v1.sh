@@ -133,8 +133,27 @@ go test ./...
 section "Frontend tests and production build"
 cd "$ROOT/apps/frontend"
 npm run typecheck
-npm test
+FRONTEND_TEST_LOG="$(mktemp)"
+trap 'rm -f "$FRONTEND_TEST_LOG"' EXIT
+set +e
+npm test 2>&1 | tee "$FRONTEND_TEST_LOG"
+FRONTEND_TEST_STATUS=${PIPESTATUS[0]}
+set -e
+if [[ "$FRONTEND_TEST_STATUS" -ne 0 ]]; then
+  printf 'ERROR: frontend test suite failed.\n' >&2
+  exit "$FRONTEND_TEST_STATUS"
+fi
+python3 "$ROOT/scripts/check-frontend-test-warnings.py" "$FRONTEND_TEST_LOG"
+rm -f "$FRONTEND_TEST_LOG"
+trap - EXIT
 npm run build
+
+section "Frontend browser E2E (Playwright)"
+if [[ ! -x "$ROOT/apps/frontend/node_modules/.bin/playwright" ]]; then
+  printf 'ERROR: Playwright is not installed. Run: cd apps/frontend && npm install\n' >&2
+  exit 1
+fi
+npm run test:e2e
 
 if [[ "$FULL" -eq 1 ]]; then
   section "Full Go race/vet gate"

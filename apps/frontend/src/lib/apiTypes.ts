@@ -93,3 +93,99 @@ export interface SatelliteMutationInput {
   tleLine1: string
   tleLine2: string
 }
+
+export type IncidentStatus = 'new' | 'investigating' | 'contained' | 'resolved' | 'false_positive'
+export type IncidentEvidenceType = 'rf_anomaly' | 'request' | 'cve' | 'agent' | 'satellite' | 'external'
+
+export interface IncidentRecord {
+  id: string
+  reference: string
+  title: string
+  description?: string
+  severity: SecuritySeverity
+  status: IncidentStatus
+  source_type?: string
+  updated_at: string
+  agent_id?: string | null
+  satellite_id?: string | null
+  assigned_to?: string | null
+}
+
+export interface IncidentPage {
+  items: IncidentRecord[]
+  total: number
+  limit: number
+  offset: number
+}
+
+export interface IncidentEvent {
+  id: string
+  event_type: string
+  created_at: string
+  actor_username?: string | null
+  message?: string | null
+}
+
+export interface IncidentEvidence {
+  id: string
+  evidence_type: IncidentEvidenceType | string
+  evidence_ref: string
+  label?: string | null
+  created_at: string
+  [key: string]: unknown
+}
+
+export interface IncidentDetail {
+  incident: IncidentRecord | null
+  events?: IncidentEvent[]
+  evidence?: IncidentEvidence[]
+  [key: string]: unknown
+}
+
+export interface UserSummary {
+  id: string
+  username?: string | null
+  email: string
+}
+
+export interface RFReading {
+  id?: string
+  agent_id: string
+  satellite_id?: string | null
+  frequency_hz: number
+  power_dbm: number
+  captured_at: string
+}
+
+export interface RFAnomaly {
+  id: string
+  reading_id: string
+  agent_id: string
+  satellite_id?: string | null
+  metric: string
+  value: number
+  baseline_mean: number
+  baseline_stddev: number
+  z_score: number
+  detected_at: string
+}
+
+export interface RFDopplerComparison {
+  anomaly_id: string
+  reading_id: string
+  agent_id: string
+  satellite_id: string
+  satellite_name: string
+  observed_frequency_hz: number
+  baseline_frequency_hz: number
+  expected_doppler_hz: number
+  expected_frequency_hz: number
+  residual_hz: number
+  tolerance_hz: number
+  range_rate_mps: number
+  elevation_deg: number
+  visible: boolean
+  tle_status: 'fresh' | 'aging'
+  detected_at: string
+}
+

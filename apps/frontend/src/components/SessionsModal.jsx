@@ -23,20 +23,13 @@ function sessionLabel(userAgent) {
 
 export default function SessionsModal({ onClose, onCurrentSessionRevoked }) {
   const { t } = useI18n()
-  const dialogRef = useFocusTrap()
+  const dialogRef = useFocusTrap(true, onClose)
   const [sessions, setSessions] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [busyId, setBusyId] = useState(null)
   const [revokingAll, setRevokingAll] = useState(false)
 
-  useEffect(() => {
-    function handleEscape(event) {
-      if (event.key === 'Escape') onClose()
-    }
-    document.addEventListener('keydown', handleEscape)
-    return () => document.removeEventListener('keydown', handleEscape)
-  }, [onClose])
 
   useEffect(() => {
     let cancelled = false

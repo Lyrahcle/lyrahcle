@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { I18nProvider } from '../lib/I18nContext'
-import OrbitalDashboardOverview from './OrbitalDashboardOverview.jsx'
+import OrbitalDashboardOverview from './OrbitalDashboardOverview.tsx'
 
 function renderPanel(props = {}) {
   return render(<I18nProvider><OrbitalDashboardOverview {...props} /></I18nProvider>)

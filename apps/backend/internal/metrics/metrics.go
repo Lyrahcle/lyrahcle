@@ -1,11 +1,14 @@
 package metrics
 
 import (
+	"context"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/mlko01/lyrahcle/apps/backend/internal/keyprovider"
@@ -22,6 +25,27 @@ var (
 		Help:    "HTTP request duration in seconds, by method/route",
 		Buckets: prometheus.DefBuckets,
 	}, []string{"method", "route"})
+
+	DBQueriesTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "lyrahcle_db_queries_total",
+		Help: "PostgreSQL queries executed by route and normalized operation",
+	}, []string{"route", "operation"})
+
+	DBQueryDuration = prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		Name:    "lyrahcle_db_query_duration_seconds",
+		Help:    "PostgreSQL query duration in seconds by route and normalized operation",
+		Buckets: []float64{0.001, 0.0025, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5},
+	}, []string{"route", "operation"})
+
+	DBRowsTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "lyrahcle_db_rows_total",
+		Help: "Rows returned or affected by PostgreSQL commands, by route and normalized operation",
+	}, []string{"route", "operation"})
+
+	ResponseCacheRequestsTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "lyrahcle_response_cache_requests_total",
+		Help: "Response-cache lookups by route and result (hit, miss, error, bypass)",
+	}, []string{"route", "result"})
 
 	AuthLoginsTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "lyrahcle_auth_logins_total",
@@ -104,7 +128,7 @@ var (
 )
 
 func init() {
-	prometheus.MustRegister(RequestsTotal, RequestDuration, AuthLoginsTotal, SSEConnections, TLEAgeSeconds, TLEStale, TLECorrelationEligible, OrbitalCorrelationSuppressedTotal, CelestrakSyncFailuresTotal, RateLimitDecisions, RateLimitBackendFallback, BackgroundJobEventsTotal, ScheduledJobLeadershipTotal, SigningKeyStatus, SigningKeyRotationDue, SigningKeyStagedPending, SigningKeyWarnings, SigningKeyAutomationTotal)
+	prometheus.MustRegister(RequestsTotal, RequestDuration, DBQueriesTotal, DBQueryDuration, DBRowsTotal, ResponseCacheRequestsTotal, AuthLoginsTotal, SSEConnections, TLEAgeSeconds, TLEStale, TLECorrelationEligible, OrbitalCorrelationSuppressedTotal, CelestrakSyncFailuresTotal, RateLimitDecisions, RateLimitBackendFallback, BackgroundJobEventsTotal, ScheduledJobLeadershipTotal, SigningKeyStatus, SigningKeyRotationDue, SigningKeyStagedPending, SigningKeyWarnings, SigningKeyAutomationTotal)
 }
 
 type statusRecorder struct {
@@ -154,6 +178,75 @@ func Middleware(next http.Handler) http.Handler {
 		RequestsTotal.WithLabelValues(r.Method, route, strconv.Itoa(recorder.status)).Inc()
 		RequestDuration.WithLabelValues(r.Method, route).Observe(time.Since(start).Seconds())
 	})
+}
+
+func RouteLabel(ctx context.Context) string {
+	routeContext := chi.RouteContext(ctx)
+	if routeContext == nil {
+		return "background"
+	}
+	route := routeContext.RoutePattern()
+	if route == "" {
+		return "unmatched"
+	}
+	return route
+}
+
+type queryTraceState struct {
+	started   time.Time
+	route     string
+	operation string
+}
+
+type queryTraceKey struct{}
+
+type DBQueryTracer struct{}
+
+func normalizeDBOperation(sql string) string {
+	trimmed := strings.TrimSpace(sql)
+	if trimmed == "" {
+		return "other"
+	}
+	fields := strings.Fields(trimmed)
+	if len(fields) == 0 {
+		return "other"
+	}
+	op := strings.ToLower(fields[0])
+	switch op {
+	case "select", "insert", "update", "delete", "begin", "commit", "rollback", "with":
+		return op
+	default:
+		return "other"
+	}
+}
+
+func (DBQueryTracer) TraceQueryStart(ctx context.Context, _ *pgx.Conn, data pgx.TraceQueryStartData) context.Context {
+	return context.WithValue(ctx, queryTraceKey{}, queryTraceState{
+		started:   time.Now(),
+		route:     RouteLabel(ctx),
+		operation: normalizeDBOperation(data.SQL),
+	})
+}
+
+func (DBQueryTracer) TraceQueryEnd(ctx context.Context, _ *pgx.Conn, data pgx.TraceQueryEndData) {
+	state, ok := ctx.Value(queryTraceKey{}).(queryTraceState)
+	if !ok {
+		state = queryTraceState{started: time.Now(), route: RouteLabel(ctx), operation: "other"}
+	}
+	DBQueriesTotal.WithLabelValues(state.route, state.operation).Inc()
+	DBQueryDuration.WithLabelValues(state.route, state.operation).Observe(time.Since(state.started).Seconds())
+	if rows := data.CommandTag.RowsAffected(); rows > 0 {
+		DBRowsTotal.WithLabelValues(state.route, state.operation).Add(float64(rows))
+	}
+}
+
+func RecordResponseCacheLookup(ctx context.Context, result string) {
+	switch result {
+	case "hit", "miss", "error", "bypass":
+	default:
+		result = "error"
+	}
+	ResponseCacheRequestsTotal.WithLabelValues(RouteLabel(ctx), result).Inc()
 }
 
 func RecordSigningKeyLifecycle(domain string, keys []keyprovider.KeyMetadata, health keyprovider.RotationHealth) {

@@ -60,8 +60,9 @@ function ContextItems({ item, title, emptyLabel }) {
   )
 }
 
-export default function CorrelationEvidencePanel({ evidence = [] }) {
+export default function CorrelationEvidencePanel({ evidence }) {
   const { t } = useI18n()
+  evidence = asArray(evidence)
   const summary = evidence.find((item) => item?.evidence_ref === 'cross-domain-v9.4' || item?.metadata?.policy === 'explainable_candidate_only')
   if (!summary) return null
 

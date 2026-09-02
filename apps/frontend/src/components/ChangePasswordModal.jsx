@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { changePassword } from '../lib/api'
 import { useI18n } from '../lib/I18nContext'
@@ -13,15 +13,7 @@ export default function ChangePasswordModal({ onClose, onSecurityChange, require
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
 
-  const dialogRef = useFocusTrap()
-
-  useEffect(() => {
-    function handleEscape(e) {
-      if (e.key === 'Escape' && !required) onClose()
-    }
-    document.addEventListener('keydown', handleEscape)
-    return () => document.removeEventListener('keydown', handleEscape)
-  }, [onClose, required])
+  const dialogRef = useFocusTrap(true, required ? undefined : onClose)
 
   async function handleSubmit(e) {
     e.preventDefault()

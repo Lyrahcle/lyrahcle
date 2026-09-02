@@ -59,3 +59,20 @@ func TestMiddlewareDoesNotInventFlusherSupport(t *testing.T) {
 		t.Fatalf("status = %d, want %d", writer.status, http.StatusNoContent)
 	}
 }
+
+func TestNormalizeDBOperationUsesBoundedLabels(t *testing.T) {
+	cases := map[string]string{
+		" SELECT * FROM incidents":  "select",
+		"insert into audit_logs":    "insert",
+		"UPDATE users SET active=1": "update",
+		"delete from sessions":      "delete",
+		"WITH recent AS (SELECT 1)": "with",
+		"VACUUM":                    "other",
+		"":                          "other",
+	}
+	for sql, want := range cases {
+		if got := normalizeDBOperation(sql); got != want {
+			t.Errorf("normalizeDBOperation(%q) = %q, want %q", sql, got, want)
+		}
+	}
+}

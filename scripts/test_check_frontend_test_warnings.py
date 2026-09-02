@@ -23,6 +23,14 @@ class WarningCheckerTests(unittest.TestCase):
         out = "Warning: An update to CopyButton inside a test was not wrapped in act(...)."
         self.assertIn("react act warning", mod.check(out))
 
+    def test_unhandled_rejection_fails(self):
+        out = "Unhandled Promise Rejection: Error: network failed"
+        self.assertIn("unhandled promise rejection", mod.check(out))
+
+    def test_vitest_unhandled_error_summary_fails(self):
+        out = "Vitest caught 1 unhandled error during the test run."
+        self.assertIn("unhandled test error", mod.check(out))
+
     def test_expected_error_boundary_fixture_is_not_misclassified(self):
         self.assertEqual(mod.check("Error: boom\nErrorBoundary caught expected fixture"), [])
 

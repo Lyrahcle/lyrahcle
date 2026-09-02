@@ -1386,6 +1386,26 @@ paths:
               description: Request correlation identifier
               schema:
                 type: string
+  /api/v1/rf/doppler:
+    get:
+      tags:
+      - RF
+      summary: Compare expected and observed Doppler for recent frequency anomalies
+      description: 'Requires rf.read. Returns only anomalies with a linked satellite, configured ground station and usable TLE. Expected frequency is the anomaly baseline plus orbital Doppler.'
+      responses:
+        '200':
+          description: Doppler comparisons derived from recent RF frequency anomalies
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RFDopplerComparison'
+          headers:
+            X-Request-ID:
+              description: Request correlation identifier
+              schema:
+                type: string
   /api/v1/rf/anomalies:
     get:
       tags:
@@ -2884,6 +2904,55 @@ components:
           id:
             type: string
             format: uuid
+    RFDopplerComparison:
+      type: object
+      required: [anomaly_id, reading_id, agent_id, satellite_id, satellite_name, observed_frequency_hz, baseline_frequency_hz, expected_doppler_hz, expected_frequency_hz, residual_hz, tolerance_hz, range_rate_mps, elevation_deg, visible, tle_status, detected_at]
+      properties:
+        anomaly_id:
+          type: string
+          format: uuid
+        reading_id:
+          type: string
+          format: uuid
+        agent_id:
+          type: string
+        satellite_id:
+          type: string
+          format: uuid
+        satellite_name:
+          type: string
+        observed_frequency_hz:
+          type: number
+          format: double
+        baseline_frequency_hz:
+          type: number
+          format: double
+        expected_doppler_hz:
+          type: number
+          format: double
+        expected_frequency_hz:
+          type: number
+          format: double
+        residual_hz:
+          type: number
+          format: double
+        tolerance_hz:
+          type: number
+          format: double
+        range_rate_mps:
+          type: number
+          format: double
+        elevation_deg:
+          type: number
+          format: double
+        visible:
+          type: boolean
+        tle_status:
+          type: string
+          enum: [fresh, aging]
+        detected_at:
+          type: string
+          format: date-time
     RFAnomaly:
       type: object
       properties:

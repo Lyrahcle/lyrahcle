@@ -7,7 +7,7 @@ import { safeOtpauthUrl } from '../lib/safeUrl'
 
 export default function TwoFactorModal({ onClose, onSecurityChange }) {
   const { t } = useI18n()
-  const dialogRef = useFocusTrap()
+  const dialogRef = useFocusTrap(true, onClose)
   const [loading, setLoading] = useState(true)
   const [enabled, setEnabled] = useState(false)
   const [setup, setSetup] = useState(null)
@@ -22,13 +22,6 @@ export default function TwoFactorModal({ onClose, onSecurityChange }) {
   const [disableError, setDisableError] = useState(null)
   const [disableSuccess, setDisableSuccess] = useState(false)
 
-  useEffect(() => {
-    function handleEscape(event) {
-      if (event.key === 'Escape') onClose()
-    }
-    document.addEventListener('keydown', handleEscape)
-    return () => document.removeEventListener('keydown', handleEscape)
-  }, [onClose])
 
   useEffect(() => {
     let cancelled = false

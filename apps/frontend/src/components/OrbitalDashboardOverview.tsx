@@ -1,26 +1,33 @@
 import { Clock3, Orbit, RadioTower, TriangleAlert } from 'lucide-react'
+import type { SatelliteWithPosition } from '../lib/apiTypes'
 import StatCard from './StatCard.jsx'
 import { useI18n } from '../lib/I18nContext'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
-function hasPosition(satellite) {
+function hasPosition(satellite: SatelliteWithPosition): boolean {
   const position = satellite?.position
   return Number.isFinite(Number(position?.latitude_deg)) &&
     Number.isFinite(Number(position?.longitude_deg)) &&
     Number.isFinite(Number(position?.altitude_km))
 }
 
-function ageMs(value, now) {
+function ageMs(value: string | null | undefined, now: number): number {
   const time = new Date(value ?? 0).getTime()
   return Number.isFinite(time) ? Math.max(0, now - time) : Number.POSITIVE_INFINITY
 }
 
-function scrollTo(id) {
+function scrollTo(id: string): void {
   document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
-export default function OrbitalDashboardOverview({ satellites = [], live = false, now = Date.now() }) {
+interface OrbitalDashboardOverviewProps {
+  satellites?: SatelliteWithPosition[]
+  live?: boolean
+  now?: number
+}
+
+export default function OrbitalDashboardOverview({ satellites = [], live = false, now = Date.now() }: OrbitalDashboardOverviewProps) {
   const { t } = useI18n()
   const positioned = satellites.filter(hasPosition)
   const stale = satellites.filter((satellite) => ageMs(satellite.updated_at, now) > DAY_MS)

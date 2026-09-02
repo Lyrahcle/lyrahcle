@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
 
 	"github.com/mlko01/lyrahcle/apps/backend/internal/auth"
@@ -93,10 +94,32 @@ func validateAgentDeviceReport(info store.AgentDeviceInfo) error {
 	return nil
 }
 
+func auditDetails(ctx context.Context, organizationID uuid.UUID, details map[string]interface{}) map[string]interface{} {
+	enriched := make(map[string]interface{}, len(details)+3)
+	for key, value := range details {
+		enriched[key] = value
+	}
+	if organizationID != uuid.Nil {
+		if _, exists := enriched["organization_id"]; !exists {
+			enriched["organization_id"] = organizationID.String()
+		}
+	}
+	if _, exists := enriched["result"]; !exists {
+		enriched["result"] = "success"
+	}
+	if requestID := middleware.GetReqID(ctx); requestID != "" {
+		if _, exists := enriched["request_id"]; !exists {
+			enriched["request_id"] = requestID
+		}
+	}
+	return enriched
+}
+
 func logAuditInOrganization(ctx context.Context, auditLog *store.AuditStore, organizationID uuid.UUID, actorType, actorID, action, ip string, details map[string]interface{}) {
 	if organizationID == uuid.Nil {
 		organizationID = store.DefaultOrganizationID
 	}
+	details = auditDetails(ctx, organizationID, details)
 	if err := auditLog.InsertInOrganization(ctx, organizationID, actorType, actorID, action, ip, details); err != nil {
 		log.Printf("audit: failed to record %s by %s %s in organization %s: %v", action, actorType, actorID, organizationID, err)
 	}
@@ -118,6 +141,7 @@ func logAudit(ctx context.Context, auditLog *store.AuditStore, actorType, actorI
 			}
 		}
 	}
+	details = auditDetails(ctx, organizationID, details)
 	if err := auditLog.InsertInOrganization(ctx, organizationID, actorType, actorID, action, ip, details); err != nil {
 		log.Printf("audit: failed to record %s by %s %s: %v", action, actorType, actorID, err)
 	}

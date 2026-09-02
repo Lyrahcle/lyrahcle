@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
+
+	"github.com/mlko01/lyrahcle/apps/backend/internal/metrics"
 )
 
 type Cache struct {
@@ -18,15 +20,23 @@ func New(client *redis.Client) *Cache {
 
 func (c *Cache) Get(ctx context.Context, key string, dest interface{}) (bool, error) {
 	if c == nil || c.client == nil {
+		metrics.RecordResponseCacheLookup(ctx, "bypass")
 		return false, nil
 	}
 	raw, err := c.client.Get(ctx, key).Bytes()
+	if err == redis.Nil {
+		metrics.RecordResponseCacheLookup(ctx, "miss")
+		return false, nil
+	}
 	if err != nil {
+		metrics.RecordResponseCacheLookup(ctx, "error")
 		return false, nil
 	}
 	if err := json.Unmarshal(raw, dest); err != nil {
+		metrics.RecordResponseCacheLookup(ctx, "error")
 		return false, nil
 	}
+	metrics.RecordResponseCacheLookup(ctx, "hit")
 	return true, nil
 }
 

@@ -14,7 +14,7 @@ def text(path):
 
 backend = text('apps/backend/cmd/server/cross_domain_v94.go')
 component = text('apps/frontend/src/components/CorrelationEvidencePanel.jsx')
-incidents = text('apps/frontend/src/components/IncidentsPanel.jsx')
+incidents = text('apps/frontend/src/components/IncidentsPanel.tsx')
 translations = text('apps/frontend/src/lib/translations.js')
 component_test = text('apps/frontend/src/components/CorrelationEvidencePanel.test.jsx')
 

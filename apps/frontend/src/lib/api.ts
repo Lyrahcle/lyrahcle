@@ -360,6 +360,12 @@ export async function fetchRfAnomalies() {
   return res.json()
 }
 
+export async function fetchRfDoppler() {
+  const res = await authedFetch('/api/v1/rf/doppler')
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to fetch rf doppler comparisons')
+  return res.json()
+}
+
 export async function fetchSatellites(): Promise<SatelliteWithPosition[]> {
   const res = await authedFetch('/api/v1/satellites/')
   if (!res.ok) throw await apiErrorFromResponse(res, 'failed to fetch satellites')

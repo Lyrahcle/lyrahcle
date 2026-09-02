@@ -1,17 +1,18 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { createOrbitalEvent, fetchOrbitalEvents, fetchSatellitePasses } from '../lib/api'
 import { hasPermission } from '../lib/permissions'
+import type { OrbitalEvent, OrbitalEventType, SatellitePassPredictionResponse, SatelliteWithPosition, SecuritySeverity } from '../lib/apiTypes'
 import { useI18n } from '../lib/I18nContext'
 import SeverityBadge from './SeverityBadge.jsx'
 import TableScroll from './TableScroll.jsx'
 
-function formatDate(value) {
+function formatDate(value: string | null | undefined): string {
   if (!value) return '—'
   const date = new Date(value)
   return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString()
 }
 
-function formatDuration(seconds) {
+function formatDuration(seconds: number | string | null | undefined): string {
   const value = Number(seconds)
   if (!Number.isFinite(value)) return '—'
   const minutes = Math.floor(value / 60)
@@ -19,7 +20,15 @@ function formatDuration(seconds) {
   return `${minutes}m ${remainder}s`
 }
 
-export default function OrbitalOperationsPanel({ satellites = [] }) {
+interface OrbitalOperationsPanelProps {
+  satellites?: SatelliteWithPosition[]
+}
+
+function errorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error && error.message ? error.message : fallback
+}
+
+export default function OrbitalOperationsPanel({ satellites = [] }: OrbitalOperationsPanelProps) {
   const { t } = useI18n()
   const canRead = hasPermission('orbital.read') || hasPermission('orbital.manage')
   const canManage = hasPermission('orbital.manage')
@@ -29,17 +38,17 @@ export default function OrbitalOperationsPanel({ satellites = [] }) {
   const [altitude, setAltitude] = useState('0')
   const [hours, setHours] = useState('24')
   const [minElevation, setMinElevation] = useState('10')
-  const [prediction, setPrediction] = useState(null)
+  const [prediction, setPrediction] = useState<SatellitePassPredictionResponse | null>(null)
   const [predicting, setPredicting] = useState(false)
-  const [events, setEvents] = useState([])
+  const [events, setEvents] = useState<OrbitalEvent[]>([])
   const [eventsLoading, setEventsLoading] = useState(false)
   const [error, setError] = useState('')
 
-  const [eventType, setEventType] = useState('maneuver')
+  const [eventType, setEventType] = useState<OrbitalEventType>('maneuver')
   const [eventTime, setEventTime] = useState('')
   const [eventSource, setEventSource] = useState('')
   const [eventConfidence, setEventConfidence] = useState('0.8')
-  const [eventSeverity, setEventSeverity] = useState('info')
+  const [eventSeverity, setEventSeverity] = useState<SecuritySeverity>('info')
   const [creatingEvent, setCreatingEvent] = useState(false)
 
   const selectedSatellite = useMemo(
@@ -70,7 +79,7 @@ export default function OrbitalOperationsPanel({ satellites = [] }) {
         if (!cancelled) setEvents(Array.isArray(items) ? items : [])
       })
       .catch((err) => {
-        if (!cancelled) setError(err.message || t('orbitalOperations.eventsFailed'))
+        if (!cancelled) setError(errorMessage(err, t('orbitalOperations.eventsFailed')))
       })
       .finally(() => {
         if (!cancelled) setEventsLoading(false)
@@ -80,7 +89,7 @@ export default function OrbitalOperationsPanel({ satellites = [] }) {
     }
   }, [canRead, satelliteId, t])
 
-  async function handlePredict(event) {
+  async function handlePredict(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError('')
     setPredicting(true)
@@ -96,7 +105,7 @@ export default function OrbitalOperationsPanel({ satellites = [] }) {
       setPrediction(result)
     } catch (err) {
       setPrediction(null)
-      setError(err.message || t('orbitalOperations.predictionFailed'))
+      setError(errorMessage(err, t('orbitalOperations.predictionFailed')))
     } finally {
       setPredicting(false)
     }
@@ -107,7 +116,7 @@ export default function OrbitalOperationsPanel({ satellites = [] }) {
     setEvents(Array.isArray(items) ? items : [])
   }
 
-  async function handleCreateEvent(event) {
+  async function handleCreateEvent(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError('')
     setCreatingEvent(true)
@@ -122,7 +131,7 @@ export default function OrbitalOperationsPanel({ satellites = [] }) {
       setEventSource('')
       await reloadEvents()
     } catch (err) {
-      setError(err.message || t('orbitalOperations.eventCreateFailed'))
+      setError(errorMessage(err, t('orbitalOperations.eventCreateFailed')))
     } finally {
       setCreatingEvent(false)
     }
@@ -265,7 +274,7 @@ export default function OrbitalOperationsPanel({ satellites = [] }) {
               <p className="mt-1 text-xs text-lyra-muted">{t('orbitalOperations.candidateOnly')}</p>
             </div>
             <label className="grid gap-1 text-xs text-lyra-muted">{t('orbitalOperations.type')}
-              <select value={eventType} onChange={(event) => setEventType(event.target.value)} className="rounded border border-lyra-border bg-lyra-bg px-3 py-2 text-sm text-lyra-text">
+              <select value={eventType} onChange={(event) => setEventType(event.target.value as OrbitalEventType)} className="rounded border border-lyra-border bg-lyra-bg px-3 py-2 text-sm text-lyra-text">
                 <option value="maneuver">{t('orbitalOperations.maneuver')}</option>
                 <option value="conjunction">{t('orbitalOperations.conjunction')}</option>
               </select>
@@ -274,14 +283,14 @@ export default function OrbitalOperationsPanel({ satellites = [] }) {
               <input required type="datetime-local" value={eventTime} onChange={(event) => setEventTime(event.target.value)} className="rounded border border-lyra-border bg-lyra-bg px-3 py-2 text-sm text-lyra-text" />
             </label>
             <label className="grid gap-1 text-xs text-lyra-muted">{t('orbitalOperations.source')}
-              <input required maxLength="160" value={eventSource} onChange={(event) => setEventSource(event.target.value)} placeholder={t('orbitalOperations.sourcePlaceholder')} className="rounded border border-lyra-border bg-lyra-bg px-3 py-2 text-sm text-lyra-text" />
+              <input required maxLength={160} value={eventSource} onChange={(event) => setEventSource(event.target.value)} placeholder={t('orbitalOperations.sourcePlaceholder')} className="rounded border border-lyra-border bg-lyra-bg px-3 py-2 text-sm text-lyra-text" />
             </label>
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
               <label className="grid gap-1 text-xs text-lyra-muted">{t('orbitalOperations.confidence')}
                 <input required type="number" min="0" max="1" step="0.01" value={eventConfidence} onChange={(event) => setEventConfidence(event.target.value)} className="rounded border border-lyra-border bg-lyra-bg px-3 py-2 text-sm text-lyra-text" />
               </label>
               <label className="grid gap-1 text-xs text-lyra-muted">{t('orbitalOperations.severity')}
-                <select value={eventSeverity} onChange={(event) => setEventSeverity(event.target.value)} className="rounded border border-lyra-border bg-lyra-bg px-3 py-2 text-sm text-lyra-text">
+                <select value={eventSeverity} onChange={(event) => setEventSeverity(event.target.value as SecuritySeverity)} className="rounded border border-lyra-border bg-lyra-bg px-3 py-2 text-sm text-lyra-text">
                   {['info', 'low', 'medium', 'high', 'critical'].map((severity) => <option key={severity} value={severity}>{severity}</option>)}
                 </select>
               </label>

@@ -1,10 +1,31 @@
 import { useEffect, useRef, type RefObject } from 'react'
 
-const FOCUSABLE_SELECTOR =
-  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+const FOCUSABLE_SELECTOR = [
+  'a[href]',
+  'button:not([disabled])',
+  'textarea:not([disabled])',
+  'input:not([disabled])',
+  'select:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(', ')
 
-export function useFocusTrap(active: boolean = true): RefObject<HTMLElement | null> {
+function isAvailableForFocus(element: HTMLElement): boolean {
+  if (element.hasAttribute('hidden')) return false
+  if (element.getAttribute('aria-hidden') === 'true') return false
+  if (element.closest('[inert]')) return false
+  return true
+}
+
+export function useFocusTrap(
+  active: boolean = true,
+  onEscape?: () => void,
+): RefObject<HTMLElement | null> {
   const containerRef = useRef<HTMLElement | null>(null)
+  const onEscapeRef = useRef(onEscape)
+
+  useEffect(() => {
+    onEscapeRef.current = onEscape
+  }, [onEscape])
 
   useEffect(() => {
     if (!active) return
@@ -12,32 +33,46 @@ export function useFocusTrap(active: boolean = true): RefObject<HTMLElement | nu
     if (!container) return
 
     const previouslyFocused = document.activeElement
-    const focusables = (): HTMLElement[] => Array.from(container.querySelectorAll(FOCUSABLE_SELECTOR))
+    const focusables = (): HTMLElement[] =>
+      (Array.from(container.querySelectorAll(FOCUSABLE_SELECTOR)) as HTMLElement[]).filter(isAvailableForFocus)
 
     const first = focusables()[0]
     ;(first ?? container).focus()
 
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key !== 'Tab') return
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape' && onEscapeRef.current) {
+        event.preventDefault()
+        event.stopPropagation()
+        onEscapeRef.current()
+        return
+      }
+
+      if (event.key !== 'Tab') return
       const elements = focusables()
-      if (elements.length === 0) return
+      if (elements.length === 0) {
+        event.preventDefault()
+        container?.focus()
+        return
+      }
 
-      const firstEl = elements[0]
-      const lastEl = elements[elements.length - 1]
+      const firstElement = elements[0]
+      const lastElement = elements[elements.length - 1]
 
-      if (e.shiftKey && document.activeElement === firstEl) {
-        e.preventDefault()
-        lastEl.focus()
-      } else if (!e.shiftKey && document.activeElement === lastEl) {
-        e.preventDefault()
-        firstEl.focus()
+      if (event.shiftKey && (document.activeElement === firstElement || document.activeElement === container)) {
+        event.preventDefault()
+        lastElement.focus()
+      } else if (!event.shiftKey && document.activeElement === lastElement) {
+        event.preventDefault()
+        firstElement.focus()
       }
     }
 
-    container.addEventListener('keydown', handleKeyDown)
+    document.addEventListener('keydown', handleKeyDown)
     return () => {
-      container.removeEventListener('keydown', handleKeyDown)
-      if (previouslyFocused instanceof HTMLElement) previouslyFocused.focus()
+      document.removeEventListener('keydown', handleKeyDown)
+      if (previouslyFocused instanceof HTMLElement && previouslyFocused.isConnected) {
+        previouslyFocused.focus()
+      }
     }
   }, [active])
 

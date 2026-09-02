@@ -77,3 +77,34 @@ func TestAdministrativeAuditMatrixUsesCentralActionCatalog(t *testing.T) {
 		`ActionAgentConfigRollback        = "agent.config_rollback"`,
 	)
 }
+
+func TestAdministrativeAuditMatrixUsers(t *testing.T) {
+	requireAuditContractTokens(t, "routes_users.go",
+		"audit.ActionUserCreated",
+		"audit.ActionRoleChanged",
+		"audit.ActionUserStatusChanged",
+		"audit.ActionUserDeleted",
+		`"target_user_id"`,
+	)
+}
+
+func TestAdministrativeAuditMatrixRBAC(t *testing.T) {
+	requireAuditContractTokens(t, "rbac_v110.go",
+		"audit.ActionRBACRoleCreated",
+		"audit.ActionRBACRoleAssigned",
+		"audit.ActionRBACRoleRemoved",
+		"logAuditInOrganization",
+		`"role_id"`,
+		`"target_user_id"`,
+	)
+}
+
+func TestAdministrativeAuditHelpersEnrichTraceContext(t *testing.T) {
+	requireAuditContractTokens(t, "validation_audit.go",
+		"func auditDetails",
+		`enriched["organization_id"]`,
+		`enriched["result"] = "success"`,
+		"middleware.GetReqID(ctx)",
+		`enriched["request_id"]`,
+	)
+}

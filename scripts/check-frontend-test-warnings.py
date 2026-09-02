@@ -7,7 +7,9 @@ import sys
 from pathlib import Path
 
 PATTERNS = [
-    ("react act warning", re.compile(r"not wrapped in act\(")),
+    ("react act warning", re.compile(r"not wrapped in act\(", re.IGNORECASE)),
+    ("unhandled promise rejection", re.compile(r"unhandled(?: promise)? rejection", re.IGNORECASE)),
+    ("unhandled test error", re.compile(r"unhandled errors?", re.IGNORECASE)),
 ]
 
 

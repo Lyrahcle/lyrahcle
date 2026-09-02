@@ -43,3 +43,7 @@ backups/
 
 # Generated security artifacts
 artifacts/
+
+# Playwright E2E artifacts
+apps/frontend/playwright-report/
+apps/frontend/test-results/

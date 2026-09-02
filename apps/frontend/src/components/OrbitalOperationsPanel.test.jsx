@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { I18nProvider } from '../lib/I18nContext'
 import { clearEffectivePermissions, setEffectivePermissions } from '../lib/permissions'
-import OrbitalOperationsPanel from './OrbitalOperationsPanel.jsx'
+import OrbitalOperationsPanel from './OrbitalOperationsPanel.tsx'
 import * as api from '../lib/api'
 
 vi.mock('../lib/api', () => ({

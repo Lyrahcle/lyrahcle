@@ -1,4 +1,3 @@
-import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useI18n } from '../lib/I18nContext'
 import { useFocusTrap } from '../lib/useFocusTrap'
@@ -14,15 +13,7 @@ export default function ConfirmDialog({
   onCancel,
 }) {
   const { t } = useI18n()
-  const dialogRef = useFocusTrap()
-
-  useEffect(() => {
-    function handleEscape(event) {
-      if (event.key === 'Escape' && !busy) onCancel()
-    }
-    document.addEventListener('keydown', handleEscape)
-    return () => document.removeEventListener('keydown', handleEscape)
-  }, [onCancel, busy])
+  const dialogRef = useFocusTrap(true, busy ? undefined : onCancel)
 
   return createPortal(
     <div className="fixed inset-0 z-[100] overflow-y-auto bg-black/70 p-4 backdrop-blur-[2px] sm:p-6">

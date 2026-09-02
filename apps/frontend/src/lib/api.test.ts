@@ -25,6 +25,7 @@ import {
   fetchPing,
   fetchPrograms,
   fetchRfReadings,
+  fetchRfDoppler,
   fetchSessions,
   rollbackAgentConfig,
   revokeSession,
@@ -236,6 +237,15 @@ describe('api client', () => {
   it('fetchPing throws when the backend is unreachable', async () => {
     mockFetchOnce(false, null, 500)
     await expect(fetchPing()).rejects.toThrow('backend unreachable')
+  })
+
+  it('fetchRfDoppler uses the protected Doppler endpoint', async () => {
+    sessionStorage.setItem('lyra_token', 'token-123')
+    mockFetchOnce(true, [])
+    await fetchRfDoppler()
+    expect(global.fetch).toHaveBeenCalledWith('/api/v1/rf/doppler', expect.objectContaining({
+      headers: expect.objectContaining({ Authorization: 'Bearer token-123' }),
+    }))
   })
 
   it('fetchRfReadings sends the auth header', async () => {
