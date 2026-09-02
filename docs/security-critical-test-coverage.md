@@ -6,6 +6,8 @@ Lyrahcle enforces a minimum 80% Go coverage gate for backend packages that sit d
 
 The backend CI job runs one combined coverage profile across:
 
+- `internal/auth` — JWT validation, key rotation fallback, RBAC/permission middleware, revocation fail-closed behavior, agent credentials and tenant-scoped authorization.
+
 - `internal/correlation` — explainable RF cross-domain candidate scoring and context-only handling.
 - `internal/detection` — deterministic RF rule matching and severity ordering.
 - `internal/tlequality` — TLE freshness and fail-closed orbital escalation eligibility.
@@ -25,4 +27,4 @@ Tests explicitly preserve these safety properties:
 
 The cross-domain engine remains candidate-only: the correlation summary does not directly overwrite incident severity. Existing domain-specific policy and physical RF validation gates remain authoritative.
 
-Authentication has extensive unit/E2E coverage but remains outside this first measured backend gate until its combined percentage is measured independently; the roadmap item stays open until all selected critical backend paths are gated.
+Authentication is now part of the same enforced backend gate. The gate intentionally measures the security-critical packages together while the auth package keeps dedicated regression tests for malformed/expired/tampered JWTs, invalid claims, key rotation, revocation backend failures, forced password changes, role/permission denial, agent credential precedence and organization scoping.

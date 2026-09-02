@@ -72,7 +72,7 @@
 - [x] Pull-request dependency review gate
 - [x] SDR-agent fuzz targets with bounded corpora and CI execution
 - [x] >80% coverage gate across critical SDR processing packages
-- [ ] >80% coverage gate across critical backend security packages (`correlation`, `detection`, `tlequality` gated first; auth measurement pending)
+- [x] >80% coverage gate across critical backend security packages (`auth`, `correlation`, `detection`, `tlequality`)
 - [x] Authentication E2E test for login, authenticated request, logout revocation, and relogin
 - [x] JWT issuer/audience/subject validation and short configurable access-token TTL
 - [x] Previous signing-key overlap for controlled JWT key rotation

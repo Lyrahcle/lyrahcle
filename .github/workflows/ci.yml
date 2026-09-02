@@ -51,7 +51,7 @@ jobs:
         env:
           TEST_REDIS_ADDR: localhost:6379
         run: |
-          go test ./internal/correlation ./internal/detection ./internal/tlequality -coverprofile=coverage-security-critical.out
+          go test ./internal/auth ./internal/correlation ./internal/detection ./internal/tlequality -coverprofile=coverage-security-critical.out
           ../../scripts/check-go-coverage.sh coverage-security-critical.out 80
       - name: Race detector
         run: go test -race ./...
@@ -154,6 +154,8 @@ jobs:
           python3 -m json.tool deploy/grafana/dashboards/lyrahcle-overview.json >/dev/null
       - name: Security and parity contracts
         run: ./scripts/check-contracts.sh
+      - name: DR evidence contract tests
+        run: python3 -m unittest scripts/test_collect_dr_evidence.py
       - name: Helm lint and render
         run: |
           helm lint deploy/helm/lyrahcle

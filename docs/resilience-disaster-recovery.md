@@ -59,6 +59,20 @@ The report is written to `/tmp/lyrahcle-dr-restore-report.json`.
 
 This proves recoverability at the backup boundary. Production RPO still depends on the real backup and point-in-time-recovery cadence.
 
+## Consolidated CYSAT DR evidence
+
+After both local drills pass, consolidate their machine-readable reports with:
+
+```bash
+python3 scripts/collect-dr-evidence.py
+```
+
+The command reads `/tmp/lyrahcle-k8s-resilience-report.json` and `/tmp/lyrahcle-dr-restore-report.json`, rejects missing or non-PASS evidence, rejects any kind RTO measurement above its declared target, and writes `/tmp/lyrahcle-dr-evidence.json`. The collector itself is regression-tested in CI.
+
+A PASS evidence file supports the following bounded claim for a CYSAT demo: application/dependency recovery targets were measured in the local three-node kind environment, and the PostgreSQL restore drill observed zero lost rows at the verified backup boundary while checking table counts and migration state. It does **not** certify the AWS design objectives or prove a five-minute production RPO; those remain pending until an isolated RDS/PITR and ElastiCache production-like exercise is performed.
+
+The evidence JSON records each observed RTO beside its target, worst target utilisation, restore duration, integrity counts, source-report timestamps, RPO scope, and the explicit certification limit. Keep the JSON with demo/release evidence when a drill is used as a resilience proof point.
+
 ## Kubernetes production hardening
 
 Production requires backend and frontend PDBs with at least one available replica. It also requires strict topology spreading across hostname and zone with at least two eligible domains. The Helm validation fails closed if these controls are weakened.

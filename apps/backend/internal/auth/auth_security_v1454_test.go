@@ -282,3 +282,55 @@ func TestRoleAndOrganizationEdgeCases(t *testing.T) {
 		t.Fatalf("OrganizationID()=(%s,%v) want (%s,nil)", got, err, orgID)
 	}
 }
+
+func TestBearerParsingFailsClosedForAmbiguousHeaders(t *testing.T) {
+	secret := []byte("bearer-format-secret")
+	token, err := IssueToken(secret, uuid.New(), RoleAdmin, time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, header := range []string{
+		"bearer " + token,
+		"Bearer",
+		"Bearer  " + token,
+		"Basic " + token,
+		" Bearer " + token,
+	} {
+		t.Run(header[:min(len(header), 16)], func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/api/v1/incidents", nil)
+			req.Header.Set("Authorization", header)
+			rec := httptest.NewRecorder()
+			RequireRole(secret, RoleViewer)(newTestHandler()).ServeHTTP(rec, req)
+			if rec.Code != http.StatusUnauthorized {
+				t.Fatalf("header %q status=%d want %d", header, rec.Code, http.StatusUnauthorized)
+			}
+		})
+	}
+}
+
+func TestOrganizationClaimsReachAuthorizationContext(t *testing.T) {
+	secret := []byte("organization-context-secret")
+	userID, organizationID := uuid.New(), uuid.New()
+	token, _, err := IssueOrganizationUserTokenWithState(secret, userID, organizationID, RoleViewer, false, 2, time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	checker := &securityPermissionChecker{allowed: map[string]bool{"incidents.read": true}}
+	var gotUser, gotOrganization uuid.UUID
+	capture := permissionCheckerFunc(func(_ context.Context, user, organization uuid.UUID, permission string) (bool, error) {
+		gotUser, gotOrganization = user, organization
+		return checker.HasPermission(context.Background(), user, organization, permission)
+	})
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/incidents", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+	RequirePermissionWithFallback(secret, nil, capture, "incidents.read", nil)(newTestHandler()).ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d want %d", rec.Code, http.StatusOK)
+	}
+	if gotUser != userID || gotOrganization != organizationID {
+		t.Fatalf("authorization context user=%s org=%s, want user=%s org=%s", gotUser, gotOrganization, userID, organizationID)
+	}
+}
