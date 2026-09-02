@@ -1,21 +1,12 @@
 package main
 
 import (
-	"os"
 	"strings"
 	"testing"
 )
 
 func TestCorrelationInputsCarryOrganizationContext(t *testing.T) {
-	files := []string{"main.go", "cross_domain_v94.go"}
-	joined := ""
-	for _, file := range files {
-		data, err := os.ReadFile(file)
-		if err != nil {
-			t.Fatal(err)
-		}
-		joined += string(data)
-	}
+	joined := readServerProductionSource(t)
 	if !strings.Contains(joined, "OrganizationID") && !strings.Contains(joined, "organizationID") {
 		t.Fatal("correlation/background paths have no organization context")
 	}

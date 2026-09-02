@@ -6,6 +6,7 @@ import Pagination from './Pagination.jsx'
 import Skeleton from './Skeleton.jsx'
 import { fetchSpaceCVEKeywords } from '../lib/api'
 import { useI18n } from '../lib/I18nContext'
+import StatusState from './StatusState.tsx'
 
 const SEVERITIES = ['low', 'medium', 'high', 'critical']
 const SORT_FIELDS = ['published', 'severity', 'score', 'cve_id']
@@ -140,10 +141,7 @@ export default function ThreatIntelPanel({ page, loading, filters, onFiltersChan
       {loading ? (
         <Skeleton />
       ) : !cves.length ? (
-        <div className="rounded border border-dashed border-lyra-border px-5 py-10 text-center">
-          <p className="text-sm text-lyra-muted">{t('threatIntel.empty')}</p>
-          <p className="mt-1 text-xs text-lyra-mutedDim">{t('threatIntel.emptyHint')}</p>
-        </div>
+        <StatusState kind="empty" title={t('threatIntel.empty')} message={t('threatIntel.emptyHint')} />
       ) : (
         <div>
           <TableScroll>

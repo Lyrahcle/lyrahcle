@@ -2,6 +2,7 @@ export const DEFAULT_TAB = 'orbital' as const
 
 const VALID_TABS = [
   'orbital',
+  'graph',
   'stations',
   'assets',
   'signal',

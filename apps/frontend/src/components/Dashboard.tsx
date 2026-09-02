@@ -1,7 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ComponentType } from 'react'
+import type { RouteTab } from '../lib/routeTabs'
+import { buildDashboardNavigation } from './dashboard/navigation'
+import type { RBACPermission, RBACRole, RBACUser } from '../types/security'
 import Header from './Header.jsx'
 import NavigationMenu from './NavigationMenu.jsx'
-import Panel from './Panel.jsx'
+import SkipLink from './SkipLink'
+import Panel from './Panel.tsx'
 import Skeleton from './Skeleton.jsx'
 import WorldMap from './WorldMap.jsx'
 import ThreatIntelPanel from './ThreatIntelPanel.jsx'
@@ -42,60 +46,96 @@ import {
 } from '../lib/api'
 import { lazyComponent } from '../lib/lazyComponent'
 
-const AssetsTable = lazyComponent(() => import('./AssetsTable.jsx'))
-const RfPanel = lazyComponent(() => import('./RfPanel.jsx'))
-const AnomaliesPanel = lazyComponent(() => import('./AnomaliesPanel.jsx'))
-const DetectionRulesPanel = lazyComponent(() => import('./DetectionRulesPanel.jsx'))
-const SatellitesPanel = lazyComponent(() => import('./SatellitesPanel.jsx'))
-const OrbitalOperationsPanel = lazyComponent(() => import('./OrbitalOperationsPanel.jsx'))
-const MissionSecurityOperationsDashboard = lazyComponent(() => import('./MissionSecurityOperationsDashboard.jsx'))
-const SatelliteSecurityProfile = lazyComponent(() => import('./SatelliteSecurityProfile.jsx'))
-const GroundStationOperations = lazyComponent(() => import('./GroundStationOperations.jsx'))
-const AssetAlertsPanel = lazyComponent(() => import('./AssetAlertsPanel.jsx'))
-const IncidentsPanel = lazyComponent(() => import('./IncidentsPanel.jsx'))
-const Decoder = lazyComponent(() => import('./Decoder.jsx'))
-const ProgramManager = lazyComponent(() => import('./ProgramManager.jsx'))
-const ConnectivityPanel = lazyComponent(() => import('./ConnectivityPanel.jsx'))
-const AuditLogPanel = lazyComponent(() => import('./AuditLogPanel.jsx'))
-const UsersPanel = lazyComponent(() => import('./UsersPanel.jsx'))
-const SettingsPanel = lazyComponent(() => import('./SettingsPanel.jsx'))
-const PlatformOrganizationsPanel = lazyComponent(() => import('./PlatformOrganizationsPanel.jsx'))
-const PlatformOperationsOverview = lazyComponent(() => import('./PlatformOperationsOverview.jsx'))
-const SigningKeysPanel = lazyComponent(() => import('./SigningKeysPanel.jsx'))
-const RateLimitPolicyPanel = lazyComponent(() => import('./RateLimitPolicyPanel.jsx'))
-const SecretProviderPanel = lazyComponent(() => import('./SecretProviderPanel.jsx'))
-const IncidentResponsePanel = lazyComponent(() => import('./IncidentResponsePanel.jsx'))
-const RBACPanel = lazyComponent(() => import('./RBACPanel.jsx'))
-const RFHeatMap = lazyComponent(() => import('./RFHeatMap.jsx'))
+const AssetsTable = lazyComponent<any>(() => import('./AssetsTable.jsx'))
+const RfPanel = lazyComponent<any>(() => import('./RfPanel.jsx'))
+const AnomaliesPanel = lazyComponent<any>(() => import('./AnomaliesPanel.jsx'))
+const DetectionRulesPanel = lazyComponent<any>(() => import('./DetectionRulesPanel.jsx'))
+const SatellitesPanel = lazyComponent<any>(() => import('./SatellitesPanel.jsx'))
+const OrbitalOperationsPanel = lazyComponent<any>(() => import('./OrbitalOperationsPanel.jsx'))
+const MissionSecurityOperationsDashboard = lazyComponent<any>(() => import('./MissionSecurityOperationsDashboard.jsx'))
+const SatelliteSecurityProfile = lazyComponent<any>(() => import('./SatelliteSecurityProfile.jsx'))
+const GroundStationOperations = lazyComponent<any>(() => import('./GroundStationOperations.jsx'))
+const AssetAlertsPanel = lazyComponent<any>(() => import('./AssetAlertsPanel.jsx'))
+const IncidentsPanel = lazyComponent<any>(() => import('./IncidentsPanel.jsx'))
+const Decoder = lazyComponent<any>(() => import('./Decoder.jsx'))
+const ProgramManager = lazyComponent<any>(() => import('./ProgramManager.jsx'))
+const ConnectivityPanel = lazyComponent<any>(() => import('./ConnectivityPanel.jsx'))
+const AuditLogPanel = lazyComponent<any>(() => import('./AuditLogPanel.jsx'))
+const UsersPanel = lazyComponent<any>(() => import('./UsersPanel.jsx'))
+const SettingsPanel = lazyComponent<any>(() => import('./SettingsPanel.jsx'))
+const PlatformOrganizationsPanel = lazyComponent<any>(() => import('./PlatformOrganizationsPanel.jsx'))
+const PlatformOperationsOverview = lazyComponent<any>(() => import('./PlatformOperationsOverview.jsx'))
+const SigningKeysPanel = lazyComponent<any>(() => import('./SigningKeysPanel.jsx'))
+const RateLimitPolicyPanel = lazyComponent(() => import('./RateLimitPolicyPanel.tsx'))
+const SecretProviderPanel = lazyComponent(() => import('./SecretProviderPanel.tsx'))
+const IncidentResponsePanel = lazyComponent(() => import('./IncidentResponsePanel.tsx'))
+const RBACPanel = lazyComponent(() => import('./RBACPanel.tsx'))
+const RFHeatMap = lazyComponent<any>(() => import('./RFHeatMap.jsx'))
+const CorrelationGraph = lazyComponent(() => import('./CorrelationGraph.tsx'))
+
+const UntypedWorldMap = WorldMap as ComponentType<any>
+const UntypedNewAssetForm = NewAssetForm as ComponentType<any>
+const UntypedPlatformOperationsOverview = PlatformOperationsOverview as ComponentType<any>
 
 const REFRESH_MS = 8000
 const PAGE_LIMIT = 50
 
-export default function Dashboard({ onLogout, onSessionExpired, activeTab, onChangeTab }) {
+type DashboardEntity = Record<string, any>
+type DashboardPage = {
+  items: DashboardEntity[]
+  total?: number
+  limit?: number
+  offset?: number
+  [key: string]: any
+}
+type Status = 'checking' | 'online' | 'offline'
+type CVEFilters = {
+  severity: string
+  keyword: string
+  publishedFrom: string
+  publishedTo: string
+  sort: string
+  order: string
+}
+type IncidentFilters = {
+  status: string
+  severity: string
+  agentId: string
+  satelliteId: string
+}
+
+interface DashboardProps {
+  onLogout: () => void
+  onSessionExpired: () => void
+  activeTab: RouteTab
+  onChangeTab: (tab: RouteTab) => void
+}
+
+export default function Dashboard({ onLogout, onSessionExpired, activeTab, onChangeTab }: DashboardProps) {
   const { t } = useI18n()
-  const [assets, setAssets] = useState(null)
-  const [programs, setPrograms] = useState(null)
-  const [rfReadings, setRfReadings] = useState(null)
-  const [rfAnomalies, setRfAnomalies] = useState(null)
-  const [detectionRules, setDetectionRules] = useState(null)
-  const [satellites, setSatellites] = useState(null)
+  const [assets, setAssets] = useState<DashboardPage | null>(null)
+  const [programs, setPrograms] = useState<DashboardEntity[] | null>(null)
+  const [rfReadings, setRfReadings] = useState<DashboardEntity[] | null>(null)
+  const [rfAnomalies, setRfAnomalies] = useState<DashboardEntity[] | null>(null)
+  const [detectionRules, setDetectionRules] = useState<DashboardPage | null>(null)
+  const [satellites, setSatellites] = useState<DashboardEntity[] | null>(null)
   const [satellitesLive, setSatellitesLive] = useState(false)
-  const [selectedSatelliteId, setSelectedSatelliteId] = useState(null)
-  const [spaceCVEs, setSpaceCVEs] = useState(null)
-  const [assetAlerts, setAssetAlerts] = useState(null)
-  const [incidents, setIncidents] = useState(null)
-  const [agentKeys, setAgentKeys] = useState(null)
-  const [agentIdentities, setAgentIdentities] = useState(null)
-  const [auditEntries, setAuditEntries] = useState(null)
-  const [users, setUsers] = useState(null)
+  const [selectedSatelliteId, setSelectedSatelliteId] = useState<string | null>(null)
+  const [spaceCVEs, setSpaceCVEs] = useState<DashboardPage | null>(null)
+  const [assetAlerts, setAssetAlerts] = useState<DashboardPage | null>(null)
+  const [incidents, setIncidents] = useState<DashboardPage | null>(null)
+  const [agentKeys, setAgentKeys] = useState<DashboardEntity[] | null>(null)
+  const [agentIdentities, setAgentIdentities] = useState<DashboardEntity[] | null>(null)
+  const [auditEntries, setAuditEntries] = useState<DashboardPage | null>(null)
+  const [users, setUsers] = useState<RBACUser[] | null>(null)
   const [platformAdmin, setPlatformAdmin] = useState(false)
-  const [organizations, setOrganizations] = useState(null)
-  const [platformUsers, setPlatformUsers] = useState(null)
-  const [rbacPermissions, setRbacPermissions] = useState(null)
-  const [rbacRoles, setRbacRoles] = useState(null)
-  const [backendStatus, setBackendStatus] = useState('checking')
-  const [dbStatus, setDbStatus] = useState('checking')
-  const [apiIssue, setApiIssue] = useState(null)
+  const [organizations, setOrganizations] = useState<DashboardEntity[] | null>(null)
+  const [platformUsers, setPlatformUsers] = useState<DashboardEntity[] | null>(null)
+  const [rbacPermissions, setRbacPermissions] = useState<RBACPermission[] | null>(null)
+  const [rbacRoles, setRbacRoles] = useState<RBACRole[] | null>(null)
+  const [backendStatus, setBackendStatus] = useState<Status>('checking')
+  const [dbStatus, setDbStatus] = useState<Status>('checking')
+  const [apiIssue, setApiIssue] = useState<ApiError | null>(null)
   const [retryNonce, setRetryNonce] = useState(0)
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false)
   const [navigationCollapsed, setNavigationCollapsed] = useState(() => localStorage.getItem('lyra_nav_collapsed') === '1')
@@ -111,14 +151,14 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
 
   const [assetsOffset, setAssetsOffset] = useState(0)
   const [cvesOffset, setCvesOffset] = useState(0)
-  const [cveFilters, setCveFilters] = useState({ severity: '', keyword: '', publishedFrom: '', publishedTo: '', sort: 'published', order: 'desc' })
+  const [cveFilters, setCveFilters] = useState<CVEFilters>({ severity: '', keyword: '', publishedFrom: '', publishedTo: '', sort: 'published', order: 'desc' })
   const cveFiltersRef = useRef(cveFilters)
   useEffect(() => {
     cveFiltersRef.current = cveFilters
   }, [cveFilters])
   const [alertsOffset, setAlertsOffset] = useState(0)
   const [incidentsOffset, setIncidentsOffset] = useState(0)
-  const [incidentFilters, setIncidentFilters] = useState({ status: '', severity: '', agentId: '', satelliteId: '' })
+  const [incidentFilters, setIncidentFilters] = useState<IncidentFilters>({ status: '', severity: '', agentId: '', satelliteId: '' })
   const [auditOffset, setAuditOffset] = useState(0)
   const assetsOffsetRef = useRef(0)
   const cvesOffsetRef = useRef(0)
@@ -167,6 +207,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
 
   const admin = hasPermission('users.manage')
   const programsAccess = hasPermission('programs.read') || hasPermission('programs.manage')
+  const assetsAccess = hasPermission('assets.read') || hasPermission('assets.manage')
   const usersRead = hasPermission('users.read')
   const incidentsRead = hasPermission('incidents.read')
   const incidentsManage = hasPermission('incidents.manage')
@@ -180,22 +221,14 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
   const adminAccess = admin || usersRead || auditAccess || rbacRead || rbacManage
   const connectivityAccess = agentsRead || agentsManage
   const orbitalAccess = hasPermission('orbital.read') || hasPermission('orbital.manage')
-  const tabs = [
-    { id: 'orbital', label: t('navigation.items.overview'), section: 'overview' },
-    ...(connectivityAccess ? [{ id: 'stations', label: t('tabs.stations'), section: 'mission' }] : []),
-    { id: 'assets', label: t('tabs.assets'), section: 'mission' },
-    { id: 'incidents', label: t('tabs.incidents'), section: 'security' },
-    { id: 'intel', label: t('tabs.intel'), section: 'security' },
-    { id: 'signal', label: t('navigation.items.rfDetection'), section: 'rf' },
-    { id: 'decoder', label: t('tabs.decoder'), section: 'rf' },
-    { id: 'connectivity', label: t('navigation.items.sdrFleet'), section: 'platform' },
-    ...(adminAccess ? [{ id: 'admin', label: t('navigation.items.accessControl'), section: 'platform' }] : []),
-    ...(platformAdmin ? [{ id: 'platform', label: t('tabs.platform'), section: 'platform' }] : []),
-    { id: 'settings', label: t('tabs.settings'), section: 'preferences' },
-  ]
+  const tabs = buildDashboardNavigation(t, {
+    connectivity: connectivityAccess,
+    administration: adminAccess,
+    platform: platformAdmin,
+  })
   const activeNavigationItem = tabs.find((item) => item.id === activeTab) ?? tabs[0]
 
-  function handleCommandNavigate(tab, result) {
+  function handleCommandNavigate(tab: RouteTab, result?: { type?: string; id?: string }) {
     if (result?.type === 'satellites' && result.id) {
       setSelectedSatelliteId(result.id)
       onChangeTab('orbital')
@@ -221,7 +254,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
   useEffect(() => {
     let cancelled = false
 
-    async function safeFetch(fetcher, setter, fallback = []) {
+    async function safeFetch(fetcher: () => Promise<any>, setter: (value: any) => void, fallback: any = []) {
       try {
         const data = await fetcher()
         if (!cancelled) setter(data ?? fallback)
@@ -264,6 +297,35 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
             { items: [], total: 0, limit: PAGE_LIMIT, offset: 0 },
           ))
         }
+        await Promise.all(requests)
+        return
+      }
+
+      if (activeTab === 'graph') {
+        const requests: Promise<void>[] = []
+        if (orbitalAccess) requests.push(safeFetch(fetchSatellites, setSatellites))
+        if (connectivityAccess) requests.push(safeFetch(fetchAgentIdentities, setAgentIdentities))
+        if (rfRead) {
+          requests.push(safeFetch(fetchRfReadings, setRfReadings))
+          requests.push(safeFetch(fetchRfAnomalies, setRfAnomalies))
+        }
+        if (incidentsRead) {
+          requests.push(safeFetch(
+            () => fetchIncidents(PAGE_LIMIT, 0, {}),
+            setIncidents,
+            { items: [], total: 0, limit: PAGE_LIMIT, offset: 0 },
+          ))
+        }
+        if (alertsRead) {
+          requests.push(safeFetch(
+            () => fetchAssetAlerts(PAGE_LIMIT, 0),
+            setAssetAlerts,
+            { items: [], total: 0, limit: PAGE_LIMIT, offset: 0 },
+          ))
+        }
+        if (assetsAccess) requests.push(safeFetch(() => fetchAssets(PAGE_LIMIT, 0), setAssets, { items: [], total: 0, limit: PAGE_LIMIT, offset: 0 }))
+        if (programsAccess) requests.push(safeFetch(fetchPrograms, setPrograms))
+        requests.push(safeFetch(() => fetchSpaceCVEs(PAGE_LIMIT, 0, { severity: '', keyword: '', publishedFrom: '', publishedTo: '', sort: 'published', order: 'desc' }), setSpaceCVEs, { items: [], total: 0, limit: PAGE_LIMIT, offset: 0 }))
         await Promise.all(requests)
         return
       }
@@ -366,7 +428,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
       }
 
       if (activeTab === 'admin' && adminAccess) {
-        const requests = []
+        const requests: Promise<void>[] = []
         if (auditAccess) {
           requests.push(safeFetch(
             () => fetchAuditLog(PAGE_LIMIT, auditOffsetRef.current),
@@ -389,7 +451,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
       cancelled = true
       clearInterval(id)
     }
-  }, [onSessionExpired, activeTab, admin, auditAccess, assetsOffset, cvesOffset, cveFilters, auditOffset, incidentsOffset, incidentFilters, platformAdmin, adminAccess, usersRead, rbacRead, programsAccess, incidentsRead, rfRead, alertsRead, connectivityAccess, orbitalAccess, retryNonce])
+  }, [onSessionExpired, activeTab, admin, auditAccess, assetsOffset, cvesOffset, cveFilters, auditOffset, incidentsOffset, incidentFilters, platformAdmin, adminAccess, usersRead, rbacRead, programsAccess, assetsAccess, incidentsRead, rfRead, alertsRead, connectivityAccess, orbitalAccess, retryNonce])
 
   useEffect(() => {
     if (activeTab !== 'orbital') {
@@ -438,7 +500,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
     } catch {
     }
   }
-  function handleCveFiltersChange(next) {
+  function handleCveFiltersChange(next: CVEFilters) {
     setCvesOffset(0)
     setCveFilters(next)
   }
@@ -477,7 +539,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
   function reloadIncidents() {
     fetchIncidents(PAGE_LIMIT, incidentsOffsetRef.current, incidentFiltersRef.current).then(setIncidents).catch(() => {})
   }
-  function handleIncidentFiltersChange(next) {
+  function handleIncidentFiltersChange(next: IncidentFilters) {
     setIncidentsOffset(0)
     setIncidentFilters(next)
   }
@@ -488,6 +550,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
 
   return (
     <div className="min-h-screen bg-transparent text-lyra-text">
+      <SkipLink />
       <NavigationMenu
         items={tabs}
         active={activeTab}
@@ -564,7 +627,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
                 </div>
               ) : (
                 <div className="px-2 pb-4 sm:px-3">
-                  <WorldMap satellites={satellites} />
+                  <UntypedWorldMap satellites={satellites} />
                 </div>
               )}
             </Panel>
@@ -589,6 +652,23 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
           )
         )}
 
+        {activeTab === 'graph' && (
+          <CorrelationGraph
+            satellites={satellites}
+            agents={agentIdentities}
+            readings={rfReadings}
+            anomalies={rfAnomalies}
+            incidents={incidents}
+            assets={assets}
+            programs={programs}
+            alerts={assetAlerts}
+            cves={spaceCVEs}
+            access={{ orbital: orbitalAccess, agents: connectivityAccess, rf: rfRead, incidents: incidentsRead, assets: assetsAccess, programs: programsAccess, alerts: alertsRead }}
+            onNavigate={onChangeTab}
+            onOpenSatellite={(id) => { setSelectedSatelliteId(id); onChangeTab('orbital') }}
+          />
+        )}
+
         {activeTab === 'stations' && connectivityAccess && (
           agentIdentities === null ? <Skeleton rows={3} /> : (
             <GroundStationOperations
@@ -606,7 +686,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
         {activeTab === 'assets' && (
           <Panel eyebrow={t('panels.assetInventory')} title={t('panels.trackedAssets')}>
             {hasPermission('assets.manage') && programsAccess && (
-              <NewAssetForm
+              <UntypedNewAssetForm
                 onCreated={reloadAssets}
                 programs={programs ?? []}
                 onProgramsChanged={reloadAssets}
@@ -748,7 +828,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
 
                 {activeTab === 'platform' && platformAdmin && (
           <div className="grid gap-6">
-            <PlatformOperationsOverview organizations={organizations ?? []} platformUsers={platformUsers ?? []} />
+            <UntypedPlatformOperationsOverview organizations={organizations ?? []} platformUsers={platformUsers ?? []} />
             <Panel eyebrow={t('platform.eyebrow')} title={t('platform.title')}>
               {organizations === null || platformUsers === null ? <Skeleton /> : <PlatformOrganizationsPanel organizations={organizations} platformUsers={platformUsers} onChanged={reloadOrganizations} onPlatformUsersChanged={reloadPlatformUsers} />}
             </Panel>
@@ -779,7 +859,7 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
                 {rbacPermissions === null || rbacRoles === null || ((usersRead || admin) && users === null) ? (
                   <Skeleton />
                 ) : (
-                  <RBACPanel permissions={rbacPermissions} roles={rbacRoles} users={users ?? []} onChanged={reloadRBAC} />
+                  <RBACPanel permissions={rbacPermissions} roles={rbacRoles} users={users ?? []} canReadUsers={usersRead || admin} onChanged={reloadRBAC} />
                 )}
               </Panel>
             )}

@@ -2181,3 +2181,146 @@ const commandPaletteTranslations = {
   },
 }
 for (const [language, extra] of Object.entries(commandPaletteTranslations)) translations[language].commandPalette = extra
+
+const uxFoundationTranslations = {
+  en: {
+    skipToContent: 'Skip to main content',
+    notifications: {
+      region: 'Notifications',
+      roleCreated: 'Role created',
+      roleAssigned: 'Role assigned',
+      roleRemoved: 'Role removed',
+      alertAcknowledged: 'Alert acknowledged',
+    },
+    states: {
+      loadingTitle: 'Loading data',
+      loadingHint: 'Lyrahcle is retrieving the latest operational state.',
+      errorTitle: 'Data could not be loaded',
+      offlineTitle: 'Service unavailable',
+      retry: 'Retry',
+      noRoles: 'No roles available',
+      noRolesHint: 'Create a custom role or verify that system roles are available for this organization.',
+      noUsers: 'No users available',
+      noUsersHint: 'There are no users available for role assignment in this organization.',
+      userDirectoryRestricted: 'User directory unavailable',
+      userDirectoryRestrictedHint: 'Your role can manage RBAC policy but cannot read the organization user directory.',
+    },
+  },
+  es: {
+    skipToContent: 'Saltar al contenido principal',
+    notifications: {
+      region: 'Notificaciones',
+      roleCreated: 'Rol creado',
+      roleAssigned: 'Rol asignado',
+      roleRemoved: 'Rol retirado',
+      alertAcknowledged: 'Alerta reconocida',
+    },
+    states: {
+      loadingTitle: 'Cargando datos',
+      loadingHint: 'Lyrahcle está recuperando el estado operativo más reciente.',
+      errorTitle: 'No se pudieron cargar los datos',
+      offlineTitle: 'Servicio no disponible',
+      retry: 'Reintentar',
+      noRoles: 'No hay roles disponibles',
+      noRolesHint: 'Crea un rol personalizado o comprueba que los roles del sistema estén disponibles para esta organización.',
+      noUsers: 'No hay usuarios disponibles',
+      noUsersHint: 'No hay usuarios disponibles para asignar roles en esta organización.',
+      userDirectoryRestricted: 'Directorio de usuarios no disponible',
+      userDirectoryRestrictedHint: 'Tu rol puede gestionar la política RBAC, pero no puede leer el directorio de usuarios de la organización.',
+    },
+  },
+  fr: {
+    skipToContent: 'Aller au contenu principal',
+    notifications: {
+      region: 'Notifications',
+      roleCreated: 'Rôle créé',
+      roleAssigned: 'Rôle attribué',
+      roleRemoved: 'Rôle retiré',
+      alertAcknowledged: 'Alerte acquittée',
+    },
+    states: {
+      loadingTitle: 'Chargement des données',
+      loadingHint: 'Lyrahcle récupère le dernier état opérationnel.',
+      errorTitle: 'Impossible de charger les données',
+      offlineTitle: 'Service indisponible',
+      retry: 'Réessayer',
+      noRoles: 'Aucun rôle disponible',
+      noRolesHint: 'Créez un rôle personnalisé ou vérifiez que les rôles système sont disponibles pour cette organisation.',
+      noUsers: 'Aucun utilisateur disponible',
+      noUsersHint: 'Aucun utilisateur n’est disponible pour l’attribution de rôles dans cette organisation.',
+      userDirectoryRestricted: 'Annuaire des utilisateurs indisponible',
+      userDirectoryRestrictedHint: 'Votre rôle peut gérer la politique RBAC mais ne peut pas lire l’annuaire des utilisateurs de l’organisation.',
+    },
+  },
+  de: {
+    skipToContent: 'Zum Hauptinhalt springen',
+    notifications: {
+      region: 'Benachrichtigungen',
+      roleCreated: 'Rolle erstellt',
+      roleAssigned: 'Rolle zugewiesen',
+      roleRemoved: 'Rolle entfernt',
+      alertAcknowledged: 'Warnung bestätigt',
+    },
+    states: {
+      loadingTitle: 'Daten werden geladen',
+      loadingHint: 'Lyrahcle lädt den neuesten Betriebsstatus.',
+      errorTitle: 'Daten konnten nicht geladen werden',
+      offlineTitle: 'Dienst nicht verfügbar',
+      retry: 'Erneut versuchen',
+      noRoles: 'Keine Rollen verfügbar',
+      noRolesHint: 'Erstellen Sie eine benutzerdefinierte Rolle oder prüfen Sie, ob Systemrollen für diese Organisation verfügbar sind.',
+      noUsers: 'Keine Benutzer verfügbar',
+      noUsersHint: 'Für die Rollenzuweisung sind in dieser Organisation keine Benutzer verfügbar.',
+      userDirectoryRestricted: 'Benutzerverzeichnis nicht verfügbar',
+      userDirectoryRestrictedHint: 'Ihre Rolle kann RBAC-Richtlinien verwalten, aber das Benutzerverzeichnis der Organisation nicht lesen.',
+    },
+  },
+}
+for (const [language, extra] of Object.entries(uxFoundationTranslations)) translations[language].ux = extra
+
+const correlationGraphTranslations = {
+  en: {
+    nav: 'Correlation graph', eyebrow: 'Mission evidence fabric', title: 'Correlation constellation', subtitle: 'Explore how satellites, ground stations, RF anomalies, incidents, assets and CVEs connect across the mission. Select any node to make it the orbital focus, then trace an explainable route between two points.',
+    metrics: { nodes: 'Nodes', links: 'Links', evidence: 'Evidence' }, sources: '{count} authorized data sources', visible: '{visible}/{total} nodes in view', orbitFocus: 'Orbital focus active', timeWindow: 'Evidence time window', nodeTypes: 'Visible node types',
+    window: { '24h': '24 h', '7d': '7 d', '30d': '30 d', all: 'All time' },
+    kind: { satellite: 'Satellite', station: 'Ground station', agent: 'SDR agent', incident: 'Incident', rf: 'RF anomaly', asset: 'Asset', cve: 'CVE', program: 'Program' },
+    awaitingEvidence: '{count} nodes · 0 links · topology awaiting evidence', search: 'Find a node…', reset: 'Reset view', searchResults: 'Matching nodes', noSearchResults: 'No nodes match this search.', depth: 'Orbit depth', severity: 'Evidence', severityFilter: { all: 'All', high: 'High+', critical: 'Critical' }, zoomIn: 'Zoom in', zoomOut: 'Zoom out', recenter: 'Reset zoom', canvasLabel: 'Interactive Lyrahcle correlation constellation', hop: 'Hop {count}',
+    selectDestination: 'Route origin: {source}. Select a destination node.', interactionHint: 'Select a node to re-orbit the graph. Use Trace from here to reveal the shortest explainable path.', legend: 'Node legend', contextPanel: 'Selected-node context', connections: 'Connections', lastEvidence: 'Last evidence', openWorkspace: 'Open in workspace', traceFromHere: 'Trace from here',
+    route: { title: 'Explainable route', clear: 'Clear', waiting: 'Select destination', noPath: 'No explainable path exists between these nodes in the loaded evidence.' }, whyConnected: 'Why connected', noRelations: 'No direct relationships are loaded for this node.', noSelection: 'Select a node', empty: 'No correlation data available', emptyHint: 'Lyrahcle needs at least one authorized mission or security source before it can build the evidence fabric.',
+    relations: { observed: 'RF observation links this station and satellite', detected: 'This station detected the RF evidence', affected: 'The evidence is explicitly assigned to this entity', assigned: 'Explicit assignment', contains: 'The program contains this asset', exposed: 'The asset has an exact CVE exposure match', matched: 'Exact identity match', mentioned: 'The incident explicitly mentions this CVE' },
+  },
+  es: {
+    nav: 'Grafo de correlación', eyebrow: 'Tejido de evidencia de misión', title: 'Constelación de correlaciones', subtitle: 'Explora cómo se conectan satélites, estaciones terrestres, anomalías RF, incidentes, activos y CVE en toda la misión. Selecciona cualquier nodo para convertirlo en el foco orbital y traza después una ruta explicable entre dos puntos.',
+    metrics: { nodes: 'Nodos', links: 'Enlaces', evidence: 'Evidencias' }, sources: '{count} fuentes de datos autorizadas', visible: '{visible}/{total} nodos en vista', orbitFocus: 'Foco orbital activo', timeWindow: 'Ventana temporal de evidencia', nodeTypes: 'Tipos de nodo visibles',
+    window: { '24h': '24 h', '7d': '7 d', '30d': '30 d', all: 'Todo' },
+    kind: { satellite: 'Satélite', station: 'Estación terrestre', agent: 'Agente SDR', incident: 'Incidente', rf: 'Anomalía RF', asset: 'Activo', cve: 'CVE', program: 'Programa' },
+    awaitingEvidence: '{count} nodos · 0 enlaces · esperando evidencia topológica', search: 'Buscar un nodo…', reset: 'Restablecer vista', searchResults: 'Nodos coincidentes', noSearchResults: 'Ningún nodo coincide con la búsqueda.', depth: 'Profundidad orbital', severity: 'Evidencia', severityFilter: { all: 'Toda', high: 'Alta+', critical: 'Crítica' }, zoomIn: 'Acercar', zoomOut: 'Alejar', recenter: 'Restablecer zoom', canvasLabel: 'Constelación interactiva de correlación de Lyrahcle', hop: 'Salto {count}',
+    selectDestination: 'Origen de ruta: {source}. Selecciona un nodo de destino.', interactionHint: 'Selecciona un nodo para reordenar el grafo a su alrededor. Usa Trazar desde aquí para revelar la ruta explicable más corta.', legend: 'Leyenda de nodos', contextPanel: 'Contexto del nodo seleccionado', connections: 'Conexiones', lastEvidence: 'Última evidencia', openWorkspace: 'Abrir en su área', traceFromHere: 'Trazar desde aquí',
+    route: { title: 'Ruta explicable', clear: 'Limpiar', waiting: 'Selecciona destino', noPath: 'No existe una ruta explicable entre estos nodos con la evidencia cargada.' }, whyConnected: 'Por qué está conectado', noRelations: 'No hay relaciones directas cargadas para este nodo.', noSelection: 'Selecciona un nodo', empty: 'No hay datos de correlación', emptyHint: 'Lyrahcle necesita al menos una fuente autorizada de misión o seguridad para construir el tejido de evidencias.',
+    relations: { observed: 'Una observación RF conecta esta estación y este satélite', detected: 'Esta estación detectó la evidencia RF', affected: 'La evidencia está asignada explícitamente a esta entidad', assigned: 'Asignación explícita', contains: 'El programa contiene este activo', exposed: 'El activo tiene una coincidencia exacta de exposición CVE', matched: 'Coincidencia exacta de identidad', mentioned: 'El incidente menciona explícitamente esta CVE' },
+  },
+  fr: {
+    nav: 'Graphe de corrélation', eyebrow: 'Tissu de preuves mission', title: 'Constellation de corrélations', subtitle: 'Explorez les liens entre satellites, stations sol, anomalies RF, incidents, actifs et CVE dans la mission. Sélectionnez un nœud pour en faire le foyer orbital, puis tracez un chemin explicable entre deux points.',
+    metrics: { nodes: 'Nœuds', links: 'Liens', evidence: 'Preuves' }, sources: '{count} sources autorisées', visible: '{visible}/{total} nœuds visibles', orbitFocus: 'Foyer orbital actif', timeWindow: 'Fenêtre temporelle des preuves', nodeTypes: 'Types de nœuds visibles',
+    window: { '24h': '24 h', '7d': '7 j', '30d': '30 j', all: 'Tout' },
+    kind: { satellite: 'Satellite', station: 'Station sol', agent: 'Agent SDR', incident: 'Incident', rf: 'Anomalie RF', asset: 'Actif', cve: 'CVE', program: 'Programme' },
+    awaitingEvidence: '{count} nœuds · 0 liens · en attente de preuves topologiques', search: 'Rechercher un nœud…', reset: 'Réinitialiser la vue', searchResults: 'Nœuds correspondants', noSearchResults: 'Aucun nœud ne correspond à la recherche.', depth: 'Profondeur orbitale', severity: 'Preuves', severityFilter: { all: 'Toutes', high: 'Haute+', critical: 'Critique' }, zoomIn: 'Zoom avant', zoomOut: 'Zoom arrière', recenter: 'Réinitialiser le zoom', canvasLabel: 'Constellation de corrélation interactive Lyrahcle', hop: 'Saut {count}',
+    selectDestination: 'Origine du trajet : {source}. Sélectionnez un nœud de destination.', interactionHint: 'Sélectionnez un nœud pour réorganiser le graphe autour de lui. Utilisez Tracer depuis ici pour révéler le chemin explicable le plus court.', legend: 'Légende des nœuds', contextPanel: 'Contexte du nœud sélectionné', connections: 'Connexions', lastEvidence: 'Dernière preuve', openWorkspace: 'Ouvrir dans l’espace', traceFromHere: 'Tracer depuis ici',
+    route: { title: 'Chemin explicable', clear: 'Effacer', waiting: 'Sélectionner la destination', noPath: 'Aucun chemin explicable ne relie ces nœuds dans les preuves chargées.' }, whyConnected: 'Pourquoi ce lien', noRelations: 'Aucune relation directe n’est chargée pour ce nœud.', noSelection: 'Sélectionnez un nœud', empty: 'Aucune donnée de corrélation', emptyHint: 'Lyrahcle a besoin d’au moins une source mission ou sécurité autorisée pour construire le tissu de preuves.',
+    relations: { observed: 'Une observation RF relie cette station et ce satellite', detected: 'Cette station a détecté la preuve RF', affected: 'La preuve est explicitement affectée à cette entité', assigned: 'Affectation explicite', contains: 'Le programme contient cet actif', exposed: 'L’actif possède une correspondance exacte d’exposition CVE', matched: 'Correspondance d’identité exacte', mentioned: 'L’incident mentionne explicitement cette CVE' },
+  },
+  de: {
+    nav: 'Korrelationsgraph', eyebrow: 'Missions-Evidenzgeflecht', title: 'Korrelationskonstellation', subtitle: 'Untersuchen Sie, wie Satelliten, Bodenstationen, RF-Anomalien, Vorfälle, Assets und CVEs innerhalb der Mission verbunden sind. Wählen Sie einen Knoten als orbitalen Fokus und verfolgen Sie anschließend einen erklärbaren Pfad zwischen zwei Punkten.',
+    metrics: { nodes: 'Knoten', links: 'Verbindungen', evidence: 'Evidenz' }, sources: '{count} autorisierte Datenquellen', visible: '{visible}/{total} Knoten sichtbar', orbitFocus: 'Orbitaler Fokus aktiv', timeWindow: 'Zeitfenster der Evidenz', nodeTypes: 'Sichtbare Knotentypen',
+    window: { '24h': '24 h', '7d': '7 T', '30d': '30 T', all: 'Gesamt' },
+    kind: { satellite: 'Satellit', station: 'Bodenstation', agent: 'SDR-Agent', incident: 'Vorfall', rf: 'RF-Anomalie', asset: 'Asset', cve: 'CVE', program: 'Programm' },
+    awaitingEvidence: '{count} Knoten · 0 Verbindungen · Topologie wartet auf Evidenz', search: 'Knoten suchen…', reset: 'Ansicht zurücksetzen', searchResults: 'Passende Knoten', noSearchResults: 'Keine passenden Knoten gefunden.', depth: 'Orbit-Tiefe', severity: 'Evidenz', severityFilter: { all: 'Alle', high: 'Hoch+', critical: 'Kritisch' }, zoomIn: 'Vergrößern', zoomOut: 'Verkleinern', recenter: 'Zoom zurücksetzen', canvasLabel: 'Interaktive Lyrahcle-Korrelationskonstellation', hop: 'Hop {count}',
+    selectDestination: 'Pfadursprung: {source}. Wählen Sie einen Zielknoten.', interactionHint: 'Wählen Sie einen Knoten, um den Graphen darum neu anzuordnen. Mit Von hier verfolgen wird der kürzeste erklärbare Pfad sichtbar.', legend: 'Knotenlegende', contextPanel: 'Kontext des ausgewählten Knotens', connections: 'Verbindungen', lastEvidence: 'Letzte Evidenz', openWorkspace: 'Im Arbeitsbereich öffnen', traceFromHere: 'Von hier verfolgen',
+    route: { title: 'Erklärbarer Pfad', clear: 'Löschen', waiting: 'Ziel auswählen', noPath: 'Zwischen diesen Knoten existiert in der geladenen Evidenz kein erklärbarer Pfad.' }, whyConnected: 'Warum verbunden', noRelations: 'Für diesen Knoten sind keine direkten Beziehungen geladen.', noSelection: 'Knoten auswählen', empty: 'Keine Korrelationsdaten verfügbar', emptyHint: 'Lyrahcle benötigt mindestens eine autorisierte Missions- oder Sicherheitsquelle, um das Evidenzgeflecht aufzubauen.',
+    relations: { observed: 'Eine RF-Beobachtung verbindet diese Station und diesen Satelliten', detected: 'Diese Station hat die RF-Evidenz erkannt', affected: 'Die Evidenz ist dieser Entität ausdrücklich zugeordnet', assigned: 'Explizite Zuordnung', contains: 'Das Programm enthält dieses Asset', exposed: 'Das Asset besitzt eine exakte CVE-Expositionsübereinstimmung', matched: 'Exakte Identitätsübereinstimmung', mentioned: 'Der Vorfall nennt diese CVE ausdrücklich' },
+  },
+}
+for (const [language, extra] of Object.entries(correlationGraphTranslations)) {
+  translations[language].correlationGraph = extra
+  translations[language].navigation.items.correlationGraph = extra.nav
+}

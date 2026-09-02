@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -13,10 +14,15 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+var (
+	ErrInvalidTarget = errors.New("redisclient: invalid target")
+	ErrUnavailable   = errors.New("redisclient: unavailable")
+)
+
 func Options(target, caFile, serverName string) (*redis.Options, error) {
 	target = strings.TrimSpace(target)
 	if target == "" {
-		return nil, fmt.Errorf("redisclient: Redis target is empty")
+		return nil, fmt.Errorf("redisclient: Redis target is empty: %w", ErrInvalidTarget)
 	}
 
 	var options *redis.Options
@@ -24,7 +30,7 @@ func Options(target, caFile, serverName string) (*redis.Options, error) {
 	if strings.Contains(target, "://") {
 		options, err = redis.ParseURL(target)
 		if err != nil {
-			return nil, fmt.Errorf("redisclient: invalid Redis URL for %s", SafeTarget(target))
+			return nil, fmt.Errorf("redisclient: invalid Redis URL for %s: %w", SafeTarget(target), ErrInvalidTarget)
 		}
 	} else {
 		options = &redis.Options{Addr: target}
@@ -37,7 +43,7 @@ func Options(target, caFile, serverName string) (*redis.Options, error) {
 
 	tlsRequested := options.TLSConfig != nil
 	if !tlsRequested && (strings.TrimSpace(caFile) != "" || strings.TrimSpace(serverName) != "") {
-		return nil, fmt.Errorf("redisclient: REDIS_CA_CERT_FILE and REDIS_TLS_SERVER_NAME require rediss://")
+		return nil, fmt.Errorf("redisclient: REDIS_CA_CERT_FILE and REDIS_TLS_SERVER_NAME require rediss://: %w", ErrInvalidTarget)
 	}
 	if tlsRequested {
 		if options.TLSConfig == nil {
@@ -71,7 +77,7 @@ func Connect(target, caFile, serverName string, timeout time.Duration) (*redis.C
 
 	if err := client.Ping(ctx).Err(); err != nil {
 		client.Close()
-		return nil, fmt.Errorf("redisclient: ping %s failed: %s", SafeTarget(target), sanitizeError(err.Error(), target))
+		return nil, fmt.Errorf("redisclient: ping %s failed: %s: %w", SafeTarget(target), sanitizeError(err.Error(), target), ErrUnavailable)
 	}
 
 	return client, nil

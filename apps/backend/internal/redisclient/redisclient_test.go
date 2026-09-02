@@ -2,6 +2,7 @@ package redisclient
 
 import (
 	"crypto/tls"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -43,6 +44,25 @@ func TestSafeTargetRedactsCredentialsAndQuery(t *testing.T) {
 	got := SafeTarget("rediss://default:super-secret@example.cache.amazonaws.com:6379/0?read_timeout=1s")
 	if got != "rediss://example.cache.amazonaws.com:6379/0" {
 		t.Fatalf("SafeTarget=%q", got)
+	}
+}
+
+func TestInvalidTargetErrorsAreClassifiable(t *testing.T) {
+	if _, err := Options("", "", ""); !errors.Is(err, ErrInvalidTarget) {
+		t.Fatalf("empty target error = %v", err)
+	}
+	if _, err := Options("redis://%zz", "", ""); !errors.Is(err, ErrInvalidTarget) {
+		t.Fatalf("invalid URL error = %v", err)
+	}
+}
+
+func TestConnectFailureIsClassifiableAndRedacted(t *testing.T) {
+	_, err := Connect("rediss://default:super-secret@127.0.0.1:1/0", "", "", 100*time.Millisecond)
+	if !errors.Is(err, ErrUnavailable) {
+		t.Fatalf("Connect error = %v", err)
+	}
+	if strings.Contains(err.Error(), "super-secret") {
+		t.Fatalf("connection error exposed Redis password: %v", err)
 	}
 }
 

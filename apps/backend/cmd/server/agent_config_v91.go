@@ -23,29 +23,6 @@ import (
 	"github.com/mlko01/lyrahcle/apps/backend/internal/validate"
 )
 
-func buildAgentConfigSigner(cfg config.Config) (*agentconfig.Signer, keyprovider.Provider, error) {
-	if cfg.AgentConfigSigningKeyDir == "" && cfg.AgentConfigSigningKeyFile == "" && cfg.AgentConfigSignerEndpoint == "" {
-		return nil, nil, nil
-	}
-	var provider keyprovider.Provider
-	var err error
-	if cfg.AgentConfigSignerEndpoint != "" {
-		provider, err = keyprovider.NewRemoteProvider(cfg.AgentConfigSignerEndpoint, cfg.AgentConfigSignerToken, cfg.AgentConfigSignerKID, cfg.AgentConfigSignerAlgorithm, 5*time.Second)
-	} else if cfg.AgentConfigSigningKeyDir != "" {
-		provider, err = keyprovider.NewManagedLocalProvider(cfg.AgentConfigSigningKeyDir, cfg.AgentConfigSigningKeyFile)
-	} else {
-		provider, err = keyprovider.NewLocalProvider(cfg.AgentConfigSigningKeyFile)
-	}
-	if err != nil {
-		return nil, nil, err
-	}
-	signer, err := agentconfig.NewSigner(provider)
-	if err != nil {
-		return nil, nil, err
-	}
-	return signer, provider, nil
-}
-
 func validateRemoteSettings(settings store.AgentConfigSettings) error {
 	if settings.FrequencyHz < 100000 || settings.FrequencyHz > 6000000000 {
 		return errors.New("frequency_hz must be between 100000 and 6000000000")

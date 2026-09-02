@@ -247,14 +247,20 @@ spec:
       topologySpreadConstraints:
         - maxSkew: 1
           topologyKey: topology.kubernetes.io/zone
-          whenUnsatisfiable: ScheduleAnyway
+          whenUnsatisfiable: {{ .Values.backend.topologySpread.zoneWhenUnsatisfiable }}
+          {{- if gt (int .Values.backend.topologySpread.zoneMinDomains) 0 }}
+          minDomains: {{ .Values.backend.topologySpread.zoneMinDomains }}
+          {{- end }}
           labelSelector:
             matchLabels:
               {{- include "lyrahcle.selectorLabels" . | nindent 14 }}
               app.kubernetes.io/component: backend
         - maxSkew: 1
           topologyKey: kubernetes.io/hostname
-          whenUnsatisfiable: ScheduleAnyway
+          whenUnsatisfiable: {{ .Values.backend.topologySpread.hostnameWhenUnsatisfiable }}
+          {{- if gt (int .Values.backend.topologySpread.hostnameMinDomains) 0 }}
+          minDomains: {{ .Values.backend.topologySpread.hostnameMinDomains }}
+          {{- end }}
           labelSelector:
             matchLabels:
               {{- include "lyrahcle.selectorLabels" . | nindent 14 }}

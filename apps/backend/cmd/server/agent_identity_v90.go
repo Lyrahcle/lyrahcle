@@ -4,16 +4,12 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
-	"crypto/tls"
-	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
@@ -27,33 +23,6 @@ import (
 	"github.com/mlko01/lyrahcle/apps/backend/internal/store"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/validate"
 )
-
-func buildAgentCA(cfg config.Config) (*agentidentity.CA, error) {
-	if cfg.AgentCACertFile == "" && cfg.AgentCAKeyFile == "" {
-		return nil, nil
-	}
-	return agentidentity.Load(cfg.AgentCACertFile, cfg.AgentCAKeyFile)
-}
-
-func configureAgentClientTLS(srv *http.Server, cfg config.Config) error {
-	if cfg.AgentCACertFile == "" {
-		return nil
-	}
-	pemBytes, err := os.ReadFile(cfg.AgentCACertFile)
-	if err != nil {
-		return fmt.Errorf("agent client CA: %w", err)
-	}
-	pool := x509.NewCertPool()
-	if !pool.AppendCertsFromPEM(pemBytes) {
-		return errors.New("agent client CA contains no valid certificates")
-	}
-	srv.TLSConfig = &tls.Config{
-		MinVersion: tls.VersionTLS12,
-		ClientAuth: tls.VerifyClientCertIfGiven,
-		ClientCAs:  pool,
-	}
-	return nil
-}
 
 func decodeAgentJSON(w http.ResponseWriter, r *http.Request, maxBytes int64, dst interface{}) error {
 	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBytes))

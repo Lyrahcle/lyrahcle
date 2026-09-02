@@ -1,4 +1,14 @@
-export default function Panel({ eyebrow, title, children, bleed = false, titleExtra }) {
+import type { ReactNode } from 'react'
+
+interface PanelProps {
+  eyebrow: ReactNode
+  title: ReactNode
+  children: ReactNode
+  bleed?: boolean
+  titleExtra?: ReactNode
+}
+
+export default function Panel({ eyebrow, title, children, bleed = false, titleExtra = null }: PanelProps) {
   return (
     <section className="overflow-hidden rounded-lg border border-lyra-border bg-lyra-panel/30">
       <div className="px-5 pb-5 pt-5 sm:px-7 sm:pt-7">

@@ -16,8 +16,8 @@ class HttpErrorUiContractTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             clone = Path(tmp)
             for rel in [
-                'apps/frontend/src/lib/api.ts', 'apps/frontend/src/App.jsx',
-                'apps/frontend/src/components/Dashboard.jsx', 'apps/frontend/src/components/ApiStatusBanner.jsx',
+                'apps/frontend/src/lib/api.ts', 'apps/frontend/src/App.tsx',
+                'apps/frontend/src/components/Dashboard.tsx', 'apps/frontend/src/components/ApiStatusBanner.jsx',
                 'apps/frontend/src/components/Login.jsx', 'apps/frontend/src/lib/translations.js',
                 'scripts/test-local-v1.sh',
             ]:

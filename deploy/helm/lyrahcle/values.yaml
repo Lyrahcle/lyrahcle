@@ -88,6 +88,10 @@ backend:
     minAvailable: 1
   topologySpread:
     enabled: false
+    zoneWhenUnsatisfiable: ScheduleAnyway
+    hostnameWhenUnsatisfiable: ScheduleAnyway
+    zoneMinDomains: 0
+    hostnameMinDomains: 0
 
 frontend:
   replicaCount: 1
@@ -120,6 +124,10 @@ frontend:
     minAvailable: 1
   topologySpread:
     enabled: false
+    zoneWhenUnsatisfiable: ScheduleAnyway
+    hostnameWhenUnsatisfiable: ScheduleAnyway
+    zoneMinDomains: 0
+    hostnameMinDomains: 0
 
 cveSync:
   enabled: true

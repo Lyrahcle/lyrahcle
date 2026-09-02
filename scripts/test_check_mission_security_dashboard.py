@@ -20,7 +20,7 @@ class MissionSecurityDashboardContractTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             clone = Path(tmp)
             files = [
-                'apps/frontend/src/components/Dashboard.jsx',
+                'apps/frontend/src/components/Dashboard.tsx',
                 'apps/frontend/src/components/MissionSecurityOperationsDashboard.jsx',
                 'apps/frontend/src/components/MissionSecurityOperationsDashboard.test.jsx',
                 'apps/frontend/src/lib/translations.js',
@@ -29,7 +29,7 @@ class MissionSecurityDashboardContractTests(unittest.TestCase):
                 target = clone / rel
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_text((root / rel).read_text())
-            dashboard = clone / 'apps/frontend/src/components/Dashboard.jsx'
+            dashboard = clone / 'apps/frontend/src/components/Dashboard.tsx'
             dashboard.write_text(dashboard.read_text().replace('if (rfRead) requests.push(safeFetch(fetchRfAnomalies, setRfAnomalies))', 'requests.push(safeFetch(fetchRfAnomalies, setRfAnomalies))'))
             result = subprocess.run(
                 ['python3', str(root / 'scripts/check-mission-security-dashboard.py'), str(clone)],

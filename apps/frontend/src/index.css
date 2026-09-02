@@ -105,3 +105,39 @@ body::before {
     animation: none;
   }
 }
+
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid rgb(var(--lyra-gold-bright));
+  outline-offset: 2px;
+}
+
+.lyra-correlation-stage {
+  background:
+    radial-gradient(circle at 50% 46%, rgb(var(--lyra-text) / 0.025), transparent 42%),
+    linear-gradient(180deg, rgb(255 255 255 / 0.012), transparent 28%);
+}
+
+.lyra-correlation-stage::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, rgb(var(--lyra-text) / 0.12) 0.6px, transparent 0.7px);
+  background-size: 42px 42px;
+  mask-image: radial-gradient(circle at center, black, transparent 72%);
+  opacity: 0.22;
+}
+
+@keyframes lyra-correlation-flow {
+  to { stroke-dashoffset: -28; }
+}
+
+.lyra-correlation-flow {
+  animation: lyra-correlation-flow 1.8s linear infinite;
+}
+
+
+@media (prefers-reduced-motion: reduce) {
+  .lyra-correlation-flow {
+    animation: none;
+  }
+}

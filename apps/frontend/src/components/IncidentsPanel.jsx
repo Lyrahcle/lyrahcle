@@ -6,6 +6,7 @@ import CorrelationEvidencePanel from './CorrelationEvidencePanel.jsx'
 import { addIncidentEvidence, addIncidentNote, createIncident, fetchIncident, updateIncident } from '../lib/api'
 import { hasPermission } from '../lib/permissions'
 import { useI18n } from '../lib/I18nContext'
+import StatusState from './StatusState.tsx'
 
 const STATUSES = ['new', 'investigating', 'contained', 'resolved', 'false_positive']
 const SEVERITIES = ['critical', 'high', 'medium', 'low', 'info']
@@ -225,7 +226,7 @@ export default function IncidentsPanel({ page, filters, onFiltersChange, onPrev,
       )}
 
       {!incidents.length ? (
-        <div className="rounded border border-dashed border-lyra-border px-5 py-10 text-center text-sm text-lyra-muted">{t('incidents.empty')}</div>
+        <StatusState kind="empty" title={t('incidents.empty')} />
       ) : (
         <>
           <TableScroll>

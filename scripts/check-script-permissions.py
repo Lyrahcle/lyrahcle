@@ -20,6 +20,8 @@ REQUIRED = (
     'scripts/k8s-enforce-restricted.sh',
     'scripts/aws-build-push-images.sh',
     'scripts/aws-production-readiness.sh',
+    'scripts/k8s-resilience-test.sh',
+    'scripts/dr-local-restore-test.sh',
 )
 errors=[]
 for rel in REQUIRED:

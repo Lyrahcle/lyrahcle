@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import {
   Orbit,
+  Activity,
   MapPinned,
   Boxes,
   RadioTower,
@@ -20,6 +21,7 @@ import { useI18n } from '../lib/I18nContext'
 
 const ICONS = {
   orbital: Orbit,
+  graph: Activity,
   stations: MapPinned,
   assets: Boxes,
   signal: RadioTower,

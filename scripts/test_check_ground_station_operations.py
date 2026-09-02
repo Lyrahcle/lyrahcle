@@ -21,8 +21,9 @@ class GroundStationOperationsContractTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             clone = Path(tmp)
             files = [
-                'apps/frontend/src/components/Dashboard.jsx',
+                'apps/frontend/src/components/Dashboard.tsx',
                 'apps/frontend/src/components/GroundStationOperations.jsx',
+                'apps/frontend/src/components/dashboard/navigation.ts',
                 'apps/frontend/src/components/WorldMap.jsx',
                 'apps/frontend/src/lib/risk.ts',
                 'apps/frontend/src/lib/groundStations.ts',

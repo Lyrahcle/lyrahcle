@@ -17,11 +17,7 @@ func TestEdgeIntegrityContractV144(t *testing.T) {
 			t.Fatalf("missing %s", v)
 		}
 	}
-	m, err := os.ReadFile("main.go")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(m), "integrity baseline and status are read-only") {
+	if !strings.Contains(readServerProductionSource(t), "integrity baseline and status are read-only") {
 		t.Fatal("missing read-only integrity validation")
 	}
 }

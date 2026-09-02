@@ -7,6 +7,8 @@ This directory contains the technical documentation for Lyrahcle. The root `READ
 | Document | Canonical purpose |
 |---|---|
 | [Architecture](./architecture.md) | Components, trust boundaries, data flows, and storage ownership |
+| [Backend bootstrap architecture](./backend-bootstrap-architecture.md) | Composition root, dependency builders and incremental server-domain refactor boundary |
+| [Frontend TypeScript migration](./frontend-typescript-migration.md) | Gradual TS/TSX migration boundary, typed routing/navigation and next component candidates |
 | [API reference](./api-reference.md) | Human/agent authentication, roles, endpoint behavior, SSE, request IDs |
 | [Configuration](./configuration.md) | Environment variables and runtime configuration for every service |
 | [Deployment](./deployment.md) | Production checklist, TLS, backups, monitoring, updates, WebAuthn, agent mTLS |
@@ -46,6 +48,7 @@ This directory contains the technical documentation for Lyrahcle. The root `READ
 | [Orbital-aware security correlation](./orbital-security-correlation.md) | v9.2/v9.2.2 orbital/RF evidence, severity gating, operator workflow |
 | [Orbital operations context](./orbital-operations-context.md) | v9.5 maneuver/conjunction persistence, trust model, and candidate-only correlation |
 | [Cross-domain correlation](./cross-domain-correlation.md) | v9.4 explainable incident correlation across RF, orbital, agent posture, audit, and context-only asset alerts |
+| [Correlation constellation](./correlation-constellation.md) | Interactive orbital-focus graph for satellite, station, RF, incident, asset and CVE investigation paths |
 | [Satellite pass prediction](./pass-prediction.md) | v9.3 AOS/LOS, peak elevation, prediction windows, and TLE safety |
 | [TLE data quality](./tle-data-quality.md) | Fresh/aging/stale/unusable policy and safe orbital-escalation defaults |
 | [IQ forensics](./forensics.md) | Recording, replaying, and handling SDR IQ captures |
@@ -70,6 +73,7 @@ This directory contains the technical documentation for Lyrahcle. The root `READ
 | [Observability](./observability.md) | Prometheus, Grafana, request IDs, alerts, and optional OpenTelemetry tracing |
 | [Performance testing](./performance-testing.md) | Current performance controls and production-like validation work |
 | [Backup and restore](./backup-and-restore.md) | Backup verification, guarded restore, and recovery recommendations |
+| [Resilience and disaster recovery](./resilience-disaster-recovery.md) | Local kind chaos drills, restore evidence, RTO/RPO targets and AWS DR boundaries |
 | [Incident response runbook](./incident-response-runbook.md) | Containment, key/agent compromise, tenant breach, evidence, and recovery procedures |
 | [Compliance checklist](./compliance-checklist.md) | Pre-v1 security evidence and readiness tracker |
 

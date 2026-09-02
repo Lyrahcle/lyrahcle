@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "status": "design-targets-not-production-certified",
+  "local_kind": {
+    "backend_pod_rto_seconds": 60,
+    "frontend_pod_rto_seconds": 60,
+    "cve_sync_pod_rto_seconds": 90,
+    "node_drain_application_rto_seconds": 90,
+    "postgres_outage_detection_seconds": 30,
+    "postgres_recovery_rto_seconds": 90,
+    "redis_outage_detection_seconds": 30,
+    "redis_recovery_rto_seconds": 60
+  },
+  "aws_design": {
+    "application_rto_minutes": 15,
+    "postgres_rpo_minutes": 5,
+    "postgres_restore_rto_minutes": 60,
+    "redis_failover_rto_minutes": 15
+  }
+}

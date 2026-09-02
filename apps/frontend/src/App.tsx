@@ -4,33 +4,22 @@ import ChangePasswordModal from './components/ChangePasswordModal.jsx'
 import ApiStatusBanner from './components/ApiStatusBanner.jsx'
 import { isAuthenticated, logout, passwordChangeRequired } from './lib/auth'
 import { clearEffectivePermissions, loadEffectivePermissions } from './lib/permissions'
-import { UnauthorizedError } from './lib/api'
+import { ApiError, UnauthorizedError } from './lib/api'
 import { useI18n } from './lib/I18nContext'
-import { DEFAULT_TAB, getTabFromLocation, setTabInLocation, subscribeTabChanges } from './lib/routeTabs'
 import { lazyComponent } from './lib/lazyComponent'
+import { useHashRoute } from './hooks/useHashRoute'
 
-const Dashboard = lazyComponent(() => import('./components/Dashboard.jsx'))
-
+const Dashboard = lazyComponent(() => import('./components/Dashboard.tsx'))
 
 function App() {
   const { t } = useI18n()
   const [authenticated, setAuthenticated] = useState(isAuthenticated())
-  const [activeTab, setActiveTab] = useState(() => getTabFromLocation(DEFAULT_TAB))
+  const { activeTab, changeTab } = useHashRoute()
   const [permissionsReady, setPermissionsReady] = useState(false)
   const [authNotice, setAuthNotice] = useState('')
-  const [permissionsError, setPermissionsError] = useState(null)
+  const [permissionsError, setPermissionsError] = useState<ApiError | null>(null)
   const [permissionsRetry, setPermissionsRetry] = useState(0)
   const mustChangePassword = authenticated && passwordChangeRequired()
-
-  const handleChangeTab = useCallback((tab) => {
-    setActiveTab(tab)
-    setTabInLocation(tab)
-  }, [])
-
-  useEffect(() => {
-    setTabInLocation(activeTab, { replace: true })
-    return subscribeTabChanges(setActiveTab)
-  }, [])
 
   const handleLogout = useCallback(() => {
     clearEffectivePermissions()
@@ -58,13 +47,21 @@ function App() {
       .then(() => {
         if (!cancelled) setPermissionsReady(true)
       })
-      .catch((error) => {
+      .catch((error: unknown) => {
         if (cancelled) return
         if (error instanceof UnauthorizedError) {
           handleSessionExpired()
           return
         }
-        setPermissionsError(error)
+        if (error instanceof ApiError) {
+          setPermissionsError(error)
+          return
+        }
+        const normalized = new ApiError(error instanceof Error ? error.message : 'failed to load access context', { cause: error })
+        if (typeof error === 'object' && error !== null && 'retryable' in error) {
+          normalized.retryable = Boolean((error as { retryable?: unknown }).retryable)
+        }
+        setPermissionsError(normalized)
       })
     return () => {
       cancelled = true
@@ -102,7 +99,7 @@ function App() {
       onLogout={handleLogout}
       onSessionExpired={handleSessionExpired}
       activeTab={activeTab}
-      onChangeTab={handleChangeTab}
+      onChangeTab={changeTab}
     />
   )
 }

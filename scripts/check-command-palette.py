@@ -5,7 +5,7 @@ import sys
 ROOT = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else Path(__file__).resolve().parents[1]
 palette = (ROOT / 'apps/frontend/src/components/CommandPalette.jsx').read_text()
 header = (ROOT / 'apps/frontend/src/components/Header.jsx').read_text()
-dashboard = (ROOT / 'apps/frontend/src/components/Dashboard.jsx').read_text()
+dashboard = (ROOT / 'apps/frontend/src/components/Dashboard.tsx').read_text()
 translations = (ROOT / 'apps/frontend/src/lib/translations.js').read_text()
 required = [
     ('mount command palette in header', "import CommandPalette from './CommandPalette.jsx'" in header and '<CommandPalette' in header),

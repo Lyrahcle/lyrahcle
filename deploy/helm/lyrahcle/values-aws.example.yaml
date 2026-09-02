@@ -35,6 +35,10 @@ backend:
     enabled: true
   topologySpread:
     enabled: true
+    zoneWhenUnsatisfiable: DoNotSchedule
+    hostnameWhenUnsatisfiable: DoNotSchedule
+    zoneMinDomains: 2
+    hostnameMinDomains: 2
 
 frontend:
   replicaCount: 2
@@ -53,6 +57,10 @@ frontend:
     enabled: true
   topologySpread:
     enabled: true
+    zoneWhenUnsatisfiable: DoNotSchedule
+    hostnameWhenUnsatisfiable: DoNotSchedule
+    zoneMinDomains: 2
+    hostnameMinDomains: 2
 
 cveSync:
   image:

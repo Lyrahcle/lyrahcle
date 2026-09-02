@@ -5,9 +5,12 @@ import Pagination from './Pagination.jsx'
 import { acknowledgeAssetAlert } from '../lib/api'
 import { hasPermission } from '../lib/permissions'
 import { useI18n } from '../lib/I18nContext'
+import StatusState from './StatusState.tsx'
+import { useToast } from './ToastProvider.tsx'
 
 export default function AssetAlertsPanel({ page, onPrev, onNext, onChanged }) {
   const { t } = useI18n()
+  const { notify } = useToast()
   const [error, setError] = useState(null)
   const [ackingId, setAckingId] = useState(null)
   const alerts = page.items
@@ -18,6 +21,7 @@ export default function AssetAlertsPanel({ page, onPrev, onNext, onChanged }) {
     try {
       await acknowledgeAssetAlert(id)
       onChanged()
+      notify({ title: t('ux.notifications.alertAcknowledged'), tone: 'success', dedupeKey: `asset-alert-${id}` })
     } catch (err) {
       setError(err.message)
     } finally {
@@ -27,10 +31,7 @@ export default function AssetAlertsPanel({ page, onPrev, onNext, onChanged }) {
 
   if (!alerts.length) {
     return (
-      <div className="rounded border border-dashed border-lyra-border px-5 py-10 text-center">
-        <p className="text-sm text-lyra-muted">{t('assetAlerts.empty')}</p>
-        <p className="mt-1 text-xs text-lyra-mutedDim">{t('assetAlerts.emptyHint')}</p>
-      </div>
+      <StatusState kind="empty" title={t('assetAlerts.empty')} message={t('assetAlerts.emptyHint')} />
     )
   }
 

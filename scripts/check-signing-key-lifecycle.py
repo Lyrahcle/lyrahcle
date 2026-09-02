@@ -20,7 +20,7 @@ checks = {
         "t('signingKeys.prepare')", 'prepareAgentConfigSigningKeyRotation', 'activateAgentConfigSigningKey',
         'revokeAgentConfigSigningKey', 'publicKey.pem',
     ],
-    'apps/frontend/src/components/Dashboard.jsx': ['SigningKeysPanel'],
+    'apps/frontend/src/components/Dashboard.tsx': ['SigningKeysPanel'],
 }
 errors = []
 for rel, needles in checks.items():

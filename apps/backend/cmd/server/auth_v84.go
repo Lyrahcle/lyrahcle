@@ -431,11 +431,3 @@ func registerPasswordRecoveryRoutes(r chi.Router, cfg config.Config, users *stor
 func webAuthnCredentialCount(ctx context.Context, credentials *store.WebAuthnStore, userID uuid.UUID) (int, error) {
 	return credentials.Count(ctx, userID)
 }
-
-func buildWebAuthnHandler(cfg config.Config) *webauthn.WebAuthn {
-	handler, err := webauthn.New(&webauthn.Config{RPDisplayName: "Lyrahcle", RPID: cfg.WebAuthnRPID, RPOrigins: cfg.WebAuthnOrigins})
-	if err != nil {
-		panic(err)
-	}
-	return handler
-}

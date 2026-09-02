@@ -43,6 +43,7 @@ Status values: **Shipped**, **Partial**, **Next**, and **Later**.
 | Robust RF anomaly detection | Shipped | Current |
 | Typed RF detection rules and deterministic correlation | Shipped | Current |
 | Explainable cross-domain correlation | Shipped | v9.4 |
+| Interactive correlation constellation and explainable path tracing | Shipped | Block 17 |
 | Correlation-driven severity policy after production validation | Later | Before v1.0 |
 | RF heat map | Shipped | v14.6.2 |
 | Satellite security profile with explainable mission risk and unified evidence | Shipped | Unreleased |
@@ -69,6 +70,17 @@ Status values: **Shipped**, **Partial**, **Next**, and **Later**.
 | Load-test tooling | Shipped | v8.4 |
 | Station federation | Later | v9+ |
 | Multi-tenant architecture | Shipped | v10.x (see Identity, authentication, and authorization) |
+
+## Engineering architecture and maintainability
+
+| Improvement | Status | Target |
+|---|---|---|
+| Testable backend bootstrap/builders | Shipped | Block 12 |
+| Reduce `cmd/server/main.go` to composition responsibilities | Shipped | Block 12 |
+| Move version-suffixed server files into domain packages | Partial | Next backend architecture iterations |
+| Audit error wrapping for `errors.Is`/`errors.As` continuity | Shipped | Block 13 |
+| Verify `context.Context` propagation across all stores | Shipped | Block 13 |
+| Complete frontend TypeScript migration | Partial | Block 14 onward |
 
 ## Platform security and supply chain
 
@@ -98,6 +110,7 @@ Status values: **Shipped**, **Partial**, **Next**, and **Later**.
 | Automated staging/production CD | Later | v9 |
 | Cloud-neutral Kubernetes/Helm deployment foundation | Shipped | v14.6.6 |
 | Kubernetes staging/kind smoke path and Prometheus Operator integration | Shipped | v14.6.7 |
+| Kubernetes resilience/chaos and local DR evidence | Shipped | Block 16 |
 | Kubernetes restricted Pod Security and default-deny network isolation | Shipped | Block 8 |
 | AWS EKS infrastructure-as-code and managed-service cutover | Partial | v14.6.8 ships VPC/EKS/ECR/RDS/KMS/Secrets + secure opt-in ElastiCache; LBC/add-on automation, external secret delivery and cutover drills remain |
 | Container image scanning | Shipped | Current |
@@ -110,7 +123,9 @@ Status values: **Shipped**, **Partial**, **Next**, and **Later**.
 |---|---|---|
 | EN/ES/FR/DE i18n | Shipped | Current |
 | Light/dark mode | Shipped | Current |
-| Accessibility work | Partial | Before v1.0 |
+| Shared toast/snackbar feedback | Shipped | Block 15 |
+| Unified empty/loading/error/offline states | Shipped | Block 15 |
+| Accessibility work | Partial | Block 15 adds skip navigation, focus visibility and shared live-region semantics; broader WCAG 2.2 AA review remains before v1.0 |
 | Header search | Shipped | v8.4 |
 | Search across satellites/assets/CVEs/incidents | Shipped | v8.4 |
 | OpenAPI and Swagger | Shipped | Current |
@@ -144,7 +159,7 @@ Note: multi-tenancy moved from "Enterprise architecture / Later" to the core Ide
 
 1. Validate orbital-aware Doppler/visibility correlation with representative physical SDR captures before enabling automatic orbital escalation (currently disabled).
 2. Reach and hold >80% coverage on security-critical code paths, including security-focused end-to-end coverage.
-3. Exercise the v14.6.7 multi-replica staging baseline and v14.6.8 AWS IaC plan; then automate AWS cluster add-ons/secrets, and collect DR/RPO/RTO evidence before cutover.
+3. Exercise multi-replica/AWS resilience and collect DR/RPO/RTO evidence before cutover; backend error-chain and PostgreSQL context-propagation guardrails are now shipped.
 4. Complete the agent hardware-capability physical lab-validation gate (RTL-SDR/HackRF) — `compatible` currently reflects self-reported software capability only.
 5. Finish remaining operator-facing user guides and accessibility cleanup.
 

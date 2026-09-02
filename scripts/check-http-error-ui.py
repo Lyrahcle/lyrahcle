@@ -4,8 +4,8 @@ import sys
 
 root = Path(sys.argv[1] if len(sys.argv) > 1 else '.').resolve()
 api = (root / 'apps/frontend/src/lib/api.ts').read_text()
-app = (root / 'apps/frontend/src/App.jsx').read_text()
-dash = (root / 'apps/frontend/src/components/Dashboard.jsx').read_text()
+app = (root / 'apps/frontend/src/App.tsx').read_text()
+dash = (root / 'apps/frontend/src/components/Dashboard.tsx').read_text()
 banner = (root / 'apps/frontend/src/components/ApiStatusBanner.jsx').read_text()
 login = (root / 'apps/frontend/src/components/Login.jsx').read_text()
 translations = (root / 'apps/frontend/src/lib/translations.js').read_text()

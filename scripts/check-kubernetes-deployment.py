@@ -102,6 +102,14 @@ def check(root: Path) -> list[str]:
     require(aws, "alb.ingress.kubernetes.io/target-type: ip", "AWS ALB IP targets")
     require(aws, "loadBalancerClass: service.k8s.aws/nlb", "AWS NLB LoadBalancerClass")
     require(aws, "aws-load-balancer-nlb-target-type: ip", "AWS NLB IP targets")
+    for needle in (
+        "zoneWhenUnsatisfiable: DoNotSchedule",
+        "hostnameWhenUnsatisfiable: DoNotSchedule",
+        "zoneMinDomains: 2",
+        "hostnameMinDomains: 2",
+    ):
+        if aws.count(needle) < 2:
+            errors.append(f"missing AWS production topology spread for backend/frontend: {needle!r}")
     require(services, "loadBalancerClass:", "portable LoadBalancerClass field")
 
     require(db_go, "pg_advisory_lock", "serialized database migrations")

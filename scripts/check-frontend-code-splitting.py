@@ -5,7 +5,7 @@ import re
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
-DASHBOARD = ROOT / "apps/frontend/src/components/Dashboard.jsx"
+DASHBOARD = ROOT / "apps/frontend/src/components/Dashboard.tsx"
 HELPER = ROOT / "apps/frontend/src/lib/lazyComponent.tsx"
 
 MIN_LAZY_DECLARATIONS = 10
@@ -16,7 +16,7 @@ LAZY_IMPORT_RE = re.compile(
 )
 
 LAZY_DECL_RE = re.compile(
-    r"""^\s*const\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*lazyComponent\(\s*\(\s*\)\s*=>\s*import\(\s*['"]([^'"]+)['"]\s*\)\s*\)\s*;?\s*$""",
+    r"""^\s*const\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*lazyComponent(?:<[^>\n]+>)?\(\s*\(\s*\)\s*=>\s*import\(\s*['"]([^'"]+)['"]\s*\)\s*\)\s*;?\s*$""",
     re.MULTILINE,
 )
 
@@ -40,14 +40,14 @@ def validate_no_lazy_const_inside_import(text: str) -> str | None:
             if stripped.startswith("const "):
                 return (
                     f"lazy declaration found inside import block "
-                    f"at Dashboard.jsx:{lineno}"
+                    f"at Dashboard.tsx:{lineno}"
                 )
 
             if "} from " in stripped:
                 in_multiline_import = False
 
     if in_multiline_import:
-        return "unterminated multiline import in Dashboard.jsx"
+        return "unterminated multiline import in Dashboard.tsx"
 
     return None
 
@@ -68,7 +68,7 @@ def main() -> int:
     imports = LAZY_IMPORT_RE.findall(dashboard)
     if len(imports) != 1:
         return fail(
-            "Dashboard.jsx must import lazyComponent exactly once "
+            "Dashboard.tsx must import lazyComponent exactly once "
             f"(found {len(imports)})"
         )
 
@@ -122,7 +122,8 @@ def main() -> int:
     first_import = dashboard.find(
         "import { lazyComponent } from '../lib/lazyComponent'"
     )
-    first_decl = dashboard.find("lazyComponent(() => import(")
+    first_decl_match = re.search(r"lazyComponent(?:<[^>\n]+>)?\(\(\) => import\(", dashboard)
+    first_decl = first_decl_match.start() if first_decl_match else -1
 
     if first_import < 0 or first_decl < 0 or first_import > first_decl:
         return fail(

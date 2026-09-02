@@ -17,7 +17,7 @@ checks = {
         'onOpenProfile',
         "satelliteProfile.openProfile",
     ],
-    ROOT / 'apps/frontend/src/components/Dashboard.jsx': [
+    ROOT / 'apps/frontend/src/components/Dashboard.tsx': [
         'selectedSatelliteId',
         '<SatelliteSecurityProfile',
         'onOpenProfile={(satellite) => setSelectedSatelliteId(satellite.id)}',

@@ -10,7 +10,7 @@ def fail(message: str) -> None:
 
 def main() -> None:
     root = Path(sys.argv[1] if len(sys.argv) > 1 else '.').resolve()
-    dashboard_path = root / 'apps/frontend/src/components/Dashboard.jsx'
+    dashboard_path = root / 'apps/frontend/src/components/Dashboard.tsx'
     component_path = root / 'apps/frontend/src/components/MissionSecurityOperationsDashboard.jsx'
     test_path = root / 'apps/frontend/src/components/MissionSecurityOperationsDashboard.test.jsx'
     translations_path = root / 'apps/frontend/src/lib/translations.js'
@@ -24,7 +24,7 @@ def main() -> None:
     translations = translations_path.read_text()
 
     required_dashboard_markers = [
-        "lazyComponent(() => import('./MissionSecurityOperationsDashboard.jsx'))",
+        "lazyComponent<any>(() => import('./MissionSecurityOperationsDashboard.jsx'))",
         "const incidentsRead = hasPermission('incidents.read')",
         "const rfRead = hasPermission('rf.read')",
         "const alertsRead = hasPermission('alerts.read')",
@@ -37,7 +37,7 @@ def main() -> None:
     ]
     for marker in required_dashboard_markers:
         if marker not in dashboard:
-            fail(f'Dashboard.jsx is missing permission-aware integration marker: {marker}')
+            fail(f'Dashboard.tsx is missing permission-aware integration marker: {marker}')
 
     required_component_markers = [
         'missionSecurity.title',

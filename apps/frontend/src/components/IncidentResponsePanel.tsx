@@ -1,4 +1,11 @@
-const playbooks = [
+interface IncidentPlaybook {
+  title: string
+  severity: string
+  action: string
+  where: string
+}
+
+const playbooks: IncidentPlaybook[] = [
   { title: 'Privileged account', severity: 'SEV-1 / SEV-2', action: 'Revoke sessions, disable the account, then review RBAC and audit events.', where: 'Admin / Platform' },
   { title: 'Signing key', severity: 'SEV-1', action: 'Pause rollouts, revoke the compromised KID in custody, stage and distribute a replacement.', where: 'Platform → Remote Config Signing Keys' },
   { title: 'SDR agent / edge tamper', severity: 'SEV-2', action: 'Quarantine first, preserve identity and integrity evidence, then rebuild/re-enroll if trust is lost.', where: 'Connectivity → Agent Identity / Hardware' },

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -31,7 +32,9 @@ func Connect(ctx context.Context, dsn string) (*pgxpool.Pool, error) {
 		return err == nil
 	}
 	cfg.AfterRelease = func(conn *pgx.Conn) bool {
-		_, err := conn.Exec(context.Background(), `RESET lyrahcle.rls_request; RESET lyrahcle.organization_id`)
+		cleanupCtx, cancel := context.WithTimeout(context.Background(), cleanupTimeout)
+		defer cancel()
+		_, err := conn.Exec(cleanupCtx, `RESET lyrahcle.rls_request; RESET lyrahcle.organization_id`)
 		return err == nil
 	}
 	pool, err := pgxpool.NewWithConfig(ctx, cfg)
@@ -45,6 +48,7 @@ func Connect(ctx context.Context, dsn string) (*pgxpool.Pool, error) {
 }
 
 const migrationAdvisoryLockID int64 = 0x4c59524148434c45
+const cleanupTimeout = 2 * time.Second
 
 func Migrate(ctx context.Context, pool *pgxpool.Pool, dir string) error {
 	conn, err := pool.Acquire(ctx)
@@ -57,7 +61,8 @@ func Migrate(ctx context.Context, pool *pgxpool.Pool, dir string) error {
 		return fmt.Errorf("db: acquire migration advisory lock: %w", err)
 	}
 	defer func() {
-		unlockCtx := context.Background()
+		unlockCtx, cancel := context.WithTimeout(context.Background(), cleanupTimeout)
+		defer cancel()
 		_, _ = conn.Exec(unlockCtx, `SELECT pg_advisory_unlock($1)`, migrationAdvisoryLockID)
 	}()
 

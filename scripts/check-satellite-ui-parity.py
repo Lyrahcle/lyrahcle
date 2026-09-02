@@ -36,7 +36,7 @@ CHECKS = {
         'tle_line1',
         'tle_line2',
     ],
-    ROOT / 'apps/frontend/src/components/Dashboard.jsx': [
+    ROOT / 'apps/frontend/src/components/Dashboard.tsx': [
         "canManage={hasPermission('orbital.manage')}",
         'onChanged={reloadSatellites}',
     ],

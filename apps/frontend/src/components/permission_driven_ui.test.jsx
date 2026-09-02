@@ -8,7 +8,7 @@ function readComponent(file) {
 
 describe('permission-driven operational UI', () => {
   it('does not use legacy role-rank helpers in sensitive operational panels', () => {
-    for (const file of ['Dashboard.jsx', 'ConnectivityPanel.jsx', 'DetectionRulesPanel.jsx', 'IncidentsPanel.jsx', 'AssetAlertsPanel.jsx']) {
+    for (const file of ['Dashboard.tsx', 'ConnectivityPanel.jsx', 'DetectionRulesPanel.jsx', 'IncidentsPanel.jsx', 'AssetAlertsPanel.jsx']) {
       const src = readComponent(file)
       expect(src).not.toMatch(/\b(canWrite|canInvestigate|canAudit|isAdmin)\s*\(/)
       expect(src).toContain('hasPermission')
@@ -17,7 +17,7 @@ describe('permission-driven operational UI', () => {
 
   it('maps write controls to backend capabilities', () => {
     const expected = {
-      'Dashboard.jsx': ['assets.manage', 'orbital.manage', 'audit.read', 'agents.read', 'agents.manage'],
+      'Dashboard.tsx': ['assets.manage', 'orbital.manage', 'audit.read', 'agents.read', 'agents.manage'],
       'ConnectivityPanel.jsx': ['agents.read', 'agents.manage'],
       'DetectionRulesPanel.jsx': ['detections.manage'],
       'IncidentsPanel.jsx': ['incidents.manage'],

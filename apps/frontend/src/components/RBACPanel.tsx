@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import {
   assignUserRBACRole,
   createRBACRole,
@@ -8,24 +8,40 @@ import {
 import { hasPermission } from '../lib/permissions'
 import { useI18n } from '../lib/I18nContext'
 import TableScroll from './TableScroll.jsx'
+import type { RBACPermission, RBACRole, RBACUser } from '../types/security'
+import StatusState from './StatusState'
+import { useToast } from './ToastProvider'
 
-export default function RBACPanel({ permissions, roles, users, onChanged }) {
+interface RBACPanelProps {
+  permissions: RBACPermission[]
+  roles: RBACRole[]
+  users: RBACUser[]
+  canReadUsers?: boolean
+  onChanged: () => void | Promise<void>
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
+
+export default function RBACPanel({ permissions, roles, users, canReadUsers = true, onChanged }: RBACPanelProps) {
   const { t } = useI18n()
+  const { notify } = useToast()
   const canManage = hasPermission('rbac.manage')
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
-  const [selectedPermissions, setSelectedPermissions] = useState([])
+  const [selectedPermissions, setSelectedPermissions] = useState<string[]>([])
   const [selectedUser, setSelectedUser] = useState('')
-  const [assignedRoles, setAssignedRoles] = useState([])
+  const [assignedRoles, setAssignedRoles] = useState<RBACRole[]>([])
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState(null)
+  const [error, setError] = useState<string | null>(null)
 
   const groupedPermissions = useMemo(() => {
-    const groups = new Map()
+    const groups = new Map<string, RBACPermission[]>()
     for (const permission of permissions ?? []) {
-      const domain = permission.key.split('.')[0]
+      const domain = permission.key.split('.')[0] || 'other'
       if (!groups.has(domain)) groups.set(domain, [])
-      groups.get(domain).push(permission)
+      groups.get(domain)?.push(permission)
     }
     return [...groups.entries()]
   }, [permissions])
@@ -39,15 +55,15 @@ export default function RBACPanel({ permissions, roles, users, onChanged }) {
     setError(null)
     fetchUserRBACRoles(selectedUser)
       .then((items) => {
-        if (!cancelled) setAssignedRoles(items ?? [])
+        if (!cancelled) setAssignedRoles((items ?? []) as RBACRole[])
       })
-      .catch((err) => {
-        if (!cancelled) setError(err.message)
+      .catch((error: unknown) => {
+        if (!cancelled) setError(errorMessage(error))
       })
     return () => { cancelled = true }
   }, [selectedUser, roles])
 
-  async function createRole(event) {
+  async function createRole(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setBusy(true)
     setError(null)
@@ -57,18 +73,19 @@ export default function RBACPanel({ permissions, roles, users, onChanged }) {
       setDescription('')
       setSelectedPermissions([])
       await onChanged()
-    } catch (err) {
-      setError(err.message)
+      notify({ title: t('ux.notifications.roleCreated'), message: name.trim(), tone: 'success', dedupeKey: 'rbac-role-created' })
+    } catch (error: unknown) {
+      setError(errorMessage(error))
     } finally {
       setBusy(false)
     }
   }
 
-  function togglePermission(key) {
+  function togglePermission(key: string) {
     setSelectedPermissions((current) => current.includes(key) ? current.filter((item) => item !== key) : [...current, key])
   }
 
-  async function toggleRole(role) {
+  async function toggleRole(role: RBACRole) {
     if (!selectedUser || !canManage) return
     setBusy(true)
     setError(null)
@@ -76,9 +93,15 @@ export default function RBACPanel({ permissions, roles, users, onChanged }) {
       const assigned = assignedRoles.some((item) => item.id === role.id)
       if (assigned) await removeUserRBACRole(selectedUser, role.id)
       else await assignUserRBACRole(selectedUser, role.id)
-      setAssignedRoles(await fetchUserRBACRoles(selectedUser))
-    } catch (err) {
-      setError(err.message)
+      setAssignedRoles((await fetchUserRBACRoles(selectedUser)) as RBACRole[])
+      notify({
+        title: assigned ? t('ux.notifications.roleRemoved') : t('ux.notifications.roleAssigned'),
+        message: role.name,
+        tone: 'success',
+        dedupeKey: `rbac-role-${role.id}`,
+      })
+    } catch (error: unknown) {
+      setError(errorMessage(error))
     } finally {
       setBusy(false)
     }
@@ -93,11 +116,11 @@ export default function RBACPanel({ permissions, roles, users, onChanged }) {
           <div className="grid gap-3 md:grid-cols-2">
             <label className="grid gap-1 text-[11px] tracking-wider text-lyra-mutedDim">
               {t('rbac.roleName')}
-              <input required maxLength={80} value={name} onChange={(e) => setName(e.target.value)} className="rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 text-sm normal-case text-lyra-text" />
+              <input required maxLength={80} value={name} onChange={(event) => setName(event.target.value)} className="rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 text-sm normal-case text-lyra-text" />
             </label>
             <label className="grid gap-1 text-[11px] tracking-wider text-lyra-mutedDim">
               {t('rbac.description')}
-              <input maxLength={240} value={description} onChange={(e) => setDescription(e.target.value)} className="rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 text-sm normal-case text-lyra-text" />
+              <input maxLength={240} value={description} onChange={(event) => setDescription(event.target.value)} className="rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 text-sm normal-case text-lyra-text" />
             </label>
           </div>
 
@@ -128,31 +151,37 @@ export default function RBACPanel({ permissions, roles, users, onChanged }) {
 
       <div>
         <h3 className="mb-3 font-mono text-xs tracking-wider text-lyra-gold">{t('rbac.roles')}</h3>
-        <TableScroll>
-          <table className="w-full text-left text-sm">
-            <thead><tr className="border-b border-lyra-borderSoft">
-              <th className="pb-2 text-[11px] text-lyra-mutedDim">{t('rbac.role')}</th>
-              <th className="pb-2 text-[11px] text-lyra-mutedDim">{t('rbac.type')}</th>
-              <th className="pb-2 text-[11px] text-lyra-mutedDim">{t('rbac.capabilities')}</th>
-            </tr></thead>
-            <tbody>
-              {(roles ?? []).map((role) => (
-                <tr key={role.id} className="border-b border-lyra-borderSoft/60 last:border-0">
-                  <td className="py-3 pr-4"><span className="text-lyra-text">{role.name}</span>{role.description && <p className="mt-1 text-xs text-lyra-muted">{role.description}</p>}</td>
-                  <td className="py-3 pr-4 font-mono text-xs text-lyra-mutedDim">{role.system ? t('rbac.system') : t('rbac.custom')}</td>
-                  <td className="py-3 font-mono text-[11px] text-lyra-muted">{(role.permissions ?? []).map((permission) => permission.key).join(', ') || '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </TableScroll>
+        {!roles?.length ? (
+          <StatusState kind="empty" title={t('ux.states.noRoles')} message={t('ux.states.noRolesHint')} compact />
+        ) : (
+          <TableScroll>
+            <table className="w-full text-left text-sm">
+              <thead><tr className="border-b border-lyra-borderSoft">
+                <th className="pb-2 text-[11px] text-lyra-mutedDim">{t('rbac.role')}</th>
+                <th className="pb-2 text-[11px] text-lyra-mutedDim">{t('rbac.type')}</th>
+                <th className="pb-2 text-[11px] text-lyra-mutedDim">{t('rbac.capabilities')}</th>
+              </tr></thead>
+              <tbody>
+                {roles.map((role) => (
+                  <tr key={role.id} className="border-b border-lyra-borderSoft/60 last:border-0">
+                    <td className="py-3 pr-4"><span className="text-lyra-text">{role.name}</span>{role.description && <p className="mt-1 text-xs text-lyra-muted">{role.description}</p>}</td>
+                    <td className="py-3 pr-4 font-mono text-xs text-lyra-mutedDim">{role.system ? t('rbac.system') : t('rbac.custom')}</td>
+                    <td className="py-3 font-mono text-[11px] text-lyra-muted">{(role.permissions ?? []).map((permission) => permission.key).join(', ') || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </TableScroll>
+        )}
       </div>
 
-      {users?.length > 0 && (
+      {!canReadUsers ? (
+        <StatusState kind="forbidden" title={t('ux.states.userDirectoryRestricted')} message={t('ux.states.userDirectoryRestrictedHint')} compact />
+      ) : users?.length > 0 ? (
         <div className="grid gap-3">
           <label className="grid max-w-xl gap-1 text-[11px] tracking-wider text-lyra-mutedDim">
             {t('rbac.user')}
-            <select value={selectedUser} onChange={(e) => setSelectedUser(e.target.value)} className="rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 text-sm normal-case text-lyra-text">
+            <select value={selectedUser} onChange={(event) => setSelectedUser(event.target.value)} className="rounded border border-lyra-border bg-lyra-bgSoft px-3 py-2 text-sm normal-case text-lyra-text">
               <option value="">{t('rbac.selectUser')}</option>
               {users.map((user) => <option key={user.id} value={user.id}>{user.username || user.email}</option>)}
             </select>
@@ -178,7 +207,10 @@ export default function RBACPanel({ permissions, roles, users, onChanged }) {
             </div>
           )}
         </div>
+      ) : (
+        <StatusState kind="empty" title={t('ux.states.noUsers')} message={t('ux.states.noUsersHint')} compact />
       )}
     </div>
   )
 }
+

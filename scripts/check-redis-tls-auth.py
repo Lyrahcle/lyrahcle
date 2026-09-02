@@ -15,9 +15,12 @@ for token in ['RedisCACertFile', 'RedisTLSServerName', 'redis://localhost:6379/0
     if token not in backend_config:
         errors.append(f'backend config missing {token}')
 
-backend_main = (ROOT / 'apps/backend/cmd/server/main.go').read_text()
+backend_startup = (ROOT / 'apps/backend/cmd/server/main.go').read_text()
+bootstrap_security = ROOT / 'apps/backend/internal/bootstrap/security.go'
+if bootstrap_security.exists():
+    backend_startup += '\n' + bootstrap_security.read_text()
 for token in ['cfg.RedisCACertFile', 'cfg.RedisTLSServerName', 'redisclient.SafeTarget(cfg.RedisURL)']:
-    if token not in backend_main:
+    if token not in backend_startup:
         errors.append(f'backend startup missing {token}')
 
 cve_client = (ROOT / 'apps/cve-sync/internal/redisclient/redisclient.go').read_text()

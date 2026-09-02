@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import IncidentResponsePanel from './IncidentResponsePanel.jsx'
+import IncidentResponsePanel from './IncidentResponsePanel.tsx'
 
 describe('IncidentResponsePanel', () => {
   it('surfaces the critical containment playbooks without exposing secret values', () => {

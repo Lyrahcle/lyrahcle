@@ -18,14 +18,14 @@ class CommandPaletteContractTests(unittest.TestCase):
             for relative in [
                 'apps/frontend/src/components/CommandPalette.jsx',
                 'apps/frontend/src/components/Header.jsx',
-                'apps/frontend/src/components/Dashboard.jsx',
+                'apps/frontend/src/components/Dashboard.tsx',
                 'apps/frontend/src/lib/translations.js',
             ]:
                 source = ROOT / relative
                 destination = target / relative
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 text = source.read_text()
-                if relative.endswith('Dashboard.jsx'):
+                if relative.endswith('Dashboard.tsx'):
                     text = text.replace("result?.type === 'satellites'", "result?.type === 'removed'")
                 destination.write_text(text)
             result = subprocess.run(['python3', str(CHECK), str(target)], capture_output=True, text=True)

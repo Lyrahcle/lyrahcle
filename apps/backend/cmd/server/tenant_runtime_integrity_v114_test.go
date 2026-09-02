@@ -1,17 +1,12 @@
 package main
 
 import (
-	"os"
 	"strings"
 	"testing"
 )
 
 func TestAutomatedRFIncidentKeepsTenantOwnership(t *testing.T) {
-	data, err := os.ReadFile("main.go")
-	if err != nil {
-		t.Fatal(err)
-	}
-	src := string(data)
+	src := readServerProductionSource(t)
 
 	for _, token := range []string{
 		"OrganizationID:  anomalyRecord.OrganizationID",
@@ -25,11 +20,7 @@ func TestAutomatedRFIncidentKeepsTenantOwnership(t *testing.T) {
 }
 
 func TestAuditHelperUsesAuthenticatedOrganization(t *testing.T) {
-	data, err := os.ReadFile("main.go")
-	if err != nil {
-		t.Fatal(err)
-	}
-	src := string(data)
+	src := readServerProductionSource(t)
 	for _, token := range []string{
 		"auth.FromContext(ctx)",
 		"claims.OrganizationID",

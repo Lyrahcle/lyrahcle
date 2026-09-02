@@ -23,7 +23,7 @@ class SatelliteSecurityProfileContractTests(unittest.TestCase):
             files = [
                 'apps/frontend/src/components/SatelliteSecurityProfile.jsx',
                 'apps/frontend/src/components/SatellitesPanel.jsx',
-                'apps/frontend/src/components/Dashboard.jsx',
+                'apps/frontend/src/components/Dashboard.tsx',
                 'apps/frontend/src/lib/translations.js',
             ]
             for rel in files:

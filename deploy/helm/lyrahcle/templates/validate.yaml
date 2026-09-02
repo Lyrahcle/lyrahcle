@@ -42,3 +42,39 @@
 {{- if and .Values.externalSecrets.enabled (ne .Values.externalSecrets.targetSecretName .Values.secrets.existingSecret) -}}
 {{ fail "externalSecrets.targetSecretName must match secrets.existingSecret" }}
 {{- end -}}
+{{- if and $production (not .Values.backend.pdb.enabled) -}}
+{{ fail "production requires backend.pdb.enabled=true" }}
+{{- end -}}
+{{- if and $production (not .Values.frontend.pdb.enabled) -}}
+{{ fail "production requires frontend.pdb.enabled=true" }}
+{{- end -}}
+{{- if and $production (lt (int .Values.backend.pdb.minAvailable) 1) -}}
+{{ fail "production requires backend.pdb.minAvailable>=1" }}
+{{- end -}}
+{{- if and $production (lt (int .Values.frontend.pdb.minAvailable) 1) -}}
+{{ fail "production requires frontend.pdb.minAvailable>=1" }}
+{{- end -}}
+{{- if and $production (not .Values.backend.topologySpread.enabled) -}}
+{{ fail "production requires backend.topologySpread.enabled=true" }}
+{{- end -}}
+{{- if and $production (not .Values.frontend.topologySpread.enabled) -}}
+{{ fail "production requires frontend.topologySpread.enabled=true" }}
+{{- end -}}
+{{- if and $production (ne .Values.backend.topologySpread.zoneWhenUnsatisfiable "DoNotSchedule") -}}
+{{ fail "production requires strict backend zone topology spread" }}
+{{- end -}}
+{{- if and $production (ne .Values.backend.topologySpread.hostnameWhenUnsatisfiable "DoNotSchedule") -}}
+{{ fail "production requires strict backend hostname topology spread" }}
+{{- end -}}
+{{- if and $production (ne .Values.frontend.topologySpread.zoneWhenUnsatisfiable "DoNotSchedule") -}}
+{{ fail "production requires strict frontend zone topology spread" }}
+{{- end -}}
+{{- if and $production (ne .Values.frontend.topologySpread.hostnameWhenUnsatisfiable "DoNotSchedule") -}}
+{{ fail "production requires strict frontend hostname topology spread" }}
+{{- end -}}
+{{- if and $production (lt (int .Values.backend.topologySpread.zoneMinDomains) 2) -}}
+{{ fail "production requires backend topology spread across at least two zones" }}
+{{- end -}}
+{{- if and $production (lt (int .Values.frontend.topologySpread.zoneMinDomains) 2) -}}
+{{ fail "production requires frontend topology spread across at least two zones" }}
+{{- end -}}

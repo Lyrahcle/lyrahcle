@@ -3,9 +3,10 @@ from pathlib import Path
 import sys
 
 ROOT = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else Path(__file__).resolve().parents[1]
-dashboard = (ROOT / 'apps/frontend/src/components/Dashboard.jsx').read_text()
+dashboard = (ROOT / 'apps/frontend/src/components/Dashboard.tsx').read_text()
 header = (ROOT / 'apps/frontend/src/components/Header.jsx').read_text()
 navigation = (ROOT / 'apps/frontend/src/components/NavigationMenu.jsx').read_text()
+navigation_model = (ROOT / 'apps/frontend/src/components/dashboard/navigation.ts').read_text()
 translations = (ROOT / 'apps/frontend/src/lib/translations.js').read_text()
 routes = (ROOT / 'apps/frontend/src/lib/routeTabs.ts').read_text()
 required = [
@@ -14,7 +15,7 @@ required = [
     ('support mobile drawer', 'mobileOpen &&' in navigation and 'onOpenNavigation' in header and 'setMobileNavigationOpen(true)' in dashboard),
     ('close mobile drawer after navigation', 'onCloseMobile?.()' in navigation),
     ('group primary destinations', "SECTION_ORDER = ['overview', 'mission', 'security', 'rf', 'platform', 'preferences']" in navigation),
-    ('preserve permission-aware destinations', 'connectivityAccess ?' in dashboard and 'adminAccess ?' in dashboard and 'platformAdmin ?' in dashboard),
+    ('preserve permission-aware destinations', 'access.connectivity ?' in navigation_model and 'access.administration ?' in navigation_model and 'access.platform ?' in navigation_model and 'connectivity: connectivityAccess' in dashboard and 'administration: adminAccess' in dashboard and 'platform: platformAdmin' in dashboard),
     ('preserve hash routing', "export const DEFAULT_TAB = 'orbital'" in routes and "'stations'" in routes),
     ('persist desktop preference', "localStorage.setItem('lyra_nav_collapsed'" in dashboard),
     ('provide multilingual navigation copy', 'navigationShellTranslations' in translations and 'RF operations' in translations and 'Operaciones RF' in translations),

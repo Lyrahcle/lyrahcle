@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import App from './App.jsx'
+import App from './App.tsx'
 import * as auth from './lib/auth'
 import * as permissions from './lib/permissions'
 
@@ -14,7 +14,7 @@ vi.mock('./lib/permissions', () => ({
   loadEffectivePermissions: vi.fn(),
 }))
 vi.mock('./components/Login.jsx', () => ({ default: () => <div>LOGIN VIEW</div> }))
-vi.mock('./components/Dashboard.jsx', () => ({ default: () => <div>DASHBOARD VIEW</div> }))
+vi.mock('./components/Dashboard.tsx', () => ({ default: () => <div>DASHBOARD VIEW</div> }))
 vi.mock('./components/ChangePasswordModal.jsx', () => ({ default: ({ required }) => <div>{required ? 'REQUIRED PASSWORD CHANGE' : 'PASSWORD CHANGE'}</div> }))
 vi.mock('./components/ApiStatusBanner.jsx', () => ({ default: ({ issue, onRetry }) => issue ? <div>API ERROR: {issue.message}{onRetry && <button onClick={onRetry}>RETRY ACCESS</button>}</div> : <div>LOADING ACCESS</div> }))
 vi.mock('./lib/I18nContext', () => ({ useI18n: () => ({ t: (key) => key }) }))

@@ -2,21 +2,34 @@ import { useEffect, useState } from 'react'
 import { fetchPlatformSecretStatus } from '../lib/api'
 import { useI18n } from '../lib/I18nContext'
 
+interface SecretProviderState {
+  provider: string
+  healthy: boolean
+  external: boolean
+  location?: string
+  managed_keys?: string[]
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
+
 export default function SecretProviderPanel() {
   const { t } = useI18n()
-  const [state, setState] = useState(null)
-  const [error, setError] = useState(null)
+  const [state, setState] = useState<SecretProviderState | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
     fetchPlatformSecretStatus()
-      .then((result) => { if (!cancelled) setState(result) })
-      .catch((err) => { if (!cancelled) setError(err.message) })
+      .then((result) => { if (!cancelled) setState(result as SecretProviderState) })
+      .catch((error: unknown) => { if (!cancelled) setError(errorMessage(error)) })
     return () => { cancelled = true }
   }, [])
 
   if (!state && !error) return <p className="text-sm text-lyra-muted">{t('secretProvider.loading')}</p>
   if (error) return <p role="alert" className="text-sm text-lyra-bad">{error}</p>
+  if (!state) return null
 
   return (
     <div className="grid gap-4">

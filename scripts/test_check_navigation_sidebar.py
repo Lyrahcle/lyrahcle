@@ -21,9 +21,10 @@ class NavigationSidebarContractTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             clone = Path(tmp)
             files = [
-                'apps/frontend/src/components/Dashboard.jsx',
+                'apps/frontend/src/components/Dashboard.tsx',
                 'apps/frontend/src/components/Header.jsx',
                 'apps/frontend/src/components/NavigationMenu.jsx',
+                'apps/frontend/src/components/dashboard/navigation.ts',
                 'apps/frontend/src/lib/translations.js',
                 'apps/frontend/src/lib/routeTabs.ts',
             ]
@@ -31,8 +32,8 @@ class NavigationSidebarContractTests(unittest.TestCase):
                 target = clone / rel
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(root / rel, target)
-            dashboard = clone / 'apps/frontend/src/components/Dashboard.jsx'
-            dashboard.write_text(dashboard.read_text().replace('...(adminAccess ?', '...(true ?'))
+            navigation_model = clone / 'apps/frontend/src/components/dashboard/navigation.ts'
+            navigation_model.write_text(navigation_model.read_text().replace('access.administration ?', 'true ?'))
             result = subprocess.run(
                 ['python3', str(root / 'scripts/check-navigation-sidebar.py'), str(clone)],
                 capture_output=True,
