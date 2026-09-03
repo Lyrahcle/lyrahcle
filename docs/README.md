@@ -57,6 +57,7 @@ This directory contains the technical documentation for Lyrahcle. The root `READ
 | [Real satellite sources](./satellite-real-sources.md) | NORAD-linked SatNOGS metadata, transmitters, observations, and source freshness |
 | [Satellite pass prediction](./pass-prediction.md) | v9.3 AOS/LOS, peak elevation, prediction windows, and TLE safety |
 | [TLE data quality](./tle-data-quality.md) | Fresh/aging/stale/unusable policy and safe orbital-escalation defaults |
+| [Real RF acquisition](./rf-real-acquisition.md) | rtl_tcp device driver, FFT/PSD/Doppler analysis, dBFS-to-dBm calibration, and the physical validation procedure |
 | [IQ forensics](./forensics.md) | Recording, replaying, and handling SDR IQ captures |
 | [Core telemetry visualizations](./telemetry-visualizations.md) | RF power/spectrum/coverage and anomaly-intensity UI panels |
 | [Ground station operations](./ground-station-operations.md) | Ground-segment view over SDR agents with trusted station coordinates |

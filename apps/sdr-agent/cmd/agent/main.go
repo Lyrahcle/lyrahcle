@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -37,6 +38,69 @@ func getEnvInt(key string, fallback int) int {
 		return fallback
 	}
 	return v
+}
+
+func getEnvFloat(key string, fallback float64) float64 {
+	v, err := strconv.ParseFloat(getEnv(key, ""), 64)
+	if err != nil {
+		return fallback
+	}
+	return v
+}
+
+func getEnvBool(key string) bool {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv(key))) {
+	case "1", "true", "yes", "on":
+		return true
+	default:
+		return false
+	}
+}
+
+func deviceSpecFromEnv(freqHz int64) soapy.DeviceSpec {
+	return soapy.DeviceSpec{
+		URI:            getEnv("SDR_DEVICE", "mock://"),
+		FrequencyHz:    uint64(freqHz),
+		SampleRateHz:   uint64(getEnvInt("SDR_SAMPLE_RATE_HZ", 2048000)),
+		GainDb:         getEnvFloat("SDR_GAIN_DB", 30),
+		AutoGain:       getEnvBool("SDR_AUTO_GAIN"),
+		FreqCorrection: int32(getEnvInt("SDR_FREQ_CORRECTION_PPM", 0)),
+		BiasTee:        getEnvBool("SDR_BIAS_TEE"),
+	}
+}
+
+func spectralConfigFromEnv() capture.SpectralConfig {
+	return capture.SpectralConfig{
+		FFTSize:            getEnvInt("SDR_FFT_SIZE", 4096),
+		Window:             getEnv("SDR_FFT_WINDOW", "hann"),
+		OverlapRatio:       getEnvFloat("SDR_FFT_OVERLAP", 0.5),
+		SampleCount:        getEnvInt("SDR_SAMPLES_PER_READING", 32768),
+		CalibrationOffsetD: getEnvFloat("SDR_CALIBRATION_OFFSET_DB", 0),
+		ReconnectAttempts:  getEnvInt("SDR_RECONNECT_ATTEMPTS", 3),
+	}
+}
+
+func buildCaptureSource(freqHz int64) (capture.Source, soapy.Device, func()) {
+	spec := deviceSpecFromEnv(freqHz)
+	device, err := soapy.NewDeviceFromSpec(spec)
+	if err != nil {
+		log.Fatalf("sdr device: %v", err)
+	}
+	if device.GetDeviceInfo() != nil && device.GetDeviceInfo().Driver == "mock" {
+		log.Println("WARNING: SDR_DEVICE is not configured; running on the mock device. Spectral output is synthetic and must not be used as detection evidence.")
+		return capture.MockSource{}, device, func() { device.Close() }
+	}
+	if spec.SampleRateHz > 0 {
+		if err := device.SetSampleRate(spec.SampleRateHz); err != nil {
+			log.Fatalf("sdr device: set sample rate: %v", err)
+		}
+	}
+	source, err := capture.NewSpectralSource(device, spectralConfigFromEnv())
+	if err != nil {
+		log.Fatalf("spectral source: %v", err)
+	}
+	log.Printf("sdr device: %s (%s), sample rate %d Hz, FFT %d", device.GetDeviceInfo().Hardware, spec.URI, spec.SampleRateHz, getEnvInt("SDR_FFT_SIZE", 4096))
+	return source, device, func() { source.Close() }
 }
 
 func main() {
@@ -133,13 +197,14 @@ func main() {
 		return
 	}
 
+	source, device, closeSource := buildCaptureSource(freqHz)
+	defer closeSource()
+
 	if captureDir := getEnv("IQ_CAPTURE_DIR", ""); captureDir != "" {
 		go runIQCaptureLoop(captureDir, agentID, freqHz)
 	}
 
-	var source capture.Source = capture.MockSource{}
-
-	if info := soapy.NewMockDevice().GetDeviceInfo(); info != nil {
+	if info := device.GetDeviceInfo(); info != nil {
 		report, err := integrity.Measure(integrity.PathsFromCSV(getEnv("AGENT_INTEGRITY_PATHS", "")))
 		if err != nil {
 			log.Printf("edge integrity measurement failed (non-fatal): %v", err)
@@ -177,7 +242,16 @@ func main() {
 			log.Printf("uplink error: %v", err)
 			continue
 		}
-		log.Printf("sent reading: %.2f dBm @ %d Hz", reading.PowerDbm, reading.FrequencyHz)
+		if reading.Spectral != nil {
+			log.Printf(
+				"sent reading: %.2f dBFS @ %d Hz (noise %.2f dBFS, SNR %.1f dB, carrier offset %+.1f Hz via %s, OBW %.0f Hz)",
+				reading.Spectral.PowerDbFS, reading.FrequencyHz, reading.Spectral.NoiseFloorDbFS,
+				reading.Spectral.SNRDb, reading.Spectral.CarrierOffsetHz, reading.Spectral.EstimatorMethod,
+				reading.Spectral.OccupiedBandwidthHz,
+			)
+		} else {
+			log.Printf("sent reading: %.2f dBm @ %d Hz", reading.PowerDbm, reading.FrequencyHz)
+		}
 	}
 }
 
@@ -185,7 +259,12 @@ func runIQCaptureLoop(captureDir, agentID string, freqHz int64) {
 	intervalSec := getEnvInt("IQ_CAPTURE_INTERVAL_SECONDS", 60)
 	numSamples := getEnvInt("IQ_CAPTURE_SAMPLES", 8192)
 
-	device := soapy.NewMockDevice()
+	device, err := soapy.NewDeviceFromSpec(deviceSpecFromEnv(freqHz))
+	if err != nil {
+		log.Printf("iq-capture: open device: %v", err)
+		return
+	}
+	defer device.Close()
 	if err := device.SetFrequency(uint64(freqHz)); err != nil {
 		log.Printf("iq-capture: set frequency: %v", err)
 		return
@@ -236,7 +315,21 @@ func runReplay(replayRoot, replayFile string, client *uplink.Client) {
 		log.Fatalf("replay: %v", err)
 	}
 
-	readings := replay.PowerWindows(meta, samples, windowSamples)
+	var readings []capture.Reading
+	if getEnvBool("REPLAY_SPECTRAL") {
+		readings, err = replay.SpectralWindows(meta, samples, replay.SpectralOptions{
+			FFTSize:             getEnvInt("SDR_FFT_SIZE", 4096),
+			Window:              getEnv("SDR_FFT_WINDOW", "hann"),
+			OverlapRatio:        getEnvFloat("SDR_FFT_OVERLAP", 0.5),
+			WindowSamples:       windowSamples,
+			CalibrationOffsetDb: getEnvFloat("SDR_CALIBRATION_OFFSET_DB", 0),
+		})
+		if err != nil {
+			log.Fatalf("replay: spectral analysis: %v", err)
+		}
+	} else {
+		readings = replay.PowerWindows(meta, samples, windowSamples)
+	}
 	log.Printf(
 		"replay: capture from %s (agent=%s, freq=%d Hz, %d samples) -> %d readings",
 		meta.CapturedAt.Format(time.RFC3339), meta.AgentID, meta.FrequencyHz, len(samples), len(readings),

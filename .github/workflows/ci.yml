@@ -97,11 +97,17 @@ jobs:
         run: |
           go test ./internal/forensics ./internal/replay ./internal/streaming ./internal/uplink -coverprofile=coverage-critical.out
           ../../scripts/check-go-coverage.sh coverage-critical.out 80
+      - name: Critical RF acquisition and DSP coverage gate
+        if: matrix.module == 'sdr-agent'
+        run: |
+          go test ./internal/dsp ./internal/capture ./internal/soapy -coverprofile=coverage-rf.out
+          ../../scripts/check-go-coverage.sh coverage-rf.out 80
       - name: SDR fuzzing
         if: matrix.module == 'sdr-agent'
         run: |
           go test ./internal/forensics -run=^$ -fuzz=FuzzCaptureRoundTrip -fuzztime=10s
           go test ./internal/replay -run=^$ -fuzz=FuzzPowerWindows -fuzztime=10s
+          go test ./internal/dsp -run=^$ -fuzz=FuzzEstimateCarrier -fuzztime=15s
       - name: Vet
         run: go vet ./...
       - name: Static security scan (gosec)
