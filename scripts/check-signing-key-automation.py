@@ -13,11 +13,11 @@ checks = {
         'ActivatedAt', 'RotationPolicy(context.Context)', 'UpdateRotationPolicy(context.Context, RotationPolicy)',
         'RotationPolicy RotationPolicy',
     ],
-    'apps/backend/cmd/server/signing_key_automation_v137.go': [
+    'apps/backend/cmd/server/signing_key_automation.go': [
         'runSigningKeyRotationCheck', 'policy.AutomaticPrepare', 'health.RotationDue', 'health.StagedPending',
         'lifecycle.PrepareRotation', 'ActionSigningKeyAutoPrepared', 'RecordSigningKeyLifecycle',
     ],
-    'apps/backend/cmd/server/signing_keys_v136.go': [
+    'apps/backend/cmd/server/signing_keys.go': [
         'r.Put("/policy"', 'ActionSigningKeyPolicyUpdated', 'RotationPolicy', 'AssessRotation',
     ],
     'apps/backend/internal/metrics/metrics.go': [
@@ -44,7 +44,7 @@ for rel, needles in checks.items():
         if needle not in text:
             errors.append(f'{rel}: missing contract token {needle!r}')
 
-automation = root / 'apps/backend/cmd/server/signing_key_automation_v137.go'
+automation = root / 'apps/backend/cmd/server/signing_key_automation.go'
 if automation.is_file():
     text = automation.read_text(encoding='utf-8')
     if 'lifecycle.Activate(' in text or '.Activate(ctx' in text:

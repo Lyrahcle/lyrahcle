@@ -53,9 +53,9 @@ for rel, tokens in checks.items():
             errors.append(f'{rel} missing {token}')
 
 for rel, token in {
-    'apps/backend/cmd/server/agent_config_v91.go': 'func buildAgentConfigSigner(',
-    'apps/backend/cmd/server/agent_identity_v90.go': 'func buildAgentCA(',
-    'apps/backend/cmd/server/auth_v84.go': 'func buildWebAuthnHandler(',
+    'apps/backend/cmd/server/agent_config.go': 'func buildAgentConfigSigner(',
+    'apps/backend/cmd/server/agent_identity.go': 'func buildAgentCA(',
+    'apps/backend/cmd/server/auth.go': 'func buildWebAuthnHandler(',
 }.items():
     if token in (root / rel).read_text():
         errors.append(f'{rel} still contains bootstrap helper {token}')

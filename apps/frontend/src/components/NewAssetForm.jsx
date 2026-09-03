@@ -10,6 +10,7 @@ export default function NewAssetForm({ onCreated, programs: providedPrograms = n
   const [newProgramName, setNewProgramName] = useState('')
   const [kind, setKind] = useState('domain')
   const [value, setValue] = useState('')
+  const [cpeUri, setCpeUri] = useState('')
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(false)
 
@@ -42,8 +43,9 @@ export default function NewAssetForm({ onCreated, programs: providedPrograms = n
       if (!targetProgramId) {
         throw new Error('Select an existing program or name a new one')
       }
-      await createAsset({ programId: targetProgramId, kind, value: value.trim() })
+      await createAsset({ programId: targetProgramId, kind, value: value.trim(), cpeUri: cpeUri.trim() })
       setValue('')
+      setCpeUri('')
       setNewProgramName('')
       onCreated()
     } catch (err) {
@@ -130,6 +132,20 @@ export default function NewAssetForm({ onCreated, programs: providedPrograms = n
             className="w-full rounded border border-lyra-border bg-lyra-bgSoft px-2 py-1.5 font-mono text-sm text-lyra-text outline-none focus:border-lyra-gold"
             required
           />
+        </div>
+
+        <div className="sm:col-span-2">
+          <label htmlFor="asset-cpe" className="mb-1 block text-[11px] tracking-wider text-lyra-mutedDim">
+            CPE 2.3 (optional)
+          </label>
+          <input
+            id="asset-cpe"
+            value={cpeUri}
+            onChange={(e) => setCpeUri(e.target.value)}
+            placeholder="cpe:2.3:a:vendor:product:version:*:*:*:*:*:*:*"
+            className="w-full rounded border border-lyra-border bg-lyra-bgSoft px-2 py-1.5 font-mono text-xs text-lyra-text outline-none focus:border-lyra-gold"
+          />
+          <p className="mt-1 text-[10px] text-lyra-mutedDim">Used for product/version applicability matching against NVD configurations.</p>
         </div>
       </div>
 

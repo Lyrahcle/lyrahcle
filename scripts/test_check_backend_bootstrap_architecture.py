@@ -18,9 +18,9 @@ class BackendBootstrapArchitectureContractTests(unittest.TestCase):
             target = Path(tmp)
             for rel in [
                 'apps/backend/cmd/server/main.go',
-                'apps/backend/cmd/server/agent_config_v91.go',
-                'apps/backend/cmd/server/agent_identity_v90.go',
-                'apps/backend/cmd/server/auth_v84.go',
+                'apps/backend/cmd/server/agent_config.go',
+                'apps/backend/cmd/server/agent_identity.go',
+                'apps/backend/cmd/server/auth.go',
                 'apps/backend/cmd/server/http_helpers.go',
                 'apps/backend/cmd/server/mission_runtime.go',
                 'apps/backend/cmd/server/validation_audit.go',

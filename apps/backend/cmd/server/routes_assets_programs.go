@@ -42,12 +42,14 @@ func (a *apiRoutes) registerAssetProgramRoutes(r chi.Router) {
 				ProgramID string `json:"program_id"`
 				Kind      string `json:"kind"`
 				Value     string `json:"value"`
+				CPEURI    string `json:"cpe_uri"`
 			}
 			if err := decodeStrictJSON(r, &body); err != nil {
 				http.Error(w, "invalid JSON body", http.StatusBadRequest)
 				return
 			}
 			body.Value = strings.TrimSpace(body.Value)
+			body.CPEURI = strings.TrimSpace(body.CPEURI)
 
 			programID, err := uuid.Parse(body.ProgramID)
 			if err != nil {
@@ -62,12 +64,16 @@ func (a *apiRoutes) registerAssetProgramRoutes(r chi.Router) {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}
+			if err := validate.CPEURI(body.CPEURI); err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
 
 			orgID, ok := requestOrganizationID(w, r)
 			if !ok {
 				return
 			}
-			if err := assets.UpsertInOrganization(r.Context(), orgID, programID, body.Kind, body.Value); err != nil {
+			if err := assets.UpsertInOrganizationWithCPE(r.Context(), orgID, programID, body.Kind, body.Value, body.CPEURI); err != nil {
 				if errors.Is(err, pgx.ErrNoRows) {
 					http.Error(w, "program not found", http.StatusNotFound)
 					return
@@ -93,12 +99,14 @@ func (a *apiRoutes) registerAssetProgramRoutes(r chi.Router) {
 				ProgramID string `json:"program_id"`
 				Kind      string `json:"kind"`
 				Value     string `json:"value"`
+				CPEURI    string `json:"cpe_uri"`
 			}
 			if err := decodeStrictJSON(r, &body); err != nil {
 				http.Error(w, "invalid JSON body", http.StatusBadRequest)
 				return
 			}
 			body.Value = strings.TrimSpace(body.Value)
+			body.CPEURI = strings.TrimSpace(body.CPEURI)
 			programID, err := uuid.Parse(body.ProgramID)
 			if err != nil {
 				http.Error(w, "program_id must be a valid UUID", http.StatusBadRequest)
@@ -112,11 +120,15 @@ func (a *apiRoutes) registerAssetProgramRoutes(r chi.Router) {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}
+			if err := validate.CPEURI(body.CPEURI); err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
 			orgID, ok := requestOrganizationID(w, r)
 			if !ok {
 				return
 			}
-			asset, err := assets.UpdateInOrganization(r.Context(), orgID, assetID, programID, body.Kind, body.Value)
+			asset, err := assets.UpdateInOrganizationWithCPE(r.Context(), orgID, assetID, programID, body.Kind, body.Value, body.CPEURI)
 			if err != nil {
 				if errors.Is(err, pgx.ErrNoRows) {
 					http.Error(w, "asset not found", http.StatusNotFound)

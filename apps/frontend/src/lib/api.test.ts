@@ -144,7 +144,7 @@ describe('api client', () => {
       '/api/v1/assets/',
       expect.objectContaining({
         method: 'POST',
-        body: JSON.stringify({ program_id: 'p1', kind: 'domain', value: 'x.com' }),
+        body: JSON.stringify({ program_id: 'p1', kind: 'domain', value: 'x.com', cpe_uri: '' }),
       })
     )
   })
@@ -174,7 +174,7 @@ describe('api client', () => {
     await updateAsset('asset/1', { programId: 'p1', kind: 'ip', value: '198.51.100.42' })
     expect(fetch).toHaveBeenCalledWith('/api/v1/assets/asset%2F1', expect.objectContaining({
       method: 'PUT',
-      body: JSON.stringify({ program_id: 'p1', kind: 'ip', value: '198.51.100.42' }),
+      body: JSON.stringify({ program_id: 'p1', kind: 'ip', value: '198.51.100.42', cpe_uri: '' }),
     }))
 
     mockFetchOnce(true, null, 204)

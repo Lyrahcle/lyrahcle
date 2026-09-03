@@ -5,7 +5,7 @@ import sys
 ROOT = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else Path(__file__).resolve().parents[1]
 required = {
     'apps/frontend/src/App.tsx': ['useHashRoute()', "import('./components/Dashboard.tsx')"],
-    'apps/frontend/src/components/Dashboard.tsx': ['interface DashboardProps', 'activeTab: RouteTab', "import('./RBACPanel.tsx')", "import('./RateLimitPolicyPanel.tsx')", 'type CVEFilters', 'type IncidentFilters', 'const requests: Promise<void>[] = []', "lazyComponent<any>(() => import('./SatellitesPanel.jsx'))", 'const UntypedWorldMap = WorldMap as ComponentType<any>'],
+    'apps/frontend/src/components/Dashboard.tsx': ['interface DashboardProps', 'activeTab: RouteTab', "import('./RBACPanel.tsx')", "import('./RateLimitPolicyPanel.tsx')", 'type CVEFilters', 'type IncidentFilters', 'const dashboardQuery = useQuery({', "lazyComponent<any>(() => import('./SatellitesPanel.jsx'))", 'const UntypedWorldMap = WorldMap as ComponentType<any>'],
     'apps/frontend/src/components/RBACPanel.tsx': ['interface RBACPanelProps', 'FormEvent<HTMLFormElement>', 'error instanceof Error'],
     'apps/frontend/src/components/RateLimitPolicyPanel.tsx': ['interface RateLimitState', 'useState<RateLimitState | null>'],
     'apps/frontend/src/components/SecretProviderPanel.tsx': ['interface SecretProviderState', 'useState<SecretProviderState | null>'],
@@ -13,6 +13,7 @@ required = {
     'apps/frontend/src/components/Panel.tsx': ['interface PanelProps', 'titleExtra?: ReactNode'],
     'apps/frontend/src/hooks/useHashRoute.ts': ['RouteTab', 'setTabInLocation', 'subscribeTabChanges'],
     'apps/frontend/src/components/dashboard/navigation.ts': ['DashboardNavigationAccess', 'buildDashboardNavigation', "id: 'settings'"],
+    'apps/frontend/src/components/dashboard/dashboardQuery.ts': ['export async function fetchDashboardTab', 'const tasks: Promise<void>[] = []'],
 }
 legacy = [
     'apps/frontend/src/App.jsx',

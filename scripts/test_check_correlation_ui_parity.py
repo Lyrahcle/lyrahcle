@@ -16,7 +16,7 @@ class CorrelationUIParityContractTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             for rel in [
-                'apps/backend/cmd/server/cross_domain_v94.go',
+                'apps/backend/cmd/server/cross_domain.go',
                 'apps/frontend/src/components/CorrelationEvidencePanel.jsx',
                 'apps/frontend/src/components/IncidentsPanel.tsx',
                 'apps/frontend/src/lib/translations.js',

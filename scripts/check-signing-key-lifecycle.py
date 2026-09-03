@@ -9,11 +9,11 @@ checks = {
         'PrepareRotation(context.Context)', 'Activate(context.Context, string, time.Duration)', 'Revoke(context.Context, string)',
         'PublicKeyPEM(context.Context, string)', 'managed key directory must be a real directory',
     ],
-    'apps/backend/cmd/server/signing_keys_v136.go': [
+    'apps/backend/cmd/server/signing_keys.go': [
         '/signing-keys/agent-config', 'platform administrator required', 'ActionSigningKeyPrepared',
         'ActionSigningKeyActivated', 'ActionSigningKeyRevoked', 'public_key_pem',
     ],
-    'apps/backend/cmd/server/agent_config_v91.go': [
+    'apps/backend/cmd/server/agent_config.go': [
         'desired config signing key is no longer trusted', 'signingKeys.SigningKey',
     ],
     'apps/frontend/src/components/SigningKeysPanel.jsx': [

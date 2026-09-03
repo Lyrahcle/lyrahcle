@@ -82,7 +82,7 @@ func TestOperationalRoutesUseCapabilitiesWithoutLegacyRoleGatesV120(t *testing.T
 		}
 	}
 
-	tenantScope, err := os.ReadFile("tenant_scope_v102.go")
+	tenantScope, err := os.ReadFile("tenant_scope.go")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -101,7 +101,7 @@ func TestOperationalRoutesUseCapabilitiesWithoutLegacyRoleGatesV120(t *testing.T
 }
 
 func TestAgentReadSurfacesAllowReadOrManageCapabilityV120(t *testing.T) {
-	for _, file := range []string{"routes_agents.go", "agent_identity_v90.go", "agent_config_v91.go"} {
+	for _, file := range []string{"routes_agents.go", "agent_identity.go", "agent_config.go"} {
 		data, err := os.ReadFile(file)
 		if err != nil {
 			t.Fatal(err)

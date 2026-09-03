@@ -16,7 +16,7 @@ func TestSecretManagementContractV143(t *testing.T) {
 			t.Fatalf("secret management config missing %q", token)
 		}
 	}
-	route, err := os.ReadFile("secret_status_v143.go")
+	route, err := os.ReadFile("secret_status.go")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -37,7 +37,7 @@ func TestSecretManagementContractV143(t *testing.T) {
 }
 
 func TestPlatformControlPlaneRLSRegressionV143(t *testing.T) {
-	for _, file := range []string{"organizations_v100.go", "signing_keys_v136.go", "rate_limit_status_v138.go", "secret_status_v143.go"} {
+	for _, file := range []string{"organizations.go", "signing_keys.go", "rate_limit_status.go", "secret_status.go"} {
 		b, err := os.ReadFile(file)
 		if err != nil {
 			t.Fatal(err)

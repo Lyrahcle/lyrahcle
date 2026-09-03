@@ -17,9 +17,9 @@ func readRouteSource(t *testing.T, name string) string {
 
 func TestRBACRouteMatrixCoversSensitiveDomains(t *testing.T) {
 	serverSrc := readServerProductionSource(t)
-	agentSrc := readRouteSource(t, "agent_identity_v90.go")
-	rbacSrc := readRouteSource(t, "rbac_v110.go")
-	tenantScopeSrc := readRouteSource(t, "tenant_scope_v102.go")
+	agentSrc := readRouteSource(t, "agent_identity.go")
+	rbacSrc := readRouteSource(t, "rbac.go")
+	tenantScopeSrc := readRouteSource(t, "tenant_scope.go")
 
 	required := map[string][]string{
 		"server route package": {
@@ -33,15 +33,15 @@ func TestRBACRouteMatrixCoversSensitiveDomains(t *testing.T) {
 			`"audit.read"`,
 			`"agents.read"`, `"agents.manage"`,
 		},
-		"agent_identity_v90.go": {`"agents.read"`, `"agents.manage"`},
-		"rbac_v110.go":          {`"rbac.manage"`},
-		"tenant_scope_v102.go":  {`"organizations.read"`},
+		"agent_identity.go": {`"agents.read"`, `"agents.manage"`},
+		"rbac.go":          {`"rbac.manage"`},
+		"tenant_scope.go":  {`"organizations.read"`},
 	}
 	sources := map[string]string{
 		"server route package":  serverSrc,
-		"agent_identity_v90.go": agentSrc,
-		"rbac_v110.go":          rbacSrc,
-		"tenant_scope_v102.go":  tenantScopeSrc,
+		"agent_identity.go": agentSrc,
+		"rbac.go":          rbacSrc,
+		"tenant_scope.go":  tenantScopeSrc,
 	}
 	for file, tokens := range required {
 		for _, token := range tokens {
@@ -58,8 +58,8 @@ func TestRBACRouteMatrixCoversSensitiveDomains(t *testing.T) {
 }
 
 func TestAgentAndOrganizationAdminRoutesDoNotDependOnLegacyAdminRole(t *testing.T) {
-	agentSrc := readRouteSource(t, "agent_identity_v90.go")
-	orgSrc := readRouteSource(t, "organizations_v100.go")
+	agentSrc := readRouteSource(t, "agent_identity.go")
+	orgSrc := readRouteSource(t, "organizations.go")
 
 	legacyAdminGate := `RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleAdmin`
 	if strings.Contains(agentSrc, legacyAdminGate) {

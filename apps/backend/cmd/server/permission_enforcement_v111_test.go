@@ -18,7 +18,7 @@ func TestSensitiveRoutesUseCapabilities(t *testing.T) {
 			t.Fatalf("missing permission enforcement %s", permission)
 		}
 	}
-	organizationSource, err := os.ReadFile("organizations_v100.go")
+	organizationSource, err := os.ReadFile("organizations.go")
 	if err != nil {
 		t.Fatal(err)
 	}

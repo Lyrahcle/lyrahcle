@@ -7,7 +7,7 @@ import (
 )
 
 func TestRBACUIAssignmentContract(t *testing.T) {
-	data, err := os.ReadFile("rbac_v110.go")
+	data, err := os.ReadFile("rbac.go")
 	if err != nil {
 		t.Fatal(err)
 	}

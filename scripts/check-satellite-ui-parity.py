@@ -12,7 +12,7 @@ SERVER_REQUIRED = [
 ]
 
 CHECKS = {
-    ROOT / 'apps/backend/cmd/server/satellite_management_v132.go': [
+    ROOT / 'apps/backend/cmd/server/satellite_management.go': [
         'func handleUpdateSatellite',
         'satellites.Update(',
         'audit.ActionSatelliteUpdated',

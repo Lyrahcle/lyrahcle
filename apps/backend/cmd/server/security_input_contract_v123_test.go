@@ -32,8 +32,8 @@ func TestSecurityCriticalIgnoredErrorsDoNotRegress(t *testing.T) {
 		filepath.Join("..", "..", "internal", "sessionstore", "sessionstore.go"): {"_, _ = getPipe.Exec"},
 		filepath.Join("..", "..", "internal", "store", "agent_keys.go"):          {"_, _ = s.pool.Exec"},
 		filepath.Join("..", "..", "internal", "store", "agent_identity.go"):      {"_, _ = s.pool.Exec"},
-		"cross_domain_v94.go":     {"recentAudit, _ =", "contextualAlerts, _ =", "operationalEvents, _ =", "_, _ = incidents.AddEvidence"},
-		"orbital_security_v92.go": {"_, _ = incidents.AddEvidence"},
+		"cross_domain.go":     {"recentAudit, _ =", "contextualAlerts, _ =", "operationalEvents, _ =", "_, _ = incidents.AddEvidence"},
+		"orbital_security.go": {"_, _ = incidents.AddEvidence"},
 	}
 	for name, forbidden := range files {
 		data, err := os.ReadFile(filepath.Clean(name))

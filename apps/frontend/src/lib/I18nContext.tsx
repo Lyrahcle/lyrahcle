@@ -13,7 +13,7 @@ export interface I18nContextValue {
 
 const STORAGE_KEY = 'lyra_lang'
 const DEFAULT_LANG: Lang = 'en'
-const ENGLISH_TITLE_LEAVES = new Set(['title', 'panelTitle'])
+const TITLE_LEAVES = new Set(['title', 'panelTitle'])
 const TITLE_SMALL_WORDS = new Set(['a', 'an', 'and', 'as', 'at', 'but', 'by', 'for', 'in', 'of', 'on', 'or', 'the', 'to', 'via'])
 
 export function englishTitleCase(value: string): string {
@@ -29,8 +29,29 @@ export function englishTitleCase(value: string): string {
   }).join('')
 }
 
-function isEnglishTitleKey(key: string): boolean {
-  return ENGLISH_TITLE_LEAVES.has(key.split('.').at(-1) ?? '')
+function isTitleKey(key: string): boolean {
+  return TITLE_LEAVES.has(key.split('.').at(-1) ?? '')
+}
+
+function sentenceCaseRomanceTitle(value: string): string {
+  const words = value.split(/(\s+)/)
+  let seenWord = false
+  return words.map((word) => {
+    if (!/\S/.test(word)) return word
+    const firstWord = !seenWord
+    seenWord = true
+    if (/^[A-Z0-9/&+.-]+$/.test(word) || /[{}`]/.test(word)) return word
+    const lower = word.toLocaleLowerCase()
+    return firstWord
+      ? lower.replace(/^([^\p{L}\p{N}]*)(\p{L})/u, (_, prefix, letter) => `${prefix}${letter.toLocaleUpperCase()}`)
+      : lower
+  }).join('')
+}
+
+export function formatTitleByLanguage(lang: Lang, value: string): string {
+  if (lang === 'en') return englishTitleCase(value)
+  if (lang === 'es' || lang === 'fr') return sentenceCaseRomanceTitle(value)
+  return value
 }
 
 function detectLanguage(): Lang {
@@ -69,7 +90,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   const t = useCallback<Translate>(
     (key, vars) => {
 	  let template = (lookup(translations[lang], key) ?? lookup(translations[DEFAULT_LANG], key) ?? key) as string
-	  if (lang === 'en' && isEnglishTitleKey(key)) template = englishTitleCase(template)
+	  if (isTitleKey(key)) template = formatTitleByLanguage(lang, template)
       if (!vars) return template
       return Object.entries(vars).reduce((str, [name, value]) => str.replaceAll(`{${name}}`, String(value)), template)
     },

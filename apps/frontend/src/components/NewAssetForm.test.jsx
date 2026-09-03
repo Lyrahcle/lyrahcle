@@ -22,7 +22,7 @@ describe('NewAssetForm', () => {
     fireEvent.change(screen.getByLabelText(/value/i), { target: { value: ' ops.example.com ' } })
     fireEvent.click(screen.getByRole('button', { name: /create/i }))
     await waitFor(() => expect(api.createAsset).toHaveBeenCalledWith({
-      programId: 'program-1', kind: 'domain', value: 'ops.example.com',
+      programId: 'program-1', kind: 'domain', value: 'ops.example.com', cpeUri: '',
     }))
     expect(onCreated).toHaveBeenCalledOnce()
   })

@@ -21,7 +21,7 @@ func requireAuditContractTokens(t *testing.T, filename string, tokens ...string)
 }
 
 func TestAdministrativeAuditMatrixControlPlane(t *testing.T) {
-	requireAuditContractTokens(t, "organizations_v100.go",
+	requireAuditContractTokens(t, "organizations.go",
 		"audit.ActionOrganizationCreated",
 		"audit.ActionOrganizationUpdated",
 		"audit.ActionPlatformAdminGranted",
@@ -33,7 +33,7 @@ func TestAdministrativeAuditMatrixControlPlane(t *testing.T) {
 }
 
 func TestAdministrativeAuditMatrixSigningKeys(t *testing.T) {
-	requireAuditContractTokens(t, "signing_keys_v136.go",
+	requireAuditContractTokens(t, "signing_keys.go",
 		"audit.ActionSigningKeyPolicyUpdated",
 		"audit.ActionSigningKeyPrepared",
 		"audit.ActionSigningKeyActivated",
@@ -44,7 +44,7 @@ func TestAdministrativeAuditMatrixSigningKeys(t *testing.T) {
 }
 
 func TestAdministrativeAuditMatrixAgentIdentity(t *testing.T) {
-	requireAuditContractTokens(t, "agent_identity_v90.go",
+	requireAuditContractTokens(t, "agent_identity.go",
 		"audit.ActionAgentEnrollmentIssued",
 		"audit.ActionAgentStationUpdated",
 		"audit.ActionAgentStatusChanged",
@@ -53,7 +53,7 @@ func TestAdministrativeAuditMatrixAgentIdentity(t *testing.T) {
 }
 
 func TestAdministrativeAuditMatrixAgentConfig(t *testing.T) {
-	requireAuditContractTokens(t, "agent_config_v91.go",
+	requireAuditContractTokens(t, "agent_config.go",
 		"audit.ActionAgentConfigIssued",
 		"audit.ActionAgentConfigRollback",
 		"logAudit",
@@ -89,7 +89,7 @@ func TestAdministrativeAuditMatrixUsers(t *testing.T) {
 }
 
 func TestAdministrativeAuditMatrixRBAC(t *testing.T) {
-	requireAuditContractTokens(t, "rbac_v110.go",
+	requireAuditContractTokens(t, "rbac.go",
 		"audit.ActionRBACRoleCreated",
 		"audit.ActionRBACRoleAssigned",
 		"audit.ActionRBACRoleRemoved",

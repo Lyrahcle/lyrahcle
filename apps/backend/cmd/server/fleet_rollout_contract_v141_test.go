@@ -7,7 +7,7 @@ import (
 )
 
 func TestFleetRolloutContractV141(t *testing.T) {
-	handlerBytes, err := os.ReadFile("fleet_rollouts_v141.go")
+	handlerBytes, err := os.ReadFile("fleet_rollouts.go")
 	if err != nil {
 		t.Fatal(err)
 	}

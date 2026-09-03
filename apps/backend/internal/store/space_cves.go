@@ -9,21 +9,35 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+type CPEMatch struct {
+	Criteria              string `json:"criteria"`
+	Vulnerable            bool   `json:"vulnerable"`
+	VersionStartIncluding string `json:"version_start_including,omitempty"`
+	VersionStartExcluding string `json:"version_start_excluding,omitempty"`
+	VersionEndIncluding   string `json:"version_end_including,omitempty"`
+	VersionEndExcluding   string `json:"version_end_excluding,omitempty"`
+}
+
 type SpaceCVE struct {
-	CVEID       string    `json:"cve_id"`
-	Description string    `json:"description"`
-	Published   time.Time `json:"published"`
-	Severity    string    `json:"severity"`
-	Score       float64   `json:"score"`
-	Keyword     string    `json:"keyword"`
-	Source      string    `json:"source"`
-	SyncedAt    time.Time `json:"synced_at"`
-	LastModified *time.Time `json:"last_modified,omitempty"`
-	VulnerabilityStatus string `json:"vulnerability_status"`
-	SourceIdentifier string `json:"source_identifier"`
-	CVSSVersion string `json:"cvss_version"`
-	CVSSVector string `json:"cvss_vector"`
-	CWEIDs []string `json:"cwe_ids"`
+	CVEID               string     `json:"cve_id"`
+	Description         string     `json:"description"`
+	Published           time.Time  `json:"published"`
+	Severity            string     `json:"severity"`
+	Score               float64    `json:"score"`
+	Keyword             string     `json:"keyword"`
+	Source              string     `json:"source"`
+	SyncedAt            time.Time  `json:"synced_at"`
+	LastModified        *time.Time `json:"last_modified,omitempty"`
+	VulnerabilityStatus string     `json:"vulnerability_status"`
+	SourceIdentifier    string     `json:"source_identifier"`
+	CVSSVersion         string     `json:"cvss_version"`
+	CVSSVector          string     `json:"cvss_vector"`
+	CWEIDs              []string   `json:"cwe_ids"`
+	CPEMatches          []CPEMatch `json:"cpe_matches"`
+	KEV                 bool       `json:"kev"`
+	KEVDueDate          *time.Time `json:"kev_due_date,omitempty"`
+	EPSSScore           *float64   `json:"epss_score,omitempty"`
+	EPSSPercentile      *float64   `json:"epss_percentile,omitempty"`
 }
 
 type SpaceCVEStore struct {
@@ -116,7 +130,7 @@ func (s *SpaceCVEStore) List(ctx context.Context, limit, offset int, filter Spac
 
 	querySQL := fmt.Sprintf(`
 		SELECT cve_id, description, published, severity, score, keyword, source, synced_at,
-		       last_modified, vulnerability_status, source_identifier, cvss_version, cvss_vector, cwe_ids
+		       last_modified, vulnerability_status, source_identifier, cvss_version, cvss_vector, cwe_ids, cpe_matches, kev, kev_due_date, epss_score, epss_percentile
 		FROM space_cves
 		WHERE %s
 		ORDER BY %s %s NULLS LAST, cve_id ASC
@@ -135,7 +149,7 @@ func (s *SpaceCVEStore) List(ctx context.Context, limit, offset int, filter Spac
 		var published *time.Time
 		var score *float64
 		if err := rows.Scan(&c.CVEID, &c.Description, &published, &c.Severity, &score, &c.Keyword, &c.Source, &c.SyncedAt,
-			&c.LastModified, &c.VulnerabilityStatus, &c.SourceIdentifier, &c.CVSSVersion, &c.CVSSVector, &c.CWEIDs); err != nil {
+			&c.LastModified, &c.VulnerabilityStatus, &c.SourceIdentifier, &c.CVSSVersion, &c.CVSSVector, &c.CWEIDs, &c.CPEMatches, &c.KEV, &c.KEVDueDate, &c.EPSSScore, &c.EPSSPercentile); err != nil {
 			return Page[SpaceCVE]{}, err
 		}
 		if published != nil {
@@ -178,10 +192,10 @@ func (s *SpaceCVEStore) GetByID(ctx context.Context, cveID string) (SpaceCVE, er
 
 	err := s.pool.QueryRow(ctx, `
 		SELECT cve_id, description, published, severity, score, keyword, source, synced_at,
-		       last_modified, vulnerability_status, source_identifier, cvss_version, cvss_vector, cwe_ids
+		       last_modified, vulnerability_status, source_identifier, cvss_version, cvss_vector, cwe_ids, cpe_matches, kev, kev_due_date, epss_score, epss_percentile
 		FROM space_cves WHERE cve_id = $1
 	`, cveID).Scan(&c.CVEID, &c.Description, &published, &c.Severity, &score, &c.Keyword, &c.Source, &c.SyncedAt,
-		&c.LastModified, &c.VulnerabilityStatus, &c.SourceIdentifier, &c.CVSSVersion, &c.CVSSVector, &c.CWEIDs)
+		&c.LastModified, &c.VulnerabilityStatus, &c.SourceIdentifier, &c.CVSSVersion, &c.CVSSVector, &c.CWEIDs, &c.CPEMatches, &c.KEV, &c.KEVDueDate, &c.EPSSScore, &c.EPSSPercentile)
 	if err != nil {
 		return SpaceCVE{}, err
 	}
@@ -200,7 +214,7 @@ func (s *SpaceCVEStore) RecentHighSeverity(ctx context.Context, since time.Time,
 	}
 	rows, err := s.pool.Query(ctx, `
 		SELECT cve_id, description, published, severity, score, keyword, source, synced_at,
-		       last_modified, vulnerability_status, source_identifier, cvss_version, cvss_vector, cwe_ids
+		       last_modified, vulnerability_status, source_identifier, cvss_version, cvss_vector, cwe_ids, cpe_matches, kev, kev_due_date, epss_score, epss_percentile
 		FROM space_cves
 		WHERE published >= $1 AND lower(severity) IN ('critical', 'high')
 		ORDER BY score DESC NULLS LAST, published DESC NULLS LAST
@@ -216,7 +230,7 @@ func (s *SpaceCVEStore) RecentHighSeverity(ctx context.Context, since time.Time,
 		var published *time.Time
 		var score *float64
 		if err := rows.Scan(&item.CVEID, &item.Description, &published, &item.Severity, &score, &item.Keyword, &item.Source, &item.SyncedAt,
-			&item.LastModified, &item.VulnerabilityStatus, &item.SourceIdentifier, &item.CVSSVersion, &item.CVSSVector, &item.CWEIDs); err != nil {
+			&item.LastModified, &item.VulnerabilityStatus, &item.SourceIdentifier, &item.CVSSVersion, &item.CVSSVector, &item.CWEIDs, &item.CPEMatches, &item.KEV, &item.KEVDueDate, &item.EPSSScore, &item.EPSSPercentile); err != nil {
 			return nil, err
 		}
 		if published != nil {

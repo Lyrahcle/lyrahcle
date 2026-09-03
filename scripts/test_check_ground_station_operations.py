@@ -22,6 +22,7 @@ class GroundStationOperationsContractTests(unittest.TestCase):
             clone = Path(tmp)
             files = [
                 'apps/frontend/src/components/Dashboard.tsx',
+                'apps/frontend/src/components/dashboard/dashboardQuery.ts',
                 'apps/frontend/src/components/GroundStationOperations.jsx',
                 'apps/frontend/src/components/dashboard/navigation.ts',
                 'apps/frontend/src/components/WorldMap.jsx',

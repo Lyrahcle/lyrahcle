@@ -50,11 +50,16 @@ class FrontendTypeScriptPhase2ContractTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             clone = Path(tmp) / 'repo'
             shutil.copytree(ROOT, clone, ignore=shutil.ignore_patterns('.git', 'node_modules', '.terraform', '__pycache__'))
-            dashboard = clone / 'apps/frontend/src/components/Dashboard.tsx'
-            dashboard.write_text(dashboard.read_text().replace('const requests: Promise<void>[] = []', 'const requests = []'))
+            dashboard_query = clone / 'apps/frontend/src/components/dashboard/dashboardQuery.ts'
+            dashboard_query.write_text(
+                dashboard_query.read_text().replace(
+                    'const tasks: Promise<void>[] = []',
+                    'const tasks = []',
+                )
+            )
             result = self.run_check(clone)
             self.assertNotEqual(result.returncode, 0)
-            self.assertIn('const requests: Promise<void>[] = []', result.stdout)
+            self.assertIn('const tasks: Promise<void>[] = []', result.stdout)
 
 if __name__ == '__main__':
     unittest.main()

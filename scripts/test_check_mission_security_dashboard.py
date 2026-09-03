@@ -17,27 +17,59 @@ class MissionSecurityDashboardContractTests(unittest.TestCase):
 
     def test_permission_guard_removal_is_rejected(self):
         root = Path(__file__).resolve().parents[1]
+
         with tempfile.TemporaryDirectory() as tmp:
             clone = Path(tmp)
+
             files = [
                 'apps/frontend/src/components/Dashboard.tsx',
+                'apps/frontend/src/components/dashboard/dashboardQuery.ts',
                 'apps/frontend/src/components/MissionSecurityOperationsDashboard.jsx',
                 'apps/frontend/src/components/MissionSecurityOperationsDashboard.test.jsx',
                 'apps/frontend/src/lib/translations.js',
             ]
+
             for rel in files:
                 target = clone / rel
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_text((root / rel).read_text())
-            dashboard = clone / 'apps/frontend/src/components/Dashboard.tsx'
-            dashboard.write_text(dashboard.read_text().replace('if (rfRead) requests.push(safeFetch(fetchRfAnomalies, setRfAnomalies))', 'requests.push(safeFetch(fetchRfAnomalies, setRfAnomalies))'))
+
+            dashboard_query = (
+                clone
+                / 'apps/frontend/src/components/dashboard/dashboardQuery.ts'
+            )
+
+            source = dashboard_query.read_text()
+
+            guarded = (
+                "if (access.connectivity) "
+                "result.agentIdentities = await optional(fetchAgentIdentities, [])"
+            )
+            unguarded = (
+                "result.agentIdentities = await optional(fetchAgentIdentities, [])"
+            )
+
+            self.assertIn(guarded, source)
+
+            dashboard_query.write_text(
+                source.replace(guarded, unguarded, 1)
+            )
+
             result = subprocess.run(
-                ['python3', str(root / 'scripts/check-mission-security-dashboard.py'), str(clone)],
+                [
+                    'python3',
+                    str(root / 'scripts/check-mission-security-dashboard.py'),
+                    str(clone),
+                ],
                 capture_output=True,
                 text=True,
             )
+
             self.assertNotEqual(result.returncode, 0)
-            self.assertIn('permission-aware integration marker', result.stderr)
+            self.assertIn(
+                'permission-aware integration marker',
+                result.stderr,
+            )
 
 
 if __name__ == '__main__':

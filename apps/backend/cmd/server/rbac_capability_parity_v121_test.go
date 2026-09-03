@@ -31,7 +31,7 @@ func TestHybridAndOperationalRoutesUseCapabilitiesV121(t *testing.T) {
 }
 
 func TestCertificateRotationIsMachineCredentialOnlyV121(t *testing.T) {
-	data, err := os.ReadFile("agent_identity_v90.go")
+	data, err := os.ReadFile("agent_identity.go")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -7,7 +7,7 @@ import (
 )
 
 func TestPlatformUsersUsesMinimalProjectionV144(t *testing.T) {
-	routeBytes, err := os.ReadFile("organizations_v100.go")
+	routeBytes, err := os.ReadFile("organizations.go")
 	if err != nil {
 		t.Fatal(err)
 	}

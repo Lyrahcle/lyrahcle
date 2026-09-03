@@ -12,7 +12,7 @@ def text(path):
         return ''
     return p.read_text(encoding='utf-8')
 
-backend = text('apps/backend/cmd/server/cross_domain_v94.go')
+backend = text('apps/backend/cmd/server/cross_domain.go')
 component = text('apps/frontend/src/components/CorrelationEvidencePanel.jsx')
 incidents = text('apps/frontend/src/components/IncidentsPanel.tsx')
 translations = text('apps/frontend/src/lib/translations.js')

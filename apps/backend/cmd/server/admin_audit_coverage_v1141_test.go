@@ -7,7 +7,7 @@ import (
 )
 
 func TestRBACAdministrativeMutationsAreAudited(t *testing.T) {
-	data, err := os.ReadFile("rbac_v110.go")
+	data, err := os.ReadFile("rbac.go")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -27,7 +27,7 @@ func TestRBACAdministrativeMutationsAreAudited(t *testing.T) {
 }
 
 func TestRBACReadEndpointsUseReadCapability(t *testing.T) {
-	data, err := os.ReadFile("rbac_v110.go")
+	data, err := os.ReadFile("rbac.go")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,7 +38,7 @@ func TestRBACReadEndpointsUseReadCapability(t *testing.T) {
 }
 
 func TestOrganizationCreationAuditsTargetOrganization(t *testing.T) {
-	data, err := os.ReadFile("organizations_v100.go")
+	data, err := os.ReadFile("organizations.go")
 	if err != nil {
 		t.Fatal(err)
 	}

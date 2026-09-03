@@ -62,6 +62,9 @@ export default function AssetAlertsPanel({ page, onPrev, onNext, onChanged }) {
                 {t('assetAlerts.severity')}
               </th>
               <th scope="col" className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">
+                {t('assetAlerts.priority')}
+              </th>
+              <th scope="col" className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">
                 {t('assetAlerts.matchedVia')}
               </th>
               <th scope="col" className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">
@@ -94,6 +97,12 @@ export default function AssetAlertsPanel({ page, onPrev, onNext, onChanged }) {
                 </td>
                 <td className="py-3 pr-4"><SeverityBadge severity={a.severity} /></td>
                 <td className="py-3 pr-4">
+                  <div className="flex flex-wrap gap-1">
+                    {a.kev && <span className="rounded border border-lyra-bad/40 px-1.5 py-0.5 font-mono text-[10px] text-lyra-bad">KEV</span>}
+                    {typeof a.epss_score === 'number' && <span className="rounded border border-lyra-border px-1.5 py-0.5 font-mono text-[10px] text-lyra-muted">EPSS {(a.epss_score * 100).toFixed(1)}%</span>}
+                  </div>
+                </td>
+                <td className="py-3 pr-4">
                   <p className="font-mono text-xs text-lyra-mutedDim">{a.matched_keyword}</p>
                   <p className="mt-1 text-[10px] text-lyra-mutedDim">{t(`assetAlerts.matchMethod.${a.match_method || 'thematic_asset_kind'}`)}</p>
                 </td>
@@ -104,18 +113,12 @@ export default function AssetAlertsPanel({ page, onPrev, onNext, onChanged }) {
                   </p>
                 </td>
                 <td className="py-3 pr-4">
-                  {a.acknowledged ? (
-                    <span className="font-mono text-[11px] tracking-wider text-lyra-good">
-                      {t('assetAlerts.acknowledged')}
-                    </span>
-                  ) : (
-                    <span className="font-mono text-[11px] tracking-wider text-lyra-warn">
-                      {t('assetAlerts.new')}
-                    </span>
-                  )}
+                  <span className={`font-mono text-[11px] tracking-wider ${a.lifecycle_status === 'resolved' ? 'text-lyra-mutedDim' : a.lifecycle_status === 'reviewed' ? 'text-lyra-good' : 'text-lyra-warn'}`}>
+                    {t(`assetAlerts.lifecycle.${a.lifecycle_status || (a.acknowledged ? 'reviewed' : 'open')}`)}
+                  </span>
                 </td>
                 <td className="py-3 text-right">
-                  {!a.acknowledged && hasPermission('alerts.manage') && (
+                  {a.lifecycle_status !== 'resolved' && !a.acknowledged && hasPermission('alerts.manage') && (
                     <button
                       onClick={() => handleAcknowledge(a.id)}
                       disabled={ackingId === a.id}

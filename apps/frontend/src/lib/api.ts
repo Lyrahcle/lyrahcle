@@ -215,20 +215,20 @@ export async function fetchAssets(limit = 50, offset = 0) {
   return res.json()
 }
 
-export async function createAsset({ programId, kind, value }) {
+export async function createAsset({ programId, kind, value, cpeUri = '' }) {
   const res = await authedFetch('/api/v1/assets/', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ program_id: programId, kind, value }),
+    body: JSON.stringify({ program_id: programId, kind, value, cpe_uri: cpeUri }),
   })
   if (!res.ok) throw await apiErrorFromResponse(res, 'failed to create asset')
 }
 
-export async function updateAsset(assetId, { programId, kind, value }) {
+export async function updateAsset(assetId, { programId, kind, value, cpeUri = '' }) {
   const res = await authedFetch(`/api/v1/assets/${encodeURIComponent(assetId)}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ program_id: programId, kind, value }),
+    body: JSON.stringify({ program_id: programId, kind, value, cpe_uri: cpeUri }),
   })
   if (!res.ok) throw await apiErrorFromResponse(res, 'failed to update asset')
   return res.json()

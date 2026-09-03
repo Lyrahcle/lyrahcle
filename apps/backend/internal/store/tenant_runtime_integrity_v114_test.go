@@ -37,10 +37,10 @@ func TestGlobalAssetMatchingCarriesOrganization(t *testing.T) {
 		t.Fatal(err)
 	}
 	src := string(data)
-	if !strings.Contains(src, "SELECT id, organization_id, program_id, kind, value FROM assets") {
+	if !strings.Contains(src, "SELECT id, organization_id, program_id, kind, value, cpe_uri FROM assets") {
 		t.Fatal("asset projections must carry organization_id")
 	}
-	if !strings.Contains(src, "rows.Scan(&a.ID, &a.OrganizationID, &a.ProgramID, &a.Kind, &a.Value)") {
+	if !strings.Contains(src, "rows.Scan(&a.ID, &a.OrganizationID, &a.ProgramID, &a.Kind, &a.Value, &a.CPEURI)") {
 		t.Fatal("asset projections must scan organization_id with the selected columns")
 	}
 }

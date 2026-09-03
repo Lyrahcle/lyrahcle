@@ -7,7 +7,7 @@ import (
 )
 
 func TestPlatformAdminLifecycleIsAvailableToUI(t *testing.T) {
-	data, err := os.ReadFile("organizations_v100.go")
+	data, err := os.ReadFile("organizations.go")
 	if err != nil {
 		t.Fatal(err)
 	}

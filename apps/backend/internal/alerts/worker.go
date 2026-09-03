@@ -216,44 +216,62 @@ func (w *Worker) ProcessCVE(ctx context.Context, cveID string) error {
 	}
 
 	kinds := AssetKindsForKeyword(cve.Keyword)
-	if len(kinds) == 0 {
-		return nil
-	}
-
-	matched, err := w.assets.ListByKinds(ctx, kinds)
+	candidates, err := w.assets.ListAlertCandidates(ctx, kinds)
 	if err != nil {
-		return fmt.Errorf("list assets for kinds %v: %w", kinds, err)
+		return fmt.Errorf("list alert candidates for cve %s: %w", cveID, err)
 	}
 
+	activeAssetIDs := make([]uuid.UUID, 0, len(candidates))
 	var processingErrors []error
-	for _, a := range matched {
-		_, err := w.alerts.CreateWithAssessment(ctx, a.ID, cve.CVEID, cve.Keyword, cve.Severity, "unknown", "thematic_asset_kind", 20, true)
+	for _, a := range candidates {
+		applicabilityStatus, matchMethod, confidence, contextOnly := "unknown", "thematic_asset_kind", 20, true
+		matched := false
+
+		if a.CPEURI != "" && len(cve.CPEMatches) > 0 {
+			assessment := AssessCPE(a.CPEURI, cve.CPEMatches)
+			if assessment.Applicable {
+				matched = true
+				applicabilityStatus, matchMethod, confidence, contextOnly = "applicable", assessment.Method, assessment.Confidence, false
+			} else {
+				continue
+			}
+		} else {
+			for _, kind := range kinds {
+				if a.Kind == kind {
+					matched = true
+					break
+				}
+			}
+		}
+		if !matched {
+			continue
+		}
+
+		activeAssetIDs = append(activeAssetIDs, a.ID)
+		_, err := w.alerts.CreateWithAssessment(ctx, a.ID, cve.CVEID, cve.Keyword, cve.Severity, applicabilityStatus, matchMethod, confidence, contextOnly)
 		if err != nil {
-			log.Printf("alerts: create alert for asset %s / cve %s: %v", a.ID, cve.CVEID, err)
-			processingErrors = append(processingErrors, fmt.Errorf("create alert for asset %s: %w", a.ID, err))
+			log.Printf("alerts: create/update alert for asset %s / cve %s: %v", a.ID, cve.CVEID, err)
+			processingErrors = append(processingErrors, fmt.Errorf("create/update alert for asset %s: %w", a.ID, err))
 			continue
 		}
 
 		if w.auditLog != nil {
 			details := map[string]interface{}{
-				"organization_id": a.OrganizationID.String(),
-				"cve_id":          cve.CVEID,
-				"asset_kind":      a.Kind,
-				"asset_value":     a.Value,
-				"keyword":         cve.Keyword,
-				"severity":        cve.Severity,
-				"applicability_status": "unknown",
-				"match_method":    "thematic_asset_kind",
-				"confidence":      20,
-				"context_only":    true,
+				"organization_id": a.OrganizationID.String(), "cve_id": cve.CVEID,
+				"asset_kind": a.Kind, "asset_value": a.Value, "asset_cpe": a.CPEURI,
+				"keyword": cve.Keyword, "severity": cve.Severity,
+				"applicability_status": applicabilityStatus, "match_method": matchMethod,
+				"confidence": confidence, "context_only": contextOnly,
+				"kev": cve.KEV, "epss_score": cve.EPSSScore,
 			}
 			dedupeKey := "asset-alert:" + a.ID.String() + ":" + cve.CVEID
 			if _, err := w.auditLog.InsertIdempotentInOrganization(ctx, a.OrganizationID, dedupeKey, audit.ActorSystem, "cve-alert-matcher", audit.ActionAssetAlertCreated, "", details); err != nil {
-				log.Printf("alerts: failed to record audit entry for asset %s / cve %s: %v", a.ID, cve.CVEID, err)
 				processingErrors = append(processingErrors, fmt.Errorf("audit alert for asset %s: %w", a.ID, err))
 			}
 		}
 	}
-
+	if err := w.alerts.ResolveCVEExcept(ctx, cve.CVEID, activeAssetIDs); err != nil {
+		processingErrors = append(processingErrors, fmt.Errorf("resolve stale alerts for %s: %w", cve.CVEID, err))
+	}
 	return errors.Join(processingErrors...)
 }

@@ -39,7 +39,7 @@ func TestRevokeUserSecurityStateWithoutRedisIsNoop(t *testing.T) {
 }
 
 func TestSecurityCriticalRoutesDoNotIgnoreRevocationErrors(t *testing.T) {
-	data, err := os.ReadFile("auth_v84.go")
+	data, err := os.ReadFile("auth.go")
 	if err != nil {
 		t.Fatal(err)
 	}

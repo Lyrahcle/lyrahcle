@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ComponentType } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { RouteTab } from '../lib/routeTabs'
 import { buildDashboardNavigation } from './dashboard/navigation'
 import type { RBACPermission, RBACRole, RBACUser } from '../types/security'
@@ -44,6 +45,7 @@ import { lazyComponent } from '../lib/lazyComponent'
 import { useDashboardApiIssue } from '../hooks/useDashboardApiIssue'
 import { useDashboardSubscriptions } from '../hooks/useDashboardSubscriptions'
 import { usePlatformAccess } from '../hooks/usePlatformAccess'
+import { fetchDashboardTab } from './dashboard/dashboardQuery'
 
 const AssetsTable = lazyComponent<any>(() => import('./AssetsTable.jsx'))
 const RfPanel = lazyComponent<any>(() => import('./RfPanel.tsx'))
@@ -227,221 +229,63 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
     onChangeTab(tab)
   }
 
+  const queryClient = useQueryClient()
+  const dashboardQuery = useQuery({
+    queryKey: ['dashboard', activeTab, assetsOffset, cvesOffset, cveFilters, alertsOffset, incidentsOffset, incidentFilters, auditOffset,
+      admin, adminAccess, auditAccess, assetsAccess, alertsRead, connectivityAccess, incidentsRead, incidentsManage, orbitalAccess,
+      platformAdmin, programsAccess, rbacRead, rfRead, usersRead, retryNonce],
+    queryFn: () => fetchDashboardTab({
+      activeTab, assetsOffset, cvesOffset, cveFilters, alertsOffset, incidentsOffset, incidentFilters, auditOffset,
+      access: {
+        admin,
+        adminAccess,
+        audit: auditAccess,
+        assets: assetsAccess,
+        alerts: alertsRead,
+        connectivity: connectivityAccess,
+        incidents: incidentsRead,
+        incidentsManage,
+        orbital: orbitalAccess,
+        platform: platformAdmin,
+        programs: programsAccess,
+        rbac: rbacRead,
+        rf: rfRead,
+        users: usersRead,
+      },
+    }),
+    enabled: Date.now() >= rateLimitedUntilRef.current,
+    refetchInterval: REFRESH_MS,
+  })
+
   useEffect(() => {
-    let cancelled = false
-
-    async function safeFetch(fetcher: () => Promise<any>, setter: (value: any) => void, fallback: any = []) {
-      try {
-        const data = await fetcher()
-        if (!cancelled) setter(data ?? fallback)
-      } catch (err) {
-        if (err instanceof UnauthorizedError) {
-          onSessionExpired()
-          return
-        }
-        if (!cancelled) setter((prev) => prev ?? fallback)
-      }
+    if (dashboardQuery.error instanceof UnauthorizedError) {
+      onSessionExpired()
+      return
     }
-
-    async function poll() {
-      if (Date.now() < rateLimitedUntilRef.current) return
-      try {
-        await fetchPing()
-        if (!cancelled) {
-          setBackendStatus('online')
-          setApiIssue((current) => current?.kind === 'network' ? null : current)
-        }
-      } catch {
-        if (!cancelled) setBackendStatus('offline')
-      }
-
-      if (activeTab === 'mission') {
-        const requests = [safeFetch(fetchSatellites, setSatellites)]
-        if (rfRead) {
-          requests.push(safeFetch(fetchRfReadings, setRfReadings))
-          requests.push(safeFetch(fetchRfAnomalies, setRfAnomalies))
-        }
-        if (incidentsRead) requests.push(safeFetch(() => fetchIncidents(PAGE_LIMIT, 0, {}), setIncidents, { items: [], total: 0, limit: PAGE_LIMIT, offset: 0 }))
-        if (connectivityAccess) requests.push(safeFetch(fetchAgentIdentities, setAgentIdentities))
-        if (alertsRead) requests.push(safeFetch(() => fetchAssetAlerts(PAGE_LIMIT, 0), setAssetAlerts, { items: [], total: 0, limit: PAGE_LIMIT, offset: 0 }))
-        await Promise.all(requests)
-        return
-      }
-
-      if (activeTab === 'orbital') {
-        const requests = [safeFetch(fetchSatellites, setSatellites)]
-        if (incidentsRead) {
-          requests.push(safeFetch(
-            () => fetchIncidents(PAGE_LIMIT, 0, {}),
-            setIncidents,
-            { items: [], total: 0, limit: PAGE_LIMIT, offset: 0 },
-          ))
-        }
-        if (rfRead) requests.push(safeFetch(fetchRfAnomalies, setRfAnomalies))
-        if (connectivityAccess) requests.push(safeFetch(fetchAgentIdentities, setAgentIdentities))
-        if (alertsRead) {
-          requests.push(safeFetch(
-            () => fetchAssetAlerts(PAGE_LIMIT, 0),
-            setAssetAlerts,
-            { items: [], total: 0, limit: PAGE_LIMIT, offset: 0 },
-          ))
-        }
-        await Promise.all(requests)
-        return
-      }
-
-      if (activeTab === 'graph') {
-        const requests: Promise<void>[] = []
-        if (orbitalAccess) requests.push(safeFetch(fetchSatellites, setSatellites))
-        if (connectivityAccess) requests.push(safeFetch(fetchAgentIdentities, setAgentIdentities))
-        if (rfRead) {
-          requests.push(safeFetch(fetchRfReadings, setRfReadings))
-          requests.push(safeFetch(fetchRfAnomalies, setRfAnomalies))
-        }
-        if (incidentsRead) {
-          requests.push(safeFetch(
-            () => fetchIncidents(PAGE_LIMIT, 0, {}),
-            setIncidents,
-            { items: [], total: 0, limit: PAGE_LIMIT, offset: 0 },
-          ))
-        }
-        if (alertsRead) {
-          requests.push(safeFetch(
-            () => fetchAssetAlerts(PAGE_LIMIT, 0),
-            setAssetAlerts,
-            { items: [], total: 0, limit: PAGE_LIMIT, offset: 0 },
-          ))
-        }
-        if (assetsAccess) requests.push(safeFetch(() => fetchAssets(PAGE_LIMIT, 0), setAssets, { items: [], total: 0, limit: PAGE_LIMIT, offset: 0 }))
-        if (programsAccess) requests.push(safeFetch(fetchPrograms, setPrograms))
-        requests.push(safeFetch(() => fetchSpaceCVEs(PAGE_LIMIT, 0, { severity: '', keyword: '', publishedFrom: '', publishedTo: '', sort: 'published', order: 'desc' }), setSpaceCVEs, { items: [], total: 0, limit: PAGE_LIMIT, offset: 0 }))
-        await Promise.all(requests)
-        return
-      }
-
-      if (activeTab === 'assets') {
-        try {
-          const [assetData, programData] = await Promise.all([
-            fetchAssets(PAGE_LIMIT, assetsOffsetRef.current),
-            programsAccess ? fetchPrograms() : Promise.resolve([]),
-          ])
-          if (!cancelled) {
-            setAssets(assetData ?? { items: [], total: 0, limit: PAGE_LIMIT, offset: 0 })
-            setPrograms(programData ?? [])
-            setDbStatus('online')
-          }
-        } catch (err) {
-          if (err instanceof UnauthorizedError) {
-            onSessionExpired()
-            return
-          }
-          if (!cancelled) {
-            setAssets((prev) => prev ?? { items: [], total: 0, limit: PAGE_LIMIT, offset: 0 })
-            setPrograms((prev) => prev ?? [])
-            setDbStatus('offline')
-          }
-        }
-        return
-      }
-
-      if (activeTab === 'stations' && connectivityAccess) {
-        const requests = [safeFetch(fetchAgentIdentities, setAgentIdentities)]
-        if (orbitalAccess) requests.push(safeFetch(fetchSatellites, setSatellites))
-        if (rfRead) {
-          requests.push(safeFetch(fetchRfReadings, setRfReadings))
-          requests.push(safeFetch(fetchRfAnomalies, setRfAnomalies))
-        }
-        if (incidentsRead) {
-          requests.push(safeFetch(
-            () => fetchIncidents(PAGE_LIMIT, 0, {}),
-            setIncidents,
-            { items: [], total: 0, limit: PAGE_LIMIT, offset: 0 },
-          ))
-        }
-        await Promise.all(requests)
-        return
-      }
-
-      if (activeTab === 'signal') {
-        await Promise.all([
-          safeFetch(fetchRfReadings, setRfReadings),
-          safeFetch(fetchRfAnomalies, setRfAnomalies),
-          safeFetch(fetchRfDoppler, setRfDoppler),
-          safeFetch(fetchAgentIdentities, setAgentIdentities),
-          safeFetch(() => fetchDetectionRules(PAGE_LIMIT, 0), setDetectionRules, { items: [], total: 0, limit: PAGE_LIMIT, offset: 0 }),
-        ])
-        return
-      }
-
-      if (activeTab === 'incidents') {
-        const requests = [
-          safeFetch(
-            () => fetchIncidents(PAGE_LIMIT, incidentsOffsetRef.current, incidentFiltersRef.current),
-            setIncidents,
-            { items: [], total: 0, limit: PAGE_LIMIT, offset: 0 },
-          ),
-          safeFetch(fetchSatellites, setSatellites),
-        ]
-        if (incidentsManage && usersRead) requests.push(safeFetch(fetchUsers, setUsers))
-        await Promise.all(requests)
-        return
-      }
-
-      if (activeTab === 'intel') {
-        await Promise.all([
-          safeFetch(
-            () => fetchSpaceCVEs(PAGE_LIMIT, cvesOffsetRef.current, cveFiltersRef.current),
-            setSpaceCVEs,
-            { items: [], total: 0, limit: PAGE_LIMIT, offset: 0 },
-          ),
-          safeFetch(
-            () => fetchAssetAlerts(PAGE_LIMIT, alertsOffsetRef.current),
-            setAssetAlerts,
-            { items: [], total: 0, limit: PAGE_LIMIT, offset: 0 },
-          ),
-        ])
-        return
-      }
-
-      if (activeTab === 'connectivity' && connectivityAccess) {
-        await Promise.all([
-          safeFetch(fetchAgentKeys, setAgentKeys),
-          safeFetch(fetchAgentIdentities, setAgentIdentities),
-          safeFetch(fetchSatellites, setSatellites),
-        ])
-        return
-      }
-
-      if (activeTab === 'platform' && platformAdmin) {
-        await Promise.all([safeFetch(fetchOrganizations, setOrganizations), safeFetch(fetchPlatformUsers, setPlatformUsers)])
-        return
-      }
-
-      if (activeTab === 'admin' && adminAccess) {
-        const requests: Promise<void>[] = []
-        if (auditAccess) {
-          requests.push(safeFetch(
-            () => fetchAuditLog(PAGE_LIMIT, auditOffsetRef.current),
-            setAuditEntries,
-            { items: [], total: 0, limit: PAGE_LIMIT, offset: 0 },
-          ))
-        }
-        if (usersRead || admin) requests.push(safeFetch(fetchUsers, setUsers))
-        if (rbacRead) {
-          requests.push(safeFetch(fetchRBACPermissions, setRbacPermissions))
-          requests.push(safeFetch(fetchRBACRoles, setRbacRoles))
-        }
-        await Promise.all(requests)
-      }
-    }
-
-    poll()
-    const id = setInterval(poll, REFRESH_MS)
-    return () => {
-      cancelled = true
-      clearInterval(id)
-    }
-  }, [onSessionExpired, activeTab, admin, auditAccess, assetsOffset, cvesOffset, cveFilters, auditOffset, incidentsOffset, incidentFilters, platformAdmin, adminAccess, usersRead, rbacRead, programsAccess, assetsAccess, incidentsRead, rfRead, alertsRead, connectivityAccess, orbitalAccess, retryNonce])
+    const data = dashboardQuery.data
+    if (!data) return
+    setBackendStatus(data.backendStatus)
+    if (data.backendStatus === 'online') setApiIssue((current) => current?.kind === 'network' ? null : current)
+    if (data.dbStatus) setDbStatus(data.dbStatus)
+    if ('assets' in data) setAssets(data.assets)
+    if ('programs' in data) setPrograms(data.programs)
+    if ('rfReadings' in data) setRfReadings(data.rfReadings)
+    if ('rfAnomalies' in data) setRfAnomalies(data.rfAnomalies)
+    if ('rfDoppler' in data) setRfDoppler(data.rfDoppler)
+    if ('detectionRules' in data) setDetectionRules(data.detectionRules)
+    if ('satellites' in data) setSatellites(data.satellites)
+    if ('spaceCVEs' in data) setSpaceCVEs(data.spaceCVEs)
+    if ('assetAlerts' in data) setAssetAlerts(data.assetAlerts)
+    if ('incidents' in data) setIncidents(data.incidents)
+    if ('agentKeys' in data) setAgentKeys(data.agentKeys)
+    if ('agentIdentities' in data) setAgentIdentities(data.agentIdentities)
+    if ('auditEntries' in data) setAuditEntries(data.auditEntries)
+    if ('users' in data) setUsers(data.users)
+    if ('organizations' in data) setOrganizations(data.organizations)
+    if ('platformUsers' in data) setPlatformUsers(data.platformUsers)
+    if ('rbacPermissions' in data) setRbacPermissions(data.rbacPermissions)
+    if ('rbacRoles' in data) setRbacRoles(data.rbacRoles)
+  }, [dashboardQuery.data, dashboardQuery.error, onSessionExpired, setApiIssue])
 
   useDashboardSubscriptions({
     activeTab,
@@ -458,12 +302,17 @@ export default function Dashboard({ onLogout, onSessionExpired, activeTab, onCha
   const sdrStatus =
     lastRf && Date.now() - new Date(lastRf.captured_at).getTime() < 30000 ? 'live' : 'idle'
 
+  function refreshDashboardQuery() {
+    void queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+  }
+
   async function reloadAssets() {
     setAssetsOffset(0)
     try {
       const [assetData, programData] = await Promise.all([fetchAssets(PAGE_LIMIT, 0), programsAccess ? fetchPrograms() : Promise.resolve([])])
       setAssets(assetData)
       setPrograms(programData ?? [])
+      refreshDashboardQuery()
     } catch {
     }
   }

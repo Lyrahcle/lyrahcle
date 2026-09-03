@@ -316,3 +316,17 @@ func DetectionRuleCooldown(value int) error {
 	}
 	return nil
 }
+
+func CPEURI(value string) error {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return nil
+	}
+	if len(value) > 512 {
+		return fmt.Errorf("cpe_uri is too long (max 512 characters)")
+	}
+	if !strings.HasPrefix(value, "cpe:2.3:") || len(strings.Split(value, ":")) < 6 {
+		return fmt.Errorf("cpe_uri must be a valid CPE 2.3 URI")
+	}
+	return nil
+}

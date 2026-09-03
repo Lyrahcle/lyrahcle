@@ -5,7 +5,7 @@ import sys
 ROOT = Path(sys.argv[1] if len(sys.argv) > 1 else '.').resolve()
 
 CHECKS = {
-    ROOT / 'apps/backend/cmd/server/organizations_v100.go': [
+    ROOT / 'apps/backend/cmd/server/organizations.go': [
         'requirePlatformAdmin).Put("/{organizationID}"',
         'organizations.Update(',
         'audit.ActionOrganizationUpdated',
