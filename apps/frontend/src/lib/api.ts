@@ -372,6 +372,12 @@ export async function fetchSatellites(): Promise<SatelliteWithPosition[]> {
   return res.json()
 }
 
+export async function fetchSatelliteExternalSources(satelliteId: string) {
+  const res = await authedFetch(`/api/v1/satellites/${encodeURIComponent(satelliteId)}/external-sources`)
+  if (!res.ok) throw await apiErrorFromResponse(res, 'failed to fetch satellite external sources')
+  return res.json()
+}
+
 
 
 

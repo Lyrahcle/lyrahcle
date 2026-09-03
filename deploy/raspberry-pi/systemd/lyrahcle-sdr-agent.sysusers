@@ -1,0 +1,4 @@
+g lyrahcle -
+u lyrahcle - "Lyrahcle SDR agent" /var/lib/lyrahcle /usr/sbin/nologin
+m lyrahcle plugdev
+

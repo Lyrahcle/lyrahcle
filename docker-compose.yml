@@ -96,6 +96,9 @@ services:
       - PROMETHEUS_PORT=9091
       - SYNC_INTERVAL_SEC=3600
       - NVD_RESULTS_PER_PAGE=100
+      - NVD_API_KEY=${NVD_API_KEY:-}
+      - NVD_MAX_PAGES=20
+      - NVD_INCREMENTAL_LOOKBACK_SEC=300
       - ENVIRONMENT=development
     ports:
       - "9091:9091"

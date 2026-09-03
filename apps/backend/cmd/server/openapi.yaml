@@ -970,6 +970,28 @@ paths:
           description: Satellite not found
         '409':
           description: NORAD ID already registered by another satellite
+  /api/v1/satellites/{satelliteID}/external-sources:
+    get:
+      tags:
+      - Satellites
+      summary: Get live public SatNOGS context by NORAD identifier
+      description: Returns cached SatNOGS DB metadata/transmitters and recent SatNOGS Network observations. Community reception is external context and is not proof of spacecraft health, control, or vulnerability exposure. Requires orbital.read.
+      parameters:
+      - name: satelliteID
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Normalized external satellite intelligence with per-source freshness
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SatelliteSourceIntelligence'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /api/v1/satellites/{satelliteID}/passes:
     get:
       tags:
@@ -2738,11 +2760,55 @@ components:
         orbital_confidence:
           type: string
           enum: [high, degraded, unavailable]
+        position_evidence_kind:
+          type: string
+          enum: [inferred]
+          description: The position is propagated from the TLE; it is not a direct onboard measurement.
+        tle_source:
+          type: string
+          enum: [celestrak_or_operator]
+          description: Current schema cannot distinguish an automatic Celestrak TLE from an operator-provided TLE.
         position:
           allOf:
           - $ref: '#/components/schemas/SatellitePosition'
           nullable: true
           description: Omitted if propagation fails or TLE quality is stale or unusable.
+    SatelliteSourceIntelligence:
+      type: object
+      required: [norad_id, evidence_kind, applicability, transmitters, observations, overall_quality, sources]
+      properties:
+        norad_id: {type: integer}
+        evidence_kind: {type: string, enum: [external_community]}
+        applicability: {type: string, enum: [radio_activity_context_only]}
+        metadata:
+          type: object
+          nullable: true
+          additionalProperties: true
+        transmitters:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        observations:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        last_reception: {type: string, format: date-time, nullable: true}
+        overall_quality: {type: string, enum: [good, degraded, stale, unavailable]}
+        sources:
+          type: array
+          items:
+            type: object
+            required: [name, url, available, fetched_at, record_count, freshness]
+            properties:
+              name: {type: string}
+              url: {type: string, format: uri}
+              available: {type: boolean}
+              fetched_at: {type: string, format: date-time}
+              record_count: {type: integer}
+              freshness: {type: string}
+              message: {type: string}
     GroundStation:
       type: object
       required: [latitude_deg, longitude_deg, altitude_m]
@@ -3131,9 +3197,28 @@ components:
           format: double
         keyword:
           type: string
+        source:
+          type: string
+          example: nvd
         synced_at:
           type: string
           format: date-time
+        last_modified:
+          type: string
+          format: date-time
+          nullable: true
+        vulnerability_status:
+          type: string
+        source_identifier:
+          type: string
+        cvss_version:
+          type: string
+        cvss_vector:
+          type: string
+        cwe_ids:
+          type: array
+          items:
+            type: string
     SpaceCVEPage:
       allOf:
       - $ref: '#/components/schemas/Page'
@@ -3169,6 +3254,20 @@ components:
         matched_keyword:
           type: string
           example: satellite
+        applicability_status:
+          type: string
+          enum: [unknown, potentially_relevant, applicable, probable_exposure, confirmed, not_affected]
+        match_method:
+          type: string
+          example: thematic_asset_kind
+        confidence:
+          type: integer
+          minimum: 0
+          maximum: 100
+          example: 20
+        context_only:
+          type: boolean
+          description: True when the association is contextual and does not prove exposure.
         severity:
           type: string
           enum:
@@ -3701,4 +3800,3 @@ components:
           maximum: 86400
         auto_incident:
           type: boolean
-

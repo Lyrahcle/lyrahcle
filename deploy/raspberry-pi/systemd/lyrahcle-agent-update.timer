@@ -1,0 +1,12 @@
+[Unit]
+Description=Check for staged Lyrahcle agent updates
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=30min
+RandomizedDelaySec=5min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+

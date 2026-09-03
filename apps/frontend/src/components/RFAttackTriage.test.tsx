@@ -21,7 +21,7 @@ describe('RFAttackTriage', () => {
 
   it('renders candidate evidence and does not fabricate replay detection', () => {
     render(<I18nProvider><RFAttackTriage anomalies={anomalies} /></I18nProvider>)
-    expect(screen.getByText('RF attack triage')).toBeInTheDocument()
+    expect(screen.getByText('RF Attack Triage')).toBeInTheDocument()
     expect(screen.getByText('Jamming candidate')).toBeInTheDocument()
     expect(screen.getAllByText('Spoofing candidate')).toHaveLength(2)
     expect(screen.getByText('Replay detection needs frame or sequence evidence that is not present in RF anomaly records.')).toBeInTheDocument()

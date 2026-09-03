@@ -1,0 +1,3 @@
+# Common Realtek RTL2832U devices. Access remains limited to root and plugdev.
+SUBSYSTEM=="usb", ATTR{idVendor}=="0bda", MODE="0660", GROUP="plugdev"
+

@@ -30,7 +30,7 @@ describe('RFSpectrumWaterfall', () => {
 
   it('renders the RF waterfall with real frequency and power evidence', () => {
     renderWaterfall()
-    expect(screen.getByText('RF spectrum waterfall')).toBeInTheDocument()
+    expect(screen.getByText('RF Spectrum Waterfall')).toBeInTheDocument()
     expect(screen.getByRole('img', { name: 'RF power over frequency and time' })).toBeInTheDocument()
     expect(screen.getByTitle('437.525000 MHz · -64.0 dBm')).toBeInTheDocument()
     expect(screen.getByText('2 time slices · 3 frequencies · 4 samples')).toBeInTheDocument()

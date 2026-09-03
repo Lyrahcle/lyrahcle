@@ -227,7 +227,7 @@ func (w *Worker) ProcessCVE(ctx context.Context, cveID string) error {
 
 	var processingErrors []error
 	for _, a := range matched {
-		_, err := w.alerts.Create(ctx, a.ID, cve.CVEID, cve.Keyword, cve.Severity)
+		_, err := w.alerts.CreateWithAssessment(ctx, a.ID, cve.CVEID, cve.Keyword, cve.Severity, "unknown", "thematic_asset_kind", 20, true)
 		if err != nil {
 			log.Printf("alerts: create alert for asset %s / cve %s: %v", a.ID, cve.CVEID, err)
 			processingErrors = append(processingErrors, fmt.Errorf("create alert for asset %s: %w", a.ID, err))
@@ -242,6 +242,10 @@ func (w *Worker) ProcessCVE(ctx context.Context, cveID string) error {
 				"asset_value":     a.Value,
 				"keyword":         cve.Keyword,
 				"severity":        cve.Severity,
+				"applicability_status": "unknown",
+				"match_method":    "thematic_asset_kind",
+				"confidence":      20,
+				"context_only":    true,
 			}
 			dedupeKey := "asset-alert:" + a.ID.String() + ":" + cve.CVEID
 			if _, err := w.auditLog.InsertIdempotentInOrganization(ctx, a.OrganizationID, dedupeKey, audit.ActorSystem, "cve-alert-matcher", audit.ActionAssetAlertCreated, "", details); err != nil {

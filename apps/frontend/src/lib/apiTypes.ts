@@ -24,6 +24,8 @@ export interface SatelliteWithPosition extends SatelliteRecord {
   tle_age_seconds?: number
   orbital_confidence?: OrbitalConfidence
   position?: SatellitePosition | null
+	position_evidence_kind?: 'inferred'
+	tle_source?: 'celestrak_or_operator'
 }
 
 export interface GroundStation {
@@ -188,4 +190,3 @@ export interface RFDopplerComparison {
   tle_status: 'fresh' | 'aging'
   detected_at: string
 }
-

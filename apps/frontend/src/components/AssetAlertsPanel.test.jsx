@@ -15,6 +15,10 @@ const page = {
     cve_id: 'CVE-2026-1234',
     severity: 'high',
     matched_keyword: 'satellite',
+    applicability_status: 'unknown',
+    match_method: 'thematic_asset_kind',
+    confidence: 20,
+    context_only: true,
     acknowledged: false,
   }],
   total: 1,
@@ -40,6 +44,8 @@ describe('AssetAlertsPanel', () => {
     setEffectivePermissions(['alerts.read'])
     renderPanel()
     expect(screen.getByText('CVE-2026-1234')).toBeInTheDocument()
+    expect(screen.getByText(/context only/i)).toBeInTheDocument()
+    expect(screen.getByText(/confidence 20%/i)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /acknowledge/i })).not.toBeInTheDocument()
   })
 

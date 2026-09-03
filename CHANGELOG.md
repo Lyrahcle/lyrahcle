@@ -1,4 +1,6 @@
 # Unreleased
+- Added Block 4 Raspberry Pi plug-and-play station tooling: reproducible ARM64 build/rootfs preparation, a hardened non-root systemd service, one-time mTLS enrollment with token removal, read-only station diagnostics, operator-side pass-aware signed configuration, and staged Ed25519-verified agent updates with automatic rollback. Physical hardware acceptance remains explicitly pending.
+- Added Block 18 evidence provenance and confidence: NVD records identify their external source, propagated satellite positions are explicitly marked as inferred, and broad keyword-to-asset CVE matches are persisted and displayed as low-confidence context with unknown applicability. Context-only CVE matches remain investigable but no longer raise satellite or mission exposure risk or enter the urgent exposure queue. Added schema migration, OpenAPI fields, EN/ES/FR/DE copy, focused risk/UI coverage, documentation and a regression contract.
 - Added RF expected-vs-observed Doppler analysis: a protected `GET /api/v1/rf/doppler` endpoint derives orbital Doppler from the existing TLE/ground-station model for recent satellite-linked frequency anomalies, returns expected frequency, signed residual and tolerance, and a localized RF workspace panel renders only real available comparisons without synthesizing missing telemetry.
 - Rebuilt the Correlation Constellation Orbital Focus on a real WebGL renderer using `three`, `@react-three/fiber` (8.x for React 18) and `@react-three/drei`, replacing the in-house SVG perspective projection. The scene now has genuine depth, a damped orbital camera with smooth focus easing, distinct geometry per node kind (satellite orbs with rings, incident octahedra, thin hexagonal CVE plates, ground-station pillars with dishes, asset and program prisms), thin additive evidence curves merged into a single line geometry, and an animated explainable route as the dominant visual element.
 - Added `src/lib/correlationLayout3d.ts`, a renderer-independent 3D layout engine: breadth-first orbital shells, azimuth-sector clustering by node kind, and a deterministic force relaxation pass (edge attraction, minimum-separation repulsion, shell reprojection). The layout is seeded from node identifiers rather than randomness, stays readable with zero links, and tightens genuinely connected evidence when links are dense. Covered by 11 unit tests.
@@ -18,6 +20,18 @@
 - Made CVE sync replica count honor Helm values and documented AWS RTO/RPO objectives as design targets that remain unverified until a production-like restore/failover exercise.
 
 # Changelog
+
+## Unreleased — Block 5: Real satellite sources
+
+- Added NORAD-linked SatNOGS DB metadata and transmitter/frequency intelligence plus recent SatNOGS Network observations and completed-reception timestamps.
+- Added per-source availability, fetch timestamps, record counts, reception freshness, overall quality, bounded upstream requests, safe redirects, short automatic cache refreshes, and sanitized degradation states.
+- Added a real-source panel to the satellite security profile with explicit external-community provenance and a warning that ground reception does not prove onboard health or vulnerability exposure.
+
+## Unreleased — Block 19
+
+- Added complete NVD API 2.0 pagination, durable incremental cursors, conservative API-key-aware pacing, CVSS 4.0 vectors, CWE identifiers, NVD status/source metadata, and safe retry behavior that never advances a partial cursor.
+- Enriched the threat-intelligence API and UI with modification date, CVSS version/vector, CWE tags, and analysis status while retaining the context-only applicability warning.
+- Applied English Title Case consistently to translated page and panel title keys without changing sentence copy, controls, table headings, or other languages.
 - Migrated the frontend shared library layer to TypeScript with local and CI type checking while preserving the existing UI casing conventions.
 
 ## Unreleased

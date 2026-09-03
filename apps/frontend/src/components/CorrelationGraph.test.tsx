@@ -38,7 +38,7 @@ beforeEach(() => {
 describe('CorrelationGraph orbital focus', () => {
   it('renders the flagship workspace with a keyboard-reachable node index', () => {
     const { container } = renderGraph()
-    expect(screen.getByRole('heading', { name: 'Correlation constellation' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Correlation Constellation' })).toBeInTheDocument()
     expect(screen.getByRole('group', { name: 'Interactive Lyrahcle correlation constellation' })).toBeInTheDocument()
     expect(screen.getByText('Mission evidence fabric')).toBeInTheDocument()
     const satellite = container.querySelector('[aria-label="Satellite: LYRA-1"]')
@@ -58,7 +58,7 @@ describe('CorrelationGraph orbital focus', () => {
     const station = container.querySelector('[aria-label="Ground station: Madrid GS"]')
     expect(station).not.toBeNull()
     fireEvent.click(station as Element)
-    expect(screen.getByText('Explainable route')).toBeInTheDocument()
+    expect(screen.getByText('Explainable Route')).toBeInTheDocument()
     expect(screen.getAllByText(/LYRA-1/).length).toBeGreaterThan(0)
     expect(screen.getAllByText(/Madrid GS/).length).toBeGreaterThan(0)
   })

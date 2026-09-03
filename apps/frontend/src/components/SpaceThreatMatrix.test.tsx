@@ -34,7 +34,7 @@ describe('SpaceThreatMatrix', () => {
       </I18nProvider>,
     )
 
-    expect(screen.getByText('Space threat matrix')).toBeInTheDocument()
+    expect(screen.getByText('Space Threat Matrix')).toBeInTheDocument()
     expect(screen.getByText('Replay / repeated command')).toBeInTheDocument()
     expect(screen.getAllByText('Evidence unavailable').length).toBeGreaterThan(0)
   })

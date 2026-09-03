@@ -13,6 +13,25 @@ export interface I18nContextValue {
 
 const STORAGE_KEY = 'lyra_lang'
 const DEFAULT_LANG: Lang = 'en'
+const ENGLISH_TITLE_LEAVES = new Set(['title', 'panelTitle'])
+const TITLE_SMALL_WORDS = new Set(['a', 'an', 'and', 'as', 'at', 'but', 'by', 'for', 'in', 'of', 'on', 'or', 'the', 'to', 'via'])
+
+export function englishTitleCase(value: string): string {
+  const words = value.split(/(\s+)/)
+  const wordIndexes = words.map((word, index) => (/\S/.test(word) ? index : -1)).filter((index) => index >= 0)
+  const first = wordIndexes[0]
+  const last = wordIndexes[wordIndexes.length - 1]
+  return words.map((word, index) => {
+    if (!/\S/.test(word) || /^[A-Z0-9/&+.-]+$/.test(word) || /[{}`]/.test(word)) return word
+    const lower = word.toLowerCase()
+    if (index !== first && index !== last && TITLE_SMALL_WORDS.has(lower)) return lower
+    return lower.replace(/^([^a-z0-9]*)([a-z])/, (_, prefix, letter) => `${prefix}${letter.toUpperCase()}`)
+  }).join('')
+}
+
+function isEnglishTitleKey(key: string): boolean {
+  return ENGLISH_TITLE_LEAVES.has(key.split('.').at(-1) ?? '')
+}
 
 function detectLanguage(): Lang {
   const stored = localStorage.getItem(STORAGE_KEY)
@@ -49,7 +68,8 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
   const t = useCallback<Translate>(
     (key, vars) => {
-      const template = (lookup(translations[lang], key) ?? lookup(translations[DEFAULT_LANG], key) ?? key) as string
+	  let template = (lookup(translations[lang], key) ?? lookup(translations[DEFAULT_LANG], key) ?? key) as string
+	  if (lang === 'en' && isEnglishTitleKey(key)) template = englishTitleCase(template)
       if (!vars) return template
       return Object.entries(vars).reduce((str, [name, value]) => str.replaceAll(`{${name}}`, String(value)), template)
     },

@@ -7,6 +7,7 @@ import { hasPermission } from '../lib/permissions'
 import { useI18n } from '../lib/I18nContext'
 import StatusState from './StatusState.tsx'
 import { useToast } from './ToastProvider.tsx'
+import EvidenceBadge from './EvidenceBadge.tsx'
 
 export default function AssetAlertsPanel({ page, onPrev, onNext, onChanged }) {
   const { t } = useI18n()
@@ -37,6 +38,10 @@ export default function AssetAlertsPanel({ page, onPrev, onNext, onChanged }) {
 
   return (
     <div>
+      <div className="mb-4 rounded border border-lyra-warn/25 bg-lyra-warn/5 px-4 py-3">
+        <p className="text-sm text-lyra-warn">{t('assetAlerts.contextWarningTitle')}</p>
+        <p className="mt-1 text-xs text-lyra-muted">{t('assetAlerts.contextWarning')}</p>
+      </div>
       {error && (
         <p role="alert" className="mb-4 text-sm text-lyra-bad">
           {error}
@@ -58,6 +63,9 @@ export default function AssetAlertsPanel({ page, onPrev, onNext, onChanged }) {
               </th>
               <th scope="col" className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">
                 {t('assetAlerts.matchedVia')}
+              </th>
+              <th scope="col" className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">
+                {t('assetAlerts.assessment')}
               </th>
               <th scope="col" className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">
                 {t('assetAlerts.status')}
@@ -85,7 +93,16 @@ export default function AssetAlertsPanel({ page, onPrev, onNext, onChanged }) {
                   </a>
                 </td>
                 <td className="py-3 pr-4"><SeverityBadge severity={a.severity} /></td>
-                <td className="py-3 pr-4 font-mono text-xs text-lyra-mutedDim">{a.matched_keyword}</td>
+                <td className="py-3 pr-4">
+                  <p className="font-mono text-xs text-lyra-mutedDim">{a.matched_keyword}</p>
+                  <p className="mt-1 text-[10px] text-lyra-mutedDim">{t(`assetAlerts.matchMethod.${a.match_method || 'thematic_asset_kind'}`)}</p>
+                </td>
+                <td className="py-3 pr-4">
+                  <EvidenceBadge kind={a.context_only === false ? 'confirmed' : 'context'} />
+                  <p className="mt-1 text-[10px] text-lyra-mutedDim">
+                    {t(`assetAlerts.applicability.${a.applicability_status || 'unknown'}`)} · {t('assetAlerts.confidence', { value: a.confidence ?? 20 })}
+                  </p>
+                </td>
                 <td className="py-3 pr-4">
                   {a.acknowledged ? (
                     <span className="font-mono text-[11px] tracking-wider text-lyra-good">

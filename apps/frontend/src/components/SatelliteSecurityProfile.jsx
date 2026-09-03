@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Activity, ArrowLeft, Clock3, Orbit, RadioTower, Satellite, ShieldAlert, ShieldCheck, TriangleAlert } from 'lucide-react'
-import { fetchIncidents, fetchOrbitalEvents } from '../lib/api'
+import { fetchIncidents, fetchOrbitalEvents, fetchSatelliteExternalSources } from '../lib/api'
 import { useI18n } from '../lib/I18nContext'
 import { calculateSatelliteRisk, riskSeverityRank } from '../lib/risk'
+import EvidenceBadge from './EvidenceBadge'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 const INACTIVE_INCIDENT_STATUSES = new Set(['resolved', 'false_positive'])
@@ -23,6 +24,35 @@ function metricLabel(metric) {
   if (String(metric || '').startsWith('frequency_hz')) return 'Frequency'
   if (String(metric || '').startsWith('power_dbm')) return 'Signal power'
   return metric || 'RF'
+}
+
+function formatFrequency(value) {
+  const hz = Number(value)
+  if (!Number.isFinite(hz) || hz <= 0) return '—'
+  return `${(hz / 1_000_000).toFixed(4)} MHz`
+}
+
+function SatelliteSources({ intelligence, loading, error, t }) {
+  if (loading) return <div className="rounded-lg border border-lyra-border bg-lyra-panel/40 p-5 text-sm text-lyra-muted">{t('satelliteSources.loading')}</div>
+  if (error) return <div className="rounded-lg border border-lyra-warn/30 bg-lyra-warn/5 p-5 text-sm text-lyra-warn">{t('satelliteSources.unavailable')}: {error}</div>
+  if (!intelligence) return null
+  return (
+    <section aria-labelledby="satellite-real-sources-title" className="rounded-lg border border-lyra-border bg-lyra-panel/40 p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div><p className="text-[10px] tracking-[0.16em] text-lyra-mutedDim">{t('satelliteSources.eyebrow')}</p><h2 id="satellite-real-sources-title" className="mt-1 font-display text-lg text-lyra-text">{t('satelliteSources.title')}</h2></div>
+        <div className="flex items-center gap-2"><EvidenceBadge kind="external" /><span className={`rounded-full border px-2 py-1 font-mono text-[10px] ${tone(intelligence.overall_quality)}`}>{intelligence.overall_quality}</span></div>
+      </div>
+      <p className="mt-2 text-xs text-lyra-muted">{t('satelliteSources.contextNote')}</p>
+      <div className="mt-4 grid gap-3 md:grid-cols-3">
+        {(intelligence.sources || []).map((source) => <div key={source.name} className="rounded border border-lyra-borderSoft bg-lyra-bg/25 p-3"><div className="flex items-center justify-between gap-2"><p className="text-xs text-lyra-text">{source.name}</p><span className={`h-2 w-2 rounded-full ${source.available ? 'bg-lyra-good' : 'bg-lyra-bad'}`} /></div><p className="mt-2 font-mono text-[10px] text-lyra-mutedDim">{source.record_count} · {source.freshness}</p><p className="mt-1 text-[10px] text-lyra-mutedDim">{new Date(source.fetched_at).toLocaleString()}</p></div>)}
+      </div>
+      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+        <div className="rounded border border-lyra-borderSoft p-4"><p className="text-[10px] tracking-[0.14em] text-lyra-mutedDim">{t('satelliteSources.metadata')}</p><dl className="mt-3 grid gap-2 text-xs"><div className="flex justify-between gap-3"><dt className="text-lyra-muted">NORAD</dt><dd className="font-mono text-lyra-text">{intelligence.norad_id}</dd></div><div className="flex justify-between gap-3"><dt className="text-lyra-muted">SatNOGS</dt><dd className="font-mono text-lyra-text">{intelligence.metadata?.satnogs_id || '—'}</dd></div><div className="flex justify-between gap-3"><dt className="text-lyra-muted">{t('satelliteSources.status')}</dt><dd className="font-mono text-lyra-text">{intelligence.metadata?.status || '—'}</dd></div><div className="flex justify-between gap-3"><dt className="text-lyra-muted">{t('satelliteSources.lastReception')}</dt><dd className="font-mono text-lyra-text">{intelligence.last_reception ? new Date(intelligence.last_reception).toLocaleString() : '—'}</dd></div></dl></div>
+        <div className="rounded border border-lyra-borderSoft p-4"><p className="text-[10px] tracking-[0.14em] text-lyra-mutedDim">{t('satelliteSources.transmitters')}</p><div className="mt-3 grid gap-2">{(intelligence.transmitters || []).length ? intelligence.transmitters.slice(0, 8).map((tx) => <div key={tx.uuid} className="rounded bg-lyra-bg/30 px-3 py-2"><div className="flex justify-between gap-3"><span className="truncate text-xs text-lyra-text">{tx.description || tx.uuid}</span><span className="font-mono text-[10px] text-lyra-mutedDim">{tx.mode || tx.status || '—'}</span></div><p className="mt-1 font-mono text-[10px] text-lyra-goldBright">↓ {formatFrequency(tx.downlink_low_hz)}{tx.uplink_low_hz ? ` · ↑ ${formatFrequency(tx.uplink_low_hz)}` : ''}</p></div>) : <p className="text-xs text-lyra-mutedDim">{t('satelliteSources.noTransmitters')}</p>}</div></div>
+      </div>
+      <div className="mt-4 rounded border border-lyra-borderSoft p-4"><p className="text-[10px] tracking-[0.14em] text-lyra-mutedDim">{t('satelliteSources.latestObservations')}</p><div className="mt-3 grid gap-2 md:grid-cols-2">{(intelligence.observations || []).length ? intelligence.observations.slice(0, 6).map((observation) => <a key={observation.id} href={`https://network.satnogs.org/observations/${observation.id}/`} target="_blank" rel="noopener noreferrer" className="rounded bg-lyra-bg/30 px-3 py-2 hover:bg-lyra-bgSoft"><div className="flex justify-between gap-3"><span className="font-mono text-xs text-lyra-goldBright">#{observation.id}</span><span className="text-[10px] text-lyra-mutedDim">{observation.status || '—'}</span></div><p className="mt-1 text-[10px] text-lyra-mutedDim">{observation.end ? new Date(observation.end).toLocaleString() : '—'}{observation.station ? ` · ${observation.station}` : ''}</p></a>) : <p className="text-xs text-lyra-mutedDim">{t('satelliteSources.noObservations')}</p>}</div></div>
+    </section>
+  )
 }
 
 function RiskGauge({ score, level, factors, t }) {
@@ -80,6 +110,8 @@ export default function SatelliteSecurityProfile({
   const [orbitalEvents, setOrbitalEvents] = useState(null)
   const [profileIncidents, setProfileIncidents] = useState(null)
   const [eventsError, setEventsError] = useState('')
+  const [sourceIntelligence, setSourceIntelligence] = useState(null)
+  const [sourcesError, setSourcesError] = useState('')
 
   useEffect(() => {
     let cancelled = false
@@ -93,6 +125,16 @@ export default function SatelliteSecurityProfile({
           setEventsError(error?.message || t('satelliteProfile.orbitalEventsUnavailable'))
         }
       })
+    return () => { cancelled = true }
+  }, [satellite.id, t])
+
+  useEffect(() => {
+    let cancelled = false
+    setSourceIntelligence(null)
+    setSourcesError('')
+    fetchSatelliteExternalSources(satellite.id)
+      .then((data) => { if (!cancelled) setSourceIntelligence(data) })
+      .catch((error) => { if (!cancelled) setSourcesError(error?.message || t('satelliteSources.unavailable')) })
     return () => { cancelled = true }
   }, [satellite.id, t])
 
@@ -209,6 +251,8 @@ export default function SatelliteSecurityProfile({
           </div>
         </div>
       </div>
+
+      <SatelliteSources intelligence={sourceIntelligence} loading={!sourceIntelligence && !sourcesError} error={sourcesError} t={t} />
 
       <div className="rounded-lg border border-lyra-border bg-lyra-panel/40 p-5">
         <div className="flex items-center justify-between gap-3">

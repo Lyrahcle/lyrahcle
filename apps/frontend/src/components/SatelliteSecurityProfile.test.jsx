@@ -4,7 +4,7 @@ import SatelliteSecurityProfile from './SatelliteSecurityProfile.jsx'
 import { I18nProvider } from '../lib/I18nContext'
 import * as api from '../lib/api'
 
-vi.mock('../lib/api', () => ({ fetchOrbitalEvents: vi.fn(), fetchIncidents: vi.fn() }))
+vi.mock('../lib/api', () => ({ fetchOrbitalEvents: vi.fn(), fetchIncidents: vi.fn(), fetchSatelliteExternalSources: vi.fn() }))
 
 const satellite = {
   id: 'sat-1', norad_id: 25544, name: 'ISS', tle_status: 'aging', orbital_confidence: 'high',
@@ -21,6 +21,7 @@ describe('SatelliteSecurityProfile', () => {
     localStorage.clear()
     api.fetchIncidents.mockResolvedValue({ items: [{ id: 'inc-1', satellite_id: 'sat-1', title: 'Investigate uplink', severity: 'critical', status: 'new', created_at: '2026-09-01T17:10:00Z' }], total: 1, limit: 50, offset: 0 })
     api.fetchOrbitalEvents.mockResolvedValue([{ id: 'evt-1', satellite_id: 'sat-1', event_type: 'maneuver', event_time: '2026-09-01T17:30:00Z', source: 'operator', confidence: 0.9, severity: 'high' }])
+    api.fetchSatelliteExternalSources.mockResolvedValue({ norad_id: 25544, evidence_kind: 'external_community', applicability: 'radio_activity_context_only', overall_quality: 'good', metadata: { satnogs_id: 'XSKZ', status: 'in orbit' }, last_reception: '2026-09-01T17:45:00Z', transmitters: [{ uuid: 'tx-1', description: 'Packet radio', mode: 'FM', downlink_low_hz: 145800000, alive: true }], observations: [{ id: 42, end: '2026-09-01T17:45:00Z', status: 'good', station: 'Madrid' }], sources: [{ name: 'SatNOGS DB metadata', available: true, fetched_at: '2026-09-01T18:00:00Z', record_count: 1, freshness: 'current' }] })
   })
 
   it('correlates satellite incidents, RF anomalies, orbital events and exact exposure matches', async () => {
@@ -39,6 +40,9 @@ describe('SatelliteSecurityProfile', () => {
     expect(screen.getByText('sdr-1')).toBeInTheDocument()
     await waitFor(() => expect(screen.getByText('maneuver')).toBeInTheDocument())
     expect(api.fetchOrbitalEvents).toHaveBeenCalledWith('sat-1', 168, 50)
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Real Satellite Sources' })).toBeInTheDocument())
+    expect(screen.getByText('Packet radio')).toBeInTheDocument()
+    expect(screen.getByText('#42')).toBeInTheDocument()
   })
 
   it('supports back and cross-domain navigation', async () => {

@@ -1,0 +1,33 @@
+[Unit]
+Description=Lyrahcle SDR edge agent
+After=network-online.target time-sync.target
+Wants=network-online.target time-sync.target
+ConditionPathExists=/etc/lyrahcle/sdr-agent.env
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/lyrahcle/sdr-agent.env
+ExecStart=/usr/local/bin/sdr-agent
+Restart=on-failure
+RestartSec=5s
+User=lyrahcle
+Group=lyrahcle
+SupplementaryGroups=plugdev
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=false
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+ReadWritePaths=/var/lib/lyrahcle
+
+[Install]
+WantedBy=multi-user.target
+

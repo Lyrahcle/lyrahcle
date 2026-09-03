@@ -1,0 +1,8 @@
+[Unit]
+Description=Install a staged signed Lyrahcle agent update
+ConditionPathExists=/var/lib/lyrahcle/updates/pending/sdr-agent
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/lyrahcle-secure-update /var/lib/lyrahcle/updates/pending
+

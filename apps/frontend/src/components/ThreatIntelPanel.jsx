@@ -7,6 +7,7 @@ import Skeleton from './Skeleton.jsx'
 import { fetchSpaceCVEKeywords } from '../lib/api'
 import { useI18n } from '../lib/I18nContext'
 import StatusState from './StatusState.tsx'
+import EvidenceBadge from './EvidenceBadge.tsx'
 
 const SEVERITIES = ['low', 'medium', 'high', 'critical']
 const SORT_FIELDS = ['published', 'severity', 'score', 'cve_id']
@@ -163,6 +164,9 @@ export default function ThreatIntelPanel({ page, loading, filters, onFiltersChan
                   <th scope="col" className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">
                     {t('threatIntel.description')}
                   </th>
+                  <th scope="col" className="pb-2 text-[11px] font-normal tracking-wider text-lyra-mutedDim">
+                    {t('threatIntel.source')}
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -181,11 +185,24 @@ export default function ThreatIntelPanel({ page, loading, filters, onFiltersChan
                     <td className="py-3 pr-4"><SeverityBadge severity={c.severity} /></td>
                     <td className="py-3 pr-4 font-mono text-lyra-text">
                       {c.score ? c.score.toFixed(1) : '—'}
+                      {c.cvss_version && <div className="mt-1 text-[10px] text-lyra-mutedDim">CVSS {c.cvss_version}</div>}
                     </td>
                     <td className="py-3 pr-4 font-mono text-xs text-lyra-mutedDim">
                       {c.published ? new Date(c.published).toLocaleDateString() : '—'}
                     </td>
-                    <td className="max-w-md py-3 text-xs text-lyra-muted">{c.description}</td>
+                    <td className="max-w-md py-3 text-xs text-lyra-muted">
+                      <p>{c.description}</p>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {(c.cwe_ids || []).map((cwe) => <span key={cwe} className="rounded border border-lyra-borderSoft px-1.5 py-0.5 font-mono text-[10px] text-lyra-mutedDim">{cwe}</span>)}
+                        {c.vulnerability_status && <span className="rounded border border-lyra-borderSoft px-1.5 py-0.5 text-[10px] text-lyra-mutedDim">{c.vulnerability_status}</span>}
+                      </div>
+                      {c.cvss_vector && <p className="mt-1 break-all font-mono text-[10px] text-lyra-mutedDim" title={t('threatIntel.cvssVector')}>{c.cvss_vector}</p>}
+                      {c.last_modified && <p className="mt-1 text-[10px] text-lyra-mutedDim">{t('threatIntel.lastModified')}: {new Date(c.last_modified).toLocaleDateString()}</p>}
+                    </td>
+                    <td className="py-3 pl-4">
+                      <EvidenceBadge kind="external" label={(c.source || 'NVD').toUpperCase()} />
+                      <p className="mt-1 whitespace-nowrap text-[10px] text-lyra-mutedDim">{t('threatIntel.thematicSelection')}</p>
+                    </td>
                   </tr>
                 ))}
               </tbody>

@@ -51,7 +51,7 @@ describe('MissionSecurityScore', () => {
         />
       </I18nProvider>,
     )
-    expect(screen.getByText('Mission security score')).toBeInTheDocument()
+    expect(screen.getByText('Mission Security Score')).toBeInTheDocument()
     expect(screen.getByText('6/6')).toBeInTheDocument()
     expect(screen.getByText('High-severity incidents')).toBeInTheDocument()
     expect(screen.getByText('Orbital')).toBeInTheDocument()

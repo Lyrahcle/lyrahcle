@@ -9,19 +9,23 @@ import (
 )
 
 type AssetCVEAlert struct {
-	ID             uuid.UUID  `json:"id"`
-	AssetID        uuid.UUID  `json:"asset_id"`
-	AssetKind      string     `json:"asset_kind"`
-	AssetValue     string     `json:"asset_value"`
-	CVEID          string     `json:"cve_id"`
-	CVEDescription string     `json:"cve_description"`
-	CVEScore       float64    `json:"cve_score"`
-	MatchedKeyword string     `json:"matched_keyword"`
-	Severity       string     `json:"severity"`
-	Acknowledged   bool       `json:"acknowledged"`
-	AcknowledgedBy *uuid.UUID `json:"acknowledged_by,omitempty"`
-	AcknowledgedAt *time.Time `json:"acknowledged_at,omitempty"`
-	CreatedAt      time.Time  `json:"created_at"`
+	ID                  uuid.UUID  `json:"id"`
+	AssetID             uuid.UUID  `json:"asset_id"`
+	AssetKind           string     `json:"asset_kind"`
+	AssetValue          string     `json:"asset_value"`
+	CVEID               string     `json:"cve_id"`
+	CVEDescription      string     `json:"cve_description"`
+	CVEScore            float64    `json:"cve_score"`
+	MatchedKeyword      string     `json:"matched_keyword"`
+	ApplicabilityStatus string     `json:"applicability_status"`
+	MatchMethod         string     `json:"match_method"`
+	Confidence          int        `json:"confidence"`
+	ContextOnly         bool       `json:"context_only"`
+	Severity            string     `json:"severity"`
+	Acknowledged        bool       `json:"acknowledged"`
+	AcknowledgedBy      *uuid.UUID `json:"acknowledged_by,omitempty"`
+	AcknowledgedAt      *time.Time `json:"acknowledged_at,omitempty"`
+	CreatedAt           time.Time  `json:"created_at"`
 }
 
 type AssetAlertStore struct {
@@ -33,11 +37,15 @@ func NewAssetAlertStore(pool *pgxpool.Pool) *AssetAlertStore {
 }
 
 func (s *AssetAlertStore) Create(ctx context.Context, assetID uuid.UUID, cveID, matchedKeyword, severity string) (bool, error) {
+	return s.CreateWithAssessment(ctx, assetID, cveID, matchedKeyword, severity, "unknown", "thematic_asset_kind", 20, true)
+}
+
+func (s *AssetAlertStore) CreateWithAssessment(ctx context.Context, assetID uuid.UUID, cveID, matchedKeyword, severity, applicabilityStatus, matchMethod string, confidence int, contextOnly bool) (bool, error) {
 	tag, err := s.pool.Exec(ctx, `
-		INSERT INTO asset_cve_alerts (asset_id, cve_id, matched_keyword, severity)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO asset_cve_alerts (asset_id, cve_id, matched_keyword, severity, applicability_status, match_method, confidence, context_only)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		ON CONFLICT (asset_id, cve_id) DO NOTHING
-	`, assetID, cveID, matchedKeyword, severity)
+	`, assetID, cveID, matchedKeyword, severity, applicabilityStatus, matchMethod, confidence, contextOnly)
 	if err != nil {
 		return false, err
 	}
@@ -56,7 +64,7 @@ func (s *AssetAlertStore) List(ctx context.Context, limit, offset int) (Page[Ass
 		SELECT
 			a.id, a.asset_id, ast.kind, ast.value,
 			a.cve_id, c.description, COALESCE(c.score, 0),
-			a.matched_keyword, a.severity,
+			a.matched_keyword, a.severity, a.applicability_status, a.match_method, a.confidence, a.context_only,
 			a.acknowledged, a.acknowledged_by, a.acknowledged_at, a.created_at
 		FROM asset_cve_alerts a
 		JOIN assets ast ON ast.id = a.asset_id
@@ -75,7 +83,7 @@ func (s *AssetAlertStore) List(ctx context.Context, limit, offset int) (Page[Ass
 		if err := rows.Scan(
 			&al.ID, &al.AssetID, &al.AssetKind, &al.AssetValue,
 			&al.CVEID, &al.CVEDescription, &al.CVEScore,
-			&al.MatchedKeyword, &al.Severity,
+			&al.MatchedKeyword, &al.Severity, &al.ApplicabilityStatus, &al.MatchMethod, &al.Confidence, &al.ContextOnly,
 			&al.Acknowledged, &al.AcknowledgedBy, &al.AcknowledgedAt, &al.CreatedAt,
 		); err != nil {
 			return Page[AssetCVEAlert]{}, err
@@ -107,7 +115,8 @@ func (s *AssetAlertStore) RecentUnacknowledged(ctx context.Context, since time.T
 	}
 	rows, err := s.pool.Query(ctx, `
 		SELECT a.id, a.asset_id, ast.kind, ast.value, a.cve_id, c.description, COALESCE(c.score, 0),
-		       a.matched_keyword, a.severity, a.acknowledged, a.acknowledged_by, a.acknowledged_at, a.created_at
+		       a.matched_keyword, a.severity, a.applicability_status, a.match_method, a.confidence, a.context_only,
+		       a.acknowledged, a.acknowledged_by, a.acknowledged_at, a.created_at
 		FROM asset_cve_alerts a
 		JOIN assets ast ON ast.id = a.asset_id
 		JOIN space_cves c ON c.cve_id = a.cve_id
@@ -123,7 +132,7 @@ func (s *AssetAlertStore) RecentUnacknowledged(ctx context.Context, since time.T
 	for rows.Next() {
 		var al AssetCVEAlert
 		if err := rows.Scan(&al.ID, &al.AssetID, &al.AssetKind, &al.AssetValue, &al.CVEID, &al.CVEDescription,
-			&al.CVEScore, &al.MatchedKeyword, &al.Severity, &al.Acknowledged, &al.AcknowledgedBy,
+			&al.CVEScore, &al.MatchedKeyword, &al.Severity, &al.ApplicabilityStatus, &al.MatchMethod, &al.Confidence, &al.ContextOnly, &al.Acknowledged, &al.AcknowledgedBy,
 			&al.AcknowledgedAt, &al.CreatedAt); err != nil {
 			return nil, err
 		}
@@ -140,7 +149,8 @@ func (s *AssetAlertStore) ListByOrganization(ctx context.Context, organizationID
 	}
 	rows, err := s.pool.Query(ctx, `
 		SELECT a.id,a.asset_id,ast.kind,ast.value,a.cve_id,c.description,COALESCE(c.score,0),
-		       a.matched_keyword,a.severity,a.acknowledged,a.acknowledged_by,a.acknowledged_at,a.created_at
+		       a.matched_keyword,a.severity,a.applicability_status,a.match_method,a.confidence,a.context_only,
+		       a.acknowledged,a.acknowledged_by,a.acknowledged_at,a.created_at
 		FROM asset_cve_alerts a
 		JOIN assets ast ON ast.id=a.asset_id AND ast.organization_id=$1
 		JOIN space_cves c ON c.cve_id=a.cve_id
@@ -153,7 +163,7 @@ func (s *AssetAlertStore) ListByOrganization(ctx context.Context, organizationID
 	items := []AssetCVEAlert{}
 	for rows.Next() {
 		var al AssetCVEAlert
-		if err := rows.Scan(&al.ID, &al.AssetID, &al.AssetKind, &al.AssetValue, &al.CVEID, &al.CVEDescription, &al.CVEScore, &al.MatchedKeyword, &al.Severity, &al.Acknowledged, &al.AcknowledgedBy, &al.AcknowledgedAt, &al.CreatedAt); err != nil {
+		if err := rows.Scan(&al.ID, &al.AssetID, &al.AssetKind, &al.AssetValue, &al.CVEID, &al.CVEDescription, &al.CVEScore, &al.MatchedKeyword, &al.Severity, &al.ApplicabilityStatus, &al.MatchMethod, &al.Confidence, &al.ContextOnly, &al.Acknowledged, &al.AcknowledgedBy, &al.AcknowledgedAt, &al.CreatedAt); err != nil {
 			return Page[AssetCVEAlert]{}, err
 		}
 		items = append(items, al)

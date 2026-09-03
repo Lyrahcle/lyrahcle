@@ -215,10 +215,12 @@ func correlateRFDetectionRules(ctx context.Context, rules *store.DetectionRuleSt
 
 type satWithPos struct {
 	store.Satellite
-	Position          *orbit.Position `json:"position,omitempty"`
-	TLEStatus         string          `json:"tle_status"`
-	TLEAgeSeconds     int64           `json:"tle_age_seconds"`
-	OrbitalConfidence string          `json:"orbital_confidence"`
+	Position             *orbit.Position `json:"position,omitempty"`
+	TLEStatus            string          `json:"tle_status"`
+	TLEAgeSeconds        int64           `json:"tle_age_seconds"`
+	OrbitalConfidence    string          `json:"orbital_confidence"`
+	PositionEvidenceKind string          `json:"position_evidence_kind"`
+	TLESource            string          `json:"tle_source"`
 }
 
 func satellitesWithPositions(ctx context.Context, satellites *store.SatelliteStore, cache *respcache.Cache, policy tlequality.Policy) ([]satWithPos, error) {
@@ -249,10 +251,12 @@ func satellitesWithPositions(ctx context.Context, satellites *store.SatelliteSto
 					assessment := tlequality.Assess(sat.TLEEpoch, time.Now().UTC(), policy)
 					recordTLEMetrics(sat.NoradID, assessment)
 					entry := satWithPos{
-						Satellite:         sat,
-						TLEStatus:         string(assessment.Status),
-						TLEAgeSeconds:     int64(assessment.Age.Seconds()),
-						OrbitalConfidence: assessment.Confidence,
+						Satellite:             sat,
+						TLEStatus:             string(assessment.Status),
+						TLEAgeSeconds:         int64(assessment.Age.Seconds()),
+						OrbitalConfidence:     assessment.Confidence,
+						PositionEvidenceKind: "inferred",
+						TLESource:            "celestrak_or_operator",
 					}
 					if assessment.Status == tlequality.StatusFresh || assessment.Status == tlequality.StatusAging {
 						if pos, err := orbit.CurrentPosition(sat.TLELine1, sat.TLELine2); err == nil {

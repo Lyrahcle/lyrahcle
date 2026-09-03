@@ -33,7 +33,7 @@ describe('CommandPalette', () => {
   it('opens with Ctrl+K and jumps to an allowed navigation destination', () => {
     const onNavigate = renderPalette()
     fireEvent.keyDown(document, { key: 'k', ctrlKey: true })
-    expect(screen.getByRole('dialog', { name: 'Command palette' })).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'Command Palette' })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('option', { name: /Ground stations/i }))
     expect(onNavigate).toHaveBeenCalledWith('stations', null)
     expect(screen.queryByRole('dialog', { name: 'Command palette' })).not.toBeInTheDocument()

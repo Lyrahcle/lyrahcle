@@ -25,6 +25,7 @@ var sensitiveRouteAuthorizationMatrix = []sensitiveRouteAuthorization{
 	{"routes_detection_rf.go", `Get("/readings",`, `RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "rf.read"`, "rf.read"},
 	{"routes_detection_rf.go", `Get("/doppler",`, `RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "rf.read"`, "rf.read"},
 	{"routes_detection_rf.go", `Get("/anomalies",`, `RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "rf.read"`, "rf.read"},
+	{"routes_satellites_tmtc.go", `Get("/{satelliteID}/external-sources",`, `RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "orbital.read"`, "orbital.read"},
 	{"routes_satellites_tmtc.go", `Get("/{satelliteID}/passes",`, `RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "orbital.read"`, "orbital.read"},
 	{"routes_satellites_tmtc.go", `Get("/{satelliteID}/orbital-events",`, `RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "orbital.read"`, "orbital.read"},
 	{"routes_satellites_tmtc.go", `Post("/{satelliteID}/orbital-events",`, `RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "orbital.manage"`, "orbital.manage"},
@@ -123,7 +124,7 @@ func TestHTTPRouteCountRequiresAuthorizationReview(t *testing.T) {
 		}
 		got += len(routeRegistration.FindAll(data, -1))
 	}
-	const reviewedRouteRegistrations = 117
+	const reviewedRouteRegistrations = 118
 	if got != reviewedRouteRegistrations {
 		t.Fatalf("HTTP route inventory changed: got %d registrations, reviewed %d; classify every added/removed route before updating this gate", got, reviewedRouteRegistrations)
 	}

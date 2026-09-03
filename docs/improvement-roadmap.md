@@ -47,6 +47,7 @@ Status values: **Shipped**, **Partial**, **Next**, and **Later**.
 | Correlation-driven severity policy after production validation | Later | Before v1.0 |
 | RF heat map | Shipped | v14.6.2 |
 | Satellite security profile with explainable mission risk and unified evidence | Shipped | Unreleased |
+| Evidence provenance and confidence labels; contextual CVE alerts excluded from exposure risk | Shipped | Block 18 |
 | Telemetry, RF, CVE, and operations charts | Partial | RF power/spectrum, anomaly timeline, incident severity/timeline, CVE severity/timeline, and orbital altitude charts are shipped; Doppler expected-vs-observed, RF z-score, and fleet agent-status charts remain open |
 | Orbital-aware RF detection and TLE freshness gating | Shipped | v9.2/v9.2.2 |
 | Physical SDR validation of Doppler/visibility correlation | In progress — RTL-SDR evidence harness delivered; representative lab captures still required | Before auto-escalation/v1.0 |

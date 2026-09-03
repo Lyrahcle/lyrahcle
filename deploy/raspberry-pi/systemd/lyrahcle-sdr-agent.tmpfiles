@@ -1,0 +1,7 @@
+d /etc/lyrahcle 0750 root lyrahcle -
+d /etc/lyrahcle/config-keys 0750 root lyrahcle -
+d /var/lib/lyrahcle 0700 lyrahcle lyrahcle -
+d /var/lib/lyrahcle/identity 0700 lyrahcle lyrahcle -
+d /var/lib/lyrahcle/updates 0700 lyrahcle lyrahcle -
+d /var/lib/lyrahcle/updates/pending 0700 lyrahcle lyrahcle -
+

@@ -85,7 +85,10 @@ For production, use the enrollment/mTLS variables below. Legacy agent keys can s
 | `PROMETHEUS_PORT` | `9091` | Worker metrics port |
 | `SYNC_INTERVAL_SEC` | `3600` | Time between sync cycles |
 | `NVD_RESULTS_PER_PAGE` | `100` | NVD page size |
-| `NVD_RATE_LIMIT_PER_MIN` | `10` | Client-side NVD request limit |
+| `NVD_API_KEY` | empty | Optional NVD API key; enables the faster default request cadence |
+| `NVD_MAX_PAGES` | `20` | Safety cap per keyword and cycle; an incomplete run retains its previous cursor |
+| `NVD_REQUEST_DELAY_MS` | `6000` without a key, `600` with a key | Delay between NVD API requests |
+| `NVD_INCREMENTAL_LOOKBACK_SEC` | `300` | Cursor overlap used to avoid missing records at a time-window boundary |
 | `LOG_LEVEL` | `info` | Worker log level |
 | `ENVIRONMENT` | `development` | Environment label |
 

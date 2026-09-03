@@ -34,7 +34,7 @@ describe('RFHeatMap', () => {
 
   it('renders station intensity summary and accessible station details', () => {
     renderHeatMap()
-    expect(screen.getByText('RF signal heat map')).toBeInTheDocument()
+    expect(screen.getByText('RF Signal Heat Map')).toBeInTheDocument()
     expect(screen.getByText('Stations: 2/2 active · Samples: 3')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /sdr-madrid.*average -60.0 dBm.*peak -50.0 dBm.*2 readings/i })).toBeInTheDocument()
   })

@@ -32,6 +32,7 @@ import {
   revokeAllSessions,
   fetchSatellites,
   fetchSatellitePasses,
+  fetchSatelliteExternalSources,
   fetchOrbitalEvents,
   updateIncident,
   addIncidentNote,
@@ -224,6 +225,12 @@ describe('api client', () => {
         body: JSON.stringify({ norad_id: 25544, name: 'ISS (ZARYA)', tle_line1: 'l1', tle_line2: 'l2' }),
       })
     )
+  })
+
+  it('fetchSatelliteExternalSources encodes the satellite id', async () => {
+    mockFetchOnce(true, { norad_id: 25544, overall_quality: 'good' })
+    await fetchSatelliteExternalSources('sat/1')
+    expect(fetch).toHaveBeenCalledWith('/api/v1/satellites/sat%2F1/external-sources', { headers: {} })
   })
 
   it('fetchPing calls the ping endpoint without auth', async () => {

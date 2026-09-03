@@ -32,6 +32,8 @@ interface RiskItem {
   detected_at?: string
   z_score?: unknown
   acknowledged?: boolean
+  context_only?: boolean
+  applicability_status?: string
   [key: string]: unknown
 }
 
@@ -103,7 +105,9 @@ export function calculateSatelliteRisk({
   if (highOrbital) factors.push({ key: 'orbitalEvent', points: Math.min(15, highOrbital * 5), domain: 'orbital' })
 
   const urgentExposure = exposureAlerts.filter(
-    (item) => !item.acknowledged && riskSeverityRank(item.severity) >= riskSeverityRank('high'),
+    (item) => !item.acknowledged && item.context_only === false &&
+      ['probable_exposure', 'confirmed'].includes(String(item.applicability_status || '')) &&
+      riskSeverityRank(item.severity) >= riskSeverityRank('high'),
   ).length
   if (urgentExposure) factors.push({ key: 'exposure', points: Math.min(15, urgentExposure * 5), domain: 'exposure' })
 
@@ -146,7 +150,9 @@ export function calculateMissionRisk({
   const severeAnomalies = recentAnomalies.filter((item) => Math.abs(Number(item.z_score) || 0) >= 5).length
   const attentionAgents = agents.filter((agent) => agentState(agent, now) !== 'online').length
   const urgentAlerts = alerts.filter(
-    (item) => !item.acknowledged && riskSeverityRank(item.severity) >= riskSeverityRank('high'),
+    (item) => !item.acknowledged && item.context_only === false &&
+      ['probable_exposure', 'confirmed'].includes(String(item.applicability_status || '')) &&
+      riskSeverityRank(item.severity) >= riskSeverityRank('high'),
   ).length
   const degradedOrbit = satellites.filter((item) =>
     ['aging', 'stale', 'unusable'].includes(String(item.tle_status || '').toLowerCase()),

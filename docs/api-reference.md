@@ -85,6 +85,7 @@ Every backend response includes `X-Request-ID`. A safe incoming `X-Request-ID` m
 | `POST` | `/api/v1/assets/` | `assets.manage` | Create/update asset |
 | `GET` | `/api/v1/satellites/` | `orbital.read` | Satellites with propagated position |
 | `GET` | `/api/v1/satellites/{satelliteID}/passes` | `orbital.read` | Predict AOS/LOS and peak elevation for a ground station; rejects stale/unusable TLEs |
+| `GET` | `/api/v1/satellites/{satelliteID}/external-sources` | `orbital.read` | Read cached NORAD-linked SatNOGS metadata, transmitters, observations, and source freshness |
 | `GET` | `/api/v1/satellites/stream` | `orbital.read` | Live satellite SSE stream |
 | `POST` | `/api/v1/satellites/` | `orbital.manage` | Register/update satellite by NORAD ID |
 | `PUT` | `/api/v1/satellites/{satelliteID}` | `orbital.manage` | Edit satellite name/NORAD/TLE from its stable UUID |

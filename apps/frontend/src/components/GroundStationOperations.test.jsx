@@ -33,7 +33,7 @@ function renderOperations(overrides = {}) {
 describe('GroundStationOperations', () => {
   it('summarizes configured stations and current visibility', () => {
     renderOperations()
-    expect(screen.getByRole('heading', { name: 'Ground station operations' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Ground Station Operations' })).toBeInTheDocument()
     expect(screen.getByText('Configured stations').parentElement.parentElement).toHaveTextContent('1')
     expect(screen.getByText('Satellites visible now').parentElement.parentElement).toHaveTextContent('1')
     expect(screen.getByText('Risk 18')).toBeInTheDocument()

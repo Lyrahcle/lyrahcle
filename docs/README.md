@@ -46,11 +46,15 @@ This directory contains the technical documentation for Lyrahcle. The root `READ
 | Document | Canonical purpose |
 |---|---|
 | [SDR agent guide](./04-sdr-agent-guide.md) | Enrollment, mTLS, certificate rotation, signed remote configuration, and hardware-capability reporting |
+| [Raspberry Pi plug-and-play station](./raspberry-pi-station.md) | Reproducible ARM64 install/image profile, enrollment, diagnostics, pass configuration, signed updates, and hardware acceptance |
 | [Edge node integrity / tamper detection](./edge-integrity.md) | Deterministic file-manifest baselining and healthy/changed classification |
 | [Orbital-aware security correlation](./orbital-security-correlation.md) | v9.2/v9.2.2 orbital/RF evidence, severity gating, operator workflow |
 | [Orbital operations context](./orbital-operations-context.md) | v9.5 maneuver/conjunction persistence, trust model, and candidate-only correlation |
 | [Cross-domain correlation](./cross-domain-correlation.md) | v9.4 explainable incident correlation across RF, orbital, agent posture, audit, and context-only asset alerts |
 | [Correlation constellation](./correlation-constellation.md) | Interactive orbital-focus graph for satellite, station, RF, incident, asset and CVE investigation paths |
+| [Evidence provenance](./evidence-provenance.md) | Trust labels, confidence and the boundary between context, inference and confirmed exposure |
+| [CVE intelligence synchronization](./cve-intelligence.md) | NVD pagination, incremental cursors, enriched CVE metadata, and applicability limits |
+| [Real satellite sources](./satellite-real-sources.md) | NORAD-linked SatNOGS metadata, transmitters, observations, and source freshness |
 | [Satellite pass prediction](./pass-prediction.md) | v9.3 AOS/LOS, peak elevation, prediction windows, and TLE safety |
 | [TLE data quality](./tle-data-quality.md) | Fresh/aging/stale/unusable policy and safe orbital-escalation defaults |
 | [IQ forensics](./forensics.md) | Recording, replaying, and handling SDR IQ captures |

@@ -42,4 +42,16 @@ describe('risk engine', () => {
     expect(result.domains.security).toBe(8)
     expect(result.domains.orbital).toBe(4)
   })
+
+  it('does not turn thematic CVE context into exposure risk', () => {
+    const contextAlert = { acknowledged: false, severity: 'critical', context_only: true, applicability_status: 'unknown' }
+    expect(calculateSatelliteRisk({ exposureAlerts: [contextAlert] }).score).toBe(0)
+    expect(calculateMissionRisk({ alerts: [contextAlert] }).score).toBe(0)
+  })
+
+  it('scores a confirmed applicable exposure', () => {
+    const confirmed = { acknowledged: false, severity: 'critical', context_only: false, applicability_status: 'confirmed' }
+    expect(calculateSatelliteRisk({ exposureAlerts: [confirmed] }).score).toBe(5)
+    expect(calculateMissionRisk({ alerts: [confirmed] }).score).toBe(5)
+  })
 })

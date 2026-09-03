@@ -7,12 +7,16 @@ import (
 	"github.com/mlko01/lyrahcle/apps/backend/internal/audit"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/auth"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/metrics"
+	"github.com/mlko01/lyrahcle/apps/backend/internal/satnogs"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/tmtc"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/validate"
 	"log"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 )
 
 func (a *apiRoutes) registerSatelliteTMTCRoutes(r chi.Router) {
@@ -25,6 +29,24 @@ func (a *apiRoutes) registerSatelliteTMTCRoutes(r chi.Router) {
 	satellites := a.satellites
 
 	r.Route("/satellites", func(r chi.Router) {
+		satnogsClient := satnogs.NewClient(10 * time.Second)
+		r.With(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "orbital.read", isTokenRevoked)).Get("/{satelliteID}/external-sources", func(w http.ResponseWriter, r *http.Request) {
+			satelliteID, err := uuid.Parse(chi.URLParam(r, "satelliteID"))
+			if err != nil { http.Error(w, "invalid satellite ID", http.StatusBadRequest); return }
+			satellite, err := satellites.Get(r.Context(), satelliteID)
+			if err != nil {
+				if err == pgx.ErrNoRows { http.Error(w, "satellite not found", http.StatusNotFound); return }
+				http.Error(w, "failed to load satellite", http.StatusInternalServerError); return
+			}
+			cacheKey := fmt.Sprintf("lyrahcle:cache:satnogs:%d", satellite.NoradID)
+			var result satnogs.Intelligence
+			if hit, _ := cache.Get(r.Context(), cacheKey, &result); !hit {
+				result = satnogsClient.Fetch(r.Context(), satellite.NoradID)
+				cache.Set(r.Context(), cacheKey, result, 15*time.Minute)
+			}
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(result)
+		})
 		r.With(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "orbital.read", isTokenRevoked)).Get("/{satelliteID}/passes", handleSatellitePassPrediction(satellites, tlePolicy(cfg)))
 		r.With(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "orbital.read", isTokenRevoked)).Get("/{satelliteID}/orbital-events", handleListOrbitalEvents(orbitalEvents, satellites))
 		r.With(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "orbital.manage", isTokenRevoked)).Post("/{satelliteID}/orbital-events", handleCreateOrbitalEvent(orbitalEvents, satellites, auditLog))

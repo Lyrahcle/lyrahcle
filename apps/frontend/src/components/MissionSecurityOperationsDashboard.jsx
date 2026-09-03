@@ -139,7 +139,7 @@ export default function MissionSecurityOperationsDashboard({
   const onlineAgents = agentStates.filter((state) => state === 'online').length
   const attentionAgents = agentStates.filter((state) => state === 'attention' || state === 'offline').length
   const unacknowledgedAlerts = (assetAlerts?.items ?? []).filter((alert) => !alert.acknowledged)
-  const criticalAlerts = unacknowledgedAlerts.filter((alert) => ['critical', 'high'].includes(String(alert.severity).toLowerCase())).length
+  const criticalAlerts = unacknowledgedAlerts.filter((alert) => alert.context_only === false && ['probable_exposure', 'confirmed'].includes(alert.applicability_status) && ['critical', 'high'].includes(String(alert.severity).toLowerCase())).length
   const staleSatellites = satellites.filter((satellite) => ageMs(satellite.updated_at, now) > DAY_MS)
   const missingPositions = satellites.filter((satellite) => !hasPosition(satellite))
 
@@ -154,7 +154,7 @@ export default function MissionSecurityOperationsDashboard({
       .filter((incident) => ['critical', 'high'].includes(incident.severity))
       .map((incident) => ({ id: `incident-${incident.id}`, label: incident.title || incident.reference, detail: t('missionSecurity.queueIncident', { severity: String(incident.severity || '').toUpperCase() }), severity: incident.severity, target: 'incidents' })) : []),
     ...(access.alerts ? unacknowledgedAlerts
-      .filter((alert) => ['critical', 'high'].includes(String(alert.severity).toLowerCase()))
+      .filter((alert) => alert.context_only === false && ['probable_exposure', 'confirmed'].includes(alert.applicability_status) && ['critical', 'high'].includes(String(alert.severity).toLowerCase()))
       .map((alert) => ({ id: `alert-${alert.id}`, label: alert.cve_id, detail: t('missionSecurity.queueVulnerability', { asset: alert.asset_value || '—' }), severity: alert.severity, target: 'intel' })) : []),
     ...(access.agents ? agents
       .map((agent) => ({ agent, state: agentPosture(agent, now) }))

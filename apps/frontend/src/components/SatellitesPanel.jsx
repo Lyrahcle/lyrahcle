@@ -5,6 +5,7 @@ import TableScroll from './TableScroll.jsx'
 import { updateSatellite } from '../lib/api'
 import { useI18n } from '../lib/I18nContext'
 import { calculateSatelliteRisk } from '../lib/risk'
+import EvidenceBadge from './EvidenceBadge.tsx'
 
 const SORT_ACCESSORS = {
   name: (s) => s.name ?? '',
@@ -235,6 +236,10 @@ export default function SatellitesPanel({ satellites, incidents = null, anomalie
                   <p className="mt-1 font-mono text-[10px] text-lyra-mutedDim">
                     {t('satelliteManagement.updated')} {s.updated_at ? new Date(s.updated_at).toLocaleString() : '—'}
                   </p>
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {s.position && <EvidenceBadge kind="inferred" label={t('satelliteManagement.propagatedPosition')} />}
+                    <EvidenceBadge kind="external" label={t('satelliteManagement.tleExternalOrOperator')} />
+                  </div>
                 </td>
                 <td className="py-3 font-mono text-xs text-lyra-mutedDim">
                   <div className="flex items-center gap-1">

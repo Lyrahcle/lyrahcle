@@ -107,6 +107,9 @@ func TestProcessCVECreatesAlertForMatchingAssetKind(t *testing.T) {
 	if page.Items[0].Severity != "HIGH" {
 		t.Errorf("Severity = %q, want HIGH", page.Items[0].Severity)
 	}
+	if !page.Items[0].ContextOnly || page.Items[0].ApplicabilityStatus != "unknown" || page.Items[0].MatchMethod != "thematic_asset_kind" || page.Items[0].Confidence != 20 {
+		t.Errorf("assessment = context_only:%v status:%q method:%q confidence:%d", page.Items[0].ContextOnly, page.Items[0].ApplicabilityStatus, page.Items[0].MatchMethod, page.Items[0].Confidence)
+	}
 }
 
 func TestProcessCVEWithUnmappedKeywordCreatesNoAlerts(t *testing.T) {
