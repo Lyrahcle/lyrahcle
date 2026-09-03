@@ -1,0 +1,86 @@
+#!/usr/bin/env python3
+"""Read-only health checks for a Lyrahcle edge station."""
+
+import argparse
+import json
+import os
+from pathlib import Path
+import shutil
+import socket
+import ssl
+import stat
+import subprocess
+from urllib.parse import urlparse
+
+
+def load_env(path: Path) -> dict[str, str]:
+    values: dict[str, str] = {}
+    if not path.is_file():
+        return values
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        if raw and not raw.startswith("#") and "=" in raw:
+            key, value = raw.split("=", 1)
+            values[key] = value
+    return values
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--json", action="store_true")
+    parser.add_argument("--env", default="/etc/lyrahcle/sdr-agent.env")
+    args = parser.parse_args()
+    results: list[dict[str, str]] = []
+
+    def check(name: str, ok: bool, detail: str) -> None:
+        results.append({"check": name, "status": "pass" if ok else "fail", "detail": detail})
+
+    env_path = Path(args.env)
+    env = load_env(env_path)
+    mode = stat.S_IMODE(env_path.stat().st_mode) if env_path.exists() else 0
+    check("configuration", env_path.is_file() and mode == 0o600, f"{env_path} mode {mode:04o}")
+    token_present = bool(env.get("AGENT_ENROLLMENT_TOKEN"))
+    check("one-time token removed", not token_present, "removed" if not token_present else "still present")
+    for label, key in (("client certificate", "AGENT_CERT_FILE"), ("private key", "AGENT_KEY_FILE")):
+        path = Path(env.get(key, "/missing"))
+        path_mode = stat.S_IMODE(path.stat().st_mode) if path.exists() else 0
+        check(label, path.is_file() and not (path_mode & 0o077), f"{path} mode {path_mode:04o}")
+    keys = Path(env.get("AGENT_CONFIG_VERIFY_KEY_DIR", "/missing"))
+    check("configuration trust keys", keys.is_dir() and any(keys.glob("*.pub")), str(keys))
+    backend = urlparse(env.get("BACKEND_URL", ""))
+    tls_ok, tls_detail = False, "invalid BACKEND_URL"
+    if backend.scheme == "https" and backend.hostname:
+        try:
+            context = ssl.create_default_context(cafile=env.get("AGENT_CA_CERT") or None)
+            with socket.create_connection((backend.hostname, backend.port or 443), timeout=5) as raw:
+                with context.wrap_socket(raw, server_hostname=backend.hostname) as secure:
+                    tls_detail = f"TLS {secure.version()} certificate verified"
+                    tls_ok = True
+        except (OSError, ssl.SSLError) as exc:
+            tls_detail = f"TLS check failed: {type(exc).__name__}"
+    check("backend TLS", tls_ok, tls_detail)
+    systemctl = shutil.which("systemctl")
+    active = bool(systemctl) and subprocess.run(
+        [systemctl, "is-active", "--quiet", "lyrahcle-sdr-agent.service"], check=False
+    ).returncode == 0
+    check("agent service", active, "active" if active else "not active")
+    timedatectl = shutil.which("timedatectl")
+    synced = bool(timedatectl) and subprocess.run(
+        [timedatectl, "show", "-p", "NTPSynchronized", "--value"], capture_output=True, text=True, check=False
+    ).stdout.strip() == "yes"
+    check("clock synchronization", synced, "synchronized" if synced else "not confirmed")
+    free = shutil.disk_usage("/var/lib/lyrahcle" if Path("/var/lib/lyrahcle").exists() else "/").free
+    check("free disk", free >= 512 * 1024 * 1024, f"{free // (1024 * 1024)} MiB free")
+    rtl = shutil.which("rtl_test")
+    check("SDR tooling", bool(rtl), rtl or "rtl_test not installed; hardware check pending")
+    summary = {"healthy": all(item["status"] == "pass" for item in results), "checks": results}
+    if args.json:
+        print(json.dumps(summary, indent=2))
+    else:
+        for item in results:
+            print(f"[{item['status'].upper():4}] {item['check']}: {item['detail']}")
+    return 0 if summary["healthy"] else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+

@@ -4,6 +4,8 @@ Thumbs.db
 
 # Go
 bin/
+# Version the reviewed Raspberry Pi operator entrypoints; only Go build output stays ignored.
+!deploy/raspberry-pi/bin/
 *.test
 *.out
 

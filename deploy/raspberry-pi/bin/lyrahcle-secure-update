@@ -1,0 +1,80 @@
+#!/usr/bin/env python3
+"""Verify and atomically install a staged, signed SDR agent binary."""
+
+import argparse
+import hashlib
+import os
+from pathlib import Path
+import shutil
+import stat
+import subprocess
+import sys
+import tempfile
+import time
+
+TARGET = Path("/usr/local/bin/sdr-agent")
+TRUST_KEY = Path("/etc/lyrahcle/update-signing-key.pem")
+
+
+def regular_file(path: Path) -> bool:
+    return path.is_file() and not path.is_symlink() and stat.S_ISREG(path.stat().st_mode)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("bundle", type=Path)
+    args = parser.parse_args()
+    if os.geteuid() != 0:
+        print("error: updater must run as root", file=sys.stderr)
+        return 1
+    binary = args.bundle / "sdr-agent"
+    checksum_file = args.bundle / "sdr-agent.sha256"
+    signature = args.bundle / "sdr-agent.sig"
+    if not all(regular_file(path) for path in (binary, checksum_file, signature, TRUST_KEY)):
+        print("error: update files must be regular files, not symlinks", file=sys.stderr)
+        return 2
+    expected = checksum_file.read_text(encoding="ascii").strip().split()[0].lower()
+    actual = hashlib.sha256(binary.read_bytes()).hexdigest()
+    if len(expected) != 64 or expected != actual:
+        print("error: SHA-256 mismatch", file=sys.stderr)
+        return 2
+    verified = subprocess.run([
+        "openssl", "pkeyutl", "-verify", "-pubin", "-inkey", str(TRUST_KEY),
+        "-sigfile", str(signature), "-rawin", "-in", str(binary),
+    ], capture_output=True, check=False)
+    if verified.returncode != 0:
+        print("error: update signature is invalid", file=sys.stderr)
+        return 2
+    backup = TARGET.with_suffix(".previous")
+    with tempfile.NamedTemporaryFile(dir=TARGET.parent, delete=False) as staged:
+        with binary.open("rb") as source:
+            shutil.copyfileobj(source, staged)
+        staged.flush()
+        os.fsync(staged.fileno())
+        staged_path = Path(staged.name)
+    os.chmod(staged_path, 0o755)
+    if TARGET.exists():
+        shutil.copy2(TARGET, backup)
+    os.replace(staged_path, TARGET)
+    subprocess.run(["systemctl", "restart", "lyrahcle-sdr-agent.service"], check=False)
+    healthy = False
+    for _ in range(15):
+        healthy = subprocess.run(
+            ["systemctl", "is-active", "--quiet", "lyrahcle-sdr-agent.service"], check=False
+        ).returncode == 0
+        if healthy:
+            break
+        time.sleep(1)
+    if not healthy and backup.exists():
+        os.replace(backup, TARGET)
+        subprocess.run(["systemctl", "restart", "lyrahcle-sdr-agent.service"], check=False)
+        print("error: new agent failed to start; previous binary restored", file=sys.stderr)
+        return 3
+    for path in (binary, checksum_file, signature):
+        path.unlink()
+    print(f"Installed verified agent update {actual[:12]} and restarted the service.")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
