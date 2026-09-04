@@ -176,7 +176,7 @@ jobs:
             --set monitoring.prometheusRule.enabled=true >/dev/null
           helm template lyrahcle deploy/helm/lyrahcle -f deploy/helm/lyrahcle/values-aws.example.yaml >/dev/null
       - name: Lint Dockerfiles (hadolint)
-        uses: hadolint/hadolint-action@v3.1.0
+        uses: hadolint/hadolint-action@v3.5.0
         continue-on-error: true
         with:
           dockerfile: deploy/docker/Dockerfile.backend
