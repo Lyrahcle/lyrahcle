@@ -69,13 +69,20 @@ func (t *Transmitter) UnmarshalJSON(data []byte) error {
 }
 
 type Observation struct {
-	ID         int64     `json:"id"`
-	Start      time.Time `json:"start"`
-	End        time.Time `json:"end"`
-	Status     string    `json:"status,omitempty"`
-	StationID  int64     `json:"ground_station,omitempty"`
-	Station    string    `json:"station_name,omitempty"`
-	Transmitter string   `json:"transmitter,omitempty"`
+	ID                    int64     `json:"id"`
+	Start                 time.Time `json:"start"`
+	End                   time.Time `json:"end"`
+	Status                string    `json:"status,omitempty"`
+	StationID             int64     `json:"ground_station,omitempty"`
+	Station               string    `json:"station_name,omitempty"`
+	Transmitter           string    `json:"transmitter,omitempty"`
+	VettedStatus          string    `json:"vetted_status,omitempty"`
+	Observer              string    `json:"observer,omitempty"`
+	TransmitterMode       string    `json:"transmitter_mode,omitempty"`
+	TransmitterDownlinkLow *int64   `json:"transmitter_downlink_low,omitempty"`
+	StationLatitude       *float64  `json:"station_lat,omitempty"`
+	StationLongitude      *float64  `json:"station_lng,omitempty"`
+	Waterfall             string    `json:"waterfall,omitempty"`
 }
 
 type Intelligence struct {

@@ -258,6 +258,7 @@ func main() {
 func runIQCaptureLoop(captureDir, agentID string, freqHz int64) {
 	intervalSec := getEnvInt("IQ_CAPTURE_INTERVAL_SECONDS", 60)
 	numSamples := getEnvInt("IQ_CAPTURE_SAMPLES", 8192)
+	sigmfCaptures := getEnvBool("IQ_CAPTURE_SIGMF")
 
 	device, err := soapy.NewDeviceFromSpec(deviceSpecFromEnv(freqHz))
 	if err != nil {
@@ -288,12 +289,18 @@ func runIQCaptureLoop(captureDir, agentID string, freqHz int64) {
 			log.Printf("iq-capture: read: %v", err)
 			continue
 		}
-		dataPath, _, err := forensics.Save(captureDir, agentID, data)
+		save := forensics.Save
+		format := "cf32"
+		if sigmfCaptures {
+			save = forensics.SaveSigMF
+			format = "sigmf"
+		}
+		dataPath, _, err := save(captureDir, agentID, data)
 		if err != nil {
 			log.Printf("iq-capture: save: %v", err)
 			continue
 		}
-		log.Printf("iq-capture: saved %d samples to %s", len(data.Samples), dataPath)
+		log.Printf("iq-capture: saved %d samples to %s (%s)", len(data.Samples), dataPath, format)
 	}
 }
 
@@ -310,7 +317,7 @@ func runReplay(replayRoot, replayFile string, client *uplink.Client) {
 		}
 	}
 	log.Printf("replay: loading capture %s within %s", replayName, replayRoot)
-	meta, samples, err := forensics.LoadWithin(replayRoot, replayName)
+	meta, samples, err := forensics.LoadAnyWithin(replayRoot, replayName)
 	if err != nil {
 		log.Fatalf("replay: %v", err)
 	}
@@ -331,8 +338,9 @@ func runReplay(replayRoot, replayFile string, client *uplink.Client) {
 		readings = replay.PowerWindows(meta, samples, windowSamples)
 	}
 	log.Printf(
-		"replay: capture from %s (agent=%s, freq=%d Hz, %d samples) -> %d readings",
-		meta.CapturedAt.Format(time.RFC3339), meta.AgentID, meta.FrequencyHz, len(samples), len(readings),
+		"replay: capture from %s (agent=%s, freq=%d Hz, %d samples, format=%s, provenance=%s/%s) -> %d readings",
+		meta.CapturedAt.Format(time.RFC3339), meta.AgentID, meta.FrequencyHz, len(samples), meta.Format,
+		meta.Extra["evidence_kind"], meta.Extra["timestamp_from"], len(readings),
 	)
 
 	sent := 0

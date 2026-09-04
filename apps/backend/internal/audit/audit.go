@@ -45,6 +45,7 @@ const (
 	ActionSatelliteUpserted          = "satellite.upserted"
 	ActionSatelliteUpdated           = "satellite.updated"
 	ActionOrbitalEventCreated        = "orbital_event.created"
+	ActionExternalReceptionImported  = "external_reception.imported"
 	ActionRoleChanged                = "user.role_changed"
 	ActionUserStatusChanged          = "user.status_changed"
 	ActionUserDeleted                = "user.deleted"

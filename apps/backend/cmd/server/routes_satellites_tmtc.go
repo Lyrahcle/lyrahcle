@@ -53,6 +53,8 @@ func (a *apiRoutes) registerSatelliteTMTCRoutes(r chi.Router) {
 			w.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(w).Encode(result)
 		})
+		r.With(a.perm("orbital.read")).Get("/{satelliteID}/external-observations", handleListExternalObservations(satellites, a.externalObservations))
+		r.With(a.perm("orbital.manage")).Post("/{satelliteID}/external-observations/import", handleImportExternalObservations(satellites, a.externalObservations, satnogsClient, auditLog))
 		r.With(a.perm("orbital.read")).Get("/{satelliteID}/passes", handleSatellitePassPrediction(satellites, tlePolicy(cfg)))
 		r.With(a.perm("orbital.read")).Get("/{satelliteID}/orbital-events", handleListOrbitalEvents(orbitalEvents, satellites))
 		r.With(a.perm("orbital.manage")).Post("/{satelliteID}/orbital-events", handleCreateOrbitalEvent(orbitalEvents, satellites, auditLog))

@@ -58,6 +58,9 @@ This directory contains the technical documentation for Lyrahcle. The root `READ
 | [Satellite pass prediction](./pass-prediction.md) | v9.3 AOS/LOS, peak elevation, prediction windows, and TLE safety |
 | [TLE data quality](./tle-data-quality.md) | Fresh/aging/stale/unusable policy and safe orbital-escalation defaults |
 | [Real RF acquisition](./rf-real-acquisition.md) | rtl_tcp device driver, FFT/PSD/Doppler analysis, dBFS-to-dBm calibration, and the physical validation procedure |
+| [SigMF recordings](./sigmf-recordings.md) | Reading and writing SigMF 1.0.0 IQ recordings, supported datatypes, provenance labelling and hardware-free validation |
+| [Community reception import](./community-reception-import.md) | Importing SatNOGS Network reception as context-only evidence and the geometry consistency check |
+| [SPARTA coverage](./sparta-coverage.md) | Curated SPARTA catalog, explainable evidence mapping rules and the tenant-scoped coverage matrix |
 | [IQ forensics](./forensics.md) | Recording, replaying, and handling SDR IQ captures |
 | [Core telemetry visualizations](./telemetry-visualizations.md) | RF power/spectrum/coverage and anomaly-intensity UI panels |
 | [Ground station operations](./ground-station-operations.md) | Ground-segment view over SDR agents with trusted station coordinates |

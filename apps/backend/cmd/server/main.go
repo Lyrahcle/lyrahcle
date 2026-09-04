@@ -301,6 +301,7 @@ func newRouterWithBootstrap(
 		orbitalEvents:          stores.OrbitalEvents,
 		organizations:          stores.Organizations,
 		tenantScope:            stores.TenantScope,
+		externalObservations:   stores.ExternalObservations,
 		agentCA:                agentCA,
 		webAuthnFlows:          services.WebAuthnFlows,
 		webAuthnHandler:        services.WebAuthnHandler,

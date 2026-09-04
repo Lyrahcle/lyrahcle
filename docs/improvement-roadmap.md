@@ -55,6 +55,9 @@ Status values: **Shipped**, **Partial**, **Next**, and **Later**.
 | Maneuver/conjunction context persistence and candidate-only correlation | Shipped | v9.5 |
 | Automatic maneuver inference and trusted conjunction screening feeds | Next | v9.x |
 | More threat-intelligence sources | Later | v9 |
+| SPARTA technique mapping and coverage matrix | Shipped | Unreleased (curated catalog subset; reconcile identifiers upstream before external reporting) |
+| Community reception import with geometry consistency check | Shipped | Unreleased (context-only evidence, confidence capped at 60) |
+| SPARTA/community coverage workspace | Next | Frontend panel for the two SPARTA and two community-reception endpoints; backend contracts are ready |
 | ML-assisted anomaly detection | Later | Post-v1 |
 | Advanced/proprietary RF decoders | Later | Enterprise |
 | SIEM integrations | Later | Enterprise |
@@ -119,7 +122,7 @@ Status values: **Shipped**, **Partial**, **Next**, and **Later**.
 | AWS EKS infrastructure-as-code and managed-service cutover | Partial | v14.6.8 ships VPC/EKS/ECR/RDS/KMS/Secrets + secure opt-in ElastiCache; LBC/add-on automation, external secret delivery and cutover drills remain |
 | Container image scanning | Shipped | Current |
 | Signed remote SDR configuration | Shipped | v9.1 |
-| IQ forensic capture and playback | Partial | v9 |
+| IQ forensic capture and playback | Partial | v9 (SigMF 1.0.0 read/write shipped with cf32/ci16/ci8/cu8 decoding, checksum integrity and provenance labelling; annotation-driven forensics still open) |
 
 ## UX and documentation
 
@@ -161,7 +164,7 @@ Note: multi-tenancy moved from "Enterprise architecture / Later" to the core Ide
 
 ## Current pre-v1 priorities
 
-1. Validate orbital-aware Doppler/visibility correlation with representative physical SDR captures before enabling automatic orbital escalation (currently disabled). The RTL-SDR evidence harness is delivered; the physical capture campaign and false-positive analysis remain open.
+1. Validate orbital-aware Doppler/visibility correlation with representative physical SDR captures before enabling automatic orbital escalation (currently disabled). The RTL-SDR evidence harness is delivered and public SigMF recordings can now be replayed through the same spectral path; the physical capture campaign and false-positive analysis remain open.
 2. Reach and hold >80% coverage on security-critical code paths, including security-focused end-to-end coverage.
 3. Exercise multi-replica/AWS resilience and collect DR/RPO/RTO evidence before cutover; backend error-chain and PostgreSQL context-propagation guardrails are now shipped.
 4. Complete the agent hardware-capability physical lab-validation gate (RTL-SDR/HackRF) — `compatible` currently reflects self-reported software capability only.

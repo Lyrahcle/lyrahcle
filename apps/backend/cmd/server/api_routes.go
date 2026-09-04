@@ -55,6 +55,7 @@ type apiRoutes struct {
 	orbitalEvents          *store.OrbitalEventStore
 	organizations          *store.OrganizationStore
 	tenantScope            *store.TenantScopeStore
+	externalObservations   *store.ExternalObservationStore
 	agentCA                *agentidentity.CA
 	webAuthnFlows          *webauthnflow.Store
 	webAuthnHandler        *webauthn.WebAuthn
@@ -76,4 +77,5 @@ func (a *apiRoutes) register(r chi.Router) {
 	a.registerSatelliteTMTCRoutes(r)
 	a.registerAuditThreatRoutes(r)
 	a.registerIncidentAlertRoutes(r)
+	a.registerSpartaRoutes(r)
 }

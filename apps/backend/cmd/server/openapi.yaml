@@ -992,6 +992,113 @@ paths:
                 $ref: '#/components/schemas/SatelliteSourceIntelligence'
         '404':
           $ref: '#/components/responses/NotFound'
+  /api/v1/satellites/{satelliteID}/external-observations:
+    get:
+      tags:
+      - Satellites
+      summary: List imported community reception records
+      description: Returns third-party ground reception previously imported from community networks, together with a geometry consistency check against the stored orbital elements. This evidence is context only, never measured mission evidence. Requires orbital.read.
+      parameters:
+      - name: satelliteID
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Stored external reception records with modelled visibility and expected Doppler
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/v1/satellites/{satelliteID}/external-observations/import:
+    post:
+      tags:
+      - Satellites
+      summary: Import community reception records for a satellite
+      description: Fetches recent SatNOGS Network observations for the satellite NORAD identifier, stores them as tenant-scoped context-only evidence with a confidence ceiling of 60, and returns a geometry consistency check. Vetted receptions falling outside the modelled visibility window are flagged as inconsistent. Requires orbital.manage.
+      parameters:
+      - name: satelliteID
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                window_days:
+                  type: integer
+                  minimum: 1
+                  maximum: 90
+                limit:
+                  type: integer
+                  minimum: 1
+                  maximum: 200
+      responses:
+        '200':
+          description: Import summary with stored/skipped counts, source availability and geometry checks
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '502':
+          description: The external source was unavailable
+  /api/v1/sparta/matrix:
+    get:
+      tags:
+      - Detection
+      summary: Get the curated SPARTA catalog and evidence mapping rules
+      description: Returns the SPARTA tactics and techniques Lyrahcle can produce evidence for, plus the deterministic mapping rules with their rationale and confidence. The catalog is a manually maintained curated subset, not a mirror of the published SPARTA matrix. Every response includes catalog_version and catalog_scope_note; reconcile its identifiers with the published matrix before using them in reports or procurement documents. Requires detections.read. No frontend panel is available yet.
+      responses:
+        '200':
+          description: Catalog metadata, tactics, techniques and mapping rules
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [framework, catalog_version, catalog_scope_note, tactics, techniques, rules]
+                properties:
+                  framework: {type: string, example: SPARTA}
+                  catalog_version: {type: string, example: lyrahcle-2026.09}
+                  catalog_scope_note: {type: string, description: Manual-curation scope and reconciliation warning for reports and procurement documents.}
+                  tactics: {type: array, items: {type: object}}
+                  techniques: {type: array, items: {type: object}}
+                  rules: {type: array, items: {type: object}}
+  /api/v1/sparta/coverage:
+    get:
+      tags:
+      - Detection
+      summary: Get SPARTA coverage for the current organization
+      description: Builds a tenant-scoped coverage matrix from RF anomalies, incidents and imported community reception observed in the requested window. Context-only evidence is counted but never presented as a proven technique execution. Every response includes catalog_version and catalog_scope_note because the identifiers belong to a manually maintained curated subset; reconcile them with the published matrix before using them in reports or procurement documents. Requires detections.read. No frontend panel is available yet.
+      parameters:
+      - name: window_days
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 90
+          default: 30
+      responses:
+        '200':
+          description: Coverage matrix with per-tactic and per-technique evidence counts
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [framework, catalog_version, catalog_scope_note, generated_at, tactics, window_days, window_from, note]
+                properties:
+                  framework: {type: string, example: SPARTA}
+                  catalog_version: {type: string, example: lyrahcle-2026.09}
+                  catalog_scope_note: {type: string, description: Manual-curation scope and reconciliation warning for reports and procurement documents.}
+                  generated_at: {type: string, format: date-time}
+                  tactics: {type: array, items: {type: object}}
+                  window_days: {type: integer}
+                  window_from: {type: string, format: date-time}
+                  note: {type: string}
   /api/v1/satellites/{satelliteID}/passes:
     get:
       tags:
