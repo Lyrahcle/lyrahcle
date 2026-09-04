@@ -7,10 +7,10 @@ from check_source_utils import read_source_tree
 ROOT = Path(sys.argv[1] if len(sys.argv) > 1 else '.').resolve()
 
 SERVER_REQUIRED = [
-    '"assets.manage", isTokenRevoked)).Put("/{assetID}"',
-    '"assets.manage", isTokenRevoked)).Delete("/{assetID}"',
-    '"programs.manage", isTokenRevoked)).Put("/{programID}"',
-    '"programs.manage", isTokenRevoked)).Delete("/{programID}"',
+	'a.perm("assets.manage")).Put("/{assetID}"',
+	'a.perm("assets.manage")).Delete("/{assetID}"',
+	'a.perm("programs.manage")).Put("/{programID}"',
+	'a.perm("programs.manage")).Delete("/{programID}"',
     'audit.ActionAssetUpdated',
     'audit.ActionAssetDeleted',
     'audit.ActionProgramUpdated',

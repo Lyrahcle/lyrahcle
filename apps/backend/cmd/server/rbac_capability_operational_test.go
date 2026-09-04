@@ -95,7 +95,7 @@ func TestOperationalRoutesUseCapabilitiesWithoutLegacyRoleGatesV120(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(auditData), `RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "audit.read", isTokenRevoked)).Get("/audit-log"`) {
+	if !strings.Contains(string(auditData), `a.perm("audit.read")).Get("/audit-log"`) {
 		t.Fatal("audit log must be authorized directly by audit.read")
 	}
 }

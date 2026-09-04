@@ -48,7 +48,7 @@ func handleSatellitePassPrediction(satellites *store.SatelliteStore, policy tleq
 				http.Error(w, "satellite not found", http.StatusNotFound)
 				return
 			}
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			writeAPIError(w, r, http.StatusInternalServerError, "internal_error", "Unexpected error", err)
 			return
 		}
 

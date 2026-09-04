@@ -15,10 +15,9 @@ func (a *apiRoutes) registerAuditThreatRoutes(r chi.Router) {
 	cache := a.cache
 	cfg := a.cfg
 	isTokenRevoked := a.isTokenRevoked
-	rbac := a.rbac
 	spaceCVEs := a.spaceCVEs
 
-	r.With(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "audit.read", isTokenRevoked)).Get("/audit-log", func(w http.ResponseWriter, r *http.Request) {
+	r.With(a.perm("audit.read")).Get("/audit-log", func(w http.ResponseWriter, r *http.Request) {
 		limit, offset := pageParams(r)
 		orgID, ok := requestOrganizationID(w, r)
 		if !ok {
@@ -26,7 +25,7 @@ func (a *apiRoutes) registerAuditThreatRoutes(r chi.Router) {
 		}
 		page, err := auditLog.ListByOrganization(r.Context(), orgID, limit, offset)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			writeAPIError(w, r, http.StatusInternalServerError, "internal_error", "Unexpected error", err)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -50,7 +49,7 @@ func (a *apiRoutes) registerAuditThreatRoutes(r chi.Router) {
 
 		page, err := spaceCVEs.List(r.Context(), limit, offset, filter)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			writeAPIError(w, r, http.StatusInternalServerError, "internal_error", "Unexpected error", err)
 			return
 		}
 		cache.Set(r.Context(), cacheKey, page, 30*time.Second)
@@ -69,7 +68,7 @@ func (a *apiRoutes) registerAuditThreatRoutes(r chi.Router) {
 
 		keywords, err := spaceCVEs.DistinctKeywords(r.Context())
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			writeAPIError(w, r, http.StatusInternalServerError, "internal_error", "Unexpected error", err)
 			return
 		}
 		cache.Set(r.Context(), cacheKey, keywords, 5*time.Minute)

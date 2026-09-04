@@ -43,7 +43,7 @@ func (a *apiRoutes) registerUserRoutes(r chi.Router) {
 			}
 			list, err := users.ListByOrganization(r.Context(), claims.OrganizationID)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				writeAPIError(w, r, http.StatusInternalServerError, "internal_error", "Unexpected error", err)
 				return
 			}
 			w.Header().Set("Content-Type", "application/json")
@@ -82,7 +82,7 @@ func (a *apiRoutes) registerUserRoutes(r chi.Router) {
 
 			hash, err := auth.HashPassword(body.Password)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				writeAPIError(w, r, http.StatusInternalServerError, "internal_error", "Unexpected error", err)
 				return
 			}
 
@@ -93,7 +93,7 @@ func (a *apiRoutes) registerUserRoutes(r chi.Router) {
 					http.Error(w, "email already registered", http.StatusConflict)
 					return
 				}
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				writeAPIError(w, r, http.StatusInternalServerError, "internal_error", "Unexpected error", err)
 				return
 			}
 
@@ -139,14 +139,14 @@ func (a *apiRoutes) registerUserRoutes(r chi.Router) {
 					http.Error(w, "user not found", http.StatusNotFound)
 					return
 				}
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				writeAPIError(w, r, http.StatusInternalServerError, "internal_error", "Unexpected error", err)
 				return
 			}
 
 			if target.Role == string(auth.RoleAdmin) && target.Enabled && body.Role != string(auth.RoleAdmin) {
 				adminCount, err := users.CountAdminsInOrganization(r.Context(), claims.OrganizationID)
 				if err != nil {
-					http.Error(w, err.Error(), http.StatusInternalServerError)
+					writeAPIError(w, r, http.StatusInternalServerError, "internal_error", "Unexpected error", err)
 					return
 				}
 				if adminCount <= 1 {
@@ -168,7 +168,7 @@ func (a *apiRoutes) registerUserRoutes(r chi.Router) {
 
 			updated, err := users.UpdateRoleInOrganization(r.Context(), claims.OrganizationID, userID, body.Role)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				writeAPIError(w, r, http.StatusInternalServerError, "internal_error", "Unexpected error", err)
 				return
 			}
 
@@ -213,7 +213,7 @@ func (a *apiRoutes) registerUserRoutes(r chi.Router) {
 			if target.Role == string(auth.RoleAdmin) && target.Enabled && !body.Enabled {
 				count, err := users.CountAdminsInOrganization(r.Context(), claims.OrganizationID)
 				if err != nil {
-					http.Error(w, err.Error(), http.StatusInternalServerError)
+					writeAPIError(w, r, http.StatusInternalServerError, "internal_error", "Unexpected error", err)
 					return
 				}
 				if count <= 1 {
@@ -235,7 +235,7 @@ func (a *apiRoutes) registerUserRoutes(r chi.Router) {
 			}
 			updated, err := users.SetEnabledInOrganization(r.Context(), claims.OrganizationID, userID, body.Enabled)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				writeAPIError(w, r, http.StatusInternalServerError, "internal_error", "Unexpected error", err)
 				return
 			}
 			logAudit(r.Context(), auditLog, audit.ActorUser, claims.UserID.String(), audit.ActionUserStatusChanged, clientIP(r), map[string]interface{}{"organization_id": claims.OrganizationID.String(), "target_user_id": userID.String(), "enabled": body.Enabled})
@@ -269,7 +269,7 @@ func (a *apiRoutes) registerUserRoutes(r chi.Router) {
 			if target.Role == string(auth.RoleAdmin) && target.Enabled {
 				count, err := users.CountAdminsInOrganization(r.Context(), claims.OrganizationID)
 				if err != nil {
-					http.Error(w, err.Error(), http.StatusInternalServerError)
+					writeAPIError(w, r, http.StatusInternalServerError, "internal_error", "Unexpected error", err)
 					return
 				}
 				if count <= 1 {
@@ -288,7 +288,7 @@ func (a *apiRoutes) registerUserRoutes(r chi.Router) {
 				}
 			}
 			if err := users.SoftDeleteInOrganization(r.Context(), claims.OrganizationID, userID); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				writeAPIError(w, r, http.StatusInternalServerError, "internal_error", "Unexpected error", err)
 				return
 			}
 			logAudit(r.Context(), auditLog, audit.ActorUser, claims.UserID.String(), audit.ActionUserDeleted, clientIP(r), map[string]interface{}{"organization_id": claims.OrganizationID.String(), "target_user_id": userID.String(), "target_email": target.Email})

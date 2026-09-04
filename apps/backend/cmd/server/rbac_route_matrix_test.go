@@ -34,14 +34,14 @@ func TestRBACRouteMatrixCoversSensitiveDomains(t *testing.T) {
 			`"agents.read"`, `"agents.manage"`,
 		},
 		"agent_identity.go": {`"agents.read"`, `"agents.manage"`},
-		"rbac.go":          {`"rbac.manage"`},
-		"tenant_scope.go":  {`"organizations.read"`},
+		"rbac.go":           {`"rbac.manage"`},
+		"tenant_scope.go":   {`"organizations.read"`},
 	}
 	sources := map[string]string{
-		"server route package":  serverSrc,
-		"agent_identity.go": agentSrc,
-		"rbac.go":          rbacSrc,
-		"tenant_scope.go":  tenantScopeSrc,
+		"server route package": serverSrc,
+		"agent_identity.go":    agentSrc,
+		"rbac.go":              rbacSrc,
+		"tenant_scope.go":      tenantScopeSrc,
 	}
 	for file, tokens := range required {
 		for _, token := range tokens {

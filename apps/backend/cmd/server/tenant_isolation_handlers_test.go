@@ -12,9 +12,9 @@ func TestCriticalHandlersUseTenantScopedStores(t *testing.T) {
 		"assets.ListByOrganization",
 		"assets.UpsertInOrganization",
 		"auditLog.ListByOrganization",
-		"incidents.ListByOrganization",
-		"incidents.GetByOrganization",
-		"incidents.UpdateByOrganization",
+		"incidentService.List",
+		"incidentService.Get",
+		"incidentService.Update",
 		"users.GetByIDInOrganization",
 	}
 	for _, token := range required {

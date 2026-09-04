@@ -14,7 +14,7 @@ func TestCorrelationInputsCarryOrganizationContext(t *testing.T) {
 
 func TestIncidentStreamUsesScopedIncidentList(t *testing.T) {
 	src := readServerProductionSource(t)
-	if !strings.Contains(src, "incidents.ListByOrganization") {
+	if !strings.Contains(src, "incidentService.List") {
 		t.Fatal("incident SSE/list path is not tenant scoped")
 	}
 }

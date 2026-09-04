@@ -155,7 +155,7 @@ body::before {
 }
 
 .lyra-node-index__title {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
   font-size: 8px;
   letter-spacing: 0.14em;
   color: rgb(var(--lyra-muted-dim));
@@ -192,7 +192,7 @@ body::before {
   border-radius: 999px;
   border: 1px solid transparent;
   background: rgb(var(--lyra-bg) / 0.72);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
   font-size: 10px;
   letter-spacing: 0.02em;
   white-space: nowrap;
@@ -201,7 +201,12 @@ body::before {
 }
 
 .lyra-correlation-canvas canvas {
-  outline: none;
+  outline: 2px solid transparent;
+  outline-offset: 3px;
+}
+
+.lyra-correlation-canvas canvas:focus-visible {
+  outline-color: rgb(var(--lyra-gold-bright));
 }
 
 .lyra-cluster-label {
@@ -212,7 +217,7 @@ body::before {
   border-radius: 999px;
   border: 1px solid currentColor;
   background: rgb(var(--lyra-bg) / 0.66);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
   font-size: 9px;
   letter-spacing: 0.08em;
   white-space: nowrap;
@@ -231,7 +236,7 @@ body::before {
   border-radius: 999px;
   border: 1px solid currentColor;
   background: rgb(var(--lyra-bg) / 0.86);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
   font-size: 9px;
   text-align: center;
   white-space: nowrap;

@@ -46,8 +46,8 @@ continue to require `rbac.manage`. Fleet rollout write operations require
 `agents.manage`, record the authenticated actor in the tenant audit stream, and use
 centralized audit action constants so transition names cannot silently drift. Automatic fail-closed transitions caused by rejection thresholds, acknowledgement deadlines, target-policy drift, or configuration issuance failures are recorded as `agent.rollout_failed` with a machine-readable reason.
 
-`fleet_rollout_audit_v145_test.go` is the machine-verifiable contract for the full
-rollout transition set. `admin_audit_matrix_v1452_test.go` extends that contract across
+`fleet_rollout_audit_test.go` is the machine-verifiable contract for the full
+rollout transition set. `admin_audit_matrix_test.go` extends that contract across
 organization/platform control-plane changes, signing-key lifecycle mutations, agent
 identity administration, and remote-config issue/rollback operations. Adding or
 removing a privileged state-changing endpoint requires updating the applicable contract

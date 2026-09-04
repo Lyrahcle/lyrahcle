@@ -39,7 +39,7 @@ require('apps/backend/cmd/server/rate_limit_status.go', '/platform/rate-limits',
 require('apps/frontend/src/components/RateLimitPolicyPanel.tsx', 'fetchPlatformRateLimits', 'platform rate-limit UI')
 require('apps/frontend/src/components/Dashboard.tsx', '<RateLimitPolicyPanel />', 'platform UI integration')
 require('apps/frontend/src/lib/api.ts', '/api/v1/platform/rate-limits', 'rate-limit API client')
-require('apps/backend/cmd/server/rate_limit_v138_test.go', 'TestAuthenticatedTenantRateLimitIsolatesNoisyNeighbor', 'HTTP noisy-neighbor test')
+require('apps/backend/cmd/server/rate_limit_test.go', 'TestAuthenticatedTenantRateLimitIsolatesNoisyNeighbor', 'HTTP noisy-neighbor test')
 require('apps/backend/internal/ratelimit/tenant_test.go', 'TestHumanAndAgentBudgetsAreIndependent', 'human/agent isolation test')
 
 cfg = (root / 'apps/backend/internal/config/config.go').read_text()

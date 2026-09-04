@@ -76,7 +76,8 @@ func TestSensitiveRouteAuthorizationInventory(t *testing.T) {
 			windowStart = 0
 		}
 		window := src[windowStart:routeAt]
-		if !strings.Contains(window, entry.guardToken) {
+		centralGuard := `a.perm("` + entry.capability + `")`
+		if !strings.Contains(window, entry.guardToken) && !strings.Contains(window, centralGuard) {
 			t.Errorf("%s route %s is not immediately guarded by %s (%s)", entry.file, entry.route, entry.guardToken, entry.capability)
 		}
 	}

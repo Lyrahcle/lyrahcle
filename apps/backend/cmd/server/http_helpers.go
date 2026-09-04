@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -12,14 +11,21 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
 
+	structuredlog "github.com/mlko01/lyrahcle/apps/backend/internal/logging"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/store"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/validate"
 )
 
 type statusCapturingResponseWriter struct {
 	http.ResponseWriter
-	status int
-	bytes  int
+	status           int
+	bytes            int
+	requestID        string
+	pendingPlainText bool
+}
+
+func (w *statusCapturingResponseWriter) Unwrap() http.ResponseWriter {
+	return w.ResponseWriter
 }
 
 func (w *statusCapturingResponseWriter) WriteHeader(status int) {
@@ -27,6 +33,10 @@ func (w *statusCapturingResponseWriter) WriteHeader(status int) {
 		return
 	}
 	w.status = status
+	if status >= http.StatusBadRequest && strings.HasPrefix(w.Header().Get("Content-Type"), "text/plain") {
+		w.pendingPlainText = true
+		return
+	}
 	w.ResponseWriter.WriteHeader(status)
 }
 
@@ -34,9 +44,53 @@ func (w *statusCapturingResponseWriter) Write(body []byte) (int, error) {
 	if w.status == 0 {
 		w.WriteHeader(http.StatusOK)
 	}
+	if w.pendingPlainText {
+		message := strings.TrimSpace(string(body))
+		if message == "" {
+			message = http.StatusText(w.status)
+		}
+		var envelope apiErrorEnvelope
+		envelope.Error.Code = apiErrorCode(w.status)
+		envelope.Error.Message = message
+		envelope.Error.RequestID = w.requestID
+		encoded, err := json.Marshal(envelope)
+		if err != nil {
+			return 0, err
+		}
+		encoded = append(encoded, '\n')
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Del("Content-Length")
+		w.ResponseWriter.WriteHeader(w.status)
+		w.pendingPlainText = false
+		n, err := w.ResponseWriter.Write(encoded)
+		w.bytes += n
+		return len(body), err
+	}
 	n, err := w.ResponseWriter.Write(body)
 	w.bytes += n
 	return n, err
+}
+
+func apiErrorCode(status int) string {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnprocessableEntity:
+		return "invalid_request"
+	case http.StatusUnauthorized:
+		return "unauthorized"
+	case http.StatusForbidden:
+		return "forbidden"
+	case http.StatusNotFound:
+		return "not_found"
+	case http.StatusConflict:
+		return "conflict"
+	case http.StatusTooManyRequests:
+		return "rate_limited"
+	default:
+		if status >= http.StatusInternalServerError {
+			return "internal_error"
+		}
+		return "request_failed"
+	}
 }
 
 func (w *statusCapturingResponseWriter) Flush() {
@@ -51,25 +105,23 @@ func (w *statusCapturingResponseWriter) Flush() {
 func structuredRequestLogger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
-		captured := &statusCapturingResponseWriter{ResponseWriter: w}
+		captured := &statusCapturingResponseWriter{
+			ResponseWriter: w,
+			requestID:      middleware.GetReqID(r.Context()),
+		}
 		next.ServeHTTP(captured, r)
 		status := captured.status
 		if status == 0 {
 			status = http.StatusOK
 		}
-		event := map[string]interface{}{
-			"event":       "http_request",
-			"method":      r.Method,
-			"path":        r.URL.Path,
-			"status":      status,
-			"bytes":       captured.bytes,
-			"request_id":  middleware.GetReqID(r.Context()),
-			"remote_ip":   clientIP(r),
-			"duration_ms": time.Since(start).Milliseconds(),
-		}
-		if encoded, err := json.Marshal(event); err == nil {
-			log.Print(string(encoded))
-		}
+		structuredlog.FromContext(r.Context()).Info("http_request",
+			"method", r.Method,
+			"path", r.URL.Path,
+			"status", status,
+			"bytes", captured.bytes,
+			"remote_ip", clientIP(r),
+			"duration_ms", time.Since(start).Milliseconds(),
+		)
 	})
 }
 
@@ -108,6 +160,30 @@ func requestIDResponseHeader(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+type apiErrorEnvelope struct {
+	Error struct {
+		Code      string `json:"code"`
+		Message   string `json:"message"`
+		RequestID string `json:"request_id,omitempty"`
+	} `json:"error"`
+}
+
+func writeAPIError(w http.ResponseWriter, r *http.Request, status int, code, publicMessage string, internalErr error) {
+	requestID := middleware.GetReqID(r.Context())
+	if internalErr != nil {
+		structuredlog.FromContext(r.Context()).Error("api_error", "status", status, "code", code, "error", internalErr)
+	}
+	var envelope apiErrorEnvelope
+	envelope.Error.Code = code
+	envelope.Error.Message = publicMessage
+	envelope.Error.RequestID = requestID
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	if err := json.NewEncoder(w).Encode(envelope); err != nil {
+		structuredlog.FromContext(r.Context()).Error("api_error_response_encoding_failed", "error", err)
+	}
 }
 
 func maxBodySize(n int64) func(http.Handler) http.Handler {

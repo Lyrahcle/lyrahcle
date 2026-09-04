@@ -83,7 +83,9 @@ def check(root: Path) -> list[str]:
 
     require(backend, "SECRET_PROVIDER", "file secret provider")
     require(backend, "prepare-secrets", "secret hardening init container")
-    require(backend, "terminationGracePeriodSeconds: 30", "backend graceful shutdown budget")
+    require(backend, "terminationGracePeriodSeconds: 45", "backend graceful shutdown budget")
+    require(backend, "preStop:", "backend pre-stop drain hook")
+    require(backend, "seconds: 10", "backend endpoint propagation delay")
     require(frontend, "BACKEND_TLS_VERIFY", "backend TLS verification switch")
     require(hpa, "apiVersion: autoscaling/v2", "HPA v2")
     require(pdb, "apiVersion: policy/v1", "PDB v1")

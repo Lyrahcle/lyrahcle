@@ -14,11 +14,11 @@ func TestHybridAndOperationalRoutesUseCapabilitiesV121(t *testing.T) {
 	}
 	for _, token := range []string{
 		`RequireAgentCredentialOrPermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "rf.ingest"`,
-		`RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "rf.read"`,
-		`RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "detections.read"`,
-		`RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "detections.manage"`,
-		`RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "alerts.read"`,
-		`RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "alerts.manage"`,
+		`a.perm("rf.read")`,
+		`a.perm("detections.read")`,
+		`a.perm("detections.manage")`,
+		`a.perm("alerts.read")`,
+		`a.perm("alerts.manage")`,
 	} {
 		if !strings.Contains(src, token) {
 			t.Fatalf("server route package missing capability middleware %q", token)

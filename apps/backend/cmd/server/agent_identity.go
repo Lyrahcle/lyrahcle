@@ -147,7 +147,7 @@ func registerAgentIdentityRoutes(
 	}
 	credentialAuth := auth.RequireAgentCredential(keyLookup, certLookup)
 	agentRead := auth.RequireAnyPermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, []string{"agents.read", "agents.manage"}, isTokenRevoked)
-	agentManage := auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "agents.manage", isTokenRevoked)
+	agentManage := newPermissionMiddleware(cfg, rbac, isTokenRevoked)("agents.manage")
 
 	r.With(agentRead).Get("/agents/", func(w http.ResponseWriter, r *http.Request) {
 		orgID, ok := requestOrganizationID(w, r)

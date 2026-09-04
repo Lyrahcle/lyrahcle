@@ -24,7 +24,7 @@ func handleListOrbitalEvents(events *store.OrbitalEventStore, satellites *store.
 		}
 		exists, err := satellites.Exists(r.Context(), satelliteID)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			writeAPIError(w, r, http.StatusInternalServerError, "internal_error", "Unexpected error", err)
 			return
 		}
 		if !exists {
@@ -54,7 +54,7 @@ func handleListOrbitalEvents(events *store.OrbitalEventStore, satellites *store.
 		}
 		list, err := events.RecentForSatelliteInOrganization(r.Context(), orgID, satelliteID, time.Now().UTC().Add(-time.Duration(hours*float64(time.Hour))), limit)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			writeAPIError(w, r, http.StatusInternalServerError, "internal_error", "Unexpected error", err)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -71,7 +71,7 @@ func handleCreateOrbitalEvent(events *store.OrbitalEventStore, satellites *store
 		}
 		exists, err := satellites.Exists(r.Context(), satelliteID)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			writeAPIError(w, r, http.StatusInternalServerError, "internal_error", "Unexpected error", err)
 			return
 		}
 		if !exists {
@@ -140,7 +140,7 @@ func handleCreateOrbitalEvent(events *store.OrbitalEventStore, satellites *store
 			Confidence: body.Confidence, Severity: body.Severity, Metadata: body.Metadata, CreatedBy: createdBy,
 		})
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			writeAPIError(w, r, http.StatusInternalServerError, "internal_error", "Unexpected error", err)
 			return
 		}
 		if createdBy != nil {

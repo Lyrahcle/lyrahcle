@@ -28,6 +28,8 @@ root = Path(sys.argv[1] if len(sys.argv) > 1 else '.')
 server_dir = root / 'apps/backend/cmd/server'
 
 AUTH_MARKERS = [
+    'a.perm(',
+	'perm(',
     'auth.RequireRoleWithFallback(',
     'auth.RequirePermissionWithFallback(',
     'auth.RequireAnyPermissionWithFallback(',
@@ -69,8 +71,8 @@ class RouteBlock:
 
 
 GATE_ASSIGNMENT_RE = re.compile(
-    r'^(\w+)\s*:=\s*(?:auth\.\w*(?:RequireRoleWithFallback|RequirePermissionWithFallback|'
-    r'RequireAnyPermissionWithFallback)\(|requirePlatformAdmin\b|credentialAuth\b)'
+	r'^(\w+)\s*:=\s*(?:auth\.\w*(?:RequireRoleWithFallback|RequirePermissionWithFallback|'
+	r'RequireAnyPermissionWithFallback)\(|newPermissionMiddleware\(|requirePlatformAdmin\b|credentialAuth\b)'
 )
 
 

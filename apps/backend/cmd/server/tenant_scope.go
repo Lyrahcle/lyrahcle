@@ -12,8 +12,9 @@ import (
 )
 
 func registerTenantScopeRoutes(r chi.Router, cfg config.Config, scope *store.TenantScopeStore, rbac *store.RBACStore, isTokenRevoked func(context.Context, *auth.Claims) (bool, error)) {
+	perm := newPermissionMiddleware(cfg, rbac, isTokenRevoked)
 	r.Route("/organization-scope", func(r chi.Router) {
-		r.Use(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "organizations.read", isTokenRevoked))
+		r.Use(perm("organizations.read"))
 		r.Get("/summary", func(w http.ResponseWriter, r *http.Request) {
 			claims, ok := auth.FromContext(r.Context())
 			if !ok {
