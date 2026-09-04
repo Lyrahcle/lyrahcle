@@ -25,7 +25,7 @@ func (a *apiRoutes) registerAgentKeyDeviceRoutes(r chi.Router) {
 
 	r.Route("/agent-keys", func(r chi.Router) {
 		agentRead := auth.RequireAnyPermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, []string{"agents.read", "agents.manage"}, isTokenRevoked)
-		agentManage := auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "agents.manage", isTokenRevoked)
+		agentManage := a.perm("agents.manage")
 
 		r.With(agentRead).Get("/", func(w http.ResponseWriter, r *http.Request) {
 			list, err := func() ([]store.AgentKeySummary, error) {
@@ -36,7 +36,7 @@ func (a *apiRoutes) registerAgentKeyDeviceRoutes(r chi.Router) {
 				return agentKeys.ListByOrganization(r.Context(), orgID)
 			}()
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				writeAPIError(w, r, http.StatusInternalServerError, "internal_error", "Unexpected error", err)
 				return
 			}
 			w.Header().Set("Content-Type", "application/json")
@@ -59,7 +59,7 @@ func (a *apiRoutes) registerAgentKeyDeviceRoutes(r chi.Router) {
 
 			plaintext, hash, err := auth.GenerateAgentKey()
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				writeAPIError(w, r, http.StatusInternalServerError, "internal_error", "Unexpected error", err)
 				return
 			}
 
@@ -74,7 +74,7 @@ func (a *apiRoutes) registerAgentKeyDeviceRoutes(r chi.Router) {
 					http.Error(w, "agent_id already has an active key; revoke it first", http.StatusConflict)
 					return
 				}
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				writeAPIError(w, r, http.StatusInternalServerError, "internal_error", "Unexpected error", err)
 				return
 			}
 
@@ -103,7 +103,7 @@ func (a *apiRoutes) registerAgentKeyDeviceRoutes(r chi.Router) {
 					http.Error(w, "no active key for that agent_id", http.StatusNotFound)
 					return
 				}
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				writeAPIError(w, r, http.StatusInternalServerError, "internal_error", "Unexpected error", err)
 				return
 			}
 
@@ -167,7 +167,7 @@ func (a *apiRoutes) registerAgentKeyDeviceRoutes(r chi.Router) {
 					return
 				}
 			} else {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				writeAPIError(w, r, http.StatusInternalServerError, "internal_error", "Unexpected error", err)
 				return
 			}
 		}

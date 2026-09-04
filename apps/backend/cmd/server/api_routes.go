@@ -11,6 +11,7 @@ import (
 	"github.com/mlko01/lyrahcle/apps/backend/internal/agentidentity"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/auth"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/config"
+	incidentdomain "github.com/mlko01/lyrahcle/apps/backend/internal/incident"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/keyprovider"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/mailer"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/ratelimit"
@@ -24,18 +25,19 @@ import (
 type apiRoutes struct {
 	cfg config.Config
 
-	assets      *store.AssetStore
-	programs    *store.ProgramStore
-	rf          *store.RFStore
-	rfAnomalies *store.AnomalyStore
-	satellites  *store.SatelliteStore
-	users       *store.UserStore
-	agentKeys   *store.AgentKeyStore
-	auditLog    *store.AuditStore
-	spaceCVEs   *store.SpaceCVEStore
-	assetAlerts *store.AssetAlertStore
-	incidents   *store.IncidentStore
-	rbac        *store.RBACStore
+	assets          *store.AssetStore
+	programs        *store.ProgramStore
+	rf              *store.RFStore
+	rfAnomalies     *store.AnomalyStore
+	satellites      *store.SatelliteStore
+	users           *store.UserStore
+	agentKeys       *store.AgentKeyStore
+	auditLog        *store.AuditStore
+	spaceCVEs       *store.SpaceCVEStore
+	assetAlerts     *store.AssetAlertStore
+	incidents       *store.IncidentStore
+	incidentService *incidentdomain.Service
+	rbac            *store.RBACStore
 
 	redisClient            *redis.Client
 	agentConfigSigner      *agentconfig.Signer
@@ -60,6 +62,7 @@ type apiRoutes struct {
 	isTokenRevoked         auth.RevocationCheck
 	loginLimiter           func(http.Handler) http.Handler
 	tenantLimiter          *ratelimit.Limiter
+	perm                   permissionMiddleware
 }
 
 func (a *apiRoutes) register(r chi.Router) {

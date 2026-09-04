@@ -22,8 +22,10 @@ import (
 	"github.com/mlko01/lyrahcle/apps/backend/internal/config"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/db"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/dbscope"
+	incidentdomain "github.com/mlko01/lyrahcle/apps/backend/internal/incident"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/joblock"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/keyprovider"
+	structuredlog "github.com/mlko01/lyrahcle/apps/backend/internal/logging"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/metrics"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/observability"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/redisclient"
@@ -31,9 +33,17 @@ import (
 	"github.com/mlko01/lyrahcle/apps/backend/internal/store"
 )
 
+var (
+	version   = "dev"
+	commit    = "unknown"
+	buildDate = "unknown"
+)
+
 func main() {
+	structuredlog.Configure(os.Stdout)
 	ctx := context.Background()
 	cfg := config.Load()
+	log.Printf("lyrahcle backend starting version=%s commit=%s build_date=%s", version, commit, buildDate)
 	shutdownTracing, err := observability.Init(ctx, cfg.OTLPTraceEndpoint)
 	if err != nil {
 		log.Fatalf("tracing init: %v", err)
@@ -224,8 +234,8 @@ func newRouterWithBootstrap(
 	r.Use(sanitizeRequestID)
 	r.Use(middleware.RequestID)
 	r.Use(requestIDResponseHeader)
-	r.Use(structuredRequestLogger)
 	r.Use(observability.Middleware)
+	r.Use(structuredRequestLogger)
 	r.Use(middleware.Recoverer)
 	r.Use(securityHeaders(cfg.TLSCertFile != "" && cfg.TLSKeyFile != ""))
 	r.Use(metrics.Middleware)
@@ -273,6 +283,7 @@ func newRouterWithBootstrap(
 		spaceCVEs:              stores.SpaceCVEs,
 		assetAlerts:            stores.AssetAlerts,
 		incidents:              stores.Incidents,
+		incidentService:        incidentdomain.NewService(stores.Incidents, stores.Satellites, stores.Users),
 		rbac:                   stores.RBAC,
 		redisClient:            redisClient,
 		agentConfigSigner:      agentConfigSigner,
@@ -297,6 +308,7 @@ func newRouterWithBootstrap(
 		isTokenRevoked:         services.Revocation,
 		loginLimiter:           services.RateLimiters.Login,
 		tenantLimiter:          tenantLimiter,
+		perm:                   newPermissionMiddleware(cfg, stores.RBAC, services.Revocation),
 	}
 
 	r.Route("/api/v1", func(r chi.Router) {

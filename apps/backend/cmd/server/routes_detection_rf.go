@@ -39,7 +39,7 @@ func (a *apiRoutes) registerDetectionRFRoutes(r chi.Router) {
 	tenantLimiter := a.tenantLimiter
 
 	r.Route("/detection-rules", func(r chi.Router) {
-		r.With(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "detections.read", isTokenRevoked)).Get("/", func(w http.ResponseWriter, r *http.Request) {
+		r.With(a.perm("detections.read")).Get("/", func(w http.ResponseWriter, r *http.Request) {
 			limit, offset := pageParams(r)
 			orgID, ok := requestOrganizationID(w, r)
 			if !ok {
@@ -54,7 +54,7 @@ func (a *apiRoutes) registerDetectionRFRoutes(r chi.Router) {
 			json.NewEncoder(w).Encode(page)
 		})
 
-		r.With(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "detections.manage", isTokenRevoked)).Post("/", func(w http.ResponseWriter, r *http.Request) {
+		r.With(a.perm("detections.manage")).Post("/", func(w http.ResponseWriter, r *http.Request) {
 			var body struct {
 				Name            string  `json:"name"`
 				Description     string  `json:"description"`
@@ -123,7 +123,7 @@ func (a *apiRoutes) registerDetectionRFRoutes(r chi.Router) {
 			json.NewEncoder(w).Encode(rule)
 		})
 
-		r.With(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "detections.manage", isTokenRevoked)).Patch("/{ruleID}", func(w http.ResponseWriter, r *http.Request) {
+		r.With(a.perm("detections.manage")).Patch("/{ruleID}", func(w http.ResponseWriter, r *http.Request) {
 			ruleID, err := uuid.Parse(chi.URLParam(r, "ruleID"))
 			if err != nil {
 				http.Error(w, "ruleID must be a valid UUID", http.StatusBadRequest)
@@ -305,12 +305,12 @@ func (a *apiRoutes) registerDetectionRFRoutes(r chi.Router) {
 
 			history, err := rf.RecentForAgentInOrganization(r.Context(), organizationID, reading.AgentID, anomalyHistoryWindow)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				writeAPIError(w, r, http.StatusInternalServerError, "internal_error", "Unexpected error", err)
 				return
 			}
 
 			if err := rf.Insert(r.Context(), &reading); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				writeAPIError(w, r, http.StatusInternalServerError, "internal_error", "Unexpected error", err)
 				return
 			}
 
@@ -326,7 +326,7 @@ func (a *apiRoutes) registerDetectionRFRoutes(r chi.Router) {
 			w.WriteHeader(http.StatusCreated)
 		})
 
-		r.With(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "rf.read", isTokenRevoked)).Get("/readings", func(w http.ResponseWriter, r *http.Request) {
+		r.With(a.perm("rf.read")).Get("/readings", func(w http.ResponseWriter, r *http.Request) {
 			orgID, ok := requestOrganizationID(w, r)
 			if !ok {
 				return
@@ -340,7 +340,7 @@ func (a *apiRoutes) registerDetectionRFRoutes(r chi.Router) {
 			}
 			list, err := rf.RecentByOrganization(r.Context(), orgID, 100)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				writeAPIError(w, r, http.StatusInternalServerError, "internal_error", "Unexpected error", err)
 				return
 			}
 			cache.Set(r.Context(), cacheKey, list, 3*time.Second)
@@ -348,7 +348,7 @@ func (a *apiRoutes) registerDetectionRFRoutes(r chi.Router) {
 			json.NewEncoder(w).Encode(list)
 		})
 
-		r.With(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "rf.read", isTokenRevoked)).Get("/doppler", func(w http.ResponseWriter, r *http.Request) {
+		r.With(a.perm("rf.read")).Get("/doppler", func(w http.ResponseWriter, r *http.Request) {
 			orgID, ok := requestOrganizationID(w, r)
 			if !ok {
 				return
@@ -370,7 +370,7 @@ func (a *apiRoutes) registerDetectionRFRoutes(r chi.Router) {
 			json.NewEncoder(w).Encode(comparisons)
 		})
 
-		r.With(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "rf.read", isTokenRevoked)).Get("/anomalies", func(w http.ResponseWriter, r *http.Request) {
+		r.With(a.perm("rf.read")).Get("/anomalies", func(w http.ResponseWriter, r *http.Request) {
 			orgID, ok := requestOrganizationID(w, r)
 			if !ok {
 				return
@@ -384,7 +384,7 @@ func (a *apiRoutes) registerDetectionRFRoutes(r chi.Router) {
 			}
 			list, err := rfAnomalies.RecentByOrganization(r.Context(), orgID, 100)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				writeAPIError(w, r, http.StatusInternalServerError, "internal_error", "Unexpected error", err)
 				return
 			}
 			cache.Set(r.Context(), cacheKey, list, 3*time.Second)

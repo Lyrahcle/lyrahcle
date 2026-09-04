@@ -85,7 +85,7 @@ func (a *apiRoutes) registerAuthenticationRoutes(r chi.Router) {
 
 			token, tokenClaims, err := auth.IssueOrganizationUserTokenWithState(cfg.JWTSecret, user.ID, user.OrganizationID, auth.Role(user.Role), user.MustChangePassword, user.AuthVersion, cfg.JWTAccessTTL)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				writeAPIError(w, r, http.StatusInternalServerError, "internal_error", "Unexpected error", err)
 				return
 			}
 			if redisClient != nil {
@@ -133,11 +133,11 @@ func (a *apiRoutes) registerAuthenticationRoutes(r chi.Router) {
 
 				secret, err := auth.GenerateTOTPSecret()
 				if err != nil {
-					http.Error(w, err.Error(), http.StatusInternalServerError)
+					writeAPIError(w, r, http.StatusInternalServerError, "internal_error", "Unexpected error", err)
 					return
 				}
 				if err := users.SetPendingTOTPSecret(r.Context(), user.ID, secret); err != nil {
-					http.Error(w, err.Error(), http.StatusInternalServerError)
+					writeAPIError(w, r, http.StatusInternalServerError, "internal_error", "Unexpected error", err)
 					return
 				}
 
@@ -183,7 +183,7 @@ func (a *apiRoutes) registerAuthenticationRoutes(r chi.Router) {
 					}
 				}
 				if err := users.EnableTOTP(r.Context(), user.ID); err != nil {
-					http.Error(w, err.Error(), http.StatusInternalServerError)
+					writeAPIError(w, r, http.StatusInternalServerError, "internal_error", "Unexpected error", err)
 					return
 				}
 
@@ -224,7 +224,7 @@ func (a *apiRoutes) registerAuthenticationRoutes(r chi.Router) {
 					}
 				}
 				if err := users.DisableTOTP(r.Context(), user.ID); err != nil {
-					http.Error(w, err.Error(), http.StatusInternalServerError)
+					writeAPIError(w, r, http.StatusInternalServerError, "internal_error", "Unexpected error", err)
 					return
 				}
 
@@ -407,7 +407,7 @@ func (a *apiRoutes) registerAuthenticationRoutes(r chi.Router) {
 
 			newHash, err := auth.HashPassword(body.NewPassword)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				writeAPIError(w, r, http.StatusInternalServerError, "internal_error", "Unexpected error", err)
 				return
 			}
 			if err := blocklist.RevokeUser(r.Context(), user.ID.String(), time.Now(), cfg.JWTAccessTTL+time.Minute); err != nil {
@@ -421,7 +421,7 @@ func (a *apiRoutes) registerAuthenticationRoutes(r chi.Router) {
 				}
 			}
 			if err := users.UpdatePassword(r.Context(), user.ID, newHash); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				writeAPIError(w, r, http.StatusInternalServerError, "internal_error", "Unexpected error", err)
 				return
 			}
 

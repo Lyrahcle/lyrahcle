@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/audit"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/auth"
+	incidentdomain "github.com/mlko01/lyrahcle/apps/backend/internal/incident"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/metrics"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/store"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/validate"
@@ -21,15 +22,13 @@ func (a *apiRoutes) registerIncidentAlertRoutes(r chi.Router) {
 	assetAlerts := a.assetAlerts
 	auditLog := a.auditLog
 	cache := a.cache
-	cfg := a.cfg
-	incidents := a.incidents
-	isTokenRevoked := a.isTokenRevoked
+	incidentService := a.incidentService
 	rbac := a.rbac
 	satellites := a.satellites
 	users := a.users
 
 	r.Route("/incidents", func(r chi.Router) {
-		r.With(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "incidents.read", isTokenRevoked)).Get("/", func(w http.ResponseWriter, r *http.Request) {
+		r.With(a.perm("incidents.read")).Get("/", func(w http.ResponseWriter, r *http.Request) {
 			limit, offset := pageParams(r)
 			filter, err := parseIncidentFilter(r)
 			if err != nil {
@@ -50,9 +49,9 @@ func (a *apiRoutes) registerIncidentAlertRoutes(r chi.Router) {
 				json.NewEncoder(w).Encode(page)
 				return
 			}
-			page, err = incidents.ListByOrganization(r.Context(), orgID, limit, offset, filter)
+			page, err = incidentService.List(r.Context(), orgID, limit, offset, filter)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				writeAPIError(w, r, http.StatusInternalServerError, "internal_error", "Unexpected error", err)
 				return
 			}
 			cache.Set(r.Context(), cacheKey, page, 3*time.Second)
@@ -60,11 +59,14 @@ func (a *apiRoutes) registerIncidentAlertRoutes(r chi.Router) {
 			json.NewEncoder(w).Encode(page)
 		})
 
-		r.With(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "incidents.read", isTokenRevoked)).Get("/stream", func(w http.ResponseWriter, r *http.Request) {
+		r.With(a.perm("incidents.read")).Get("/stream", func(w http.ResponseWriter, r *http.Request) {
 			flusher, ok := w.(http.Flusher)
 			if !ok {
 				http.Error(w, "streaming unsupported", http.StatusInternalServerError)
 				return
+			}
+			if err := http.NewResponseController(w).SetWriteDeadline(time.Time{}); err != nil {
+				log.Printf("incidents stream: disable write deadline: %v", err)
 			}
 			w.Header().Set("Content-Type", "text/event-stream")
 			w.Header().Set("Cache-Control", "no-cache")
@@ -74,14 +76,17 @@ func (a *apiRoutes) registerIncidentAlertRoutes(r chi.Router) {
 			metrics.SSEConnections.WithLabelValues("incidents").Inc()
 			defer metrics.SSEConnections.WithLabelValues("incidents").Dec()
 
-			ticker := time.NewTicker(5 * time.Second)
-			defer ticker.Stop()
+			updateTicker := time.NewTicker(5 * time.Second)
+			defer updateTicker.Stop()
+			heartbeatTicker := time.NewTicker(15 * time.Second)
+			defer heartbeatTicker.Stop()
+			var eventID uint64
 			send := func() bool {
 				orgID, ok := requestOrganizationID(w, r)
 				if !ok {
 					return false
 				}
-				page, err := incidents.ListByOrganization(r.Context(), orgID, 50, 0, store.IncidentFilter{})
+				page, err := incidentService.List(r.Context(), orgID, 50, 0, store.IncidentFilter{})
 				if err != nil {
 					return true
 				}
@@ -89,7 +94,8 @@ func (a *apiRoutes) registerIncidentAlertRoutes(r chi.Router) {
 				if err != nil {
 					return true
 				}
-				if _, err := fmt.Fprintf(w, "event: incidents\ndata: %s\n\n", payload); err != nil {
+				eventID++
+				if _, err := fmt.Fprintf(w, "id: %d\nevent: incidents\ndata: %s\n\n", eventID, payload); err != nil {
 					return false
 				}
 				flusher.Flush()
@@ -102,15 +108,20 @@ func (a *apiRoutes) registerIncidentAlertRoutes(r chi.Router) {
 				select {
 				case <-r.Context().Done():
 					return
-				case <-ticker.C:
+				case <-updateTicker.C:
 					if !send() {
 						return
 					}
+				case <-heartbeatTicker.C:
+					if _, err := fmt.Fprint(w, ": ping\n\n"); err != nil {
+						return
+					}
+					flusher.Flush()
 				}
 			}
 		})
 
-		r.With(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "incidents.manage", isTokenRevoked)).Post("/", func(w http.ResponseWriter, r *http.Request) {
+		r.With(a.perm("incidents.manage")).Post("/", func(w http.ResponseWriter, r *http.Request) {
 			var body struct {
 				Title       string `json:"title"`
 				Description string `json:"description"`
@@ -192,9 +203,9 @@ func (a *apiRoutes) registerIncidentAlertRoutes(r chi.Router) {
 				http.Error(w, "Idempotency-Key must contain only safe identifier characters and be at most 128 characters", http.StatusBadRequest)
 				return
 			}
-			incident, err := incidents.Create(r.Context(), store.CreateIncidentInput{
-				OrganizationID: orgID, Title: body.Title, Description: body.Description, Severity: body.Severity, SourceType: "manual",
-				SatelliteID: satelliteID, AgentID: body.AgentID, AssignedTo: assignedTo, CreatedBy: &claims.UserID, IdempotencyKey: idempotencyKey,
+			incident, err := incidentService.Create(r.Context(), incidentdomain.CreateInput{
+				OrganizationID: orgID, ActorID: claims.UserID, Title: body.Title, Description: body.Description, Severity: body.Severity,
+				SatelliteID: satelliteID, AgentID: body.AgentID, AssignedTo: assignedTo, IdempotencyKey: idempotencyKey,
 			})
 			if err != nil {
 				http.Error(w, "failed to create incident", http.StatusInternalServerError)
@@ -209,7 +220,7 @@ func (a *apiRoutes) registerIncidentAlertRoutes(r chi.Router) {
 			json.NewEncoder(w).Encode(incident)
 		})
 
-		r.With(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "incidents.read", isTokenRevoked)).Get("/{incidentID}", func(w http.ResponseWriter, r *http.Request) {
+		r.With(a.perm("incidents.read")).Get("/{incidentID}", func(w http.ResponseWriter, r *http.Request) {
 			incidentID, err := uuid.Parse(chi.URLParam(r, "incidentID"))
 			if err != nil {
 				http.Error(w, "incidentID must be a valid UUID", http.StatusBadRequest)
@@ -219,7 +230,7 @@ func (a *apiRoutes) registerIncidentAlertRoutes(r chi.Router) {
 			if !ok {
 				return
 			}
-			detail, err := incidents.GetByOrganization(r.Context(), orgID, incidentID)
+			detail, err := incidentService.Get(r.Context(), orgID, incidentID)
 			if err != nil {
 				if err == store.ErrIncidentNotFound {
 					http.Error(w, "incident not found", http.StatusNotFound)
@@ -232,7 +243,7 @@ func (a *apiRoutes) registerIncidentAlertRoutes(r chi.Router) {
 			json.NewEncoder(w).Encode(detail)
 		})
 
-		r.With(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "incidents.manage", isTokenRevoked)).Patch("/{incidentID}", func(w http.ResponseWriter, r *http.Request) {
+		r.With(a.perm("incidents.manage")).Patch("/{incidentID}", func(w http.ResponseWriter, r *http.Request) {
 			incidentID, err := uuid.Parse(chi.URLParam(r, "incidentID"))
 			if err != nil {
 				http.Error(w, "incidentID must be a valid UUID", http.StatusBadRequest)
@@ -296,8 +307,7 @@ func (a *apiRoutes) registerIncidentAlertRoutes(r chi.Router) {
 					return
 				}
 			}
-			input.ActorID = claims.UserID
-			incident, err := incidents.UpdateByOrganization(r.Context(), orgID, incidentID, input)
+			incident, err := incidentService.Update(r.Context(), orgID, incidentID, claims.UserID, input)
 			if err != nil {
 				if errors.Is(err, store.ErrInvalidIncidentTransition) {
 					http.Error(w, "invalid incident status transition", http.StatusConflict)
@@ -318,7 +328,7 @@ func (a *apiRoutes) registerIncidentAlertRoutes(r chi.Router) {
 			json.NewEncoder(w).Encode(incident)
 		})
 
-		r.With(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "incidents.manage", isTokenRevoked)).Post("/{incidentID}/notes", func(w http.ResponseWriter, r *http.Request) {
+		r.With(a.perm("incidents.manage")).Post("/{incidentID}/notes", func(w http.ResponseWriter, r *http.Request) {
 			incidentID, err := uuid.Parse(chi.URLParam(r, "incidentID"))
 			if err != nil {
 				http.Error(w, "incidentID must be a valid UUID", http.StatusBadRequest)
@@ -346,7 +356,7 @@ func (a *apiRoutes) registerIncidentAlertRoutes(r chi.Router) {
 				if !ok {
 					return store.ErrIncidentNotFound
 				}
-				return incidents.AddNoteByOrganization(r.Context(), orgID, incidentID, claims.UserID, body.Message)
+				return incidentService.AddNote(r.Context(), orgID, incidentID, claims.UserID, body.Message)
 			}(); err != nil {
 				if err == store.ErrIncidentNotFound {
 					http.Error(w, "incident not found", http.StatusNotFound)
@@ -359,7 +369,7 @@ func (a *apiRoutes) registerIncidentAlertRoutes(r chi.Router) {
 			w.WriteHeader(http.StatusNoContent)
 		})
 
-		r.With(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "incidents.manage", isTokenRevoked)).Post("/{incidentID}/evidence", func(w http.ResponseWriter, r *http.Request) {
+		r.With(a.perm("incidents.manage")).Post("/{incidentID}/evidence", func(w http.ResponseWriter, r *http.Request) {
 			incidentID, err := uuid.Parse(chi.URLParam(r, "incidentID"))
 			if err != nil {
 				http.Error(w, "incidentID must be a valid UUID", http.StatusBadRequest)
@@ -399,8 +409,8 @@ func (a *apiRoutes) registerIncidentAlertRoutes(r chi.Router) {
 				if !ok {
 					return store.IncidentEvidence{}, store.ErrIncidentNotFound
 				}
-				return incidents.AddEvidenceByOrganization(r.Context(), orgID, incidentID, store.CreateIncidentEvidenceInput{
-					EvidenceType: body.EvidenceType, EvidenceRef: body.EvidenceRef, Label: body.Label, CreatedBy: &claims.UserID,
+				return incidentService.AddEvidence(r.Context(), orgID, incidentID, claims.UserID, store.CreateIncidentEvidenceInput{
+					EvidenceType: body.EvidenceType, EvidenceRef: body.EvidenceRef, Label: body.Label,
 				})
 			}()
 			if err != nil {
@@ -419,7 +429,7 @@ func (a *apiRoutes) registerIncidentAlertRoutes(r chi.Router) {
 	})
 
 	r.Route("/asset-alerts", func(r chi.Router) {
-		r.With(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "alerts.read", isTokenRevoked)).Get("/", func(w http.ResponseWriter, r *http.Request) {
+		r.With(a.perm("alerts.read")).Get("/", func(w http.ResponseWriter, r *http.Request) {
 			limit, offset := pageParams(r)
 			orgID, ok := requestOrganizationID(w, r)
 			if !ok {
@@ -434,7 +444,7 @@ func (a *apiRoutes) registerIncidentAlertRoutes(r chi.Router) {
 			}
 			page, err := assetAlerts.ListByOrganization(r.Context(), orgID, limit, offset)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				writeAPIError(w, r, http.StatusInternalServerError, "internal_error", "Unexpected error", err)
 				return
 			}
 			cache.Set(r.Context(), cacheKey, page, 3*time.Second)
@@ -442,7 +452,7 @@ func (a *apiRoutes) registerIncidentAlertRoutes(r chi.Router) {
 			json.NewEncoder(w).Encode(page)
 		})
 
-		r.With(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "alerts.manage", isTokenRevoked)).Post("/{alertID}/acknowledge", func(w http.ResponseWriter, r *http.Request) {
+		r.With(a.perm("alerts.manage")).Post("/{alertID}/acknowledge", func(w http.ResponseWriter, r *http.Request) {
 			alertID, err := uuid.Parse(chi.URLParam(r, "alertID"))
 			if err != nil {
 				http.Error(w, "alertID must be a valid UUID", http.StatusBadRequest)
@@ -461,7 +471,7 @@ func (a *apiRoutes) registerIncidentAlertRoutes(r chi.Router) {
 			}
 			found, err := assetAlerts.AcknowledgeInOrganization(r.Context(), orgID, alertID, claims.UserID)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				writeAPIError(w, r, http.StatusInternalServerError, "internal_error", "Unexpected error", err)
 				return
 			}
 			if !found {

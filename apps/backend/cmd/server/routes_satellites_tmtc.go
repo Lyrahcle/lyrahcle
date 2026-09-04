@@ -25,18 +25,24 @@ func (a *apiRoutes) registerSatelliteTMTCRoutes(r chi.Router) {
 	cfg := a.cfg
 	isTokenRevoked := a.isTokenRevoked
 	orbitalEvents := a.orbitalEvents
-	rbac := a.rbac
 	satellites := a.satellites
 
 	r.Route("/satellites", func(r chi.Router) {
 		satnogsClient := satnogs.NewClient(10 * time.Second)
-		r.With(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "orbital.read", isTokenRevoked)).Get("/{satelliteID}/external-sources", func(w http.ResponseWriter, r *http.Request) {
+		r.With(a.perm("orbital.read")).Get("/{satelliteID}/external-sources", func(w http.ResponseWriter, r *http.Request) {
 			satelliteID, err := uuid.Parse(chi.URLParam(r, "satelliteID"))
-			if err != nil { http.Error(w, "invalid satellite ID", http.StatusBadRequest); return }
+			if err != nil {
+				http.Error(w, "invalid satellite ID", http.StatusBadRequest)
+				return
+			}
 			satellite, err := satellites.Get(r.Context(), satelliteID)
 			if err != nil {
-				if err == pgx.ErrNoRows { http.Error(w, "satellite not found", http.StatusNotFound); return }
-				http.Error(w, "failed to load satellite", http.StatusInternalServerError); return
+				if err == pgx.ErrNoRows {
+					http.Error(w, "satellite not found", http.StatusNotFound)
+					return
+				}
+				http.Error(w, "failed to load satellite", http.StatusInternalServerError)
+				return
 			}
 			cacheKey := fmt.Sprintf("lyrahcle:cache:satnogs:%d", satellite.NoradID)
 			var result satnogs.Intelligence
@@ -47,26 +53,29 @@ func (a *apiRoutes) registerSatelliteTMTCRoutes(r chi.Router) {
 			w.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(w).Encode(result)
 		})
-		r.With(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "orbital.read", isTokenRevoked)).Get("/{satelliteID}/passes", handleSatellitePassPrediction(satellites, tlePolicy(cfg)))
-		r.With(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "orbital.read", isTokenRevoked)).Get("/{satelliteID}/orbital-events", handleListOrbitalEvents(orbitalEvents, satellites))
-		r.With(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "orbital.manage", isTokenRevoked)).Post("/{satelliteID}/orbital-events", handleCreateOrbitalEvent(orbitalEvents, satellites, auditLog))
-		r.With(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "orbital.manage", isTokenRevoked)).Put("/{satelliteID}", handleUpdateSatellite(satellites, auditLog, cache))
+		r.With(a.perm("orbital.read")).Get("/{satelliteID}/passes", handleSatellitePassPrediction(satellites, tlePolicy(cfg)))
+		r.With(a.perm("orbital.read")).Get("/{satelliteID}/orbital-events", handleListOrbitalEvents(orbitalEvents, satellites))
+		r.With(a.perm("orbital.manage")).Post("/{satelliteID}/orbital-events", handleCreateOrbitalEvent(orbitalEvents, satellites, auditLog))
+		r.With(a.perm("orbital.manage")).Put("/{satelliteID}", handleUpdateSatellite(satellites, auditLog, cache))
 
-		r.With(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "orbital.read", isTokenRevoked)).Get("/", func(w http.ResponseWriter, r *http.Request) {
+		r.With(a.perm("orbital.read")).Get("/", func(w http.ResponseWriter, r *http.Request) {
 			out, err := satellitesWithPositions(r.Context(), satellites, cache, tlePolicy(cfg))
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				writeAPIError(w, r, http.StatusInternalServerError, "internal_error", "Unexpected error", err)
 				return
 			}
 			w.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(w).Encode(out)
 		})
 
-		r.With(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "orbital.read", isTokenRevoked)).Get("/stream", func(w http.ResponseWriter, r *http.Request) {
+		r.With(a.perm("orbital.read")).Get("/stream", func(w http.ResponseWriter, r *http.Request) {
 			flusher, ok := w.(http.Flusher)
 			if !ok {
 				http.Error(w, "streaming unsupported", http.StatusInternalServerError)
 				return
+			}
+			if err := http.NewResponseController(w).SetWriteDeadline(time.Time{}); err != nil {
+				log.Printf("satellites stream: disable write deadline: %v", err)
 			}
 
 			w.Header().Set("Content-Type", "text/event-stream")
@@ -77,8 +86,11 @@ func (a *apiRoutes) registerSatelliteTMTCRoutes(r chi.Router) {
 			metrics.SSEConnections.WithLabelValues("satellites").Inc()
 			defer metrics.SSEConnections.WithLabelValues("satellites").Dec()
 
-			ticker := time.NewTicker(5 * time.Second)
-			defer ticker.Stop()
+			updateTicker := time.NewTicker(5 * time.Second)
+			defer updateTicker.Stop()
+			heartbeatTicker := time.NewTicker(15 * time.Second)
+			defer heartbeatTicker.Stop()
+			var eventID uint64
 
 			sendUpdate := func() bool {
 				out, err := satellitesWithPositions(r.Context(), satellites, cache, tlePolicy(cfg))
@@ -89,7 +101,8 @@ func (a *apiRoutes) registerSatelliteTMTCRoutes(r chi.Router) {
 				if err != nil {
 					return true
 				}
-				if _, err := fmt.Fprintf(w, "event: satellites\ndata: %s\n\n", payload); err != nil {
+				eventID++
+				if _, err := fmt.Fprintf(w, "id: %d\nevent: satellites\ndata: %s\n\n", eventID, payload); err != nil {
 					return false
 				}
 				flusher.Flush()
@@ -104,15 +117,20 @@ func (a *apiRoutes) registerSatelliteTMTCRoutes(r chi.Router) {
 				select {
 				case <-r.Context().Done():
 					return
-				case <-ticker.C:
+				case <-updateTicker.C:
 					if !sendUpdate() {
 						return
 					}
+				case <-heartbeatTicker.C:
+					if _, err := fmt.Fprint(w, ": ping\n\n"); err != nil {
+						return
+					}
+					flusher.Flush()
 				}
 			}
 		})
 
-		r.With(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "orbital.manage", isTokenRevoked)).Post("/", func(w http.ResponseWriter, r *http.Request) {
+		r.With(a.perm("orbital.manage")).Post("/", func(w http.ResponseWriter, r *http.Request) {
 			var body struct {
 				NoradID int    `json:"norad_id"`
 				Name    string `json:"name"`
@@ -143,7 +161,7 @@ func (a *apiRoutes) registerSatelliteTMTCRoutes(r chi.Router) {
 			}
 
 			if err := satellites.Upsert(r.Context(), body.NoradID, body.Name, body.Line1, body.Line2); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				writeAPIError(w, r, http.StatusInternalServerError, "internal_error", "Unexpected error", err)
 				return
 			}
 			if err := cache.Delete(r.Context(), satellitesCacheKey); err != nil {

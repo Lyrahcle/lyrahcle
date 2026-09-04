@@ -84,7 +84,7 @@ Status values: **Shipped**, **Partial**, **Next**, and **Later**.
 | Verify `context.Context` propagation across all stores | Shipped | Block 13 |
 | Complete frontend TypeScript migration | Partial | Block 14 onward |
 | Frontend CI warning gate covering `console.error`/`console.warn`/unhandled promises | Partial | `check-frontend-test-warnings.py` currently detects only `act(...)` warnings and is not wired into `ci.yml`; needs broader patterns and a CI step that captures Vitest output |
-| Product-journey end-to-end tests (Playwright) | Next | Existing E2E coverage (`security_e2e_http_v1463_test.go`) is HTTP-level security only; no browser-driven operator-journey suite (login → incident close) exists yet |
+| Product-journey end-to-end tests (Playwright) | Next | Existing E2E coverage (`security_e2e_http_test.go`) is HTTP-level security only; no browser-driven operator-journey suite (login → incident close) exists yet |
 
 ## Platform security and supply chain
 

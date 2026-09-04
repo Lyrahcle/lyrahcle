@@ -16,13 +16,10 @@ import (
 func (a *apiRoutes) registerAssetProgramRoutes(r chi.Router) {
 	assets := a.assets
 	auditLog := a.auditLog
-	cfg := a.cfg
-	isTokenRevoked := a.isTokenRevoked
 	programs := a.programs
-	rbac := a.rbac
 
 	r.Route("/assets", func(r chi.Router) {
-		r.With(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "assets.read", isTokenRevoked)).Get("/", func(w http.ResponseWriter, r *http.Request) {
+		r.With(a.perm("assets.read")).Get("/", func(w http.ResponseWriter, r *http.Request) {
 			limit, offset := pageParams(r)
 			orgID, ok := requestOrganizationID(w, r)
 			if !ok {
@@ -30,14 +27,14 @@ func (a *apiRoutes) registerAssetProgramRoutes(r chi.Router) {
 			}
 			page, err := assets.ListByOrganization(r.Context(), orgID, limit, offset)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				writeAPIError(w, r, http.StatusInternalServerError, "internal_error", "Unexpected error", err)
 				return
 			}
 			w.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(w).Encode(page)
 		})
 
-		r.With(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "assets.manage", isTokenRevoked)).Post("/", func(w http.ResponseWriter, r *http.Request) {
+		r.With(a.perm("assets.manage")).Post("/", func(w http.ResponseWriter, r *http.Request) {
 			var body struct {
 				ProgramID string `json:"program_id"`
 				Kind      string `json:"kind"`
@@ -78,7 +75,7 @@ func (a *apiRoutes) registerAssetProgramRoutes(r chi.Router) {
 					http.Error(w, "program not found", http.StatusNotFound)
 					return
 				}
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				writeAPIError(w, r, http.StatusInternalServerError, "internal_error", "Unexpected error", err)
 				return
 			}
 			if claims, ok := auth.FromContext(r.Context()); ok {
@@ -89,7 +86,7 @@ func (a *apiRoutes) registerAssetProgramRoutes(r chi.Router) {
 			w.WriteHeader(http.StatusCreated)
 		})
 
-		r.With(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "assets.manage", isTokenRevoked)).Put("/{assetID}", func(w http.ResponseWriter, r *http.Request) {
+		r.With(a.perm("assets.manage")).Put("/{assetID}", func(w http.ResponseWriter, r *http.Request) {
 			assetID, err := uuid.Parse(chi.URLParam(r, "assetID"))
 			if err != nil {
 				http.Error(w, "asset_id must be a valid UUID", http.StatusBadRequest)
@@ -134,7 +131,7 @@ func (a *apiRoutes) registerAssetProgramRoutes(r chi.Router) {
 					http.Error(w, "asset not found", http.StatusNotFound)
 					return
 				}
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				writeAPIError(w, r, http.StatusInternalServerError, "internal_error", "Unexpected error", err)
 				return
 			}
 			if claims, ok := auth.FromContext(r.Context()); ok {
@@ -146,7 +143,7 @@ func (a *apiRoutes) registerAssetProgramRoutes(r chi.Router) {
 			json.NewEncoder(w).Encode(asset)
 		})
 
-		r.With(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "assets.manage", isTokenRevoked)).Delete("/{assetID}", func(w http.ResponseWriter, r *http.Request) {
+		r.With(a.perm("assets.manage")).Delete("/{assetID}", func(w http.ResponseWriter, r *http.Request) {
 			assetID, err := uuid.Parse(chi.URLParam(r, "assetID"))
 			if err != nil {
 				http.Error(w, "asset_id must be a valid UUID", http.StatusBadRequest)
@@ -161,7 +158,7 @@ func (a *apiRoutes) registerAssetProgramRoutes(r chi.Router) {
 					http.Error(w, "asset not found", http.StatusNotFound)
 					return
 				}
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				writeAPIError(w, r, http.StatusInternalServerError, "internal_error", "Unexpected error", err)
 				return
 			}
 			if claims, ok := auth.FromContext(r.Context()); ok {
@@ -172,21 +169,21 @@ func (a *apiRoutes) registerAssetProgramRoutes(r chi.Router) {
 	})
 
 	r.Route("/programs", func(r chi.Router) {
-		r.With(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "programs.read", isTokenRevoked)).Get("/", func(w http.ResponseWriter, r *http.Request) {
+		r.With(a.perm("programs.read")).Get("/", func(w http.ResponseWriter, r *http.Request) {
 			orgID, ok := requestOrganizationID(w, r)
 			if !ok {
 				return
 			}
 			list, err := programs.ListByOrganization(r.Context(), orgID)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				writeAPIError(w, r, http.StatusInternalServerError, "internal_error", "Unexpected error", err)
 				return
 			}
 			w.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(w).Encode(list)
 		})
 
-		r.With(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "programs.manage", isTokenRevoked)).Post("/", func(w http.ResponseWriter, r *http.Request) {
+		r.With(a.perm("programs.manage")).Post("/", func(w http.ResponseWriter, r *http.Request) {
 			var body struct {
 				Name string `json:"name"`
 			}
@@ -206,7 +203,7 @@ func (a *apiRoutes) registerAssetProgramRoutes(r chi.Router) {
 			}
 			program, err := programs.CreateInOrganization(r.Context(), orgID, body.Name)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				writeAPIError(w, r, http.StatusInternalServerError, "internal_error", "Unexpected error", err)
 				return
 			}
 			if claims, ok := auth.FromContext(r.Context()); ok {
@@ -219,7 +216,7 @@ func (a *apiRoutes) registerAssetProgramRoutes(r chi.Router) {
 			json.NewEncoder(w).Encode(program)
 		})
 
-		r.With(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "programs.manage", isTokenRevoked)).Put("/{programID}", func(w http.ResponseWriter, r *http.Request) {
+		r.With(a.perm("programs.manage")).Put("/{programID}", func(w http.ResponseWriter, r *http.Request) {
 			programID, err := uuid.Parse(chi.URLParam(r, "programID"))
 			if err != nil {
 				http.Error(w, "program_id must be a valid UUID", http.StatusBadRequest)
@@ -247,7 +244,7 @@ func (a *apiRoutes) registerAssetProgramRoutes(r chi.Router) {
 					http.Error(w, "program not found", http.StatusNotFound)
 					return
 				}
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				writeAPIError(w, r, http.StatusInternalServerError, "internal_error", "Unexpected error", err)
 				return
 			}
 			if claims, ok := auth.FromContext(r.Context()); ok {
@@ -259,7 +256,7 @@ func (a *apiRoutes) registerAssetProgramRoutes(r chi.Router) {
 			json.NewEncoder(w).Encode(program)
 		})
 
-		r.With(auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "programs.manage", isTokenRevoked)).Delete("/{programID}", func(w http.ResponseWriter, r *http.Request) {
+		r.With(a.perm("programs.manage")).Delete("/{programID}", func(w http.ResponseWriter, r *http.Request) {
 			programID, err := uuid.Parse(chi.URLParam(r, "programID"))
 			if err != nil {
 				http.Error(w, "program_id must be a valid UUID", http.StatusBadRequest)
@@ -274,7 +271,7 @@ func (a *apiRoutes) registerAssetProgramRoutes(r chi.Router) {
 					http.Error(w, "program not found", http.StatusNotFound)
 					return
 				}
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				writeAPIError(w, r, http.StatusInternalServerError, "internal_error", "Unexpected error", err)
 				return
 			}
 			if claims, ok := auth.FromContext(r.Context()); ok {

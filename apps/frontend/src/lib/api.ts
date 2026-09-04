@@ -94,8 +94,14 @@ function publishApiError(error: unknown): void {
 }
 
 async function readErrorText(res: Response, fallback: string): Promise<string> {
-  const message = await res.text().catch(() => fallback)
-  return message.trim() || fallback
+  const body = await res.text().catch(() => '')
+  if (!body.trim()) return fallback
+  try {
+    const parsed = JSON.parse(body) as { error?: { message?: string } }
+    return parsed.error?.message?.trim() || fallback
+  } catch {
+    return body.trim()
+  }
 }
 
 async function apiErrorFromResponse(res: Response, fallback: string, endpoint = ''): Promise<ApiError> {
@@ -132,18 +138,23 @@ async function authedFetch(url: RequestInfo | URL, options: RequestInit = {}): P
   return res
 }
 
-function parseServerSentEvent(chunk: string): unknown {
+function parseServerSentEvent(chunk: string): { id?: string; payload?: unknown } {
+  const id = chunk
+    .split('\n')
+    .find((line) => line.startsWith('id:'))
+    ?.slice(3)
+    .trim()
   const data = chunk
     .split('\n')
     .filter((line) => line.startsWith('data:'))
     .map((line) => line.slice(5).replace(/^ /, ''))
     .join('\n')
 
-  if (!data) return undefined
+  if (!data) return { id }
   try {
-    return JSON.parse(data)
+    return { id, payload: JSON.parse(data) }
   } catch {
-    return undefined
+    return { id }
   }
 }
 
@@ -154,54 +165,79 @@ export interface JSONStreamCallbacks {
 
 function subscribeJSONStream(url: string, { onData, onError }: JSONStreamCallbacks, errorPrefix = 'stream failed'): () => void {
   const controller = new AbortController()
+  let lastEventId = ''
+
+  const waitForRetry = (delayMs: number) => new Promise<void>((resolve) => {
+    const timer = window.setTimeout(resolve, delayMs)
+    controller.signal.addEventListener('abort', () => {
+      window.clearTimeout(timer)
+      resolve()
+    }, { once: true })
+  })
 
   async function run() {
-    let res: Response
-    try {
-      res = await authedFetch(url, { signal: controller.signal })
-    } catch (err) {
-      if ((err as { name?: string })?.name !== 'AbortError') onError?.(err)
-      return
-    }
+    let attempt = 0
+    while (!controller.signal.aborted) {
+      let reader: ReadableStreamDefaultReader<Uint8Array> | undefined
+      try {
+        const headers: Record<string, string> = lastEventId ? { 'Last-Event-ID': lastEventId } : {}
+        const res = await authedFetch(url, { signal: controller.signal, headers })
+        if (!res.ok || !res.body) {
+          throw await apiErrorFromResponse(res, `${errorPrefix} with status ${res.status}`, url)
+        }
 
-    if (!res.ok || !res.body) {
-      onError?.(await apiErrorFromResponse(res, `${errorPrefix} with status ${res.status}`, url))
-      return
-    }
+        reader = res.body.getReader()
+        const decoder = new TextDecoder()
+        let buffer = ''
 
-    const reader = res.body.getReader()
-    const decoder = new TextDecoder()
-    let buffer = ''
+        const consumeEvents = (flush = false) => {
+          buffer = buffer.replace(/\r\n/g, '\n')
+          let boundary
+          while ((boundary = buffer.indexOf('\n\n')) !== -1) {
+            const chunk = buffer.slice(0, boundary)
+            buffer = buffer.slice(boundary + 2)
+            const event = parseServerSentEvent(chunk)
+            if (event.id) lastEventId = event.id
+            if (event.payload !== undefined) {
+              attempt = 0
+              onData?.(event.payload)
+            }
+          }
+          if (flush && buffer.trim()) {
+            const event = parseServerSentEvent(buffer)
+            buffer = ''
+            if (event.id) lastEventId = event.id
+            if (event.payload !== undefined) {
+              attempt = 0
+              onData?.(event.payload)
+            }
+          }
+        }
 
-    const consumeEvents = (flush = false) => {
-      buffer = buffer.replace(/\r\n/g, '\n')
-      let boundary
-      while ((boundary = buffer.indexOf('\n\n')) !== -1) {
-        const chunk = buffer.slice(0, boundary)
-        buffer = buffer.slice(boundary + 2)
-        const payload = parseServerSentEvent(chunk)
-        if (payload !== undefined) onData?.(payload)
+        while (!controller.signal.aborted) {
+          const { value, done } = await reader.read()
+          if (done) break
+          buffer += decoder.decode(value, { stream: true })
+          consumeEvents()
+        }
+        buffer += decoder.decode()
+        consumeEvents(true)
+        if (!controller.signal.aborted) {
+          throw new ApiError(`${errorPrefix}: connection closed`, { kind: 'network', endpoint: url })
+        }
+      } catch (err) {
+        if (controller.signal.aborted || (err as { name?: string })?.name === 'AbortError') break
+        onError?.(err)
+      } finally {
+        reader?.releaseLock?.()
       }
-      if (flush && buffer.trim()) {
-        const payload = parseServerSentEvent(buffer)
-        buffer = ''
-        if (payload !== undefined) onData?.(payload)
-      }
-    }
 
-    try {
-      while (true) {
-        const { value, done } = await reader.read()
-        if (done) break
-        buffer += decoder.decode(value, { stream: true })
-        consumeEvents()
+      if (!controller.signal.aborted) {
+        const exponential = Math.min(30_000, 1_000 * 2 ** Math.min(attempt, 5))
+        const jitter = Math.floor(Math.random() * Math.max(1, exponential * 0.25))
+        attempt += 1
+        await waitForRetry(exponential + jitter)
       }
-      buffer += decoder.decode()
-      consumeEvents(true)
-    } catch (err) {
-      if ((err as { name?: string })?.name !== 'AbortError') onError?.(err)
-    } finally {
-      reader.releaseLock?.()
     }
   }
 

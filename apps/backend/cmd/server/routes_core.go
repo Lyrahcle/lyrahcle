@@ -54,6 +54,9 @@ func (a *apiRoutes) registerCoreRoutes(r chi.Router) {
 	r.With(auth.RequireRoleWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, auth.RoleViewer, isTokenRevoked)).Get("/system-info", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
+			"version":                 version,
+			"commit":                  commit,
+			"build_date":              buildDate,
 			"environment":             cfg.Environment,
 			"license":                 "AGPLv3 (core)",
 			"celestrak_groups":        cfg.CelestrakGroups,

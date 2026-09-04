@@ -19,7 +19,7 @@ import (
 
 func registerFleetRolloutRoutes(r chi.Router, cfg config.Config, signer *agentconfig.Signer, rollouts *store.FleetRolloutStore, configs *store.AgentConfigStore, satellites *store.SatelliteStore, auditLog *store.AuditStore, rbac *store.RBACStore, isTokenRevoked auth.RevocationCheck) {
 	read := auth.RequireAnyPermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, []string{"agents.read", "agents.manage"}, isTokenRevoked)
-	manage := auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "agents.manage", isTokenRevoked)
+	manage := newPermissionMiddleware(cfg, rbac, isTokenRevoked)("agents.manage")
 
 	r.With(read).Get("/agent-rollouts", func(w http.ResponseWriter, req *http.Request) {
 		orgID, ok := requestOrganizationID(w, req)

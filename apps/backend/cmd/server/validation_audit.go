@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"log"
 	"net"
 	"net/http"
 	"strings"
@@ -14,6 +13,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/mlko01/lyrahcle/apps/backend/internal/auth"
+	structuredlog "github.com/mlko01/lyrahcle/apps/backend/internal/logging"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/store"
 	"github.com/mlko01/lyrahcle/apps/backend/internal/validate"
 )
@@ -121,7 +121,7 @@ func logAuditInOrganization(ctx context.Context, auditLog *store.AuditStore, org
 	}
 	details = auditDetails(ctx, organizationID, details)
 	if err := auditLog.InsertInOrganization(ctx, organizationID, actorType, actorID, action, ip, details); err != nil {
-		log.Printf("audit: failed to record %s by %s %s in organization %s: %v", action, actorType, actorID, organizationID, err)
+		structuredlog.FromContext(ctx).Error("audit_record_failed", "action", action, "actor_type", actorType, "actor_id", actorID, "tenant_id", organizationID.String(), "error", err)
 	}
 }
 
@@ -143,7 +143,7 @@ func logAudit(ctx context.Context, auditLog *store.AuditStore, actorType, actorI
 	}
 	details = auditDetails(ctx, organizationID, details)
 	if err := auditLog.InsertInOrganization(ctx, organizationID, actorType, actorID, action, ip, details); err != nil {
-		log.Printf("audit: failed to record %s by %s %s: %v", action, actorType, actorID, err)
+		structuredlog.FromContext(ctx).Error("audit_record_failed", "action", action, "actor_type", actorType, "actor_id", actorID, "error", err)
 	}
 }
 

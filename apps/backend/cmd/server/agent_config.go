@@ -47,7 +47,7 @@ func registerAgentConfigRoutes(
 	tenantLimiter *ratelimit.Limiter,
 ) {
 	agentRead := auth.RequireAnyPermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, []string{"agents.read", "agents.manage"}, isTokenRevoked)
-	agentManage := auth.RequirePermissionWithFallback(cfg.JWTSecret, cfg.JWTPreviousSecret, rbac, "agents.manage", isTokenRevoked)
+	agentManage := newPermissionMiddleware(cfg, rbac, isTokenRevoked)("agents.manage")
 
 	r.With(agentRead).Get("/agents/{agentID}/config", func(w http.ResponseWriter, r *http.Request) {
 		agentID := strings.TrimSpace(chi.URLParam(r, "agentID"))

@@ -84,7 +84,7 @@ Upgrade behavior promotes only the oldest active admin in the default organizati
 
 ## Pre-v1.0 Authorization Audit Gate
 
-The release audit in `apps/backend/cmd/server/authorization_audit_v140_test.go` is a CI tripwire for authorization consistency:
+The release audit in `apps/backend/cmd/server/authorization_audit_test.go` is a CI tripwire for authorization consistency:
 
 **Audit Requirements:**
 - Tenant-sensitive administration and analyst routes are inventoried with the capability that must guard them
@@ -137,4 +137,4 @@ if requester.HasCapability("users.manage") { ... }
 - [ ] RBAC endpoint matrix updated for new domains
 - [ ] Role-based legacy checks removed from new code
 - [ ] Platform-admin and tenant-admin boundaries clear
-- [ ] `authorization_audit_v140_test.go` passes in CI
+- [ ] `authorization_audit_test.go` passes in CI

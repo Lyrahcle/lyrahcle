@@ -37,7 +37,7 @@ spec:
       hostNetwork: false
       hostPID: false
       hostIPC: false
-      terminationGracePeriodSeconds: 30
+      terminationGracePeriodSeconds: 45
       securityContext:
         runAsNonRoot: true
         runAsUser: {{ .Values.podSecurity.backend.runAsUser }}
@@ -86,6 +86,10 @@ spec:
             readOnlyRootFilesystem: true
             capabilities:
               drop: ["ALL"]
+          lifecycle:
+            preStop:
+              sleep:
+                seconds: 10
             seccompProfile:
               type: RuntimeDefault
           volumeMounts:

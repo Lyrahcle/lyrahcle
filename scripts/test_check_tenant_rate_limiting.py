@@ -26,7 +26,7 @@ class TenantRateLimitingContractTests(unittest.TestCase):
                 'apps/frontend/src/components/RateLimitPolicyPanel.tsx',
                 'apps/frontend/src/components/Dashboard.tsx',
                 'apps/frontend/src/lib/api.ts',
-                'apps/backend/cmd/server/rate_limit_v138_test.go',
+                'apps/backend/cmd/server/rate_limit_test.go',
                 'apps/backend/internal/ratelimit/tenant_test.go',
             ]:
                 p = fake / rel
